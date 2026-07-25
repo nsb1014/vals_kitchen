@@ -378,7 +378,7 @@ function generateDay(input: DayGenInput, rng: Rng): GeneratedDay {
 }
 ```
 
-**Customer generation (Ruling 12):** `generateCustomer` receives the **unlocked flavor envelope** (per-axis min/max achievable by any 3–6 combo from unlocked ingredients). Primary preference bands are rolled **only within that envelope**. Never emit a high-band request for an axis the unlocked set cannot reach.
+**Customer generation (Ruling 12):** `generateCustomerRequest` computes the unlocked **flavor envelope** (dish min/max per axis) and **ingredient profile** (per-axis variance/peak across unlocked items). Likes/dislikes may only use **actionable axes** — strong in the current pantry and spread-bearing in dishes. Witness combos are shuffled; satisfiable preferences with ≥2 scored cues are collected and one is chosen at random. Bubble phrases mirror scored primary/avoid axes (same vocabulary as the flavor inspector). Never emit flavor-noise cues on axes every starter dish already satisfies; never emit bands the unlock set cannot reach.
 
 ### Serve Flow
 

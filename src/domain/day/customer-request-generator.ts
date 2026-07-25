@@ -13,6 +13,24 @@ export interface FlavorEnvelope {
   minByAxis: Partial<Record<AxisKey, number>>;
 }
 
+/** Per-axis presence in the player's unlocked ingredient list (not dish envelope alone). */
+export interface UnlockedFlavorProfile {
+  ingredientMax: Partial<Record<AxisKey, number>>;
+  ingredientMin: Partial<Record<AxisKey, number>>;
+  ingredientVariance: Partial<Record<AxisKey, number>>;
+  /** Axes that both appear strongly on unlocked ingredients and steer dish scores. */
+  actionableAxes: AxisKey[];
+}
+
+const MIN_INGREDIENT_AXIS_VARIANCE = 1;
+const MIN_INGREDIENT_AXIS_PEAK = 3.5;
+/** Minimum dish spread on an axis for it to steer ingredient choice (not flavor-noise). */
+const MIN_ACTIONABLE_AXIS_SPREAD = 2.5;
+/** Minimum primary cues shown to the player early game. */
+const MIN_PRIMARY_CUE_COUNT = 2;
+/** Max satisfiable witness combos considered before picking one at random. */
+const REQUEST_CANDIDATE_CAP = 24;
+
 function bandForValue(value: number): Band {
   if (value <= 3) return 'low';
   if (value <= 6) return 'mid';
@@ -93,6 +111,52 @@ export function computeFlavorEnvelope(
   return { achievableBands, maxByAxis, minByAxis };
 }
 
+export function computeUnlockedFlavorProfile(
+  unlocked: Ingredient[],
+  envelope: FlavorEnvelope,
+): UnlockedFlavorProfile {
+  const ingredientMax = {} as Partial<Record<AxisKey, number>>;
+  const ingredientMin = {} as Partial<Record<AxisKey, number>>;
+  const ingredientVariance = {} as Partial<Record<AxisKey, number>>;
+
+  for (const axis of AXIS_KEYS) {
+    const values = unlocked.map((item) => item.flavor[axis]);
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    ingredientMax[axis] = Math.max(...values);
+    ingredientMin[axis] = Math.min(...values);
+    ingredientVariance[axis] =
+      values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  }
+
+  const actionableAxes = AXIS_KEYS.filter((axis) => {
+    const variance = ingredientVariance[axis] ?? 0;
+    const peak = ingredientMax[axis] ?? 0;
+    const spread = (envelope.maxByAxis[axis] ?? 0) - (envelope.minByAxis[axis] ?? 0);
+    const bandCount = envelope.achievableBands[axis]?.length ?? 0;
+    return (
+      variance >= MIN_INGREDIENT_AXIS_VARIANCE &&
+      peak >= MIN_INGREDIENT_AXIS_PEAK &&
+      (spread >= MIN_ACTIONABLE_AXIS_SPREAD || bandCount >= 2)
+    );
+  });
+
+  return { ingredientMax, ingredientMin, ingredientVariance, actionableAxes };
+}
+
+function preferenceUsesActionableAxes(
+  preference: CustomerPreference,
+  profile: UnlockedFlavorProfile,
+): boolean {
+  const allowed = new Set(profile.actionableAxes);
+  for (const axis of Object.keys(preference.primary) as AxisKey[]) {
+    if (!allowed.has(axis)) return false;
+  }
+  for (const axis of Object.keys(preference.avoid) as AxisKey[]) {
+    if (preference.avoid[axis] && !allowed.has(axis)) return false;
+  }
+  return true;
+}
+
 const PHRASES: Record<AxisKey, Partial<Record<Band, string>>> = {
   SW: { high: 'a hint of sweetness', low: 'not sweet at all' },
   SA: { high: 'properly seasoned', mid: 'a touch of salt' },
@@ -111,17 +175,37 @@ const PHRASES: Record<AxisKey, Partial<Record<Band, string>>> = {
   CR: { high: 'some crunch', low: 'soft textures only' },
 };
 
-function rankedAxes(archetype: Archetype, dish: FlavorVector): AxisKey[] {
-  return [...AXIS_KEYS]
+function rankedActionableAxes(
+  archetype: Archetype,
+  dish: FlavorVector,
+  envelope: FlavorEnvelope,
+  profile: UnlockedFlavorProfile,
+): AxisKey[] {
+  const fallbackAxes: AxisKey[] = ['UM', 'PU', 'SA', 'RI'];
+  const pool: AxisKey[] =
+    profile.actionableAxes.length >= MIN_PRIMARY_CUE_COUNT
+      ? profile.actionableAxes
+      : [...profile.actionableAxes, ...fallbackAxes].filter(
+          (axis, index, list) => list.indexOf(axis) === index,
+        );
+
+  return pool
     .map((axis) => ({
       axis,
-      score: (archetype.primaryAxisWeights[axis] ?? 0.35) * (0.4 + dish[axis] / 10),
+      score:
+        (archetype.primaryAxisWeights[axis] ?? 0.35) *
+        (0.4 + dish[axis] / 10) *
+        ((envelope.maxByAxis[axis] ?? 0) - (envelope.minByAxis[axis] ?? 0) + 1) *
+        ((profile.ingredientVariance[axis] ?? 0) + 1),
     }))
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score || a.axis.localeCompare(b.axis))
     .map((entry) => entry.axis);
 }
 
-function buildPhrases(primary: Partial<Record<AxisKey, Band>>): string[] {
+function buildPhrases(
+  primary: Partial<Record<AxisKey, Band>>,
+  avoid: Partial<Record<AxisKey, boolean>> = {},
+): string[] {
   const phrases: string[] = [];
   for (const axis of Object.keys(primary) as AxisKey[]) {
     const band = primary[axis];
@@ -129,23 +213,45 @@ function buildPhrases(primary: Partial<Record<AxisKey, Band>>): string[] {
     const phrase = PHRASES[axis][band];
     if (phrase) phrases.push(phrase);
   }
+  for (const axis of Object.keys(avoid) as AxisKey[]) {
+    if (!avoid[axis] || primary[axis]) continue;
+    const phrase = PHRASES[axis].low;
+    if (phrase) phrases.push(phrase);
+  }
   return phrases.length > 0 ? phrases : ['something balanced and satisfying'];
+}
+
+function primaryCueCount(preference: CustomerPreference): number {
+  return Object.keys(preference.primary).length;
 }
 
 function buildAvoidOptions(
   ranked: AxisKey[],
   primary: Partial<Record<AxisKey, Band>>,
   dish: FlavorVector,
+  profile: UnlockedFlavorProfile,
 ): Partial<Record<AxisKey, boolean>>[] {
   const options: Partial<Record<AxisKey, boolean>>[] = [{}];
   for (const axis of ranked) {
     if (primary[axis]) continue;
-    if (dish[axis] > 4 && PHRASES[axis].low) {
+    if (!profile.actionableAxes.includes(axis)) continue;
+    const canViolate = (profile.ingredientMax[axis] ?? 0) >= 5;
+    if (canViolate && dish[axis] <= 3 && PHRASES[axis].low) {
       options.push({ [axis]: true });
-      break;
     }
   }
   return options;
+}
+
+function preferenceAxisWindows(ranked: AxisKey[], axisCount: number): AxisKey[][] {
+  const windows: AxisKey[][] = [];
+  for (let offset = 0; offset <= ranked.length - axisCount; offset++) {
+    windows.push(ranked.slice(offset, offset + axisCount));
+  }
+  if (windows.length === 0 && ranked.length >= axisCount) {
+    windows.push(ranked.slice(0, axisCount));
+  }
+  return windows;
 }
 
 function preferenceFromCombo(
@@ -153,26 +259,35 @@ function preferenceFromCombo(
   archetype: Archetype,
   compoundAffinity: Record<string, Record<string, number>>,
   floor: number,
+  envelope: FlavorEnvelope,
+  profile: UnlockedFlavorProfile,
 ): CustomerPreference | null {
   const dish = aggregateDish(targetCombo.map((item) => item.flavor));
   const ids = targetCombo.map((item) => item.id);
-  const ranked = rankedAxes(archetype, dish);
+  const ranked = rankedActionableAxes(archetype, dish, envelope, profile);
+  if (ranked.length < MIN_PRIMARY_CUE_COUNT) return null;
 
-  for (const axisCount of [3, 2, 1]) {
-    const axes = ranked.slice(0, axisCount);
-    const primary: Partial<Record<AxisKey, Band>> = {};
-    for (const axis of axes) {
-      primary[axis] = bandForValue(dish[axis]);
-    }
+  for (const axisCount of [3, 2]) {
+    if (ranked.length < axisCount) continue;
+    for (const axes of preferenceAxisWindows(ranked, axisCount)) {
+      const primary: Partial<Record<AxisKey, Band>> = {};
+      for (const axis of axes) {
+        primary[axis] = bandForValue(dish[axis]);
+      }
 
-    for (const avoid of buildAvoidOptions(ranked, primary, dish)) {
-      const preference: CustomerPreference = {
-        primary,
-        avoid,
-        phrases: buildPhrases(primary),
-      };
-      if (computeMatchStars(dish, preference, ids, compoundAffinity) >= floor) {
-        return preference;
+      for (const avoid of buildAvoidOptions(ranked, primary, dish, profile)) {
+        const preference: CustomerPreference = {
+          primary,
+          avoid,
+          phrases: buildPhrases(primary, avoid),
+        };
+        if (
+          primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
+          preferenceUsesActionableAxes(preference, profile) &&
+          computeMatchStars(dish, preference, ids, compoundAffinity) >= floor
+        ) {
+          return preference;
+        }
       }
     }
   }
@@ -204,6 +319,8 @@ export function generateCustomerRequest(
   }
 
   const floor = unlocked.length <= 5 ? 6.5 : unlocked.length <= 12 ? 6.8 : 7.0;
+  const envelope = computeFlavorEnvelope(unlockedIds, ingredientsById);
+  const profile = computeUnlockedFlavorProfile(unlocked, envelope);
 
   const candidateCombos =
     unlocked.length <= 20
@@ -217,11 +334,39 @@ export function generateCustomerRequest(
     [candidateCombos[i], candidateCombos[j]] = [candidateCombos[j]!, candidateCombos[i]!];
   }
 
+  const richCandidates: CustomerRequest[] = [];
+  const fallbackCandidates: CustomerRequest[] = [];
+
   for (const combo of candidateCombos) {
-    const preference = preferenceFromCombo(combo, archetype, compoundAffinity, floor);
-    if (preference) {
-      return { preference, witnessIngredientIds: combo.map((item) => item.id) };
+    const preference = preferenceFromCombo(
+      combo,
+      archetype,
+      compoundAffinity,
+      floor,
+      envelope,
+      profile,
+    );
+    if (!preference) continue;
+    const request: CustomerRequest = {
+      preference,
+      witnessIngredientIds: combo.map((item) => item.id),
+    };
+    if (primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT && preference.phrases.length >= 2) {
+      richCandidates.push(request);
+      if (richCandidates.length >= REQUEST_CANDIDATE_CAP) break;
+    } else {
+      fallbackCandidates.push(request);
     }
+  }
+
+  const pool =
+    richCandidates.length > 0
+      ? richCandidates
+      : fallbackCandidates.length > 0
+        ? fallbackCandidates
+        : null;
+  if (pool) {
+    return pool[rng.nextInt(0, pool.length - 1)]!;
   }
 
   throw new Error(
