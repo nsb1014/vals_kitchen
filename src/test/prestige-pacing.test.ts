@@ -43,8 +43,8 @@ const testContext = createDomainContext({
 
 describe('prestige pacing (analytic)', () => {
   it('keeps first cycle near the fast-teach target', () => {
-    expect(projectedCycleDays(0)).toBeGreaterThanOrEqual(5);
-    expect(projectedCycleDays(0)).toBeLessThanOrEqual(8);
+    expect(projectedCycleDays(0)).toBeGreaterThanOrEqual(3);
+    expect(projectedCycleDays(0)).toBeLessThanOrEqual(6);
     expect(projectedCycleDays(0)).toBe(BASE_FIRST_CYCLE_DAYS);
   });
 
@@ -73,14 +73,14 @@ describe('prestige pacing (analytic)', () => {
 });
 
 describe('prestige pacing (simulated smoke)', () => {
-  it('reaches first prestige in 5–12 days of competent play', () => {
+  it('reaches first prestige in 3–10 days of competent play', () => {
     const result = simulateCompetentRun(424242, 120, simContext);
     expect(
       result.prestigeReached,
       `prestige not reached in ${result.daysPlayed} days; rating=${result.finalState.rating}`,
     ).toBe(true);
-    expect(result.daysPlayed).toBeGreaterThanOrEqual(5);
-    expect(result.daysPlayed).toBeLessThanOrEqual(12);
+    expect(result.daysPlayed).toBeGreaterThanOrEqual(3);
+    expect(result.daysPlayed).toBeLessThanOrEqual(10);
   });
 
   it('recovers from soft-reset state without death spiral', () => {

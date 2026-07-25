@@ -43,7 +43,7 @@ export const SIMULATION_PRESTIGE_CYCLE_CAP = 30;
 export const TARGET_PRESTIGE_CYCLE_COUNT = SIMULATION_PRESTIGE_CYCLE_CAP;
 
 /** First-cycle target length (days) under competent play at P=0. */
-export const BASE_FIRST_CYCLE_DAYS = 6;
+export const BASE_FIRST_CYCLE_DAYS = 4;
 
 /**
  * Calibrated analytic cycle-length curve (competent play, seed 424242).
@@ -84,7 +84,7 @@ export function projectedCycleDays(prestige: number): number {
     BASE_FIRST_CYCLE_DAYS +
     CYCLE_LENGTH_LINEAR_GROWTH * prestige +
     CYCLE_LENGTH_QUADRATIC_GROWTH * prestige * prestige;
-  return Math.max(5, Math.round(Math.min(CYCLE_LENGTH_CAP, raw)));
+  return Math.max(3, Math.round(Math.min(CYCLE_LENGTH_CAP, raw)));
 }
 
 export interface ProjectedPrestigeCycle {

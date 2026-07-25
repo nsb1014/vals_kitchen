@@ -54,8 +54,8 @@ describe('long-horizon progression (deep sim)', () => {
 
     expect(curve.length).toBe(SIMULATION_PRESTIGE_CYCLE_CAP);
     expect(curve.every((row) => row.reached)).toBe(true);
-    expect(curve[0]!.daysInCycle).toBeGreaterThanOrEqual(5);
-    expect(curve[0]!.daysInCycle).toBeLessThanOrEqual(12);
+    expect(curve[0]!.daysInCycle).toBeGreaterThanOrEqual(3);
+    expect(curve[0]!.daysInCycle).toBeLessThanOrEqual(10);
 
     expect(curve[curve.length - 1]!.daysInCycle).toBeGreaterThan(curve[0]!.daysInCycle);
 

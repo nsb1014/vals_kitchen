@@ -56,7 +56,7 @@ describe('flavor scoring', () => {
       avoid: {},
       phrases: [],
     };
-    expect(computeWeightedSatisfaction(dish, preference)).toBeCloseTo(0.7125, 4);
+    expect(computeWeightedSatisfaction(dish, preference)).toBeCloseTo(0.8, 4);
   });
 
   it('applies avoid penalty when dish exceeds threshold', () => {

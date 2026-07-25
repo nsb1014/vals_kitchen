@@ -132,6 +132,22 @@ function buildPhrases(primary: Partial<Record<AxisKey, Band>>): string[] {
   return phrases.length > 0 ? phrases : ['something balanced and satisfying'];
 }
 
+function buildAvoidOptions(
+  ranked: AxisKey[],
+  primary: Partial<Record<AxisKey, Band>>,
+  dish: FlavorVector,
+): Partial<Record<AxisKey, boolean>>[] {
+  const options: Partial<Record<AxisKey, boolean>>[] = [{}];
+  for (const axis of ranked) {
+    if (primary[axis]) continue;
+    if (dish[axis] > 4 && PHRASES[axis].low) {
+      options.push({ [axis]: true });
+      break;
+    }
+  }
+  return options;
+}
+
 function preferenceFromCombo(
   targetCombo: Ingredient[],
   archetype: Archetype,
@@ -142,31 +158,22 @@ function preferenceFromCombo(
   const ids = targetCombo.map((item) => item.id);
   const ranked = rankedAxes(archetype, dish);
 
-  for (const axis of ranked) {
-    const primary: Partial<Record<AxisKey, Band>> = { [axis]: bandForValue(dish[axis]) };
-    const preference: CustomerPreference = {
-      primary,
-      avoid: {},
-      phrases: buildPhrases(primary),
-    };
-    if (computeMatchStars(dish, preference, ids, compoundAffinity) >= floor) {
-      return preference;
-    }
-  }
-
-  for (const axisCount of [2]) {
+  for (const axisCount of [3, 2, 1]) {
     const axes = ranked.slice(0, axisCount);
     const primary: Partial<Record<AxisKey, Band>> = {};
     for (const axis of axes) {
       primary[axis] = bandForValue(dish[axis]);
     }
-    const preference: CustomerPreference = {
-      primary,
-      avoid: {},
-      phrases: buildPhrases(primary),
-    };
-    if (computeMatchStars(dish, preference, ids, compoundAffinity) >= floor) {
-      return preference;
+
+    for (const avoid of buildAvoidOptions(ranked, primary, dish)) {
+      const preference: CustomerPreference = {
+        primary,
+        avoid,
+        phrases: buildPhrases(primary),
+      };
+      if (computeMatchStars(dish, preference, ids, compoundAffinity) >= floor) {
+        return preference;
+      }
     }
   }
 

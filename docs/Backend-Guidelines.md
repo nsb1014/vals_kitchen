@@ -214,19 +214,23 @@ if avoid[a] and dish[a] > 4:
 elif band == 'high':
   sat[a] = clamp(dish[a] / 10, 0, 1)
 elif band == 'mid':
-  sat[a] = 1 - abs(dish[a] - 5) / 5
+  sat[a] = 1 - abs(dish[a] - 5) / 3
 elif band == 'low':
-  sat[a] = 1 - clamp(dish[a] / 5, 0, 1)
+  sat[a] = 1 - clamp(dish[a] / 4, 0, 1)
 else:
-  sat[a] = 0.7  // unmentioned neutral
+  sat[a] = 0.7  // only used when axis is explicitly evaluated; unmentioned axes are excluded from weighted_sat
 ```
 
 ### Weighted Satisfaction
 
+Only **primary** and **avoid** axes participate in the score. Unmentioned axes are neutral — they do not inflate satisfaction (retuned 2026-07-25; previously unmentioned axes contributed 0.7 each and compressed review spread).
+
 ```
-weighted_sat = (2 × Σ sat[primary] + Σ sat[other] - 3 × avoid_violations)
-               / (2 × |primary| + |other|)
+weighted_sat = (2 × Σ sat[primary] - 5 × avoid_violations)
+               / (2 × |primary|)
 ```
+
+If a preference has avoid axes but no primary axes, violations reduce a 0.5 baseline.
 
 `avoid_violations` = count of avoid axes where `dish[a] > 4`.
 

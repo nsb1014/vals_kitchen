@@ -10,8 +10,8 @@ function axisSatisfaction(
   if (avoid && dish[axis] > 4) return 0;
   if (!band) return 0.7;
   if (band === 'high') return Math.min(1, Math.max(0, dish[axis] / 10));
-  if (band === 'mid') return 1 - Math.abs(dish[axis] - 5) / 5;
-  return 1 - Math.min(1, Math.max(0, dish[axis] / 5));
+  if (band === 'mid') return 1 - Math.abs(dish[axis] - 5) / 3;
+  return 1 - Math.min(1, Math.max(0, dish[axis] / 4));
 }
 
 export function computeWeightedSatisfaction(
@@ -19,7 +19,14 @@ export function computeWeightedSatisfaction(
   preference: CustomerPreference,
 ): number {
   const primaryAxes = Object.keys(preference.primary) as AxisKey[];
-  const otherAxes = AXIS_KEYS.filter((axis) => !preference.primary[axis]);
+  const avoidOnlyAxes = AXIS_KEYS.filter(
+    (axis) => preference.avoid[axis] && !preference.primary[axis],
+  );
+
+  if (primaryAxes.length === 0 && avoidOnlyAxes.length === 0) {
+    return 0.5;
+  }
+
   let primarySum = 0;
   for (const axis of primaryAxes) {
     primarySum += axisSatisfaction(
@@ -29,17 +36,18 @@ export function computeWeightedSatisfaction(
       Boolean(preference.avoid[axis]),
     );
   }
-  let otherSum = 0;
-  for (const axis of otherAxes) {
-    otherSum += axisSatisfaction(dish, axis, undefined, Boolean(preference.avoid[axis]));
-  }
+
   const avoidViolations = AXIS_KEYS.filter(
     (axis) => preference.avoid[axis] && dish[axis] > 4,
   ).length;
-  const numerator =
-    2 * primarySum + otherSum - 3 * avoidViolations;
-  const denominator = 2 * primaryAxes.length + otherAxes.length;
-  if (denominator === 0) return 0;
+
+  if (primaryAxes.length === 0) {
+    const penalty = 5 * avoidViolations;
+    return Math.max(0, 0.5 - penalty / Math.max(1, avoidOnlyAxes.length));
+  }
+
+  const numerator = 2 * primarySum - 5 * avoidViolations;
+  const denominator = 2 * primaryAxes.length;
   return numerator / denominator;
 }
 

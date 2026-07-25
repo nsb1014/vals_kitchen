@@ -194,6 +194,8 @@ match_stars = clamp(10 × (0.85 × weighted_sat + 0.15 × affinity_bonus) + reci
 recipe_bonus = 0.75 if matched_recipe else 0
 ```
 
+**Weighted satisfaction (2026-07-25):** Only primary and avoid axes count toward `weighted_sat`. Unmentioned axes no longer contribute a flat 0.7 each — that old rule compressed early reviews into a ~6–7 band regardless of match quality. Algorithm detail in [Backend-Guidelines.md](./Backend-Guidelines.md).
+
 ### 5.6 Satisfiability Guarantee
 
 The customer request generator **must not emit preferences outside the flavor envelope of the player's unlocked ingredients**. For every representative reachable unlock state, and for every valid preference the generator produces, at least one 3–6 ingredient combination from the **unlocked set** must achieve the tier match floor:
@@ -458,7 +460,7 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 | 50 ingredients | 120–160 |
 | 100 ingredients | 280–350 |
 | All 12 kitchen upgrades | 180–250 |
-| First prestige | **5–12** (fast by design — teaches the loop) |
+| First prestige | **3–10** (fast by design — teaches the loop; retuned 2026-07-25 after match-score spread fix) |
 | Prestige 5 | 40–80 cumulative days |
 | Prestige 10 | 100–160 cumulative days |
 
@@ -473,7 +475,7 @@ The flat “first prestige at 25–40 days” target is **replaced**. Early pres
 **Analytic pacing proxy:** The fast suite uses a calibrated closed-form curve fit to competent-play simulation (seed 424242):
 
 ```
-projectedCycleDays(P) = round(min(68, 6 + 2.0×P + 0.03×P²))
+projectedCycleDays(P) = round(min(68, 4 + 2.0×P + 0.03×P²))
 ```
 
 The opt-in deep sim re-runs the full competent-play harness and **asserts the analytic proxy tracks simulated per-cycle days within 15% and cumulative days within 10%**. That relative agreement is what keeps the cheap proxy honest when resistance/economy constants change. Absolute cumulative hours are **reported** (console + sanity guard 20–2000 h) but not pass/fail gated.
@@ -482,7 +484,7 @@ The opt-in deep sim re-runs the full competent-play harness and **asserts the an
 
 | Cycle | Prestige P at start | Days in cycle | Cumulative hours |
 |-------|---------------------|---------------|------------------|
-| 1 | 0 | 6 | 1.0 |
+| 1 | 0 | 3 | 0.5 |
 | 5 | 4 | 15 | 8.3 |
 | 10 | 9 | 29 | 27.3 |
 | 20 | 19 | 53 | 95.2 |
