@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalize } from '../persistence/serialize.ts';
-import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
+import { SAVE_KEY } from '../persistence/serialize.ts';
+import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
-import { createNewGameState } from '../domain/state/game-state.ts';
+import { createNewGameState, CURRENT_SAVE_VERSION } from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { testContext } from './test-helpers.ts';
@@ -75,6 +76,74 @@ describe('persistence', () => {
     expect(resumed.activeDay?.customersServed).toBe(1);
     expect(resumed.composeDraftIngredientIds).toBeUndefined();
     expect(resumed.activeDay?.queueIndex).toBe(0);
+  });
+
+  it('restores mid-day floor progress including tickets and player position', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(7777), { type: 'OPEN_DAY' }, testContext).state;
+    const floorBefore = state.activeDay!.floor!;
+    expect(floorBefore).toBeTruthy();
+
+    for (const table of floorBefore.tables) {
+      state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext)
+        .state;
+    }
+    state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+    const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_TAKE_ORDERS', customerIds: [seated.customer.id] },
+      testContext,
+    ).state;
+
+    const ticket = state.activeDay!.floor!.tickets[0]!;
+    state = gameReducer(
+      state,
+      {
+        type: 'FLOOR_PLATE',
+        ticketId: ticket.id,
+        ingredientIds: state.unlockedIngredientIds.slice(0, 3),
+      },
+      testContext,
+    ).state;
+
+    const mutatedFloor = state.activeDay!.floor!;
+    expect(mutatedFloor.carriedTicketId).toBe(ticket.id);
+    expect(mutatedFloor.pool.some((g) => g.stage === 'ordered')).toBe(true);
+
+    await repo.save(state);
+    const envelope = await storage.get<{ saveVersion: number }>(SAVE_KEY);
+    expect(envelope?.saveVersion).toBe(CURRENT_SAVE_VERSION);
+
+    const loaded = (await repo.load()).state!;
+    const floor = loaded.activeDay?.floor;
+    expect(floor).toBeTruthy();
+    expect(floor!.pool.map((g) => ({ id: g.customer.id, stage: g.stage }))).toEqual(
+      mutatedFloor.pool.map((g) => ({ id: g.customer.id, stage: g.stage })),
+    );
+    expect(floor!.tickets).toEqual(mutatedFloor.tickets);
+    expect(floor!.carriedTicketId).toBe(ticket.id);
+    expect(floor!.playerPosition).toEqual(mutatedFloor.playerPosition);
+    expect(floor!.tables.length).toBeGreaterThan(0);
+    expect(floor!.seats.length).toBeGreaterThan(0);
+    expect(canonicalize(loaded.activeDay?.floor)).toBe(canonicalize(mutatedFloor));
+  });
+
+  it('migrates v1 saves to v2 with empty recipeMastery', () => {
+    const v1 = createNewGameState(111);
+    v1.prestige = 1;
+    delete (v1 as { recipeMastery?: unknown }).recipeMastery;
+    const envelope = {
+      saveVersion: 1 as const,
+      checksum: '',
+      createdAt: '2026-07-25T00:00:00.000Z',
+      gameState: v1,
+    };
+    const migrated = migrateSave(envelope) as typeof envelope;
+    expect(migrated.saveVersion).toBe(2);
+    expect(migrated.gameState.recipeMastery).toEqual({});
+    expect(migrated.gameState.prestige).toBe(1);
   });
 
   it('falls back to backup when primary save is corrupt', async () => {

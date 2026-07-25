@@ -236,7 +236,61 @@
   line-height: 1.45;
 }
 
-.queue-badge {
-  font-size: 13px;
-  color: rgba(245, 245, 245, 0.75);
+.floor-service-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 55;
+  padding: 0.75rem;
+  background: rgba(20, 20, 34, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
 }
+
+.floor-tutorial {
+  margin: 0 0 0.5rem;
+  font-size: 14px;
+  color: #ffd166;
+}
+
+.floor-ticket-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.floor-ticket {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: #3a3a55;
+  font-size: 13px;
+  border: 1px solid transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.floor-ticket.selected {
+  background: #5a7a4a;
+  border-color: #8bc86a;
+}
+
+.floor-ticket-empty {
+  font-size: 13px;
+  color: rgba(245, 245, 245, 0.6);
+}
+
+.floor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.recipe-mastery {
+  font-size: 0.85em;
+  color: rgba(245, 245, 245, 0.65);
+  font-weight: 500;
+}
+

@@ -6,6 +6,17 @@ import {
   isDayComplete,
   serveCustomer,
 } from './day/serve.ts';
+import { deliverAndScore } from './floor/deliver.ts';
+import {
+  createFloorDayFromCustomers,
+  seatNextWaiting,
+  tablesFromPlacements,
+  takeOrdersForSeated,
+  tickEating,
+} from './floor/sim.ts';
+import { plateTicket } from './floor/tickets.ts';
+import { clearTable, setTable } from './floor/tables.ts';
+import { seatsFromPlacements } from './floor/seats.ts';
 import {
   applyMoveItem,
   applyPlaceItem,
@@ -25,7 +36,14 @@ export type GameAction =
   | { type: 'PURCHASE'; purchase: PurchaseKind }
   | { type: 'PLACE_ITEM'; placement: Placement }
   | { type: 'REMOVE_ITEM'; placementId: string }
-  | { type: 'MOVE_ITEM'; placementId: string; x: number; y: number };
+  | { type: 'MOVE_ITEM'; placementId: string; x: number; y: number }
+  | { type: 'FLOOR_SET_TABLE'; placementId: string }
+  | { type: 'FLOOR_CLEAR_TABLE'; placementId: string }
+  | { type: 'FLOOR_SEAT_NEXT' }
+  | { type: 'FLOOR_TAKE_ORDERS'; customerIds: string[] }
+  | { type: 'FLOOR_PLATE'; ticketId: string; ingredientIds: string[] }
+  | { type: 'FLOOR_DELIVER'; ticketId: string }
+  | { type: 'FLOOR_TICK_EATING' };
 
 export interface ReducerResult {
   state: GameState;
@@ -37,6 +55,46 @@ export type ReducerEvent =
   | { type: 'SOFT_RESET_TRIGGERED' }
   | { type: 'RECIPE_DISCOVERED'; recipeId: string; recipeName: string }
   | { type: 'CUSTOMER_SERVED'; matchStars: number; tip: number; ratingDelta: number };
+
+function requireFloor(state: GameState) {
+  if (!state.activeDay?.floor) {
+    throw new Error('No active floor day');
+  }
+  return state.activeDay.floor;
+}
+
+function withFloor(state: GameState, floor: NonNullable<GameState['activeDay']>['floor']) {
+  const next = cloneGameState(state);
+  next.activeDay = { ...next.activeDay!, floor };
+  return next;
+}
+
+function serveEvents(
+  beforeRecipes: Set<string>,
+  result: ReturnType<typeof serveCustomer>,
+  events: ReducerEvent[],
+): ReducerResult {
+  if (result.recipeId && !beforeRecipes.has(result.recipeId)) {
+    events.push({
+      type: 'RECIPE_DISCOVERED',
+      recipeId: result.recipeId,
+      recipeName: result.recipeName ?? result.recipeId,
+    });
+  }
+  events.push({
+    type: 'CUSTOMER_SERVED',
+    matchStars: result.matchStars,
+    tip: result.tip,
+    ratingDelta: result.ratingDelta,
+  });
+  if (result.prestigeTriggered) {
+    events.push({ type: 'PRESTIGE_TRIGGERED', prestige: result.state.prestige });
+  }
+  if (result.softResetTriggered) {
+    events.push({ type: 'SOFT_RESET_TRIGGERED' });
+  }
+  return { state: result.state, events };
+}
 
 export function gameReducer(
   state: GameState,
@@ -61,6 +119,12 @@ export function gameReducer(
         },
         ctx,
       );
+      const tables = tablesFromPlacements(state.placements);
+      const seats = seatsFromPlacements(state.placements);
+      const floor = createFloorDayFromCustomers(generated.customers, tables, seats, {
+        x: 1,
+        y: 1,
+      });
       const next = cloneGameState(state);
       next.activeDay = {
         seed: generated.seed,
@@ -70,6 +134,7 @@ export function gameReducer(
         dayEarnings: 0,
         dayMatchSum: 0,
         customersServed: 0,
+        floor,
       };
       next.composeDraftIngredientIds = undefined;
       return { state: next, events };
@@ -84,26 +149,7 @@ export function gameReducer(
     case 'SERVE_DISH': {
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = serveCustomer(state, action.ingredientIds, ctx);
-      if (result.recipeId && !beforeRecipes.has(result.recipeId)) {
-        events.push({
-          type: 'RECIPE_DISCOVERED',
-          recipeId: result.recipeId,
-          recipeName: result.recipeName ?? result.recipeId,
-        });
-      }
-      events.push({
-        type: 'CUSTOMER_SERVED',
-        matchStars: result.matchStars,
-        tip: result.tip,
-        ratingDelta: result.ratingDelta,
-      });
-      if (result.prestigeTriggered) {
-        events.push({ type: 'PRESTIGE_TRIGGERED', prestige: result.state.prestige });
-      }
-      if (result.softResetTriggered) {
-        events.push({ type: 'SOFT_RESET_TRIGGERED' });
-      }
-      return { state: result.state, events };
+      return serveEvents(beforeRecipes, result, events);
     }
 
     case 'NEXT_CUSTOMER': {
@@ -135,6 +181,57 @@ export function gameReducer(
         state: applyMoveItem(state, action.placementId, action.x, action.y),
         events,
       };
+    }
+
+    case 'FLOOR_SET_TABLE': {
+      const floor = requireFloor(state);
+      const tables = floor.tables.map((t) =>
+        t.placementId === action.placementId ? setTable(t) : t,
+      );
+      return { state: withFloor(state, { ...floor, tables }), events };
+    }
+
+    case 'FLOOR_CLEAR_TABLE': {
+      const floor = requireFloor(state);
+      const tables = floor.tables.map((t) =>
+        t.placementId === action.placementId ? clearTable(t) : t,
+      );
+      return { state: withFloor(state, { ...floor, tables }), events };
+    }
+
+    case 'FLOOR_SEAT_NEXT': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, seatNextWaiting(floor)), events };
+    }
+
+    case 'FLOOR_TAKE_ORDERS': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, takeOrdersForSeated(floor, action.customerIds)), events };
+    }
+
+    case 'FLOOR_PLATE': {
+      const floor = requireFloor(state);
+      const plated = plateTicket(floor.tickets, action.ticketId, action.ingredientIds);
+      return {
+        state: withFloor(state, {
+          ...floor,
+          tickets: plated.tickets,
+          carriedTicketId: plated.carriedTicketId,
+          selectedTicketId: null,
+        }),
+        events,
+      };
+    }
+
+    case 'FLOOR_DELIVER': {
+      const beforeRecipes = new Set(state.discoveredRecipeIds);
+      const result = deliverAndScore(state, action.ticketId, ctx);
+      return serveEvents(beforeRecipes, result, events);
+    }
+
+    case 'FLOOR_TICK_EATING': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, tickEating(floor)), events };
     }
 
     default: {

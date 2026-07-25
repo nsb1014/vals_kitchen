@@ -77,24 +77,34 @@ describe('rating engine', () => {
     expect(next.stats.prestigesTotal).toBe(1);
   });
 
-  it('soft reset keeps prestige and recipe book but wipes run progress', () => {
+  it('soft reset keeps prestige, recipe book, layout, and mastery but wipes run progress', () => {
     const state = createNewGameState(42);
     state.prestige = 2;
     state.discoveredRecipeIds = ['recipe_a', 'recipe_b'];
+    state.recipeMastery = { recipe_a: { level: 2, progress: 1 } };
     state.cash = 5000;
     state.unlockedIngredientIds = [...NEW_GAME_STARTER_IDS, 'tomato', 'basil'];
     state.purchasedEquipmentIds = ['prep_station', 'grill'];
     state.rating = 0;
+    state.gridSize = { w: 6, h: 6 };
+    const layout = [...state.placements, { id: 'table_3', itemKey: 'table_2seat', x: 0, y: 2, rotation: 0 }];
+    state.placements = layout;
+    state.tableCount = 3;
+    state.seatingCapacity = 6;
 
     const reset = applySoftReset(state);
     expect(reset.prestige).toBe(2);
     expect(reset.discoveredRecipeIds).toEqual(['recipe_a', 'recipe_b']);
+    expect(reset.recipeMastery).toEqual({ recipe_a: { level: 2, progress: 1 } });
     expect(reset.cash).toBe(100);
     expect(reset.unlockedIngredientIds).toEqual([...SOFT_RESET_STARTER_IDS]);
     expect(reset.purchasedEquipmentIds).toEqual(['prep_station']);
     expect(reset.rating).toBe(3);
     expect(reset.activeDay).toBeNull();
-    expect(reset.gridSize).toEqual({ w: 4, h: 4 });
+    expect(reset.gridSize).toEqual({ w: 6, h: 6 });
+    expect(reset.placements).toEqual(layout);
+    expect(reset.tableCount).toBe(3);
+    expect(reset.seatingCapacity).toBe(6);
   });
 
   it('keeps positive rating delta at tier floors for high prestige', () => {

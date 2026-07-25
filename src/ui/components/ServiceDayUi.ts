@@ -10,9 +10,11 @@ import {
   selectCanCloseDay,
   selectComposeDraftIds,
   selectCurrentCustomer,
+  selectFloorComposeTicket,
   selectIsAwaitingServe,
   selectActiveModifier,
   selectQueueProgress,
+  selectShowFloorCompose,
 } from '../../store/selectors/service-day.ts';
 import { formatCustomerRequestText } from '../presentation/customer-request.ts';
 import {
@@ -21,6 +23,7 @@ import {
 } from '../presentation/dish-preview.ts';
 import { buildReviewDisplay, renderStarGlyphs } from '../presentation/review-display.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
+import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 
 const SERVE_LOCK_MS = 300;
@@ -33,13 +36,17 @@ export function mountServiceDayUi(
 ): () => void {
   overlayMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
+    <div id="floor-service-hud-mount" data-testid="floor-service-hud-mount"></div>
     <div class="service-overlay" id="service-overlay" data-testid="service-overlay" hidden></div>
     <div class="modal-backdrop" id="ceremony-modal" data-testid="ceremony-modal" hidden></div>
   `;
 
   const hud = overlayMount.querySelector('#game-hud') as HTMLElement;
+  const floorHudMount = overlayMount.querySelector('#floor-service-hud-mount') as HTMLElement;
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
+
+  const cleanupFloorHud = mountFloorServiceHud(floorHudMount);
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
@@ -212,13 +219,14 @@ export function mountServiceDayUi(
       const review = buildReviewDisplay(state.pendingReview);
       const progress = selectQueueProgress(state);
       const canClose = selectCanCloseDay(state);
-      const canAdvance = selectCanAdvanceCustomer(state);
+      const canAdvance = selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
+      const floorActive = Boolean(state.activeDay?.floor);
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
             <h2 class="service-title">Customer Review</h2>
-            ${progress ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
+            ${progress && !floorActive ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="review-stars" data-testid="review-stars" aria-label="${review.starsText}">${renderStarGlyphs(review.starsFilled)}</p>
             <p class="review-detail" data-testid="review-score">${review.starsText}</p>
             <p class="review-detail">Tip: ${review.tipText}</p>
@@ -245,7 +253,101 @@ export function mountServiceDayUi(
       return;
     }
 
-    if (selectIsAwaitingServe(state)) {
+    if (selectShowFloorCompose(state)) {
+      const draftIds = selectComposeDraftIds(state);
+      const ctx = getDomainContext();
+      const preview = computeDishPreview(draftIds, ctx.ingredientsById);
+      const ticket = selectFloorComposeTicket(state);
+      const canPlate = preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
+
+      const ingredientButtons = state.unlockedIngredientIds
+        .map((id) => {
+          const item = ctx.ingredientsById.get(id);
+          const selected = draftIds.includes(id);
+          const toggle = canToggleIngredient(id, draftIds);
+          const disabled = !selected && !toggle.allowed;
+          return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-ingredient-id="${id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${renderFoodIconHtml(id, 24)}<span>${item?.name ?? id}</span></button>`;
+        })
+        .join('');
+
+      const flavorRows = preview.topAxes
+        .map(
+          (row) =>
+            `<div class="flavor-preview-row"><span>${row.label}</span><span>${row.value.toFixed(1)}</span></div>`,
+        )
+        .join('');
+
+      serviceOverlay.hidden = false;
+      serviceOverlay.innerHTML = `
+        <div class="service-panel">
+          <div class="service-card">
+            <h2 class="service-title">Plate Dish</h2>
+            ${ticket ? `<p class="queue-badge">Ticket ${ticket.id}</p>` : ''}
+            <p class="compose-meta">Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients (${preview.ingredientCount} selected)</p>
+            <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${ingredientButtons}</div>
+            ${
+              preview.profile
+                ? `<div class="flavor-preview" aria-label="Dish flavor preview">${flavorRows}<div class="flavor-preview-row"><span>Temp</span><span>${preview.temperatureLabel}</span></div></div>`
+                : ''
+            }
+            <div class="service-actions">
+              <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      serviceOverlay.querySelectorAll<HTMLButtonElement>('[data-ingredient-id]').forEach((button) => {
+        let pressTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const clearPress = () => {
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+        };
+
+        button.addEventListener('pointerdown', () => {
+          clearPress();
+          pressTimer = setTimeout(() => {
+            const id = button.dataset.ingredientId;
+            if (id) useGameStore.getState().openFlavorInspector(id);
+          }, LONG_PRESS_MS);
+        });
+        button.addEventListener('pointerup', clearPress);
+        button.addEventListener('pointercancel', clearPress);
+        button.addEventListener('pointerleave', clearPress);
+
+        button.addEventListener('click', () => {
+          const id = button.dataset.ingredientId;
+          if (!id) return;
+          const currentDraft = selectComposeDraftIds(useGameStore.getState());
+          const toggle = canToggleIngredient(id, currentDraft);
+          if (!toggle.allowed) return;
+          useGameStore.getState().dispatch({
+            type: 'SET_COMPOSE_DRAFT',
+            ingredientIds: toggle.nextIds,
+          });
+        });
+      });
+
+      serviceOverlay.querySelector('#plate-btn')?.addEventListener('click', () => {
+        if (Date.now() < serveLockedUntil) return;
+        const current = useGameStore.getState();
+        const activeTicket = selectFloorComposeTicket(current);
+        if (!activeTicket) return;
+        serveLockedUntil = Date.now() + SERVE_LOCK_MS;
+        const ids = selectComposeDraftIds(current);
+        void current.dispatch({
+          type: 'FLOOR_PLATE',
+          ticketId: activeTicket.id,
+          ingredientIds: ids,
+        });
+      }, { once: true });
+      return;
+    }
+
+    if (selectIsAwaitingServe(state) && !state.activeDay?.floor) {
       const draftIds = selectComposeDraftIds(state);
       const ctx = getDomainContext();
       const preview = computeDishPreview(draftIds, ctx.ingredientsById);
@@ -355,7 +457,9 @@ export function mountServiceDayUi(
       state.prestige !== prev.prestige ||
       state.day !== prev.day ||
       state.composeDraftIngredientIds !== prev.composeDraftIngredientIds ||
-      state.activeDay?.queueIndex !== prev.activeDay?.queueIndex;
+      state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
+      state.activeDay?.floor !== prev.activeDay?.floor ||
+      state.floorPlayerGrid !== prev.floorPlayerGrid;
 
     if (domainChanged) {
       sync();
@@ -369,6 +473,7 @@ export function mountServiceDayUi(
 
   return () => {
     unsubscribe();
+    cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     bubbleEl?.remove();

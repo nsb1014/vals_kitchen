@@ -94,5 +94,17 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     throw new Error('Invalid save: missing saveVersion');
   }
 
+  if (version === 1) {
+    const envelope = raw as SaveEnvelope & { gameState: GameState };
+    return {
+      ...envelope,
+      saveVersion: 2,
+      gameState: {
+        ...envelope.gameState,
+        recipeMastery: envelope.gameState.recipeMastery ?? {},
+      },
+    } as SaveEnvelope;
+  }
+
   return raw as SaveEnvelope;
 }

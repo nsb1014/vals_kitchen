@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-25T05:05:38.493Z",
+  "generatedAt": "2026-07-25T18:33:41.372Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -228,10 +228,47 @@
       "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
       "license": "CC0",
       "usedIn": [
-        "canvas:CustomerLayer"
+        "canvas:CustomerLayer",
+        "canvas:ActorLayer (guest variant A)"
       ],
       "sourceFile": "Tiles/tile_0088.png",
-      "approximationNote": "Rogue idle facing down — generic top-down customer."
+      "approximationNote": "Rogue idle facing down — primary guest / queue customer."
+    },
+    {
+      "path": "atlases/characters.json#customer_b",
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (guest variant B)"
+      ],
+      "sourceFile": "Tiles/tile_0090.png",
+      "approximationNote": "Knight idle facing down — alternate guest look."
+    },
+    {
+      "path": "atlases/characters.json#player",
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (player idle)"
+      ],
+      "sourceFile": "Tiles/tile_0080.png",
+      "approximationNote": "Warrior idle facing down — floor player sprite."
+    },
+    {
+      "path": "atlases/characters.json#player_walk",
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (player walk cue)"
+      ],
+      "sourceFile": "Tiles/tile_0081.png",
+      "approximationNote": "Warrior walk frame — alternates with player while navigating."
     },
     {
       "path": "atlases/food.json#icon_almond",

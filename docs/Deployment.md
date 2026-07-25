@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Step-by-step instructions to publish **Restaurant Simulator** to the web. The game is a static PWA (no server, no login). Primary host: **Cloudflare Pages**. Backup: **GitHub Pages**.
+Step-by-step instructions to publish **Restaurant Simulator** to the web. The game is a static PWA (no server, no login). Primary host: **Cloudflare Workers Static Assets** (Workers & Pages dashboard; `wrangler.toml` classifies the project as a Worker). Backup: **GitHub Pages**.
 
 **Prerequisites:** GitHub account, Node.js 20 LTS, npm, Python 3.12+ with Pillow (`pip install -r requirements.txt`), and this repo on your machine.
 
@@ -10,7 +10,7 @@ Step-by-step instructions to publish **Restaurant Simulator** to the web. The ga
 
 1. [Before you deploy](#1-before-you-deploy)
 2. [Create the GitHub repo and push](#2-create-the-github-repo-and-push)
-3. [Deploy to Cloudflare Pages (primary)](#3-deploy-to-cloudflare-pages-primary)
+3. [Deploy to Cloudflare (primary)](#3-deploy-to-cloudflare-primary)
 4. [Verify the first deploy](#4-verify-the-first-deploy)
 5. [Test on a real iPhone](#5-test-on-a-real-iphone)
 6. [Custom domain (optional)](#6-custom-domain-optional)

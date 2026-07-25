@@ -1,8 +1,9 @@
 # Tech Stack
 
-**Status:** Phase 0–3 implemented (installed versions below)  
+**Status:** Phase 0–7 + Phase 11 immersive floor vertical slice implemented (budgets measured below)  
 **Gameplay formulas:** Owned by [PRD.md](./PRD.md) — this document does not restate economy or scoring numbers.  
-**Research basis:** [RESEARCH.md](./RESEARCH.md) §7–§9
+**Research basis:** [RESEARCH.md](./RESEARCH.md) §7–§9  
+**Floor design:** [superpowers/specs/2026-07-25-immersive-floor-service-design.md](./superpowers/specs/2026-07-25-immersive-floor-service-design.md)
 
 ---
 
@@ -33,10 +34,11 @@
 │  └── lz-string 1.5.0 — Save Code compression         │
 ├──────────────────────────────────────────────────────┤
 │  vite-plugin-pwa — Workbox offline shell             │
-│  Deploy: Cloudflare Pages (primary)                  │
+│  Deploy: Cloudflare Workers Static Assets (primary)  │
 │  Backup: GitHub Pages                                │
 │  Target canvas: 390×844 CSS px logical               │
-│  Tiles: 16×16 art @ 2× integer scale = 32px/tile     │
+│  Tiles: 16×16 art @ 2× = 32px logical; ¾ Y-sort render │
+│  Camera: follow player + clamp (not fit-only)        │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -78,7 +80,7 @@
 | Pure DOM/CSS Grid | Pixel art scaling blurs without canvas; unified aesthetic harder |
 | Raw Canvas2D | Manual sprite batching and hit tests; PixiJS solves this |
 
-**Why PixiJS:** ~125 KB gzip tree-shaken; crisp pixel scaling; built-in pointer events for grid DnD; 144-tile restaurant well within 60fps budget.
+**Why PixiJS:** Tree-shaken canvas for a ticker-driven ¾ world (pathfinding consumers, Y-sort, sprites); crisp pixel scaling; pointer events for tap-to-move and layout DnD. Phaser rejected — unused physics/scene weight.
 
 ### DOM Overlay (not React)
 
@@ -119,13 +121,13 @@ Budgets are stated in **decimal bytes** (1 KB = 1,000 bytes), matching `gzip -c`
 | Component | Target (gzip bytes) | Notes |
 |-----------|---------------------|-------|
 | PixiJS 8 (tree-shaken) | ≤ 130,000 | Import only used modules |
-| Application code (initial JS) | ≤ 55,000 | Domain + UI + store + boot loader |
+| Application code (initial JS) | ≤ 120,000 | Floor sim + UI + store + boot (raised for immersive floor) |
 | lz-string | ~3,000 | Save Code only |
 | idb-keyval | ~2,000 | |
-| **Total initial JS** | **≤ 190,000 bytes** | Hard budget; CI warning at 180,000 bytes |
+| **Total initial JS** | **≤ 280,000 bytes** | Hard CI cap. Post-slice measure 2026-07-25: **173,070** gzip — keep 280k headroom for art/UI growth; CI warning at 260,000 |
 | Boot content data (`/data/*.json` except recipes + affinity) | ≤ 7,000 | Fetched at boot; ingredients, equipment, archetypes, modifiers |
 | Deferred content data (recipes + compound-affinity) | ≤ 34,000 | Fetched after boot, before first serve / day open |
-| Asset atlases (lazy) | ≤ 2,000,000 total | Loaded post-boot; CC0 Kenney packs |
+| Asset atlases (lazy) | ≤ 4,000,000 total | ¾ tiles, chairs, character variants; loaded post-boot |
 | Audio (lazy) | ≤ 5,000,000 total | Loaded on first interaction |
 
 **Load target:** < 2 s first interactive on 4G (iPhone 17). Game content JSON is **not** bundled into initial JS; it is served from `/data/` and injected into `DomainContext` at the app boundary. Recipes and compound-affinity load lazily after first paint but before first use.
@@ -178,11 +180,12 @@ Use `100dvh` as progressive enhancement where supported; **`100svh` is the basel
 
 ### Device Pixel Ratio & Tile Scaling
 
-- Source art: **16×16 px** tiles/sprites.
-- **Integer scale factor 2** → 32 CSS px per tile on canvas.
-- 12×12 grid × 32 px = **384 px** — fits 390 px logical width with safe-area padding.
-- PixiJS `resolution: devicePixelRatio` with `autoDensity: true`; restrict to integer scales (1, 2, 3) for pixel crispness.
+- Source art: **16×16 px** tiles/sprites (characters may use multi-frame sheets).
+- **Integer scale factor 2** → 32 CSS px per logical tile.
+- Starter map is a **full room** (larger than legacy 4×4); camera **follows the player** and clamps to map bounds — do not require the entire grid to fit 390 px width.
+- PixiJS `resolution: devicePixelRatio` with `autoDensity: true`; prefer integer scales (1, 2, 3) for pixel crispness.
 - CSS: `canvas { image-rendering: pixelated; }`
+- Render **¾** layers with Y-sort; logical walk grid remains orthographic.
 
 ### Touch Targets
 
@@ -287,19 +290,22 @@ interface SaveEnvelope {
 
 ## 7. Hosting & Deploy Pipeline
 
-**Setup guide:** [Deployment.md](./Deployment.md) — step-by-step Cloudflare Pages + GitHub Pages instructions.
+**Setup guide:** [Deployment.md](./Deployment.md) — step-by-step Cloudflare Workers Static Assets + GitHub Pages instructions.
 
-### Primary: Cloudflare Pages
+### Primary: Cloudflare Workers Static Assets
+
+`wrangler.toml` makes Cloudflare classify this project as a **Worker**. Publish the static SPA from `./dist` via `[assets]` — no Worker `main` script. Do **not** ship a Pages-style `public/_redirects` catch-all (`/* /index.html 200`); Workers treats that as an infinite redirect (error 100324). SPA fallback is `not_found_handling = "single-page-application"` in `wrangler.toml`.
 
 | Feature | Detail |
 |---------|--------|
 | Bandwidth | Unlimited (free tier) |
 | Builds | 500/month; 20k files; 25 MiB/file |
 | HTTPS | Automatic |
-| Git deploy | GitHub/GitLab integration |
-| Headers | `public/_headers` → copied to `dist/_headers` |
-| SPA routing | `public/_redirects` → `/* /index.html 200` (static files win first) |
+| Git deploy | GitHub integration → `npx wrangler deploy` after build |
+| Headers | `public/_headers` → copied to `dist/_headers` (honored by Workers Static Assets) |
+| SPA routing | `wrangler.toml` `[assets] not_found_handling = "single-page-application"` (no `_redirects`) |
 | PWA | Service worker + `manifest.webmanifest`; Workbox precaches `/data/*.json` |
+| Worker name | `vals-kitchen` (`wrangler.toml` `name`) |
 
 **Why primary:** No commercial ToS restriction; unlimited bandwidth; PR previews.
 
@@ -308,7 +314,8 @@ interface SaveEnvelope {
 | Setting | Value |
 |---------|-------|
 | Build command | `npm run sync:data && npm run build` |
-| Output directory | `dist` |
+| Deploy command | leave blank (defaults to `npx wrangler deploy`) or set explicitly |
+| Assets directory | `./dist` (from `wrangler.toml` `[assets] directory`) |
 | Node version | `20` (`NODE_VERSION` env var) |
 | Secrets | None required |
 
@@ -369,12 +376,12 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 - npm run lint
 - npm run test              # fast suite only (*.sim.test.ts excluded)
 - npm run build
-- npm run size:check        # fail if initial JS gzip > 190,000 bytes
+- npm run size:check        # fail if initial JS gzip > Tech-Stack hard cap (280k; measured 173,070 post-slice 2026-07-25)
 
 # .github/workflows/sim-tests.yml — workflow_dispatch + nightly schedule only
 - npm run test:sim
 
-# Cloudflare Pages — Git-connected dashboard deploy on push to main
+# Cloudflare Workers Static Assets — Git-connected deploy (`wrangler deploy`) on push to main
 # GitHub Pages backup — manual workflow with --base /REPO/
 ```
 
@@ -417,7 +424,7 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 
 | Workflow | Trigger | Gates |
 |----------|---------|-------|
-| `ci.yml` | Push/PR to `main` | `sync:data`, `validate:content`, `typecheck`, `lint`, `test` (fast), `build`, `size:check` (190,000-byte gzip cap) |
+| `ci.yml` | Push/PR to `main` | `sync:data`, `validate:content`, `typecheck`, `lint`, `test` (fast), `build`, `size:check` (gzip cap per Tech-Stack §3) |
 | `sim-tests.yml` | `workflow_dispatch` + nightly `0 6 * * *` | `sync:data`, `validate:content`, `test:sim` only — **not** on ordinary pushes |
 | `deploy-github-pages.yml` | Manual only | GitHub Pages backup build with configurable `--base` |
 

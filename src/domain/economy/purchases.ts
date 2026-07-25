@@ -5,6 +5,7 @@ import {
   MAX_GRID_SIZE,
   cloneGameState,
   nextPlacementId,
+  seatingFromPlacements,
   seatingFromTableCount,
   STARTING_GRID,
 } from '../state/game-state.ts';
@@ -126,8 +127,7 @@ export function validatePlacement(
 }
 
 export function recalculateSeatingCapacity(placements: Placement[]): number {
-  const tablePlacements = placements.filter((item) => item.itemKey.startsWith('table'));
-  return seatingFromTableCount(tablePlacements.length);
+  return seatingFromPlacements(placements);
 }
 
 export function applyPlaceItem(state: GameState, placement: Placement): GameState {

@@ -5,14 +5,12 @@ import {
 } from '../types.ts';
 import type { GameState } from '../state/game-state.ts';
 import {
-  createDefaultPlacements,
+  seatingFromPlacements,
   SOFT_RESET_CASH,
-  STARTING_GRID,
 } from '../state/game-state.ts';
-import { resetRunLayout } from '../economy/purchases.ts';
 
 export function applySoftReset(state: GameState): GameState {
-  const base = resetRunLayout({
+  return {
     ...state,
     cash: SOFT_RESET_CASH,
     rating: 3,
@@ -21,12 +19,7 @@ export function applySoftReset(state: GameState): GameState {
     activeDay: null,
     composeDraftIngredientIds: undefined,
     ingredientUnlockIndex: 0,
-  });
-  return {
-    ...base,
-    gridSize: { ...STARTING_GRID },
-    placements: createDefaultPlacements(),
-    seatingCapacity: 4,
+    seatingCapacity: seatingFromPlacements(state.placements),
   };
 }
 

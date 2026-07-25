@@ -103,7 +103,10 @@ const FURNITURE_SPRITES: Record<string, string> = {
 
 const CHARACTER_SPRITES = {
   customer: 'Tiles/tile_0088.png',
-};
+  customer_b: 'Tiles/tile_0090.png',
+  player: 'Tiles/tile_0080.png',
+  player_walk: 'Tiles/tile_0081.png',
+} as const;
 
 const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
 const GENERATED_ICONS = path.join(ROOT, 'scripts', '.asset-build', 'ingredient-icons');
@@ -130,7 +133,7 @@ function assertVendor(): void {
   const required = [
     vendorPath('rpg-urban-pack/Tiles/tile_0032.png'),
     vendorPath('rpg-urban-pack/Tiles/tile_0036.png'),
-    vendorPath('tiny-dungeon/Tiles/tile_0088.png'),
+    ...Object.values(CHARACTER_SPRITES).map((rel) => vendorPath(`tiny-dungeon/${rel}`)),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
     path.join(GENERATED_SHEETS, 'sheet-01-alliums-roots.png'),
@@ -204,16 +207,32 @@ function buildCredits(shippedFiles: string[]): void {
     });
   }
 
-  add({
-    path: 'atlases/characters.json#customer',
-    pack: PACKS.tinyDungeon.pack,
-    author: PACKS.tinyDungeon.author,
-    sourceUrl: PACKS.tinyDungeon.sourceUrl,
-    license: 'CC0',
-    usedIn: ['canvas:CustomerLayer'],
-    sourceFile: CHARACTER_SPRITES.customer,
-    approximationNote: 'Rogue idle facing down — generic top-down customer.',
-  });
+  const characterUsedIn: Record<keyof typeof CHARACTER_SPRITES, string[]> = {
+    customer: ['canvas:CustomerLayer', 'canvas:ActorLayer (guest variant A)'],
+    customer_b: ['canvas:ActorLayer (guest variant B)'],
+    player: ['canvas:ActorLayer (player idle)'],
+    player_walk: ['canvas:ActorLayer (player walk cue)'],
+  };
+  const characterNotes: Partial<Record<keyof typeof CHARACTER_SPRITES, string>> = {
+    customer: 'Rogue idle facing down — primary guest / queue customer.',
+    customer_b: 'Knight idle facing down — alternate guest look.',
+    player: 'Warrior idle facing down — floor player sprite.',
+    player_walk: 'Warrior walk frame — alternates with player while navigating.',
+  };
+  for (const [name, rel] of Object.entries(CHARACTER_SPRITES) as Array<
+    [keyof typeof CHARACTER_SPRITES, string]
+  >) {
+    add({
+      path: `atlases/characters.json#${name}`,
+      pack: PACKS.tinyDungeon.pack,
+      author: PACKS.tinyDungeon.author,
+      sourceUrl: PACKS.tinyDungeon.sourceUrl,
+      license: 'CC0',
+      usedIn: characterUsedIn[name],
+      sourceFile: rel,
+      approximationNote: characterNotes[name],
+    });
+  }
 
   for (const [ingredientId] of Object.entries(
     JSON.parse(readFileSync(path.join(GENERATED_ICONS, 'manifest.json'), 'utf8')) as Record<
@@ -305,7 +324,6 @@ function main(): void {
   mkdirSync(path.join(OUT, 'atlases'), { recursive: true });
 
   const urbanTiles = vendorPath('rpg-urban-pack/Tiles');
-  const characterSprite = vendorPath(`tiny-dungeon/${CHARACTER_SPRITES.customer}`);
 
   const tileManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(TILE_SPRITES)) {
@@ -333,7 +351,10 @@ function main(): void {
     16,
   );
 
-  const charManifest = { customer: characterSprite };
+  const charManifest: Record<string, string> = {};
+  for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
+    charManifest[name] = vendorPath(`tiny-dungeon/${rel}`);
+  }
   const charManifestPath = path.join(tmp, 'characters.manifest.json');
   writeManifest(charManifest, charManifestPath);
   runPacker(

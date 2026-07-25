@@ -3,6 +3,9 @@ import {
   STARTING_EQUIPMENT_IDS,
 } from '../types.ts';
 import type { ActiveDay } from '../day/types.ts';
+import type { RecipeMasteryMap } from '../floor/mastery.ts';
+import { createStarterMap } from '../floor/starter-map.ts';
+import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
 
 export const STARTING_GRID = { w: 4, h: 4 } as const;
@@ -13,7 +16,7 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-export const CURRENT_SAVE_VERSION = 1 as const;
+export const CURRENT_SAVE_VERSION = 2 as const;
 
 export interface Placement {
   id: string;
@@ -39,6 +42,7 @@ export interface GameState {
   unlockedIngredientIds: string[];
   purchasedEquipmentIds: string[];
   discoveredRecipeIds: string[];
+  recipeMastery: RecipeMasteryMap;
   gridSize: { w: number; h: number };
   placements: Placement[];
   seatingCapacity: number;
@@ -58,18 +62,22 @@ export function nextPlacementId(): string {
 }
 
 export function createDefaultPlacements(): Placement[] {
-  return [
-    { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
-    { id: 'table_2', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
-  ];
+  return createStarterMap().placements.map((p) => ({ ...p }));
 }
 
 export function seatingFromTableCount(tableCount: number): number {
   return tableCount * TABLE_SEATS;
 }
 
+export function seatingFromPlacements(placements: Placement[]): number {
+  return seatsFromPlacements(placements).length;
+}
+
 export function createNewGameState(seed?: number): GameState {
   const globalRunSeed = seed ?? createRng(Date.now()).nextInt(1, 0x7fffffff);
+  const starter = createStarterMap();
+  const placements = starter.placements.map((p) => ({ ...p }));
+  const tableCount = placements.filter((p) => p.itemKey.startsWith('table')).length;
   return {
     saveVersion: CURRENT_SAVE_VERSION,
     globalRunSeed,
@@ -80,10 +88,11 @@ export function createNewGameState(seed?: number): GameState {
     unlockedIngredientIds: [...NEW_GAME_STARTER_IDS],
     purchasedEquipmentIds: [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: [],
-    gridSize: { ...STARTING_GRID },
-    placements: createDefaultPlacements(),
-    seatingCapacity: seatingFromTableCount(2),
-    tableCount: 2,
+    recipeMastery: {},
+    gridSize: { ...starter.gridSize },
+    placements,
+    seatingCapacity: seatingFromPlacements(placements),
+    tableCount,
     gridExpansionCount: 0,
     ingredientUnlockIndex: 0,
     activeDay: null,
@@ -109,6 +118,7 @@ export function normalizeGameState(raw: GameState): GameState {
     unlockedIngredientIds: raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS],
     purchasedEquipmentIds: raw.purchasedEquipmentIds ?? [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: raw.discoveredRecipeIds ?? [],
+    recipeMastery: raw.recipeMastery ?? {},
     gridSize: raw.gridSize ?? { ...STARTING_GRID },
     placements,
     seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),
