@@ -13,7 +13,7 @@ describe('floor toast', () => {
 
   it('is stripped from save snapshots', () => {
     useGameStore.getState().setFloorToast('Wrong table — deliver to the matching guest');
-    const snapshot = getGameStateSnapshot() as Record<string, unknown>;
+    const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;
     expect(snapshot.floorToast).toBeUndefined();
   });
 

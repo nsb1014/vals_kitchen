@@ -43,7 +43,7 @@ Production output lands in `dist/`. It must contain at least:
 - `index.html`
 - `assets/` (hashed JS/CSS)
 - `data/*.json` (runtime game content)
-- `sw.js`, `registerSW.js`, `manifest.webmanifest`
+- `sw.js`, `manifest.webmanifest`
 
 If `npm` is not on your PATH (some sandboxed or minimal shells), use one of these:
 
@@ -206,7 +206,7 @@ On the Cloudflare Pages URL:
 |------|--------|--------|
 | `/assets/*` | `immutable`, 1 year | Filenames are content-hashed; safe to cache forever |
 | `/index.html` | `no-cache, must-revalidate` | Must pick up new hashed asset references after deploy |
-| `/sw.js`, `/registerSW.js`, `/workbox-*.js` | `no-cache, must-revalidate` | Stale service worker strands players on old builds; with IndexedDB saves, that can mean lost progress or broken migrations |
+| `/sw.js` | `no-cache, must-revalidate` | Stale service worker strands players on old builds; with IndexedDB saves, that can mean lost progress or broken migrations |
 | `/data/*.json` | `max-age=0, must-revalidate` | Content changes on rebuild but paths are not hashed; browsers revalidate while SW precache serves offline copies |
 
 ---
@@ -382,7 +382,7 @@ Executing user deploy command: npx wrangler deploy
 
 **Checks:**
 
-1. Confirm `public/_headers` is in the deployed `dist/` root with `no-cache` on `/sw.js` and `/registerSW.js`
+1. Confirm `public/_headers` is in the deployed `dist/` root with `no-cache` on `/sw.js`
 2. Hard refresh once (or close all tabs for the origin)
 3. DevTools → Application → Service Workers → **Unregister**, then reload
 4. On iOS Home Screen app: delete the icon, clear Safari website data for the origin, re-add to Home Screen

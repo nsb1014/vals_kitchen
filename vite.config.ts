@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
-import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
+import { pwaLite } from './scripts/vite-pwa-lite.ts';
 
 /** Resolve /data fetches under GitHub Pages project subpaths without editing src on disk. */
 function contentLoaderBaseUrl(): Plugin {
@@ -29,25 +29,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  plugins: [
-    contentLoaderBaseUrl(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      manifest: {
-        name: 'Restaurant Simulator',
-        short_name: 'RestaurantSim',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
-        display: 'standalone',
-        start_url: '.',
-        scope: '.',
-      },
-      workbox: {
-        // Precache app shell, hashed assets, and /data/*.json for offline play after first load.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2,webmanifest,json}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/data\//],
-      },
-    }),
-  ],
+  plugins: [contentLoaderBaseUrl(), pwaLite()],
 });
