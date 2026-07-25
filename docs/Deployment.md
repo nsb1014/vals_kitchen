@@ -93,18 +93,20 @@ After push, open the repo on GitHub and confirm files are visible. CI (`.github/
 
 ---
 
-## 3. Deploy to Cloudflare Pages (primary)
+## 3. Deploy to Cloudflare (primary)
 
-Cloudflare Pages builds from your GitHub repo and serves `dist/` on a global CDN with free HTTPS.
+Cloudflare builds from your GitHub repo and serves `dist/` on a global CDN with free HTTPS.
+
+Because this repo includes `wrangler.toml`, Cloudflare may classify the project as a **Worker** (not classic Pages) and run `npx wrangler deploy` after the build. That path is correct once `wrangler.toml` defines an `[assets]` directory — no Worker `main` script is required for a static SPA.
 
 ### 3.1 Sign up and connect GitHub
 
 1. Go to [https://dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up) (free plan is fine)
-2. In the left sidebar: **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+2. In the left sidebar: **Workers & Pages** → **Create** → **Connect to Git**
 3. Authorize Cloudflare to access GitHub
-4. Select your `restaurant-simulator` repository
+4. Select your repository (e.g. `vals_kitchen`)
 
-### 3.2 Build settings (copy-paste)
+### 3.2 Build settings — Workers + Static Assets (this repo)
 
 On the **Set up builds and deployments** screen:
 
@@ -112,12 +114,16 @@ On the **Set up builds and deployments** screen:
 |---------|-------|
 | **Production branch** | `main` |
 | **Framework preset** | None |
-| **Build command** | `npm run sync:data && npm run build` |
-| **Build output directory** | `dist` |
-| **Deploy command** | *(leave blank)* |
+| **Build command** | `npm run build` |
+| **Deploy command** | *(leave blank — Cloudflare defaults to `npx wrangler deploy`)* |
+| **Non-production branch deploy command** | `npx wrangler versions upload` *(optional; uncheck non-production builds until `main` works)* |
 | **Root directory** | *(leave blank)* |
 
-**Important:** For Git-connected Pages, **Deploy command must be empty**. Cloudflare publishes `dist/` automatically after a successful build. Do **not** set Deploy command to `npx wrangler deploy` — that is for Cloudflare Workers and will fail on this static site with `Missing entry-point to Worker script`. Optional CLI upload uses `npx wrangler pages deploy` instead.
+`npm run build` already runs `sync:data` before `vite build`, so a separate sync step in the dashboard is not required.
+
+You may set **Deploy command** explicitly to `npx wrangler deploy`; an empty field is equivalent. Both require `[assets]` in `wrangler.toml`.
+
+The assets directory is **`./dist`**, declared in `wrangler.toml` under `[assets]`. You do not need a separate dashboard “Build output directory” when Cloudflare treats this as a Worker — Wrangler reads `directory = "./dist"` at deploy time. If the dashboard still shows **Build output directory**, set it to `dist` for consistency; it must match `wrangler.toml`.
 
 Click **Environment variables** → **Add variable**:
 
@@ -129,14 +135,30 @@ No API keys or secrets are required for this static game.
 
 Click **Save and Deploy**.
 
+#### Classic Cloudflare Pages (without Workers deploy)
+
+If your project is classified as **Pages** (no Deploy command, automatic publish after build):
+
+| Setting | Value |
+|---------|-------|
+| **Build command** | `npm run build` |
+| **Build output directory** | `dist` |
+| **Deploy command** | *(leave blank)* |
+
+Optional manual CLI upload from your machine: `npx wrangler pages deploy dist` (not `wrangler deploy`).
+
 ### 3.3 What Cloudflare picks up from the repo
 
-These files are copied into `dist/` at build time and control caching and SPA routing:
+These files are copied into `dist/` at build time:
 
-- `public/_headers` — cache policy for HTML, service worker, hashed assets, and `/data/*.json`
-- `public/_redirects` — SPA fallback to `index.html` when no static file matches
+- `public/_headers` → `dist/_headers` — cache policy for HTML, service worker, hashed assets, and `/data/*.json`. Workers Static Assets parses `_headers` from the assets directory ([docs](https://developers.cloudflare.com/workers/static-assets/headers/)).
+- `public/_redirects` → `dist/_redirects` — legacy Pages SPA fallback; **not required** when using Workers Static Assets because `wrangler.toml` sets `not_found_handling = "single-page-application"`.
 
-`wrangler.toml` is Pages-only metadata (`pages_build_output_dir = "dist"`). It has no Worker entrypoint (`main`) and does not require a Deploy command. Git-connected Pages uses the dashboard Build settings above; leave Deploy command blank.
+`wrangler.toml` configures Workers Static Assets:
+
+- `[assets] directory = "./dist"` — upload target after `npm run build`
+- `not_found_handling = "single-page-application"` — client-side routes and hard refreshes return `index.html` with HTTP 200; existing files under `/assets/*` and `/data/*` are still served as static assets first
+- No `main` Worker script — pure static hosting
 
 ### 3.4 Production URL
 
@@ -308,23 +330,28 @@ Then re-run the Pages deploy workflow.
 
 ### Build succeeds but deploy fails (`wrangler deploy` / missing entry-point)
 
-**Symptoms:** Build log shows `npm run build` finished and `dist/` was produced, then deploy fails with:
+**Symptoms:** Build log shows `npm run build` finished, then deploy fails with:
 
 ```
 Executing user deploy command: npx wrangler deploy
 ✘ [ERROR] Missing entry-point to Worker script or to assets directory
 ```
 
-**Cause:** A **Deploy command** was set in the Cloudflare dashboard (or copied from a Workers project). `wrangler deploy` targets Cloudflare Workers, not Pages static assets.
+**Cause (Workers path):** `wrangler.toml` is missing `[assets]` or `directory` does not point at the built output. Cloudflare runs `npx wrangler deploy` when it classifies the repo as a Worker.
 
-**Fix:**
+**Fix (Workers + Static Assets — this repo):**
 
-1. Cloudflare dashboard → **Workers & Pages** → your project → **Settings** → **Builds & deployments**
-2. Find **Deploy command** and **clear it completely** (empty field)
-3. Confirm **Build command** is `npm run sync:data && npm run build` and **Build output directory** is `dist`
-4. **Deployments** → open the failed deployment → **Retry deployment** (or push an empty commit to `main`)
+1. Confirm `wrangler.toml` contains `[assets]` with `directory = "./dist"` and `not_found_handling = "single-page-application"`
+2. Confirm **Build command** is `npm run build` and **Deploy command** is blank or `npx wrangler deploy`
+3. Retry the deployment after pushing an updated `wrangler.toml`
 
-Do not set Deploy command to `npx wrangler deploy` or `npx wrangler pages deploy` for Git-connected Pages — automatic asset publish is correct. Use `npx wrangler pages deploy` only for optional manual CLI uploads from your machine.
+**Cause (classic Pages path):** Deploy command was set to `npx wrangler deploy` on a Pages-only project without `[assets]`.
+
+**Fix (classic Pages):**
+
+1. Clear **Deploy command** (leave blank)
+2. Set **Build output directory** to `dist`
+3. Retry the deployment
 
 ### Blank page after deploy
 
@@ -438,4 +465,4 @@ Source: [GitHub Pages documentation](https://docs.github.com/en/pages/getting-st
 | Full deploy docs | This file |
 | Cache headers | `public/_headers` |
 | SPA fallback | `public/_redirects` |
-| Cloudflare CLI metadata | `wrangler.toml` |
+| Cloudflare Workers config | `wrangler.toml` (`[assets]` → `dist/`) |
