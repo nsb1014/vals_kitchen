@@ -152,12 +152,13 @@ Optional manual CLI upload from your machine: `npx wrangler pages deploy dist` (
 These files are copied into `dist/` at build time:
 
 - `public/_headers` → `dist/_headers` — cache policy for HTML, service worker, hashed assets, and `/data/*.json`. Workers Static Assets parses `_headers` from the assets directory ([docs](https://developers.cloudflare.com/workers/static-assets/headers/)).
-- `public/_redirects` → `dist/_redirects` — legacy Pages SPA fallback; **not required** when using Workers Static Assets because `wrangler.toml` sets `not_found_handling = "single-page-application"`.
+
+**SPA routing (Workers):** Do **not** ship a Pages-style `_redirects` catch-all such as `/* /index.html 200`. Workers Static Assets treats that as an infinite redirect loop (error 100324). Client-side routing and hard refreshes are handled entirely by `wrangler.toml` → `[assets] not_found_handling = "single-page-application"`: existing files under `/assets/*` and `/data/*` are served when present; any other unmatched path returns `index.html` with HTTP 200. No `_redirects` file is required or shipped for this repo.
 
 `wrangler.toml` configures Workers Static Assets:
 
 - `[assets] directory = "./dist"` — upload target after `npm run build`
-- `not_found_handling = "single-page-application"` — client-side routes and hard refreshes return `index.html` with HTTP 200; existing files under `/assets/*` and `/data/*` are still served as static assets first
+- `not_found_handling = "single-page-application"` — SPA fallback (replaces any legacy `_redirects` rule)
 - No `main` Worker script — pure static hosting
 
 ### 3.4 Production URL
@@ -373,7 +374,7 @@ Executing user deploy command: npx wrangler deploy
 1. `dist/data/` exists in the build artifact (CI build log → browse files, or download artifact)
 2. Build runs `sync:data` before `vite build` (copies `src/data/*.json` → `public/data/` → `dist/data/`)
 3. On GitHub Pages: confirm you built with `--base /REPO/` and open Network tab — requests should go to `/REPO/data/ingredients.json`, not `/data/ingredients.json`
-4. `_redirects` SPA rule must not override existing files (Cloudflare serves static files first)
+4. Confirm `wrangler.toml` has `not_found_handling = "single-page-application"` (do not add a `_redirects` catch-all on Workers)
 
 ### Service worker serving stale builds
 
@@ -464,5 +465,5 @@ Source: [GitHub Pages documentation](https://docs.github.com/en/pages/getting-st
 | Bundle gate | `npm run size:check` |
 | Full deploy docs | This file |
 | Cache headers | `public/_headers` |
-| SPA fallback | `public/_redirects` |
+| SPA fallback | `wrangler.toml` → `not_found_handling = "single-page-application"` |
 | Cloudflare Workers config | `wrangler.toml` (`[assets]` → `dist/`) |
