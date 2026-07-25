@@ -3,6 +3,7 @@ import {
   ART_TILE_PX,
   TILE_PX,
   computeCameraCenter,
+  computeGridScale,
   computeGrabOffset,
   gridToWorld,
   screenToDragGrid,
@@ -44,8 +45,8 @@ describe('coordinates', () => {
       y: camera.stageOffsetY,
     });
     expect(worldToScreen(32, 32, camera)).toEqual({
-      x: camera.stageOffsetX + 32,
-      y: camera.stageOffsetY + 32,
+      x: camera.stageOffsetX + 32 * camera.scale,
+      y: camera.stageOffsetY + 32 * camera.scale,
     });
   });
 
@@ -57,14 +58,26 @@ describe('coordinates', () => {
 
   it('maps screen pointer to snapped grid cell', () => {
     const camera = computeCameraCenter(4, 4, 390, 844);
-    const { gx, gy } = screenToGrid(camera.stageOffsetX + 40, camera.stageOffsetY + 40, camera);
+    const { gx, gy } = screenToGrid(
+      camera.stageOffsetX + 40 * camera.scale,
+      camera.stageOffsetY + 40 * camera.scale,
+      camera,
+    );
     expect({ gx, gy }).toEqual({ gx: 1, gy: 1 });
   });
 
-  it('centers undersized grids in the viewport', () => {
+  it('centers undersized grids in the viewport with integer scale-to-fit', () => {
     const camera = computeCameraCenter(4, 4, 390, 844);
-    expect(camera.stageOffsetX).toBe(Math.floor((390 - 4 * TILE_PX) / 2));
-    expect(camera.stageOffsetY).toBe(Math.floor((844 - 4 * TILE_PX) / 2));
+    const scale = computeGridScale(4, 4, 390, 844);
+    expect(scale).toBe(3);
+    expect(camera.scale).toBe(3);
+    expect(camera.stageOffsetX).toBe(Math.floor((390 - 4 * TILE_PX * scale) / 2));
+    expect(camera.stageOffsetY).toBe(Math.floor((844 - 4 * TILE_PX * scale) / 2));
+  });
+
+  it('scales up small grids on desktop viewports', () => {
+    const scale = computeGridScale(4, 4, 1280, 800);
+    expect(scale).toBeGreaterThan(1);
   });
 
   describe('drag snap with grab offset', () => {
@@ -98,8 +111,8 @@ describe('coordinates', () => {
       const camera = computeCameraCenter(4, 4, 390, 844);
       const grabOffset = computeGrabOffset(16, 16, 0, 0);
       const targetCenter = gridToWorld(1, 2);
-      const sx = camera.stageOffsetX + targetCenter.x + TILE_PX / 2;
-      const sy = camera.stageOffsetY + targetCenter.y + TILE_PX / 2;
+      const sx = camera.stageOffsetX + (targetCenter.x + TILE_PX / 2) * camera.scale;
+      const sy = camera.stageOffsetY + (targetCenter.y + TILE_PX / 2) * camera.scale;
 
       expect(screenToDragGrid(sx, sy, camera, grabOffset)).toEqual({ gx: 1, gy: 2 });
       expect(screenToGrid(sx, sy, camera)).toEqual({ gx: 2, gy: 3 });

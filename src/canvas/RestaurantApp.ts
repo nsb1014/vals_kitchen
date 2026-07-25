@@ -7,6 +7,7 @@ import { GridLayer } from './layers/GridLayer.ts';
 import { PreviewLayer } from './layers/PreviewLayer.ts';
 import { Camera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
+import { worldToScreen } from './coordinates.ts';
 
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -89,12 +90,17 @@ export class RestaurantApp {
     this.handleResize();
   }
 
+  private applyCamera(): void {
+    this.world.position.set(this.camera.state.stageOffsetX, this.camera.state.stageOffsetY);
+    this.world.scale.set(this.camera.state.scale);
+  }
+
   private handleResize = (): void => {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
     const state = useGameStore.getState();
     this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
-    this.world.position.set(this.camera.state.stageOffsetX, this.camera.state.stageOffsetY);
+    this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
   };
 
@@ -102,7 +108,7 @@ export class RestaurantApp {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
     this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
-    this.world.position.set(this.camera.state.stageOffsetX, this.camera.state.stageOffsetY);
+    this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
     this.furnitureLayer.sync(state.placements, state.editLayoutMode);
     const queueIndex = state.activeDay?.queueIndex ?? -1;
@@ -116,11 +122,10 @@ export class RestaurantApp {
     const world = this.customerLayer.getAnchorWorldPosition();
     if (!world) return null;
     const rect = this.app.canvas.getBoundingClientRect();
-    const screenX = world.x - this.camera.state.x + this.camera.state.stageOffsetX;
-    const screenY = world.y - this.camera.state.y + this.camera.state.stageOffsetY;
+    const screen = worldToScreen(world.x, world.y, this.camera.state);
     return {
-      x: rect.left + screenX,
-      y: rect.top + screenY,
+      x: rect.left + screen.x,
+      y: rect.top + screen.y,
     };
   }
 

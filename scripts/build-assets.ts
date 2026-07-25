@@ -80,8 +80,8 @@ const PACKS: Record<string, PackMeta> = {
 };
 
 const TILE_SPRITES: Record<string, string> = {
-  floor_a: 'tile_0048.png',
-  floor_b: 'tile_0049.png',
+  floor_a: 'tile_0032.png',
+  floor_b: 'tile_0036.png',
 };
 
 const FURNITURE_SPRITES: Record<string, string> = {
@@ -128,7 +128,8 @@ function vendorPath(rel: string): string {
 
 function assertVendor(): void {
   const required = [
-    vendorPath('rpg-urban-pack/Tiles/tile_0048.png'),
+    vendorPath('rpg-urban-pack/Tiles/tile_0032.png'),
+    vendorPath('rpg-urban-pack/Tiles/tile_0036.png'),
     vendorPath('tiny-dungeon/Tiles/tile_0088.png'),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),

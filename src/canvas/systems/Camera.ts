@@ -7,6 +7,7 @@ export class Camera {
   state: CameraState = {
     x: 0,
     y: 0,
+    scale: 1,
     stageOffsetX: 0,
     stageOffsetY: 0,
   };

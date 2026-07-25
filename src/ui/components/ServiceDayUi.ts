@@ -379,7 +379,7 @@ export function mountServiceDayUi(
 export function computeBubbleAnchorFromWorld(
   worldX: number,
   worldY: number,
-  camera: { x: number; y: number; stageOffsetX: number; stageOffsetY: number },
+  camera: { x: number; y: number; scale: number; stageOffsetX: number; stageOffsetY: number },
   canvasRect: DOMRect,
 ): { x: number; y: number } {
   const screen = worldToScreen(worldX, worldY, camera);

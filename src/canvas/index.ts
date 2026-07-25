@@ -3,6 +3,7 @@ export {
   ART_TILE_PX,
   TILE_PX,
   computeCameraCenter,
+  computeGridScale,
   gridToWorld,
   screenToGrid,
   screenToWorld,

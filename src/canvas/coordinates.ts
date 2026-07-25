@@ -9,6 +9,7 @@ export interface Point {
 export interface CameraState {
   x: number;
   y: number;
+  scale: number;
   stageOffsetX: number;
   stageOffsetY: number;
 }
@@ -70,15 +71,15 @@ export function screenToDragGrid(
 
 export function worldToScreen(wx: number, wy: number, camera: CameraState): Point {
   return {
-    x: wx - camera.x + camera.stageOffsetX,
-    y: wy - camera.y + camera.stageOffsetY,
+    x: (wx - camera.x) * camera.scale + camera.stageOffsetX,
+    y: (wy - camera.y) * camera.scale + camera.stageOffsetY,
   };
 }
 
 export function screenToWorld(sx: number, sy: number, camera: CameraState): Point {
   return {
-    x: sx - camera.stageOffsetX + camera.x,
-    y: sy - camera.stageOffsetY + camera.y,
+    x: (sx - camera.stageOffsetX) / camera.scale + camera.x,
+    y: (sy - camera.stageOffsetY) / camera.scale + camera.y,
   };
 }
 
@@ -90,6 +91,21 @@ export function screenToGrid(sx: number, sy: number, camera: CameraState): {
   return snapWorldToGrid(world.x, world.y);
 }
 
+/** Integer scale that fits the grid in the viewport while keeping pixel-crisp tiles. */
+export function computeGridScale(
+  gridW: number,
+  gridH: number,
+  viewW: number,
+  viewH: number,
+): number {
+  const worldW = gridW * TILE_PX;
+  const worldH = gridH * TILE_PX;
+  if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return 1;
+  const scaleX = Math.floor(viewW / worldW);
+  const scaleY = Math.floor(viewH / worldH);
+  return Math.max(1, Math.min(scaleX, scaleY));
+}
+
 export function computeCameraCenter(
   gridW: number,
   gridH: number,
@@ -98,10 +114,14 @@ export function computeCameraCenter(
 ): CameraState {
   const worldW = gridW * TILE_PX;
   const worldH = gridH * TILE_PX;
+  const scale = computeGridScale(gridW, gridH, viewW, viewH);
+  const scaledW = worldW * scale;
+  const scaledH = worldH * scale;
   return {
     x: 0,
     y: 0,
-    stageOffsetX: Math.max(0, Math.floor((viewW - worldW) / 2)),
-    stageOffsetY: Math.max(0, Math.floor((viewH - worldH) / 2)),
+    scale,
+    stageOffsetX: Math.max(0, Math.floor((viewW - scaledW) / 2)),
+    stageOffsetY: Math.max(0, Math.floor((viewH - scaledH) / 2)),
   };
 }

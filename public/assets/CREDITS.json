@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-25T04:08:35.497Z",
+  "generatedAt": "2026-07-25T05:05:38.493Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -54,7 +54,7 @@
       "usedIn": [
         "canvas:GridLayer floor tiles"
       ],
-      "sourceFile": "tile_0048.png"
+      "sourceFile": "tile_0032.png"
     },
     {
       "path": "atlases/tiles.json#floor_b",
@@ -65,7 +65,7 @@
       "usedIn": [
         "canvas:GridLayer floor tiles"
       ],
-      "sourceFile": "tile_0049.png"
+      "sourceFile": "tile_0036.png"
     },
     {
       "path": "atlases/furniture.json#prep_station",
