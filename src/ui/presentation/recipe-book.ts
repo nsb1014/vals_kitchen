@@ -8,6 +8,7 @@ export interface RecipeBookEntry {
   cuisineTag: string;
   ingredientNames: string[];
   ingredientIds: string[];
+  masteryLevel: number;
 }
 
 export interface RecipeBookPage {
@@ -57,6 +58,7 @@ export function filterDiscoveredRecipes(
 export function mapRecipeToEntry(
   recipe: Recipe,
   ingredientNameById: Map<string, string>,
+  masteryLevel = 0,
 ): RecipeBookEntry {
   return {
     id: recipe.id,
@@ -64,6 +66,7 @@ export function mapRecipeToEntry(
     cuisineTag: recipe.cuisineTag,
     ingredientIds: [...recipe.ingredientIds],
     ingredientNames: recipe.ingredientIds.map((id) => ingredientNameById.get(id) ?? id),
+    masteryLevel,
   };
 }
 
