@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Status:** Phase 0–7 implemented; immersive floor redesign approved (budgets below updated for floor sim)  
+**Status:** Phase 0–7 + Phase 11 immersive floor vertical slice implemented (budgets measured below)  
 **Gameplay formulas:** Owned by [PRD.md](./PRD.md) — this document does not restate economy or scoring numbers.  
 **Research basis:** [RESEARCH.md](./RESEARCH.md) §7–§9  
 **Floor design:** [superpowers/specs/2026-07-25-immersive-floor-service-design.md](./superpowers/specs/2026-07-25-immersive-floor-service-design.md)
