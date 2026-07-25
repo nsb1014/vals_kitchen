@@ -1,6 +1,23 @@
 {
-  "customer": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0088.png",
-  "customer_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0090.png",
-  "player": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0080.png",
-  "player_walk": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0081.png"
+  "player_left_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0023.png",
+  "player_down_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
+  "player_up_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0025.png",
+  "player_right_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0026.png",
+  "player_left_1": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0050.png",
+  "player_down_1": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0051.png",
+  "player_up_1": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0052.png",
+  "player_right_1": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0053.png",
+  "player_left_2": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0077.png",
+  "player_down_2": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0078.png",
+  "player_up_2": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0079.png",
+  "player_right_2": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0080.png",
+  "guest_a_down_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
+  "guest_b_down_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0105.png",
+  "guest_b_left_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0104.png",
+  "guest_b_up_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0106.png",
+  "guest_b_right_0": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0107.png",
+  "customer": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
+  "customer_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0105.png",
+  "player": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
+  "player_walk": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0051.png"
 }

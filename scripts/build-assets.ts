@@ -109,10 +109,31 @@ const FURNITURE_SPRITES: Record<string, string> = {
 };
 
 const CHARACTER_SPRITES = {
-  customer: 'Tiles/tile_0088.png',
-  customer_b: 'Tiles/tile_0090.png',
-  player: 'Tiles/tile_0080.png',
-  player_walk: 'Tiles/tile_0081.png',
+  // Green-shirt urban walk cycle (cols: left, down, up, right × 3 frames)
+  player_left_0: 'Tiles/tile_0023.png',
+  player_down_0: 'Tiles/tile_0024.png',
+  player_up_0: 'Tiles/tile_0025.png',
+  player_right_0: 'Tiles/tile_0026.png',
+  player_left_1: 'Tiles/tile_0050.png',
+  player_down_1: 'Tiles/tile_0051.png',
+  player_up_1: 'Tiles/tile_0052.png',
+  player_right_1: 'Tiles/tile_0053.png',
+  player_left_2: 'Tiles/tile_0077.png',
+  player_down_2: 'Tiles/tile_0078.png',
+  player_up_2: 'Tiles/tile_0079.png',
+  player_right_2: 'Tiles/tile_0080.png',
+  // Guest A = same green sheet aliases for idle down
+  guest_a_down_0: 'Tiles/tile_0024.png',
+  // Guest B = red-shirt walk cycle
+  guest_b_down_0: 'Tiles/tile_0105.png',
+  guest_b_left_0: 'Tiles/tile_0104.png',
+  guest_b_up_0: 'Tiles/tile_0106.png',
+  guest_b_right_0: 'Tiles/tile_0107.png',
+  // Legacy names kept for CustomerLayer / older callers
+  customer: 'Tiles/tile_0024.png',
+  customer_b: 'Tiles/tile_0105.png',
+  player: 'Tiles/tile_0024.png',
+  player_walk: 'Tiles/tile_0051.png',
 } as const;
 
 const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
@@ -138,7 +159,9 @@ function vendorPath(rel: string): string {
 
 function assertVendor(): void {
   const required = [
-    ...Object.values(CHARACTER_SPRITES).map((rel) => vendorPath(`tiny-dungeon/${rel}`)),
+    ...Object.values(CHARACTER_SPRITES).map((rel) =>
+      vendorPath(`rpg-urban-pack/${rel}`),
+    ),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
     path.join(GENERATED_SHEETS, 'sheet-01-alliums-roots.png'),
@@ -220,30 +243,25 @@ function buildCredits(shippedFiles: string[]): void {
     });
   }
 
-  const characterUsedIn: Record<keyof typeof CHARACTER_SPRITES, string[]> = {
-    customer: ['canvas:CustomerLayer', 'canvas:ActorLayer (guest variant A)'],
-    customer_b: ['canvas:ActorLayer (guest variant B)'],
-    player: ['canvas:ActorLayer (player idle)'],
-    player_walk: ['canvas:ActorLayer (player walk cue)'],
+  const characterUsedIn: Record<string, string[]> = {
+    player_down_0: ['canvas:ActorLayer (player)'],
+    player_walk: ['canvas:ActorLayer (player walk)'],
+    guest_a_down_0: ['canvas:ActorLayer (guest A)'],
+    guest_b_down_0: ['canvas:ActorLayer (guest B)'],
+    customer: ['canvas:CustomerLayer', 'canvas:ActorLayer'],
+    customer_b: ['canvas:ActorLayer'],
+    player: ['canvas:ActorLayer'],
   };
-  const characterNotes: Partial<Record<keyof typeof CHARACTER_SPRITES, string>> = {
-    customer: 'Rogue idle facing down — primary guest / queue customer.',
-    customer_b: 'Knight idle facing down — alternate guest look.',
-    player: 'Warrior idle facing down — floor player sprite.',
-    player_walk: 'Warrior walk frame — alternates with player while navigating.',
-  };
-  for (const [name, rel] of Object.entries(CHARACTER_SPRITES) as Array<
-    [keyof typeof CHARACTER_SPRITES, string]
-  >) {
+  for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
     add({
       path: `atlases/characters.json#${name}`,
-      pack: PACKS.tinyDungeon.pack,
-      author: PACKS.tinyDungeon.author,
-      sourceUrl: PACKS.tinyDungeon.sourceUrl,
+      pack: PACKS.rpgUrban.pack,
+      author: PACKS.rpgUrban.author,
+      sourceUrl: PACKS.rpgUrban.sourceUrl,
       license: 'CC0',
-      usedIn: characterUsedIn[name],
+      usedIn: characterUsedIn[name] ?? ['canvas:ActorLayer'],
       sourceFile: rel,
-      approximationNote: characterNotes[name],
+      approximationNote: 'RPG Urban Pack character walk frames (4-dir × 3-frame).',
     });
   }
 
@@ -365,7 +383,7 @@ function main(): void {
 
   const charManifest: Record<string, string> = {};
   for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
-    charManifest[name] = vendorPath(`tiny-dungeon/${rel}`);
+    charManifest[name] = vendorPath(`rpg-urban-pack/${rel}`);
   }
   const charManifestPath = path.join(tmp, 'characters.manifest.json');
   writeManifest(charManifest, charManifestPath);

@@ -14,8 +14,6 @@ import { ActorLayer } from './world/ActorLayer.ts';
 import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
 import { NavController } from './world/NavController.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
-import type { FloorDay } from '../domain/floor/types.ts';
-
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   return Math.max(1, Math.round(dpr));
@@ -35,7 +33,7 @@ export class RestaurantApp {
 
   private unsubscribe: (() => void) | null = null;
   private mounted = false;
-  private lastFloor: FloorDay | null = null;
+  private lastFloorSeed: number | null = null;
   private eatingTickAccumulatorMs = 0;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
@@ -121,7 +119,7 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    this.actorLayer.sync(floor, this.nav.position, this.nav.isMoving);
+    this.actorLayer.sync(floor, this.nav);
 
     if (floor.pool.some((g) => g.stage === 'eating')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
@@ -210,13 +208,15 @@ export class RestaurantApp {
     const mapHpx = state.gridSize.h * TILE_PX;
 
     if (floor) {
-      if (floor !== this.lastFloor) {
-        this.nav.setPath([]);
-        this.nav.position = { ...floor.playerPosition };
-        this.lastFloor = floor;
+      // Only reseat the player when a new service day starts — floor object
+      // identity changes on every reducer action and must not cancel walks.
+      const daySeed = state.activeDay?.seed ?? null;
+      if (daySeed !== this.lastFloorSeed) {
+        this.nav.snapTo(floor.playerPosition);
+        this.lastFloorSeed = daySeed;
         this.eatingTickAccumulatorMs = 0;
       }
-      this.actorLayer.sync(floor, this.nav.position, this.nav.isMoving);
+      this.actorLayer.sync(floor, this.nav);
       if (!state.editLayoutMode) {
         const player = this.actorLayer.getPlayerWorldPosition();
         this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
@@ -224,8 +224,8 @@ export class RestaurantApp {
         this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
       }
     } else {
-      this.lastFloor = null;
-      this.actorLayer.sync(null, this.nav.position);
+      this.lastFloorSeed = null;
+      this.actorLayer.sync(null, this.nav);
       this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
     }
 
