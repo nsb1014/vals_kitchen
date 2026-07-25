@@ -1,4 +1,4 @@
-import { tutorialPrompt } from '../../domain/floor/tutorial.ts';
+import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
 import { useGameStore } from '../../store/game-store.ts';
 
 export function mountFloorServiceHud(mount: HTMLElement): () => void {
@@ -22,7 +22,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     const unsetTables = floor.tables.filter((t) => t.state === 'unset');
     const dirtyTables = floor.tables.filter((t) => t.state === 'dirty');
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
-    const tutorial = tutorialPrompt(floor.tutorialStep as Parameters<typeof tutorialPrompt>[0]);
+    const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
 
     const ticketStrip = floor.tickets
       .map(
