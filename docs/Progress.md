@@ -22,7 +22,7 @@
 | Implementation Phase 8 — balance tuning | **Partial** — analytic proxy / prestige pacing shipped; live retune still open |
 | Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (8 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
-| Implementation Phase 11 — immersive floor service | **In progress** — domain + tap-to-move + station compose/deliver playable; assets/docs closeout open ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
+| Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
 
 ---
 
@@ -64,7 +64,7 @@
 | 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
-| 11 | Immersive floor vertical slice | In progress | FloorDay, mastery/save v2, tap-to-move, station compose/plate/deliver, HUD; ¾ assets + budget closeout remain |
+| 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, tap-to-move, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast, distinct character frames; gzip 173,070 |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -86,6 +86,7 @@
 | 2026-07-25 | Doc-sync: Tech-Stack §7 + Progress Phase 4–6/10 rows aligned with Workers Static Assets deploy (no `_redirects`); Phase 8 marked Partial |
 | 2026-07-25 | Immersive floor redesign approved: concurrent ¾ service, tickets≤4, set/clear, mastery; PRD/Tech-Stack/Frontend reopen; vertical-slice plan written; initial JS budget raised to 280k pending measure |
 | 2026-07-25 | Phase 11 in progress: floor domain, OPEN_DAY FloorDay, station compose/take-orders/deliver, tap-to-move actors; fast suite 119; assets polish + measured budget still open |
+| 2026-07-25 | Phase 11 vertical slice Done: adjacency set/clear + wrong-seat toast; distinct character frames; fast suite 126; measured initial JS gzip 173,070 (cap 280,000) |
 
 ---
 

@@ -124,7 +124,7 @@ Budgets are stated in **decimal bytes** (1 KB = 1,000 bytes), matching `gzip -c`
 | Application code (initial JS) | ≤ 120,000 | Floor sim + UI + store + boot (raised for immersive floor) |
 | lz-string | ~3,000 | Save Code only |
 | idb-keyval | ~2,000 | |
-| **Total initial JS** | **≤ 280,000 bytes** | Hard budget pending post-slice measure; CI warning at 260,000; re-measure and tighten after vertical slice |
+| **Total initial JS** | **≤ 280,000 bytes** | Hard CI cap. Post-slice measure 2026-07-25: **173,070** gzip — keep 280k headroom for art/UI growth; CI warning at 260,000 |
 | Boot content data (`/data/*.json` except recipes + affinity) | ≤ 7,000 | Fetched at boot; ingredients, equipment, archetypes, modifiers |
 | Deferred content data (recipes + compound-affinity) | ≤ 34,000 | Fetched after boot, before first serve / day open |
 | Asset atlases (lazy) | ≤ 4,000,000 total | ¾ tiles, chairs, character variants; loaded post-boot |
@@ -376,7 +376,7 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 - npm run lint
 - npm run test              # fast suite only (*.sim.test.ts excluded)
 - npm run build
-- npm run size:check        # fail if initial JS gzip > Tech-Stack hard cap (280k until post-slice measure)
+- npm run size:check        # fail if initial JS gzip > Tech-Stack hard cap (280k; measured 173,070 post-slice 2026-07-25)
 
 # .github/workflows/sim-tests.yml — workflow_dispatch + nightly schedule only
 - npm run test:sim
