@@ -210,7 +210,7 @@ function buildCredits(shippedFiles: string[]): void {
     author: PACKS.tinyDungeon.author,
     sourceUrl: PACKS.tinyDungeon.sourceUrl,
     license: 'CC0',
-    usedIn: ['canvas:CustomerLayer'],
+    usedIn: ['canvas:CustomerLayer', 'canvas:ActorLayer'],
     sourceFile: CHARACTER_SPRITES.customer,
     approximationNote: 'Rogue idle facing down — generic top-down customer.',
   });
