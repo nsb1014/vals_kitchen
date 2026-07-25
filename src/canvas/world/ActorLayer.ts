@@ -5,8 +5,8 @@ import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
 
 const ACTOR_DISPLAY_H = 28;
-const PLAYER_TINT = 0x6a994e;
-const GUEST_VARIANT_TINTS = [0xffffff, 0xffe4b5, 0xd4e4ff] as const;
+const PLAYER_TINT = 0xffffff;
+const GUEST_TEXTURES = ['customer', 'customer_b'] as const;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   waiting: 0xffc857,
@@ -24,12 +24,12 @@ function tileCenter(gx: number, gy: number): { x: number; y: number } {
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
 }
 
-function guestVariantTint(guestId: string): number {
+function guestTextureName(guestId: string): (typeof GUEST_TEXTURES)[number] {
   let hash = 0;
   for (let i = 0; i < guestId.length; i += 1) {
     hash = (hash * 31 + guestId.charCodeAt(i)) | 0;
   }
-  return GUEST_VARIANT_TINTS[Math.abs(hash) % GUEST_VARIANT_TINTS.length];
+  return GUEST_TEXTURES[Math.abs(hash) % GUEST_TEXTURES.length];
 }
 
 function actorFeetY(centerY: number): number {
@@ -43,8 +43,9 @@ function applySpriteActor(
   feetX: number,
   feetY: number,
   stageCue?: number,
+  scaleMultiplier = 1,
 ): void {
-  const scale = ACTOR_DISPLAY_H / texture.height;
+  const scale = (ACTOR_DISPLAY_H / texture.height) * scaleMultiplier;
   const wrapper = new Container();
   const sprite = new Sprite(texture);
   sprite.roundPixels = true;
@@ -79,6 +80,7 @@ export class ActorLayer {
   readonly view = new Container();
   private actorContainer = new Container();
   private playerWorld = { x: 0, y: 0 };
+  private walkPhase = 0;
 
   constructor() {
     this.view.sortableChildren = true;
@@ -86,26 +88,31 @@ export class ActorLayer {
     this.view.addChild(this.actorContainer);
   }
 
-  sync(floor: FloorDay | null | undefined, navPosition: GridPoint): void {
+  sync(floor: FloorDay | null | undefined, navPosition: GridPoint, isMoving = false): void {
     this.actorContainer.removeChildren();
 
     if (!floor) {
       return;
     }
 
-    const texture = getCharacterTexture('customer');
+    if (isMoving) {
+      this.walkPhase = (this.walkPhase + 1) % 2;
+    } else {
+      this.walkPhase = 0;
+    }
 
     for (const guest of floor.pool) {
       if (guest.stage === 'done') continue;
       const pos = guestPosition(guest);
       if (!pos) continue;
 
+      const texture = getCharacterTexture(guestTextureName(guest.id));
       const feetY = actorFeetY(pos.y);
       if (texture) {
         applySpriteActor(
           this.actorContainer,
           texture,
-          guestVariantTint(guest.id),
+          0xffffff,
           pos.x,
           feetY,
           GUEST_STAGE_CUE[guest.stage],
@@ -125,9 +132,22 @@ export class ActorLayer {
     const center = tileCenter(playerTile.x, playerTile.y);
     this.playerWorld = center;
     const playerFeetY = actorFeetY(center.y);
+    const walkTexture = getCharacterTexture('player_walk');
+    const idleTexture = getCharacterTexture('player') ?? getCharacterTexture('customer');
+    const playerTexture =
+      isMoving && this.walkPhase === 1 && walkTexture ? walkTexture : idleTexture;
+    const playerBob = isMoving && !walkTexture ? (this.walkPhase === 0 ? 1 : 1.06) : 1;
 
-    if (texture) {
-      applySpriteActor(this.actorContainer, texture, PLAYER_TINT, center.x, playerFeetY);
+    if (playerTexture) {
+      applySpriteActor(
+        this.actorContainer,
+        playerTexture,
+        PLAYER_TINT,
+        center.x,
+        playerFeetY,
+        undefined,
+        playerBob,
+      );
     } else {
       applyFallbackCircle(this.actorContainer, center.x, playerFeetY, FALLBACK_PLAYER_COLOR, 10);
       applyFallbackCircle(this.actorContainer, center.x, playerFeetY - 14, FALLBACK_PLAYER_COLOR, 7);

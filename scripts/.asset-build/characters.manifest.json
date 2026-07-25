@@ -1,3 +1,6 @@
 {
-  "customer": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0088.png"
+  "customer": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0088.png",
+  "customer_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0090.png",
+  "player": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0080.png",
+  "player_walk": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/tiny-dungeon/Tiles/tile_0081.png"
 }

@@ -120,7 +120,7 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    this.actorLayer.sync(floor, this.nav.position);
+    this.actorLayer.sync(floor, this.nav.position, this.nav.isMoving);
 
     if (floor.pool.some((g) => g.stage === 'eating')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
@@ -212,7 +212,7 @@ export class RestaurantApp {
         this.lastFloor = floor;
         this.eatingTickAccumulatorMs = 0;
       }
-      this.actorLayer.sync(floor, this.nav.position);
+      this.actorLayer.sync(floor, this.nav.position, this.nav.isMoving);
       if (!state.editLayoutMode) {
         const player = this.actorLayer.getPlayerWorldPosition();
         this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
