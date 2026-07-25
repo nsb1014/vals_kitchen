@@ -140,7 +140,7 @@ describe('persistence', () => {
       createdAt: '2026-07-25T00:00:00.000Z',
       gameState: v1,
     };
-    const migrated = migrateSave(envelope) as typeof envelope;
+    const migrated = migrateSave(envelope);
     expect(migrated.saveVersion).toBe(2);
     expect(migrated.gameState.recipeMastery).toEqual({});
     expect(migrated.gameState.prestige).toBe(1);

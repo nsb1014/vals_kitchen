@@ -30,6 +30,7 @@ describe('recipe book presentation', () => {
       cuisineTag: 'test',
       ingredientIds: ['flour'],
       ingredientNames: ['Flour'],
+      masteryLevel: 0,
     }));
     const page = paginateRecipeEntries(entries, 1, 40);
     expect(page.entries).toHaveLength(40);
