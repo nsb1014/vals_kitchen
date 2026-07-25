@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalize } from '../persistence/serialize.ts';
-import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
+import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
 import { createNewGameState } from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
@@ -75,6 +75,22 @@ describe('persistence', () => {
     expect(resumed.activeDay?.customersServed).toBe(1);
     expect(resumed.composeDraftIngredientIds).toBeUndefined();
     expect(resumed.activeDay?.queueIndex).toBe(0);
+  });
+
+  it('migrates v1 saves to v2 with empty recipeMastery', () => {
+    const v1 = createNewGameState(111);
+    v1.prestige = 1;
+    delete (v1 as { recipeMastery?: unknown }).recipeMastery;
+    const envelope = {
+      saveVersion: 1 as const,
+      checksum: '',
+      createdAt: '2026-07-25T00:00:00.000Z',
+      gameState: v1,
+    };
+    const migrated = migrateSave(envelope) as typeof envelope;
+    expect(migrated.saveVersion).toBe(2);
+    expect(migrated.gameState.recipeMastery).toEqual({});
+    expect(migrated.gameState.prestige).toBe(1);
   });
 
   it('falls back to backup when primary save is corrupt', async () => {

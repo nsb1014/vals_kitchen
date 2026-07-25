@@ -3,6 +3,8 @@ import {
   STARTING_EQUIPMENT_IDS,
 } from '../types.ts';
 import type { ActiveDay } from '../day/types.ts';
+import type { RecipeMasteryMap } from '../floor/mastery.ts';
+import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
 
 export const STARTING_GRID = { w: 4, h: 4 } as const;
@@ -13,7 +15,7 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-export const CURRENT_SAVE_VERSION = 1 as const;
+export const CURRENT_SAVE_VERSION = 2 as const;
 
 export interface Placement {
   id: string;
@@ -39,6 +41,7 @@ export interface GameState {
   unlockedIngredientIds: string[];
   purchasedEquipmentIds: string[];
   discoveredRecipeIds: string[];
+  recipeMastery: RecipeMasteryMap;
   gridSize: { w: number; h: number };
   placements: Placement[];
   seatingCapacity: number;
@@ -68,6 +71,10 @@ export function seatingFromTableCount(tableCount: number): number {
   return tableCount * TABLE_SEATS;
 }
 
+export function seatingFromPlacements(placements: Placement[]): number {
+  return seatsFromPlacements(placements).length;
+}
+
 export function createNewGameState(seed?: number): GameState {
   const globalRunSeed = seed ?? createRng(Date.now()).nextInt(1, 0x7fffffff);
   return {
@@ -80,6 +87,7 @@ export function createNewGameState(seed?: number): GameState {
     unlockedIngredientIds: [...NEW_GAME_STARTER_IDS],
     purchasedEquipmentIds: [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: [],
+    recipeMastery: {},
     gridSize: { ...STARTING_GRID },
     placements: createDefaultPlacements(),
     seatingCapacity: seatingFromTableCount(2),
@@ -109,6 +117,7 @@ export function normalizeGameState(raw: GameState): GameState {
     unlockedIngredientIds: raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS],
     purchasedEquipmentIds: raw.purchasedEquipmentIds ?? [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: raw.discoveredRecipeIds ?? [],
+    recipeMastery: raw.recipeMastery ?? {},
     gridSize: raw.gridSize ?? { ...STARTING_GRID },
     placements,
     seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),

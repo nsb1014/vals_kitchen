@@ -1,3 +1,4 @@
+import type { FloorDay } from '../floor/types.ts';
 import type { CustomerPreference } from '../types.ts';
 import type { DailyModifier } from './modifiers.ts';
 
@@ -15,6 +16,7 @@ export interface ActiveDay {
   dayEarnings: number;
   dayMatchSum: number;
   customersServed: number;
+  floor?: FloorDay | null;
 }
 
 export interface GeneratedDay {

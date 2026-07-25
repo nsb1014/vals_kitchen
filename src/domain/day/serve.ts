@@ -9,14 +9,26 @@ import { applySoftReset } from '../rating/soft-reset.ts';
 import type { DomainContext } from '../context.ts';
 import type { GameState } from '../state/game-state.ts';
 import { cloneGameState } from '../state/game-state.ts';
-import type { ActiveDay } from './types.ts';
+import type { ActiveDay, Customer } from './types.ts';
 import { applyModifierEffects } from './modifiers.ts';
+import { isFloorDayComplete } from '../floor/sim.ts';
 
 export interface ServeResult {
   state: GameState;
   matchStars: number;
   tip: number;
   ratingDelta: number;
+  recipeId: string | null;
+  recipeName: string | null;
+  prestigeTriggered: boolean;
+  softResetTriggered: boolean;
+}
+
+export interface DishScore {
+  matchStars: number;
+  tip: number;
+  ratingDelta: number;
+  nextRating: number;
   recipeId: string | null;
   recipeName: string | null;
   prestigeTriggered: boolean;
@@ -37,11 +49,17 @@ function validateIngredientIds(
   return null;
 }
 
-export function serveCustomer(
+function clampMatchStars(stars: number): number {
+  return Math.min(10, Math.max(0, stars));
+}
+
+export function scoreDishForCustomer(
   state: GameState,
+  customer: Customer,
   ingredientIds: string[],
   ctx: DomainContext,
-): ServeResult {
+  options?: { masteryBonus?: number },
+): DishScore {
   if (!state.activeDay) {
     throw new Error('No active service day');
   }
@@ -49,11 +67,6 @@ export function serveCustomer(
   const validationError = validateIngredientIds(ingredientIds, state.unlockedIngredientIds);
   if (validationError) {
     throw new Error(validationError);
-  }
-
-  const customer = state.activeDay.customers[state.activeDay.queueIndex];
-  if (!customer) {
-    throw new Error('No current customer in queue');
   }
 
   const ingredients = ingredientIds.map((id) => {
@@ -65,13 +78,15 @@ export function serveCustomer(
   const dish = aggregateDish(ingredients.map((item) => item.flavor));
   const recipe = findMatchingRecipe(ingredientIds, ctx.recipes);
   const recipeBonus = recipe ? RECIPE_MATCH_BONUS : 0;
-  const matchStars = computeMatchStars(
+  const baseMatchStars = computeMatchStars(
     dish,
     customer.preference,
     ingredientIds,
     ctx.compoundAffinity,
     recipeBonus,
   );
+  const masteryBonus = options?.masteryBonus ?? 0;
+  const matchStars = clampMatchStars(baseMatchStars + masteryBonus);
 
   const modifier = ctx.modifiersById.get(state.activeDay.modifierId);
   const modifierOutcome = applyModifierEffects(
@@ -98,30 +113,64 @@ export function serveCustomer(
   let nextRating = ratingResult.rating + modifierOutcome.extraRatingDelta * prestigeRatingScale;
   nextRating = Math.min(6, Math.max(0, nextRating));
 
-  let nextState = cloneGameState(state);
-  nextState.cash += tip;
-  nextState.rating = nextRating;
-  nextState.stats.totalCustomersServed += 1;
-  nextState.stats.totalEarnings += tip;
-  nextState.composeDraftIngredientIds = undefined;
-
-  const activeDay: ActiveDay = {
-    ...nextState.activeDay!,
-    dayEarnings: nextState.activeDay!.dayEarnings + tip,
-    dayMatchSum: nextState.activeDay!.dayMatchSum + matchStars,
-    customersServed: nextState.activeDay!.customersServed + 1,
-  };
-  nextState.activeDay = activeDay;
-
-  if (recipe && !nextState.discoveredRecipeIds.includes(recipe.id)) {
-    nextState.discoveredRecipeIds = [...nextState.discoveredRecipeIds, recipe.id];
-  }
-
   let prestigeTriggered = ratingResult.prestigeTriggered || nextRating >= 6;
   let softResetTriggered = ratingResult.softResetTriggered || nextRating <= 0;
 
   if (prestigeTriggered) {
-    nextState = applyPrestige({ ...nextState, rating: nextRating >= 6 ? nextRating : 6 });
+    prestigeTriggered = true;
+    softResetTriggered = false;
+  } else if (softResetTriggered) {
+    softResetTriggered = true;
+  }
+
+  return {
+    matchStars,
+    tip,
+    ratingDelta: nextRating - state.rating,
+    nextRating,
+    recipeId: recipe?.id ?? null,
+    recipeName: recipe?.name ?? null,
+    prestigeTriggered,
+    softResetTriggered,
+  };
+}
+
+export function scoreAndPayForCustomer(
+  state: GameState,
+  customer: Customer,
+  ingredientIds: string[],
+  ctx: DomainContext,
+  options?: { masteryBonus?: number },
+): ServeResult {
+  const score = scoreDishForCustomer(state, customer, ingredientIds, ctx, options);
+
+  let nextState = cloneGameState(state);
+  nextState.cash += score.tip;
+  nextState.rating = score.nextRating;
+  nextState.stats.totalCustomersServed += 1;
+  nextState.stats.totalEarnings += score.tip;
+  nextState.composeDraftIngredientIds = undefined;
+
+  const activeDay: ActiveDay = {
+    ...nextState.activeDay!,
+    dayEarnings: nextState.activeDay!.dayEarnings + score.tip,
+    dayMatchSum: nextState.activeDay!.dayMatchSum + score.matchStars,
+    customersServed: nextState.activeDay!.customersServed + 1,
+  };
+  nextState.activeDay = activeDay;
+
+  if (score.recipeId && !nextState.discoveredRecipeIds.includes(score.recipeId)) {
+    nextState.discoveredRecipeIds = [...nextState.discoveredRecipeIds, score.recipeId];
+  }
+
+  let prestigeTriggered = score.prestigeTriggered;
+  let softResetTriggered = score.softResetTriggered;
+
+  if (prestigeTriggered) {
+    nextState = applyPrestige({
+      ...nextState,
+      rating: score.nextRating >= 6 ? score.nextRating : 6,
+    });
     prestigeTriggered = true;
     softResetTriggered = false;
   } else if (softResetTriggered) {
@@ -131,14 +180,31 @@ export function serveCustomer(
 
   return {
     state: nextState,
-    matchStars,
-    tip,
-    ratingDelta: nextRating - state.rating,
-    recipeId: recipe?.id ?? null,
-    recipeName: recipe?.name ?? null,
+    matchStars: score.matchStars,
+    tip: score.tip,
+    ratingDelta: score.ratingDelta,
+    recipeId: score.recipeId,
+    recipeName: score.recipeName,
     prestigeTriggered,
     softResetTriggered,
   };
+}
+
+export function serveCustomer(
+  state: GameState,
+  ingredientIds: string[],
+  ctx: DomainContext,
+): ServeResult {
+  if (!state.activeDay) {
+    throw new Error('No active service day');
+  }
+
+  const customer = state.activeDay.customers[state.activeDay.queueIndex];
+  if (!customer) {
+    throw new Error('No current customer in queue');
+  }
+
+  return scoreAndPayForCustomer(state, customer, ingredientIds, ctx);
 }
 
 export function advanceCustomer(state: GameState): GameState {
@@ -156,7 +222,18 @@ export function advanceCustomer(state: GameState): GameState {
 
 export function isDayComplete(state: GameState): boolean {
   if (!state.activeDay) return false;
-  return state.activeDay.customersServed >= state.activeDay.customers.length;
+  const { floor, customers, customersServed } = state.activeDay;
+  const queueDone = customersServed >= customers.length;
+
+  if (!floor) return queueDone;
+
+  const floorIdle =
+    floor.pool.every((g) => g.stage === 'waiting') &&
+    floor.tables.every((t) => t.state === 'unset') &&
+    floor.tickets.length === 0;
+
+  if (floorIdle) return queueDone;
+  return isFloorDayComplete(floor);
 }
 
 export function closeDay(state: GameState): GameState {
