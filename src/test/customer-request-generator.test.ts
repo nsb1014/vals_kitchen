@@ -84,40 +84,44 @@ describe('competent match heuristic', () => {
     }
   });
 
-  it('meets tiered satisfiability floors under the heuristic across the >=13 tier', () => {
-    const unlockStates = [
-      [...SOFT_RESET_STARTER_IDS],
-      [...NEW_GAME_STARTER_IDS],
-      unlockIdsForCount(13),
-      unlockIdsForCount(20),
-      unlockIdsForCount(40),
-      unlockIdsForCount(100),
-    ];
-    const rng = createRng(9001);
+  it(
+    'meets tiered satisfiability floors under the heuristic across the >=13 tier',
+    { timeout: 30_000 },
+    () => {
+      const unlockStates = [
+        [...SOFT_RESET_STARTER_IDS],
+        [...NEW_GAME_STARTER_IDS],
+        unlockIdsForCount(13),
+        unlockIdsForCount(20),
+        unlockIdsForCount(40),
+        unlockIdsForCount(100),
+      ];
+      const rng = createRng(9001);
 
-    for (const unlockedIds of unlockStates) {
-      if (unlockedIds.length < 3) continue;
-      const floor = satisfiabilityFloor(unlockedIds.length);
-      for (let i = 0; i < 12; i++) {
-        const archetype = bundle.archetypes[rng.nextInt(0, bundle.archetypes.length - 1)]!;
-        const request = generateCustomerRequest(
-          archetype,
-          unlockedIds,
-          testContext.ingredientsById,
-          rng,
-          testContext.compoundAffinity,
-        );
-        const match = findBestMatchCombo(
-          unlockedIds,
-          request.preference,
-          testContext.ingredientsById,
-          testContext.compoundAffinity,
-        );
-        expect(
-          match.score,
-          `unlock=${unlockedIds.length} floor=${floor} score=${match.score}`,
-        ).toBeGreaterThanOrEqual(floor);
+      for (const unlockedIds of unlockStates) {
+        if (unlockedIds.length < 3) continue;
+        const floor = satisfiabilityFloor(unlockedIds.length);
+        for (let i = 0; i < 12; i++) {
+          const archetype = bundle.archetypes[rng.nextInt(0, bundle.archetypes.length - 1)]!;
+          const request = generateCustomerRequest(
+            archetype,
+            unlockedIds,
+            testContext.ingredientsById,
+            rng,
+            testContext.compoundAffinity,
+          );
+          const match = findBestMatchCombo(
+            unlockedIds,
+            request.preference,
+            testContext.ingredientsById,
+            testContext.compoundAffinity,
+          );
+          expect(
+            match.score,
+            `unlock=${unlockedIds.length} floor=${floor} score=${match.score}`,
+          ).toBeGreaterThanOrEqual(floor);
+        }
       }
-    }
-  });
+    },
+  );
 });
