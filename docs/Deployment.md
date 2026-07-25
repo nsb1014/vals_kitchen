@@ -113,7 +113,10 @@ On the **Set up builds and deployments** screen:
 | **Framework preset** | None |
 | **Build command** | `npm run sync:data && npm run build` |
 | **Build output directory** | `dist` |
+| **Deploy command** | *(leave blank)* |
 | **Root directory** | *(leave blank)* |
+
+**Important:** For Git-connected Pages, **Deploy command must be empty**. Cloudflare publishes `dist/` automatically after a successful build. Do **not** set Deploy command to `npx wrangler deploy` — that is for Cloudflare Workers and will fail on this static site with `Missing entry-point to Worker script`. Optional CLI upload uses `npx wrangler pages deploy` instead.
 
 Click **Environment variables** → **Add variable**:
 
@@ -132,7 +135,7 @@ These files are copied into `dist/` at build time and control caching and SPA ro
 - `public/_headers` — cache policy for HTML, service worker, hashed assets, and `/data/*.json`
 - `public/_redirects` — SPA fallback to `index.html` when no static file matches
 
-`wrangler.toml` documents the output directory for optional CLI deploys; Git-connected Pages uses the dashboard settings above.
+`wrangler.toml` is Pages-only metadata (`pages_build_output_dir = "dist"`). It has no Worker entrypoint (`main`) and does not require a Deploy command. Git-connected Pages uses the dashboard Build settings above; leave Deploy command blank.
 
 ### 3.4 Production URL
 
@@ -301,6 +304,26 @@ Then re-run the Pages deploy workflow.
 ---
 
 ## 9. Troubleshooting
+
+### Build succeeds but deploy fails (`wrangler deploy` / missing entry-point)
+
+**Symptoms:** Build log shows `npm run build` finished and `dist/` was produced, then deploy fails with:
+
+```
+Executing user deploy command: npx wrangler deploy
+✘ [ERROR] Missing entry-point to Worker script or to assets directory
+```
+
+**Cause:** A **Deploy command** was set in the Cloudflare dashboard (or copied from a Workers project). `wrangler deploy` targets Cloudflare Workers, not Pages static assets.
+
+**Fix:**
+
+1. Cloudflare dashboard → **Workers & Pages** → your project → **Settings** → **Builds & deployments**
+2. Find **Deploy command** and **clear it completely** (empty field)
+3. Confirm **Build command** is `npm run sync:data && npm run build` and **Build output directory** is `dist`
+4. **Deployments** → open the failed deployment → **Retry deployment** (or push an empty commit to `main`)
+
+Do not set Deploy command to `npx wrangler deploy` or `npx wrangler pages deploy` for Git-connected Pages — automatic asset publish is correct. Use `npx wrangler pages deploy` only for optional manual CLI uploads from your machine.
 
 ### Blank page after deploy
 

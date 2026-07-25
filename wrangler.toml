@@ -1,6 +1,14 @@
-# Cloudflare Pages project metadata (optional local `wrangler pages deploy`).
-# Primary deploy path is Git-connected Pages in the dashboard — see docs/Deployment.md.
+# Cloudflare Pages — static SPA/PWA (no Worker, no Pages Functions).
+#
+# Git-connected deploy (primary): Cloudflare runs the dashboard Build command,
+# then publishes the Build output directory automatically. Leave Deploy command
+# BLANK in the dashboard. Do NOT set Deploy command to `npx wrangler deploy`
+# (Workers) — that fails with "Missing entry-point to Worker script".
+#
+# Optional manual CLI upload: `npx wrangler pages deploy` (not `wrangler deploy`).
 
 name = "restaurant-simulator"
-compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
+
+# Only needed if you add Pages Functions later; harmless for static-only sites.
+compatibility_date = "2024-09-23"
