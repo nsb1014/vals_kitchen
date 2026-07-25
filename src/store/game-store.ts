@@ -50,6 +50,7 @@ interface StoreMeta {
   pendingPlacementItemKey: string | null;
   audioEnabled: boolean;
   musicEnabled: boolean;
+  floorPlayerGrid: { x: number; y: number } | null;
 }
 
 export interface GameStore extends GameState, StoreMeta {
@@ -68,6 +69,8 @@ export interface GameStore extends GameState, StoreMeta {
   exportSaveCodeToClipboard: () => Promise<{ ok: true; code: string } | { ok: false; error: string }>;
   setAudioEnabled: (enabled: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
+  setFloorNavPosition: (pos: { x: number; y: number }) => void;
+  setFloorSelectedTicket: (ticketId: string | null) => void;
   movePlacement: (placementId: string, x: number, y: number) => boolean;
   canPlaceAt: (placement: Placement, excludeId?: string) => boolean;
   autosave: () => Promise<void>;
@@ -92,6 +95,9 @@ const META_KEYS = [
   'exportSaveCodeToClipboard',
   'setAudioEnabled',
   'setMusicEnabled',
+  'setFloorNavPosition',
+  'setFloorSelectedTicket',
+  'floorPlayerGrid',
   'screen',
   'editLayoutMode',
   'hydrated',
@@ -140,6 +146,7 @@ function mergeReducerState(
     pendingPlacementItemKey: current.pendingPlacementItemKey,
     audioEnabled: current.audioEnabled,
     musicEnabled: current.musicEnabled,
+    floorPlayerGrid: current.floorPlayerGrid,
   };
 }
 
@@ -191,6 +198,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   pendingPlacementItemKey: null,
   audioEnabled: true,
   musicEnabled: false,
+  floorPlayerGrid: null,
 
   async hydrate() {
     const persist = await requestPersistentStorage();
@@ -213,6 +221,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       pendingPlacementItemKey: null,
       audioEnabled: true,
       musicEnabled: false,
+      floorPlayerGrid: null,
     });
   },
 
@@ -234,6 +243,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.ceremonyPrestige = null;
         patch.dayStartRating = before.rating;
         patch.editLayoutMode = false;
+        patch.floorPlayerGrid = null;
         break;
       case 'NEXT_CUSTOMER':
         patch.pendingReview = null;
@@ -244,9 +254,13 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.pendingReview = null;
         patch.dayStartRating = null;
         patch.editLayoutMode = true;
+        patch.floorPlayerGrid = null;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
+        break;
+      case 'FLOOR_PLATE':
+        patch.composeDraftIngredientIds = undefined;
         break;
       default:
         break;
@@ -305,6 +319,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         recentReviews: [],
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
+        floorPlayerGrid: null,
       });
       await get().autosave();
       return { ok: true as const };
@@ -337,6 +352,22 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   setMusicEnabled(enabled) {
     set({ musicEnabled: enabled });
+  },
+
+  setFloorNavPosition(pos) {
+    set({ floorPlayerGrid: { ...pos } });
+  },
+
+  setFloorSelectedTicket(ticketId) {
+    const current = get();
+    const floor = current.activeDay?.floor;
+    if (!floor) return;
+    set({
+      activeDay: {
+        ...current.activeDay!,
+        floor: { ...floor, selectedTicketId: ticketId },
+      },
+    });
   },
 
   dismissModifier() {

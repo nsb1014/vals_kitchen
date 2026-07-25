@@ -1,5 +1,9 @@
 import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
 import { useGameStore } from '../../store/game-store.ts';
+import {
+  selectCanTakeFloorOrders,
+  selectSeatedUnorderedCustomerIds,
+} from '../../store/selectors/service-day.ts';
 
 export function mountFloorServiceHud(mount: HTMLElement): () => void {
   const render = () => {
@@ -22,12 +26,14 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     const unsetTables = floor.tables.filter((t) => t.state === 'unset');
     const dirtyTables = floor.tables.filter((t) => t.state === 'dirty');
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
+    const canTakeOrders = selectCanTakeFloorOrders(state);
     const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
+    const selectedTicketId = floor.selectedTicketId;
 
     const ticketStrip = floor.tickets
       .map(
         (t) =>
-          `<span class="floor-ticket" data-testid="floor-ticket">${t.id} (${t.status})</span>`,
+          `<button type="button" class="floor-ticket${selectedTicketId === t.id ? ' selected' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}">${t.id} (${t.status})</button>`,
       )
       .join('');
 
@@ -44,6 +50,11 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
               : ''
           }
           <button type="button" class="service-btn primary" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat next</button>
+          ${
+            canTakeOrders
+              ? `<button type="button" class="service-btn primary" id="floor-take-orders" data-testid="floor-take-orders">Take orders</button>`
+              : ''
+          }
           ${
             dirtyTables.length > 0
               ? `<button type="button" class="service-btn" id="floor-clear-dirty" data-testid="floor-clear-dirty">Clear dirty (${dirtyTables.length})</button>`
@@ -70,6 +81,15 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       void useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
     });
 
+    mount.querySelector('#floor-take-orders')?.addEventListener('click', () => {
+      const customerIds = selectSeatedUnorderedCustomerIds(useGameStore.getState());
+      if (customerIds.length === 0) return;
+      void useGameStore.getState().dispatch({
+        type: 'FLOOR_TAKE_ORDERS',
+        customerIds,
+      });
+    });
+
     mount.querySelector('#floor-clear-dirty')?.addEventListener('click', () => {
       const current = useGameStore.getState().activeDay?.floor;
       if (!current) return;
@@ -82,6 +102,13 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
         }
       }
     });
+
+    mount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const ticketId = button.dataset.ticketId;
+        if (ticketId) useGameStore.getState().setFloorSelectedTicket(ticketId);
+      });
+    });
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -90,7 +117,9 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       state.modifierDismissed !== prev.modifierDismissed ||
       state.daySummary !== prev.daySummary ||
       state.pendingReview !== prev.pendingReview ||
-      state.ceremony !== prev.ceremony
+      state.ceremony !== prev.ceremony ||
+      state.activeDay?.floor?.selectedTicketId !== prev.activeDay?.floor?.selectedTicketId ||
+      state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets
     ) {
       render();
     }

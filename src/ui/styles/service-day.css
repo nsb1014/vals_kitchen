@@ -266,6 +266,15 @@
   border-radius: 6px;
   background: #3a3a55;
   font-size: 13px;
+  border: 1px solid transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.floor-ticket.selected {
+  background: #5a7a4a;
+  border-color: #8bc86a;
 }
 
 .floor-ticket-empty {

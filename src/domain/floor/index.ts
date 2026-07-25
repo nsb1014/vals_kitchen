@@ -26,3 +26,11 @@ export {
   takeOrdersForSeated,
   tickEating,
 } from './sim.ts';
+export {
+  isAdjacent,
+  playerNearGuestSeat,
+  playerNearPlacement,
+  playerNearStation,
+  seatedUnorderedCustomerIds,
+} from './interact.ts';
+export type { GridPoint } from './interact.ts';

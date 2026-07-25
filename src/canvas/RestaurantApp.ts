@@ -2,6 +2,7 @@ import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
+import { isAdjacent, playerNearGuestSeat } from '../domain/floor/interact.ts';
 import { CustomerLayer } from './layers/CustomerLayer.ts';
 import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
@@ -34,6 +35,9 @@ export class RestaurantApp {
   private unsubscribe: (() => void) | null = null;
   private mounted = false;
   private lastFloor: FloorDay | null = null;
+  private eatingTickAccumulatorMs = 0;
+
+  private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
   private constructor(app: Application) {
     this.app = app;
@@ -115,7 +119,18 @@ export class RestaurantApp {
     if (!floor || state.editLayoutMode) return;
 
     this.nav.update(this.app.ticker.deltaMS);
+    useGameStore.getState().setFloorNavPosition(this.nav.position);
     this.actorLayer.sync(floor, this.nav.position);
+
+    if (floor.pool.some((g) => g.stage === 'eating')) {
+      this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
+      while (this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS) {
+        this.eatingTickAccumulatorMs -= RestaurantApp.EATING_TICK_INTERVAL_MS;
+        void useGameStore.getState().dispatch({ type: 'FLOOR_TICK_EATING' });
+      }
+    } else {
+      this.eatingTickAccumulatorMs = 0;
+    }
 
     const width = this.app.screen.width;
     const height = this.app.screen.height;
@@ -135,11 +150,32 @@ export class RestaurantApp {
     const sx = event.clientX - rect.left;
     const sy = event.clientY - rect.top;
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
+    const tapCell = { x: gx, y: gy };
+    const floor = store.activeDay.floor;
+
+    if (floor.carriedTicketId) {
+      const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
+      if (ticket) {
+        const guest = floor.pool.find((g) => g.customer.id === ticket.customerId);
+        if (guest?.seat && isAdjacent(tapCell, guest.seat)) {
+          void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
+          return;
+        }
+        const wrongSeat = floor.pool.some(
+          (g) =>
+            g.customer.id !== ticket.customerId &&
+            g.stage === 'ordered' &&
+            playerNearGuestSeat(tapCell, g),
+        );
+        if (wrongSeat) return;
+      }
+    }
+
     const blocked = blockedCellsFromPlacements(store.placements);
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
-      { x: gx, y: gy },
+      tapCell,
     );
     if (path) {
       this.nav.setPath(path);
@@ -174,6 +210,7 @@ export class RestaurantApp {
         this.nav.setPath([]);
         this.nav.position = { ...floor.playerPosition };
         this.lastFloor = floor;
+        this.eatingTickAccumulatorMs = 0;
       }
       this.actorLayer.sync(floor, this.nav.position);
       if (!state.editLayoutMode) {
