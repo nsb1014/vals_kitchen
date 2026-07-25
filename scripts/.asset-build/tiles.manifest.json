@@ -1,4 +1,8 @@
 {
-  "floor_a": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0032.png",
-  "floor_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0036.png"
+  "floor_a": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_wood_a.png",
+  "floor_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_wood_b.png",
+  "floor_kitchen_a": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_a.png",
+  "floor_kitchen_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_b.png",
+  "wall": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall.png",
+  "door": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door.png"
 }

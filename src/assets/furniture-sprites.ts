@@ -4,6 +4,7 @@ import { colorForItemKey } from '../canvas/item-colors.ts';
 export function spriteNameForItemKey(itemKey: string): string {
   if (itemKey.startsWith('table')) return 'table_2seat';
   if (itemKey.startsWith('decor')) return 'decor_plant';
+  if (itemKey.startsWith('chair')) return 'chair';
   return itemKey;
 }
 

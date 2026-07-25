@@ -1,5 +1,6 @@
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Placement } from '../../domain/state/game-state.ts';
+import type { SeatSlot } from '../../domain/floor/types.ts';
 import { getFurnitureTexture } from '../../assets/loader.ts';
 import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
@@ -17,9 +18,10 @@ interface FurnitureSprite {
 export class FurnitureLayer {
   readonly view = new Container();
   private sprites = new Map<string, FurnitureSprite>();
+  private chairSprites = new Map<string, FurnitureSprite>();
   private pool: FurnitureSprite[] = [];
 
-  sync(placements: Placement[], editMode: boolean): void {
+  sync(placements: Placement[], editMode: boolean, seats: SeatSlot[] = []): void {
     const seen = new Set<string>();
 
     for (const placement of placements) {
@@ -37,6 +39,27 @@ export class FurnitureLayer {
       if (seen.has(id)) continue;
       this.view.removeChild(sprite.root);
       this.sprites.delete(id);
+      this.releaseSprite(sprite);
+    }
+
+    const chairSeen = new Set<string>();
+    if (!editMode) {
+      for (const seat of seats) {
+        const id = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
+        chairSeen.add(id);
+        let sprite = this.chairSprites.get(id);
+        if (!sprite) {
+          sprite = this.acquireSprite();
+          this.chairSprites.set(id, sprite);
+          this.view.addChild(sprite.root);
+        }
+        this.drawChair(sprite, seat);
+      }
+    }
+    for (const [id, sprite] of this.chairSprites) {
+      if (chairSeen.has(id)) continue;
+      this.view.removeChild(sprite.root);
+      this.chairSprites.delete(id);
       this.releaseSprite(sprite);
     }
   }
@@ -85,6 +108,26 @@ export class FurnitureLayer {
     sprite.root.cursor = 'grab';
     sprite.placementId = '';
     this.pool.push(sprite);
+  }
+
+  private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
+    sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
+    const { x, y } = gridToWorld(seat.x, seat.y);
+    sprite.root.position.set(x, y);
+    sprite.body.clear();
+    const texture = getFurnitureTexture('chair');
+    if (texture) {
+      sprite.sprite!.texture = texture;
+      sprite.sprite!.visible = true;
+      sprite.sprite!.width = TILE_PX;
+      sprite.sprite!.height = TILE_PX;
+      sprite.sprite!.position.set(0, 0);
+    } else {
+      sprite.sprite!.visible = false;
+      sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill(0x7a5230);
+    }
+    sprite.root.eventMode = 'none';
+    sprite.root.cursor = 'default';
   }
 
   private drawSprite(sprite: FurnitureSprite, placement: Placement, editMode: boolean): void {

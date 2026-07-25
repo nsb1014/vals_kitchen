@@ -3,6 +3,7 @@ import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import { isAdjacent, playerNearGuestSeat } from '../domain/floor/interact.ts';
+import { seatsFromPlacements } from '../domain/floor/seats.ts';
 import { CustomerLayer } from './layers/CustomerLayer.ts';
 import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
@@ -230,7 +231,11 @@ export class RestaurantApp {
 
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
-    this.furnitureLayer.sync(state.placements, state.editLayoutMode);
+    this.furnitureLayer.sync(
+      state.placements,
+      state.editLayoutMode,
+      state.activeDay?.floor?.seats ?? seatsFromPlacements(state.placements),
+    );
 
     if (floor) {
       this.customerLayer.sync(-1, state.placements, false);
