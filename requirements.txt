@@ -1,0 +1,2 @@
+# Atlas packing (scripts/pack-atlas.py, scripts/build-ingredient-icons.py)
+Pillow>=10.0.0,<13

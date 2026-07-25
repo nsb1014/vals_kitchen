@@ -2,7 +2,7 @@
 
 Step-by-step instructions to publish **Restaurant Simulator** to the web. The game is a static PWA (no server, no login). Primary host: **Cloudflare Pages**. Backup: **GitHub Pages**.
 
-**Prerequisites:** GitHub account, Node.js 20 LTS, npm, and this repo on your machine.
+**Prerequisites:** GitHub account, Node.js 20 LTS, npm, Python 3.12+ with Pillow (`pip install -r requirements.txt`), and this repo on your machine.
 
 ---
 
@@ -28,6 +28,7 @@ Confirm the project builds locally:
 ```bash
 cd "/path/to/Restaurant Simulator"
 npm install
+pip install -r requirements.txt
 npm run sync:data
 npm run validate:content
 npm run typecheck
@@ -157,7 +158,7 @@ https://restaurant-simulator.pages.dev
 2. Confirm the **CI** workflow is green on `main`
 3. Open the **Bundle size gate** step log — you should see measured gzip bytes and `PASS`
 
-CI enforces: content validation, typecheck, lint, fast tests, production build, and initial JS gzip ≤ 190,000 bytes.
+CI enforces: content validation, typecheck, lint, fast tests, CC0 asset rebuild + audit, production build, and initial JS gzip ≤ 190,000 bytes.
 
 ### 4.2 Browser smoke test
 

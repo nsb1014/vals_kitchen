@@ -9,6 +9,8 @@ contents here.
 
 ## Environment
 
+- Asset pipeline Python: `scripts/pack-atlas.py` and `scripts/build-ingredient-icons.py` require
+  Python 3 with Pillow. Install via `pip install -r requirements.txt` (CI uses Python 3.12).
 - As of 2026-07-24: `npm` is not on `PATH` in the agent sandbox. Invoke tools directly
   via `node node_modules/.bin/<tool>`, or find the npm CLI under `.npm-local/`. Scripts
   in `package.json` are still the source of truth for what to run.

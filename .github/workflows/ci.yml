@@ -41,6 +41,14 @@ jobs:
       - name: Test (fast suite)
         run: npm run test
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
       - name: Build CC0 atlases and audio
         run: npm run build:assets
 
