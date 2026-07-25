@@ -1,7 +1,7 @@
 # Product Requirements Document — Restaurant Simulator
 
-**Status:** Design complete, implementation not started  
-**Authoritative inputs:** [RESEARCH.md](./RESEARCH.md), confirmed user rulings (2026-07-24)  
+**Status:** Design complete; Phases 0–7 implemented; **immersive floor service redesign approved 2026-07-25** (see [Progress.md](./Progress.md), [superpowers/specs/2026-07-25-immersive-floor-service-design.md](./superpowers/specs/2026-07-25-immersive-floor-service-design.md))  
+**Authoritative inputs:** [RESEARCH.md](./RESEARCH.md), confirmed user rulings (2026-07-24), immersive floor rulings (2026-07-25)  
 **Formula ownership:** This document is the **single source of truth** for all gameplay numbers, formulas, and product rules. Other docs reference this file rather than restating values.
 
 ---
@@ -26,13 +26,13 @@
 
 ## 1. Vision & Fantasy
 
-The player owns a small restaurant and grows it over hundreds of in-game days into a renowned kitchen. Each **service day** is a discrete, tap-paced session: open the doors, serve customers one at a time from a queue, compose dishes from unlocked ingredients to match stated taste preferences (never dish names), earn money and reviews, then close with a summary.
+The player owns a small restaurant and grows it over hundreds of in-game days into a renowned kitchen. Each **service day** is a discrete session on a **walkable ¾ restaurant floor**: set tables, seat concurrent parties, take orders, cook at kitchen stations, deliver dishes, let guests dine, clear tables, then close when the room is clear. Dishes are composed from unlocked ingredients to match stated taste preferences (never dish names). Earnings and reviews still come from flavor mastery — locomotion and station work are the service skill, not real-time fail timers.
 
-Long-term power comes from **prestige** — reaching a 6-star restaurant rating triggers a prestige that permanently increases all customer payouts while resetting rating to baseline. Failure at 0 stars is a **soft reset**: progress within the current run is lost, but prestige count is forever.
+Long-term power comes from **prestige** — reaching a 6-star restaurant rating triggers a prestige that permanently increases all customer payouts while resetting rating to baseline. Failure at 0 stars is a **soft reset**: run progress is lost, but prestige count and recipe mastery are forever; **placed layout is kept** (2026-07-25).
 
-The fantasy blends **Chef RPG** (day cycle, prestige, recipe discovery, layout building), **Good Pizza, Great Pizza** (preference dialog, not exact orders), and **Papa's** (steep match-to-tip curve) — without real-time pressure, timers, or juggling.
+The fantasy blends **Chef RPG** (walkable floor, day cycle, prestige, recipe discovery, layout building), **Good Pizza, Great Pizza** (preference dialog, not exact orders), and **Papa's** (steep match-to-tip curve) — **without** patience meters, day clocks, or rush-hour fail states.
 
-**Art direction:** Top-down pixel art in the spirit of Stardew Valley / Chef RPG. All art and audio CC0.
+**Art direction:** ¾ top-down pixel art in the spirit of Chef RPG / Stardew. Logical grid underneath; tall furniture, Y-sorted actors. All art and audio CC0.
 
 ---
 
@@ -55,28 +55,30 @@ See [Tech-Stack.md](./Tech-Stack.md) for viewport, touch, and hosting details.
 ### 3.1 Macro Loop (Multi-Day)
 
 ```
-[Build Phase] → [Open Service Day] → [Serve Queue] → [Day Summary] → [Spend/Earn] → repeat
-                      ↑                                                    |
-                      └──────────── prestige / soft reset ←────────────────┘
+[Build Phase] → [Open Day] → [Floor Service] → [Day Summary] → [Spend/Earn] → repeat
+                      ↑                                              |
+                      └──────── prestige / soft reset ←──────────────┘
 ```
 
-1. **Build phase (between days):** Spend money on ingredient unlocks, tables, kitchen equipment, grid expansion. Drag all furniture/equipment on a **grid-locked** layout.
-2. **Open day:** Player taps **Open Restaurant**. Day modifiers (trends, optional constraints) are shown.
-3. **Serve queue:** Customers arrive **one at a time**. Each shows a **chat bubble** with taste preferences. Player selects 3–6 unlocked ingredients, cooks, receives 0–10 star review and payout. Player taps **Next Customer** when ready. **No timers, no impatience decay.**
-4. **Day summary:** Total earnings, average match score, rating change, unlock progress. Auto-save triggers.
+1. **Build phase (between days):** Spend on ingredient unlocks, **room expansions**, tables, kitchen stations. Drag furniture on a grid-locked layout inside dining/kitchen zones.
+2. **Open day:** Player opens the restaurant. Day modifiers shown. Morning **set tables** required before seating.
+3. **Floor service:** Parties wait at the door, seat when a suitable **Ready** table exists, give taste prefs on take-order. Player keeps a **ticket queue (max 4)**, composes at a **kitchen station** (3–6 ingredients), carries **one** plated dish, delivers to the matching guest. **No patience timers.** Guests **eat** (seat occupied, pacing only), leave, table becomes **Dirty** until **cleared**.
+4. **Day end:** When the customer pool is fully served **and** the restaurant is clear (no diners, no dirty tables), day summary + auto-save.
 5. **Meta progression:** Repeat until 6★ (prestige) or 0★ (soft reset).
 
 ### 3.2 Service Day Structure (Start to Finish)
 
 | Step | Player Action | System Behavior |
 |------|---------------|-----------------|
-| 1. Pre-day | Review layout, shop, inspect ingredients | Show cash, rating, prestige, unlocked content |
-| 2. Open | Tap **Open Restaurant** | Roll day seed; apply daily modifier; compute `customers_per_day` |
-| 3. Queue | — | Generate ordered customer list (archetype + preference vector + bubble text) |
-| 4. Per customer | Read bubble → pick 3–6 ingredients → **Serve** | Score dish; update rating; pay tip; show review stars |
-| 5. Advance | Tap **Next Customer** | Dequeue; repeat until empty |
-| 6. Close | Tap **Close Day** (auto when queue empty) | Day summary screen; auto-save |
-| 7. Post-day | Shop, layout edit, recipe book, settings | No time pressure |
+| 1. Pre-day | Layout, shop, inspect, recipe book | Cash, rating, prestige, unlocks |
+| 2. Open | Open Restaurant | Roll day seed; modifier; `customers_per_day`; spawn door line |
+| 3. Morning | Set each table | `Unset` → `Ready`; tutorial on day 1 |
+| 4. Seat / order | Tap-to-move; take party orders | Tickets ≤4; bubbles with prefs |
+| 5. Cook | At station, compose for selected ticket | Equipment gates ingredients |
+| 6. Deliver | Carry dish to matching seat | Score + pay; mastery if recipe matched; start eat dwell |
+| 7. Clear | After leave, clear dirty table | `Dirty` → `Ready`; next party may seat |
+| 8. Close | Auto when floor clear | Day summary; auto-save |
+| 9. Post-day | Shop, expansions, layout, settings | No time pressure |
 
 **Customer count formula** (owned here):
 
@@ -84,7 +86,7 @@ See [Tech-Stack.md](./Tech-Stack.md) for viewport, touch, and hosting details.
 customers_per_day = min(seating_capacity, floor(3 + rating × 0.8 + P × 0.5 + day^0.2))
 ```
 
-Where `rating` = current restaurant stars (0–6), `P` = prestige count, `day` = total service days completed.
+Where `seating_capacity` = count of **chair slots** on placed tables (not abstract only), `rating` = 0–6, `P` = prestige, `day` = completed service days.
 
 | Phase | Typical customers/day |
 |-------|----------------------|
@@ -92,39 +94,55 @@ Where `rating` = current restaurant stars (0–6), `P` = prestige count, `day` =
 | Mid (day 50, 3★, P1) | 7–9 |
 | Late (day 200, 4★, P5) | 10–12 |
 
+### 3.3 Table & ticket rules
+
+| Rule | Value |
+|------|-------|
+| Table states | `Unset` → `Ready` → `Occupied` → `Dirty` → `Ready` |
+| Ticket queue | Max **4** open/plated tickets |
+| Carry | **One** plated dish at a time |
+| Party seating | Whole party on one table’s chairs (2-top / 4-top) |
+| Eat dwell | Pacing/occupancy only — **no** tip penalty |
+| Movement | Tap-to-move pathfinding |
+
 ---
 
 ## 4. Feature List
 
 ### Core
 
-- [ ] Discrete tap-paced service days (no real-time timers)
-- [ ] Customer queue with chat-bubble taste preferences (never dish names)
-- [ ] Dish composition: 3–6 unlocked ingredients per order
+- [ ] Discrete service days **without** patience/fail timers
+- [ ] Walkable ¾ restaurant floor; tap-to-move player
+- [ ] Concurrent seated parties; door waiting line
+- [ ] Table set / clear lifecycle; eat dwell after serve
+- [ ] Ticket queue (max 4); one carried plated dish
+- [ ] Station-based compose (3–6 ingredients); chat-bubble prefs (never dish names)
 - [ ] 0–10 star per-customer review from flavor match
+- [ ] Recipe mastery levels 1–10 with per-serve rating bonus
 - [ ] Restaurant rating 0–6 with payout scaling
-- [ ] Prestige at 6★; soft reset at 0★
-- [ ] Money economy: ingredients, tables, equipment, grid expansion
-- [ ] Grid-locked restaurant layout with drag-and-drop for all furniture/equipment
-- [ ] Ingredient flavor profile inspector (all unlocked ingredients)
+- [ ] Prestige at 6★; soft reset at 0★ (keep layout + mastery + prestige)
+- [ ] Money economy: ingredients, tables, stations, **room expansions**
+- [ ] Grid-locked layout with dining/kitchen zones; chair slots define seating
+- [ ] Ingredient flavor profile inspector
 - [ ] ~100 unlockable ingredients; ~12 kitchen upgrades
 - [ ] ~1000 authored recipes (soft scoring aid + recipe book collection)
 - [ ] Daily modifiers (5–10 rotating)
 - [ ] 20 customer archetypes
 - [ ] Local save + Save Code export/import
+- [ ] Day-1 tutorial through full floor loop
 - [ ] CC0 pixel art and audio throughout
 
 ### UI Screens
 
 | Screen | Purpose |
 |--------|---------|
-| Restaurant (PixiJS) | Layout view, open/close day, queue indicator |
-| Kitchen / Compose | Ingredient picker, dish preview, serve button |
+| Restaurant floor (PixiJS) | Walkable world, layout edit, open/close day |
+| Ticket strip / HUD | Active tickets, carry, cash/rating/day |
+| Station compose sheet | Ingredient picker when at a station |
 | Ingredient Inspector | 16-axis flavor bars per unlocked ingredient |
-| Shop | Buy ingredients, tables, equipment, grid tiles |
-| Upgrades | 12 kitchen equipment upgrades |
+| Shop | Ingredients, tables, stations, expansions |
 | Rating | Current stars, recent reviews, prestige count |
-| Recipe Book | Discovered named recipes |
+| Recipe Book | Discovered recipes **with mastery level** |
 | Day Summary | Earnings, matches, rating delta |
 | Settings | Save Code backup/restore, audio, attribution |
 
@@ -188,11 +206,19 @@ Per-customer review is **0–10 stars** (1 decimal display):
 2. Compare to customer preference vector → weighted satisfaction.
 3. Add 15% weight from compound-affinity bonus (Ahn-style pairing).
 4. **Named recipe bonus:** if ingredient set matches an authored recipe (order-independent), add **+0.75 stars** (cap 10) and display recipe name on review card.
+5. **Recipe mastery bonus (2026-07-25):** if matched, also add `mastery_level × 0.05` stars (**only on that serve** of that recipe). Cap still 10.
 
 ```
-match_stars = clamp(10 × (0.85 × weighted_sat + 0.15 × affinity_bonus) + recipe_bonus, 0, 10)
+match_stars = clamp(
+  10 × (0.85 × weighted_sat + 0.15 × affinity_bonus)
+  + recipe_bonus
+  + mastery_bonus,
+  0, 10)
 recipe_bonus = 0.75 if matched_recipe else 0
+mastery_bonus = mastery_level × 0.05 if matched_recipe else 0
 ```
+
+**Mastery progression:** Level 1 on first matched serve. Serves to reach next level: 2 for L2, 3 for L3, … 10 for L10. Each unlocked dish in the recipe book shows its level. Unmatched freestyle dishes gain no mastery.
 
 **Weighted satisfaction (2026-07-25):** Only primary and avoid axes count toward `weighted_sat`. Unmentioned axes no longer contribute a flat 0.7 each — that old rule compressed early reviews into a ~6–7 band regardless of match quality. Algorithm detail in [Backend-Guidelines.md](./Backend-Guidelines.md).
 
@@ -393,15 +419,16 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 - All **money**
 - All **ingredients** except **5 starters:** flour, salt, butter, onion, chicken
 - All **purchased kitchen equipment** except starting `prep_station` (must repurchase gates)
-- All **furniture, equipment placement, and layout**
 - Current **restaurant rating** (reset to 3.0)
-- Grid shrinks to **4×4**; **2 tables** only
-- **In-progress service day** (`activeDay` cleared on reset)
+- **Purchased expansions beyond starter room** reset to starter map bounds (furniture on kept tiles stays; excess placements clamped/removed per implementation)
+- **In-progress service day** cleared on reset
 
 ### 8.3 Kept (Permanent)
 
 - **Prestige count P** (irreversible, permanent)
-- **Recipe book discoveries** — all `discoveredRecipeIds` persist across soft reset; named-dish bonus remains available whenever the player cooks that combo again
+- **Recipe book discoveries** — all `discoveredRecipeIds`
+- **Recipe mastery** levels/progress per recipe (2026-07-25)
+- **Placed layout** on the starter (and still-owned expansion) footprint — soft reset does **not** wipe furniture for busywork (2026-07-25)
 - Save Code compatibility
 
 ### 8.4 Restart State
@@ -410,12 +437,12 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 |-------|-------|
 | Cash | $100 |
 | Rating | 3.0 stars |
-| Equipment | `prep_station` owned; all other equipment gates lost |
+| Equipment | `prep_station` owned; other gates lost |
 | Ingredients | 5 starters |
-| Grid | 4×4 |
-| Tables | 2 |
+| Grid / room | Starter full-room map (see immersive floor starter); expansions re-purchased |
+| Tables | Kept if still on valid tiles; otherwise restored to starter two 2-tops |
 | Prestige | unchanged |
-| Recipe book | unchanged (discoveries kept) |
+| Recipe book + mastery | unchanged |
 
 ---
 
@@ -423,26 +450,28 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 
 ### 9.1 Grid System
 
-- **Tile size:** 16×16 px art, **2× integer scale** → 32 CSS px per tile on canvas.
-- **Starting grid:** 4×4 tiles; expandable via purchases (up to ~12×12 practical max on iPhone 17 — see Tech-Stack).
-- **Placement:** Grid-locked (snapped); every furniture/equipment piece occupies integer tile footprint.
-- **Drag-and-drop:** All placed items movable; invalid placements rejected (overlap, out of bounds, blocked zones).
+- **Tile size:** 16×16 px art, **2× integer scale** → 32 CSS px per tile (logical). Render is **¾** with Y-sort.
+- **Starting map:** Full readable dining + kitchen + door (not a tiny 4×4 stub). Expandable via **dining/kitchen expansion** purchases.
+- **Zones:** Tables only on dining tiles; stations only on kitchen tiles.
+- **Placement:** Grid-locked; furniture footprints may be multi-tile; chairs are slot anchors on tables.
+- **Drag-and-drop:** Between days; invalid placements rejected (overlap, out of bounds, wrong zone).
 
 ### 9.2 Placeable Categories
 
 | Category | Examples | Gameplay Effect |
 |----------|----------|-----------------|
-| Tables | 2-seat, 4-seat | +seating_capacity |
-| Kitchen equipment | Stove, oven, prep counter | Visual + upgrade synergy |
-| Decor | Plants, rugs, lighting | **Cosmetic only** — no gameplay effect in v1 |
-| Walls / floor | Tile paint | Cosmetic |
+| Tables | 2-seat, 4-seat (+ chairs) | Chair slots = seating capacity |
+| Kitchen stations | Prep, grill, oven, … | Ingredient gates + compose interact |
+| Room expansions | Dining wing, kitchen wing | Placable area + nav mesh |
+| Decor | Plants, rugs, lighting | **Cosmetic only** |
+| Walls / floor | Tile variants | Cosmetic / blocking |
 
 ### 9.3 Build Phase UX
 
 - Toggle **Edit Layout** between days.
 - Ghost preview on drag; green/red validity tint.
-- **Undo** last placement move (single step).
 - Shop purchases appear in inventory palette before placement.
+- Progression pairs **expansions** with furniture so the room grows visually.
 
 ---
 
@@ -523,7 +552,7 @@ Examples: "Trending: smoky +10% tips on SM-heavy dishes", "Food critic visit —
 ### 11.1 Local Save
 
 - Progress saved **automatically** after each day summary to browser IndexedDB.
-- **Mid-day interruption:** If the player reloads during an open service day, **`activeDay` is serialized** and the game **resumes exactly** where they left off — same queue index, current customer, and any partially selected compose ingredients.
+- **Mid-day interruption:** If the player reloads during an open service day, floor state is serialized and resumed: guest stages, seat assignments, table states, ticket queue, carried dish, player position, selected ticket compose draft. (Legacy serial `queueIndex` is superseded.)
 - **No login.** Same browser + same origin restores progress on reload.
 - First launch calls `navigator.storage.persist()` to request durable storage (see [Tech-Stack.md](./Tech-Stack.md)).
 
@@ -557,21 +586,21 @@ Technical persistence architecture: [Backend-Guidelines.md](./Backend-Guidelines
 
 | Non-Goal | Rationale |
 |----------|-----------|
-| Real-time service pressure / timers | Rejected ruling; tap-paced only |
-| Customer impatience / queue decay | Same |
+| Real-time fail timers / patience meters / rage-quit clocks | Rejected; concurrency uses seat occupancy + set/clear, not fail clocks |
 | Idle or offline earnings | Rejected ruling |
 | Multiplayer / social / login | Out of scope; local save only |
 | Server backend / accounts | Free static hosting; no ops cost |
 | External recipe dataset runtime dependency | Authored corpus; see §13 |
 | Non-CC0 assets | Legal requirement |
-| Isometric or flat vector art | Rejected art ruling |
-| Incremental vertical slice delivery | One full build per ruling |
-| Ingredient per-dish consumption / stock depletion | Simplifies loop; unlock-gated depth sufficient |
+| True isometric diamond projection | Use **¾** orthographic depth instead (2026-07-25) |
+| Cooking mini-games | Compose UI at stations; walking is the skill |
 | Staff automation / NPC chefs | Future scope; not v1 |
 | Multiple restaurant locations | Future scope; not v1 |
 | Decor gameplay bonuses | Ruling 7 — cosmetic self-expression only in v1 |
 | Equipment passive stat buffs | Ruling 10 — equipment gates ingredients only |
-| Abandoning mid-day on reload | Ruling 8 — must resume `activeDay` |
+| Abandoning mid-day on reload | Must resume floor day state |
+
+**Explicitly in scope (2026-07-25):** concurrent floor simulation, pathfinding, party seating, ticket queue, table set/clear, eat dwell, room expansions, recipe mastery.
 
 ---
 
@@ -579,32 +608,33 @@ Technical persistence architecture: [Backend-Guidelines.md](./Backend-Guidelines
 
 All decisions below are **final**. Do not reopen without explicit user direction.
 
-### 13.1 Pacing — Discrete Tap-Paced Service Days
+### 13.1 Pacing — Concurrent Floor Service Without Fail Timers
 
-**Decided:** Player opens restaurant; customers arrive one at a time; player cooks each order; day closes with summary. No real-time timers, no impatience, no Overcooked-style juggling. Depth from taste-matching, daily modifiers, layout tradeoffs, prestige acceleration.
+**Decided (supersedes 2026-07-24 one-at-a-time queue, 2026-07-25):** Player walks a ¾ restaurant floor. Multiple parties seat concurrently. Orders via ticket queue (max 4); cook at stations; deliver; guests eat then leave; set/clear tables. Day ends when the restaurant is clear. **No** patience meters, day-clock fails, or rush mode.
 
 **Rejected:**
-- Real-time pressure / rush-hour mode
-- Hybrid rush-hour optional mode
+- Serial one-at-a-time queue UI as the primary fantasy
+- Real-time pressure / rush-hour fail mode
 - Idle / offline earnings
+- Cooking mini-games as the skill core
 
-**Rationale:** Aligns with 200–400h mastery curve without dexterity gate; mobile-friendly; Chef RPG day structure minus minigame stress.
+**Rationale:** Chef RPG–like immersion with the existing flavor-scoring brain; mobile-friendly tap-to-move; depth from taste-matching + floor choreography.
 
-### 13.2 Art — Top-Down Pixel Art
+### 13.2 Art — ¾ Pixel Art
 
-**Decided:** Stardew Valley / Chef RPG-like top-down pixel art. 16×16 tiles, integer scaling.
+**Decided (2026-07-25):** Chef RPG–like **¾** top-down pixel art with Y-sort and wall height. Logical 16×16 grid at 2× scale. Kenney CC0 + project-generated CC0 gaps.
 
-**Rejected:** Flat vector UI aesthetic; isometric projection.
+**Rejected:** Flat vector UI aesthetic; pure diamond isometric; flat orthographic-only restaurant as the long-term look.
 
-**Rationale:** Matches reference fantasy; PixiJS crisp pixel rendering; Kenney CC0 asset ecosystem.
+**Rationale:** Matches reference fantasy; PixiJS crisp pixels; honest CC0 pipeline.
 
 ### 13.3 Failure — Soft Reset
 
-**Decided:** At 0★, lose money, ingredients (except 5 starters), layout; **keep prestige count**; restart at 3★, $100, 4×4 grid, 2 tables.
+**Decided (updated 2026-07-25):** At 0★, lose money and most ingredients/equipment unlocks; **keep prestige, recipe discoveries, recipe mastery, and placed layout** (clamped to owned room). Restart rating 3★, soft $100, starter loadout.
 
-**Rejected:** Full wipe including prestiges; keeping all ingredients on failure.
+**Rejected:** Full wipe including prestiges; wiping layout for busywork; keeping all ingredients on failure.
 
-**Rationale:** Recettear-style retained meta-progress; prestige is the permanent power axis.
+**Rationale:** Recettear-style retained meta-progress; layout/mastery are identity, not expendable grind.
 
 ### 13.4 Delivery — One Full Build
 

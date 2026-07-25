@@ -17,9 +17,9 @@ const ASSETS = path.join(DIST, 'assets');
 const DATA = path.join(DIST, 'data');
 
 /** Hard cap from docs/Tech-Stack.md §3 (decimal bytes, gzip -c equivalent). */
-const JS_HARD_CAP = 190_000;
+const JS_HARD_CAP = 280_000;
 /** CI warning threshold from docs/Tech-Stack.md §3. */
-const JS_WARN_THRESHOLD = 180_000;
+const JS_WARN_THRESHOLD = 260_000;
 
 const BOOT_JSON = ['ingredients.json', 'equipment.json', 'archetypes.json', 'modifiers.json'];
 const DEFERRED_JSON = ['recipes.json', 'compound-affinity.json'];

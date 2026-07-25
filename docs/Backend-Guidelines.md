@@ -34,7 +34,8 @@
 │  ├── flavor/     scoring, aggregation, phrases         │
 │  ├── economy/    costs, tips, purchases                  │
 │  ├── rating/     star movement, prestige triggers      │
-│  ├── day/        customer gen, queue, modifiers        │
+│  ├── day/        customer gen, modifiers, score kernels│
+│  ├── floor/      seats, tickets, table lifecycle, nav  │
 │  └── rng/        seeded PRNG                             │
 ├─────────────────────────────────────────────────────────┤
 │  PERSISTENCE (repository over IndexedDB)                │

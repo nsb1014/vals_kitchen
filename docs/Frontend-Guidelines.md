@@ -32,18 +32,20 @@ src/
 │   └── screenRouter.ts     # DOM screen visibility
 ├── canvas/                 # PixiJS-only code
 │   ├── RestaurantApp.ts    # Pixi Application lifecycle
-│   ├── layers/             # Background, grid, furniture, entities
-│   ├── systems/            # GridRenderer, DragPlacement, Camera
+│   ├── world/              # Map, actors, nav, camera follow
+│   ├── layers/             # Legacy layers during migration; prefer world/
+│   ├── systems/            # DragPlacement, Camera
 │   └── input/              # Pointer → grid mapping
 ├── ui/                     # DOM overlay screens
-│   ├── components/         # Buttons, modals, flavor bars
-│   ├── screens/            # Kitchen, Shop, Settings, etc.
-│   └── styles/             # CSS Modules (*.module.css)
+│   ├── components/         # HUD, compose sheet, modals
+│   ├── screens/            # Shop, Settings, Recipes, etc.
+│   └── styles/
 ├── domain/                 # Pure game logic (NO Pixi/DOM imports)
+│   ├── floor/              # Seats, tickets, table lifecycle, pathfinding, mastery
 │   ├── flavor/
 │   ├── economy/
 │   ├── rating/
-│   ├── day/
+│   ├── day/                # Day generation + score kernels
 │   └── rng/
 ├── data/                   # Generated JSON: ingredients, recipes, archetypes
 ├── persistence/            # SaveRepository, migrations, saveCode
@@ -62,39 +64,39 @@ src/
 
 | Concern | Rationale |
 |---------|-----------|
-| Restaurant floor grid rendering | Pixel art tiles, 60fps pan/zoom |
-| Furniture/equipment sprites | Drag with snap preview |
-| Customer queue avatars (optional) | Animated sprites in world space |
-| Placement ghost / validity tint | GPU-friendly Graphics |
-| World-space particle effects (serve flash) | Optional polish |
+| ¾ restaurant map (floor, walls, furniture) | Y-sorted pixel world |
+| Player + customer actors | Walk / sit / carry / eat animations |
+| Tap-to-move path following | NavController consumes domain paths |
+| Layout edit ghosts / validity tint | GPU-friendly Graphics |
+| Camera follow + clamp | Immersive floor, growing maps |
 
 ### DOM Overlay Owns
 
 | Concern | Rationale |
 |---------|-----------|
-| All text (chat bubbles may be DOM for i18n/wrap) | Crisp text, accessibility |
-| Kitchen ingredient picker | Scroll lists, 44px touch targets |
-| Flavor profile inspector (bars, labels) | HTML/CSS layout |
-| Shop, upgrades, rating, recipe book | Form-like UI |
-| Modals, settings, Save Code input | Native input elements |
-| Day summary, prestige ceremony | Rich typography |
+| All text (chat bubbles may be DOM) | Crisp text, accessibility |
+| Station compose sheet | Scroll lists, 44px touch targets |
+| Ticket strip / thin service HUD | Overlay chrome during service |
+| Flavor inspector, shop, recipes, rating | Form-like UI |
+| Modals, settings, Save Code | Native inputs |
+| Day summary, prestige ceremony, tutorial prompts | Rich typography |
 
 ### Chat Bubble Exception
 
-Customer preference bubbles may render as **DOM elements positioned over canvas** (recommended for text wrapping and Dynamic Island safe area) OR as PixiJS BitmapText for pure canvas — default **DOM overlay anchored to customer sprite screen position**.
+Customer preference bubbles may render as **DOM elements positioned over canvas** (recommended) OR PixiJS BitmapText — default **DOM overlay anchored to the relevant customer seat screen position**.
 
 ### Communication Pattern
 
 ```
 User tap (DOM or Pixi)
   → store action (Zustand)
-    → domain reducer (pure)
+    → domain floor sim + score kernels (pure)
       → store patch
         → DOM components re-render (selectors)
-        → canvas scene sync (subscribe: layout, queue index only)
+        → canvas scene sync (floor day, player, actors, layout)
 ```
 
-Canvas **never** computes flavor scores or economy — it reflects store state.
+Canvas **never** computes flavor scores or economy — it reflects store state. Pathfinding **results** may be computed in domain; canvas only animates along waypoints.
 
 ---
 
@@ -104,50 +106,36 @@ Canvas **never** computes flavor scores or economy — it reflects store state.
 
 ```typescript
 interface GameStore {
-  // Meta
   day: number;
   cash: number;
   prestige: number;
   rating: number;
-
-  // Progress
   unlockedIngredientIds: string[];
-  purchasedUpgradeIds: string[];
+  purchasedEquipmentIds: string[];
   discoveredRecipeIds: string[];
+  recipeMastery: Record<string, { level: number; progress: number }>;
   gridSize: { w: number; h: number };
   seatingCapacity: number;
-
-  // Layout
-  placements: Placement[];  // { id, itemKey, x, y, rotation }
-
-  // Active day (null between days)
-  activeDay: ActiveDay | null;
-
-  // UI chrome (transient)
+  placements: Placement[];
+  floorDay: FloorDay | null; // concurrent floor service; null between days
   screen: ScreenId;
   editLayoutMode: boolean;
 }
 
-interface ActiveDay {
-  seed: number;
-  modifierId: string;
-  customers: Customer[];
-  queueIndex: number;
-  dayEarnings: number;
-}
+// FloorDay: guests, tables, tickets, carry, tutorial — see domain/floor/types.ts
 ```
 
 ### What Belongs Where
 
 | State | Location |
 |-------|----------|
-| Cash, rating, unlocks, layout | Zustand `GameStore` |
-| Active day queue, current customer | Zustand `GameStore.activeDay` |
-| Selected ingredients for current dish | Zustand slice or `ComposeStore` |
-| Modal open, scroll position, hover | Component-local |
-| Drag ghost position (during drag) | PixiJS scene local; commit to store on drop |
+| Cash, rating, unlocks, layout, mastery | Zustand `GameStore` |
+| Active floor day (guests, tickets, tables) | Zustand `GameStore.floorDay` |
+| Selected ticket compose draft | Zustand / floor day field |
+| Modal open, scroll position | Component-local |
+| Drag ghost / player tween | PixiJS scene local; goals from store |
 | Flavor vectors, recipes, costs | Static `data/` — not store |
-| Derived: tip preview, match preview | `useMemo` selectors calling domain functions |
+| Derived: tip preview, match preview | Selectors calling domain functions |
 
 ### Selector Pattern
 
@@ -175,38 +163,33 @@ serveDish: (ingredientIds: string[]) => {
 
 ## 4. Game Loop & Update/Render Separation
 
-This is a **tap-paced** game — no continuous simulation required. Still use a structured loop for canvas polish.
+Service days use a **ticker-driven floor** (movement, eat dwell, animations). Scoring remains event-driven on deliver.
 
 ### Modes
 
 | Mode | Loop |
 |------|------|
-| Between days / menus | PixiJS ticker paused or minimal (idle animation only) |
+| Between days / menus | PixiJS ticker paused or minimal (idle bob) |
 | Layout edit | Ticker on: drag ghost, snap feedback |
-| Service day | Event-driven updates; ticker for customer idle bob |
+| Service day | Ticker on: nav, actor anims; throttled eat-dwell domain steps |
 
 ### Update/Render Split
 
 ```typescript
-// canvas/RestaurantApp.ts
 app.ticker.add(() => {
-  scene.update(app.ticker.deltaMS);  // animations only
-  // NO domain logic here
+  scene.update(app.ticker.deltaMS); // movement + anims only
 });
 
 function syncFromStore(state: GameStore) {
-  gridLayer.sync(state.placements, state.gridSize);
-  entityLayer.syncQueue(state.activeDay?.queueIndex ?? -1);
+  scene.syncFloor(state.floorDay, state.placements);
 }
 ```
 
-Store subscription triggers `syncFromStore` — not every ticker frame.
+Do **not** put flavor/economy math in the ticker.
 
 ### Domain Stepping
 
-Domain advances **only on discrete events:**
-
-- `openDay()`, `serveDish()`, `nextCustomer()`, `closeDay()`, `purchase()`, `placeItem()`
+Discrete events: `openDay`, set/clear table, take orders, plate/deliver ticket, purchase, placeItem. Eat dwell may advance via a throttled pure `tickEating` called from a ticker bridge.
 
 ---
 
@@ -216,11 +199,12 @@ Domain advances **only on discrete events:**
 
 | Gesture | Context | Action |
 |---------|---------|--------|
-| Tap | Tile / furniture | Select; open context if edit mode |
+| Tap | Floor tile | Player pathfind to tile |
+| Tap | Table / station / seat | Path to interact (set/clear/order/compose/deliver) |
 | Drag | Furniture in edit mode | Move with grid snap |
 | Tap | Ingredient chip | Toggle selection (max 6) |
-| Tap | Serve button | Submit dish |
-| Tap | Next Customer | Advance queue |
+| Tap | Ticket strip | Select ticket / camera hint |
+| Tap | Serve / plate on compose sheet | Plate dish for carry |
 | Long-press | Ingredient | Open flavor inspector popover |
 
 ### Implementation
@@ -317,7 +301,7 @@ Ingredient icons are purpose-made 32×32 pixel art (generated sheets → `script
 
 ## 8. Mobile Performance Rules
 
-**Target:** 60fps on iPhone 17 Safari; ≤ 190 KB gzip initial JS per [Tech-Stack.md](./Tech-Stack.md).
+**Target:** 60fps on iPhone 17 Safari; initial JS gzip ≤ Tech-Stack §3 hard cap (280k pending post-slice measure).
 
 ### Draw Calls & Textures
 
@@ -333,7 +317,7 @@ Ingredient icons are purpose-made 32×32 pixel art (generated sheets → `script
 
 ### Object Pooling
 
-- Pool customer sprite instances (max queue size ≤ 15).
+- Pool customer sprite instances (max concurrent seated + waiting ≤ seating capacity + door line buffer).
 - Pool `Graphics` ghost objects for drag preview.
 - Pool chat bubble DOM nodes if using DOM pool pattern.
 
