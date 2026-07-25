@@ -1,8 +1,8 @@
 import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
+  selectAdjacentSeatedCustomerIds,
   selectCanTakeFloorOrders,
-  selectSeatedUnorderedCustomerIds,
 } from '../../store/selectors/service-day.ts';
 
 export function mountFloorServiceHud(mount: HTMLElement): () => void {
@@ -31,10 +31,11 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     const selectedTicketId = floor.selectedTicketId;
 
     const ticketStrip = floor.tickets
-      .map(
-        (t) =>
-          `<button type="button" class="floor-ticket${selectedTicketId === t.id ? ' selected' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}">${t.id} (${t.status})</button>`,
-      )
+      .map((t) => {
+        const isOpen = t.status === 'open';
+        const selected = isOpen && selectedTicketId === t.id;
+        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'}>${t.id} (${t.status})</button>`;
+      })
       .join('');
 
     mount.innerHTML = `
@@ -82,7 +83,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     });
 
     mount.querySelector('#floor-take-orders')?.addEventListener('click', () => {
-      const customerIds = selectSeatedUnorderedCustomerIds(useGameStore.getState());
+      const customerIds = selectAdjacentSeatedCustomerIds(useGameStore.getState());
       if (customerIds.length === 0) return;
       void useGameStore.getState().dispatch({
         type: 'FLOOR_TAKE_ORDERS',
@@ -106,7 +107,13 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     mount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
       button.addEventListener('click', () => {
         const ticketId = button.dataset.ticketId;
-        if (ticketId) useGameStore.getState().setFloorSelectedTicket(ticketId);
+        if (!ticketId) return;
+        const ticket = useGameStore.getState().activeDay?.floor?.tickets.find((t) => t.id === ticketId);
+        if (ticket?.status === 'open') {
+          useGameStore.getState().setFloorSelectedTicket(ticketId);
+        } else {
+          useGameStore.getState().setFloorSelectedTicket(null);
+        }
       });
     });
   };
@@ -114,6 +121,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
   const unsubscribe = useGameStore.subscribe((state, prev) => {
     if (
       state.activeDay?.floor !== prev.activeDay?.floor ||
+      state.floorPlayerGrid !== prev.floorPlayerGrid ||
       state.modifierDismissed !== prev.modifierDismissed ||
       state.daySummary !== prev.daySummary ||
       state.pendingReview !== prev.pendingReview ||

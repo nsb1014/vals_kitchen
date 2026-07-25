@@ -71,6 +71,7 @@ export function deliverAndScore(
     ...result.state.activeDay.floor,
     tickets: deliverTicket(result.state.activeDay.floor.tickets, ticketId),
     carriedTicketId: null as string | null,
+    selectedTicketId: null as string | null,
   };
   floor = beginEating(floor, guest.customer.id, eatTicks);
 

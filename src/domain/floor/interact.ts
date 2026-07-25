@@ -29,7 +29,7 @@ export function playerNearPlacement(
 const STATION_ITEM_KEYS = new Set(['prep_station']);
 
 function isStationPlacement(placement: Placement): boolean {
-  return STATION_ITEM_KEYS.has(placement.itemKey) || !placement.itemKey.startsWith('table');
+  return STATION_ITEM_KEYS.has(placement.itemKey);
 }
 
 export function playerNearStation(player: GridPoint, placements: Placement[]): boolean {
@@ -45,4 +45,10 @@ export function playerNearGuestSeat(player: GridPoint, guest: FloorGuest): boole
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {
   return floor.pool.filter((g) => g.stage === 'seated').map((g) => g.customer.id);
+}
+
+export function adjacentSeatedCustomerIds(floor: FloorDay, player: GridPoint): string[] {
+  return floor.pool
+    .filter((g) => g.stage === 'seated' && playerNearGuestSeat(player, g))
+    .map((g) => g.customer.id);
 }

@@ -355,7 +355,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   setFloorNavPosition(pos) {
-    set({ floorPlayerGrid: { ...pos } });
+    const prev = get().floorPlayerGrid;
+    if (prev?.x === pos.x && prev?.y === pos.y) return;
+    set({ floorPlayerGrid: { x: pos.x, y: pos.y } });
   },
 
   setFloorSelectedTicket(ticketId) {

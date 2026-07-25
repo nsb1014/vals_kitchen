@@ -27,6 +27,7 @@ export {
   tickEating,
 } from './sim.ts';
 export {
+  adjacentSeatedCustomerIds,
   isAdjacent,
   playerNearGuestSeat,
   playerNearPlacement,

@@ -217,6 +217,7 @@ export function gameReducer(
           ...floor,
           tickets: plated.tickets,
           carriedTicketId: plated.carriedTicketId,
+          selectedTicketId: null,
         }),
         events,
       };

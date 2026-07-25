@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adjacentSeatedCustomerIds,
   isAdjacent,
   playerNearGuestSeat,
   playerNearPlacement,
@@ -98,6 +99,34 @@ describe('floor interact helpers', () => {
         ),
       };
       expect(seatedUnorderedCustomerIds(withSeated)).toEqual(['c1']);
+    });
+  });
+
+  describe('adjacentSeatedCustomerIds', () => {
+    it('returns seated guest ids only when player is Chebyshev-adjacent to their seat', () => {
+      const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
+      const tables = tablesFromPlacements(placements).map(setTable);
+      const seats = seatsFromPlacements(placements);
+      const day = createFloorDayFromCustomers(
+        [customer('c1'), customer('c2')],
+        tables,
+        seats,
+      );
+      const withSeated: typeof day = {
+        ...day,
+        pool: day.pool.map((g, i) =>
+          i === 0
+            ? { ...g, stage: 'seated' as const, seat: seats[0] }
+            : i === 1
+              ? { ...g, stage: 'seated' as const, seat: seats[1] }
+              : g,
+        ),
+      };
+
+      expect(adjacentSeatedCustomerIds(withSeated, { x: seats[0]!.x - 1, y: seats[0]!.y })).toEqual([
+        'c1',
+      ]);
+      expect(adjacentSeatedCustomerIds(withSeated, { x: 10, y: 10 })).toEqual([]);
     });
   });
 });
