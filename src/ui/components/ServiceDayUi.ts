@@ -179,8 +179,8 @@ export function mountServiceDayUi(
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
-            <h2 class="service-title">Ready to serve?</h2>
-            <p class="service-subtitle">Open the restaurant to start today's queue.</p>
+            <h2 class="service-title">Open for service?</h2>
+            <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="open-day-btn" data-testid="open-day-btn">Open Restaurant</button>
             </div>

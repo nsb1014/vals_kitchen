@@ -79,26 +79,33 @@ const PACKS: Record<string, PackMeta> = {
   },
 };
 
+const GENERATED_RESTAURANT = path.join(ROOT, 'vendor', 'generated', 'restaurant-tiles');
+
 const TILE_SPRITES: Record<string, string> = {
-  floor_a: 'tile_0032.png',
-  floor_b: 'tile_0036.png',
+  floor_a: 'floor_wood_a.png',
+  floor_b: 'floor_wood_b.png',
+  floor_kitchen_a: 'floor_kitchen_a.png',
+  floor_kitchen_b: 'floor_kitchen_b.png',
+  wall: 'wall.png',
+  door: 'door.png',
 };
 
 const FURNITURE_SPRITES: Record<string, string> = {
-  prep_station: 'tile_0080.png',
-  grill: 'tile_0096.png',
-  oven: 'tile_0112.png',
-  fryer: 'tile_0128.png',
-  stockpot: 'tile_0144.png',
-  cold_station: 'tile_0160.png',
-  pastry_bench: 'tile_0176.png',
-  smoker: 'tile_0192.png',
-  wok: 'tile_0208.png',
-  fermentation_crock: 'tile_0224.png',
-  barista_station: 'tile_0240.png',
-  spice_rack: 'tile_0256.png',
-  table_2seat: 'tile_0100.png',
-  decor_plant: 'tile_0105.png',
+  prep_station: 'prep_station.png',
+  grill: 'grill.png',
+  oven: 'oven.png',
+  fryer: 'fryer.png',
+  stockpot: 'stockpot.png',
+  cold_station: 'cold_station.png',
+  pastry_bench: 'pastry_bench.png',
+  smoker: 'smoker.png',
+  wok: 'wok.png',
+  fermentation_crock: 'fermentation_crock.png',
+  barista_station: 'barista_station.png',
+  spice_rack: 'spice_rack.png',
+  table_2seat: 'table_2seat.png',
+  chair: 'chair.png',
+  decor_plant: 'decor_plant.png',
 };
 
 const CHARACTER_SPRITES = {
@@ -131,8 +138,6 @@ function vendorPath(rel: string): string {
 
 function assertVendor(): void {
   const required = [
-    vendorPath('rpg-urban-pack/Tiles/tile_0032.png'),
-    vendorPath('rpg-urban-pack/Tiles/tile_0036.png'),
     ...Object.values(CHARACTER_SPRITES).map((rel) => vendorPath(`tiny-dungeon/${rel}`)),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
@@ -145,6 +150,12 @@ function assertVendor(): void {
       process.exit(1);
     }
   }
+}
+
+function runRestaurantTileBuilder(): void {
+  execFileSync('python3', [path.join(__dirname, 'build-restaurant-tiles.py')], {
+    stdio: 'inherit',
+  });
 }
 
 function writeManifest(entries: Record<string, string>, file: string): void {
@@ -186,24 +197,26 @@ function buildCredits(shippedFiles: string[]): void {
   for (const [sprite, file] of Object.entries(TILE_SPRITES)) {
     add({
       path: `atlases/tiles.json#${sprite}`,
-      pack: PACKS.rpgUrban.pack,
-      author: PACKS.rpgUrban.author,
-      sourceUrl: PACKS.rpgUrban.sourceUrl,
+      pack: 'Project-generated restaurant tiles (CC0)',
+      author: "Val's Kitchen project",
+      sourceUrl: 'vendor/generated/restaurant-tiles/',
       license: 'CC0',
-      usedIn: ['canvas:GridLayer floor tiles'],
+      usedIn: ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
+      approximationNote: 'Generated 16×16 indoor restaurant tiles for the immersive floor slice.',
     });
   }
 
   for (const [itemKey, file] of Object.entries(FURNITURE_SPRITES)) {
     add({
       path: `atlases/furniture.json#${itemKey}`,
-      pack: PACKS.rpgUrban.pack,
-      author: PACKS.rpgUrban.author,
-      sourceUrl: PACKS.rpgUrban.sourceUrl,
+      pack: 'Project-generated restaurant tiles (CC0)',
+      author: "Val's Kitchen project",
+      sourceUrl: 'vendor/generated/restaurant-tiles/',
       license: 'CC0',
       usedIn: [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
+      approximationNote: 'Generated furniture / station placeholders for the immersive floor slice.',
     });
   }
 
@@ -318,16 +331,15 @@ function listShippedFiles(dir: string, prefix = ''): string[] {
 
 function main(): void {
   assertVendor();
+  runRestaurantTileBuilder();
 
   const tmp = path.join(ROOT, 'scripts', '.asset-build');
   mkdirSync(tmp, { recursive: true });
   mkdirSync(path.join(OUT, 'atlases'), { recursive: true });
 
-  const urbanTiles = vendorPath('rpg-urban-pack/Tiles');
-
   const tileManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(TILE_SPRITES)) {
-    tileManifest[name] = path.join(urbanTiles, file);
+    tileManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
   const tileManifestPath = path.join(tmp, 'tiles.manifest.json');
   writeManifest(tileManifest, tileManifestPath);
@@ -340,7 +352,7 @@ function main(): void {
 
   const furnitureManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(FURNITURE_SPRITES)) {
-    furnitureManifest[name] = path.join(urbanTiles, file);
+    furnitureManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
   const furnitureManifestPath = path.join(tmp, 'furniture.manifest.json');
   writeManifest(furnitureManifest, furnitureManifestPath);

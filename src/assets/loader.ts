@@ -42,7 +42,15 @@ export function isRestaurantAtlasesReady(): boolean {
   return restaurantLoaded;
 }
 
-export function getTileTexture(name: 'floor_a' | 'floor_b'): Texture | null {
+export function getTileTexture(
+  name:
+    | 'floor_a'
+    | 'floor_b'
+    | 'floor_kitchen_a'
+    | 'floor_kitchen_b'
+    | 'wall'
+    | 'door',
+): Texture | null {
   const sheet = sheets.tiles;
   if (!sheet) return null;
   return textureFromSheet(sheet, name);

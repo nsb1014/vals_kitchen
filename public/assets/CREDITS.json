@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-25T18:33:41.372Z",
+  "generatedAt": "2026-07-25T18:54:00.699Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -47,179 +47,255 @@
   "entries": [
     {
       "path": "atlases/tiles.json#floor_a",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
-        "canvas:GridLayer floor tiles"
+        "canvas:GridLayer floor / wall tiles"
       ],
-      "sourceFile": "tile_0032.png"
+      "sourceFile": "floor_wood_a.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
     },
     {
       "path": "atlases/tiles.json#floor_b",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
-        "canvas:GridLayer floor tiles"
+        "canvas:GridLayer floor / wall tiles"
       ],
-      "sourceFile": "tile_0036.png"
+      "sourceFile": "floor_wood_b.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+    },
+    {
+      "path": "atlases/tiles.json#floor_kitchen_a",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "floor_kitchen_a.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+    },
+    {
+      "path": "atlases/tiles.json#floor_kitchen_b",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "floor_kitchen_b.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+    },
+    {
+      "path": "atlases/tiles.json#wall",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "wall.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+    },
+    {
+      "path": "atlases/tiles.json#door",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "door.png",
+      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#prep_station",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (prep_station)"
       ],
-      "sourceFile": "tile_0080.png"
+      "sourceFile": "prep_station.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#grill",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (grill)"
       ],
-      "sourceFile": "tile_0096.png"
+      "sourceFile": "grill.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#oven",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (oven)"
       ],
-      "sourceFile": "tile_0112.png"
+      "sourceFile": "oven.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#fryer",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (fryer)"
       ],
-      "sourceFile": "tile_0128.png"
+      "sourceFile": "fryer.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#stockpot",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (stockpot)"
       ],
-      "sourceFile": "tile_0144.png"
+      "sourceFile": "stockpot.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#cold_station",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (cold_station)"
       ],
-      "sourceFile": "tile_0160.png"
+      "sourceFile": "cold_station.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#pastry_bench",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (pastry_bench)"
       ],
-      "sourceFile": "tile_0176.png"
+      "sourceFile": "pastry_bench.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#smoker",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (smoker)"
       ],
-      "sourceFile": "tile_0192.png"
+      "sourceFile": "smoker.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#wok",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (wok)"
       ],
-      "sourceFile": "tile_0208.png"
+      "sourceFile": "wok.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#fermentation_crock",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (fermentation_crock)"
       ],
-      "sourceFile": "tile_0224.png"
+      "sourceFile": "fermentation_crock.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#barista_station",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (barista_station)"
       ],
-      "sourceFile": "tile_0240.png"
+      "sourceFile": "barista_station.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#spice_rack",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (spice_rack)"
       ],
-      "sourceFile": "tile_0256.png"
+      "sourceFile": "spice_rack.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#table_2seat",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (table_2seat)"
       ],
-      "sourceFile": "tile_0100.png"
+      "sourceFile": "table_2seat.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+    },
+    {
+      "path": "atlases/furniture.json#chair",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (chair)"
+      ],
+      "sourceFile": "chair.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/furniture.json#decor_plant",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_plant)"
       ],
-      "sourceFile": "tile_0105.png"
+      "sourceFile": "decor_plant.png",
+      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
     },
     {
       "path": "atlases/characters.json#customer",
