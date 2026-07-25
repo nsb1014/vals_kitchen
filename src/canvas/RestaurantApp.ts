@@ -167,7 +167,10 @@ export class RestaurantApp {
             g.stage === 'ordered' &&
             playerNearGuestSeat(tapCell, g),
         );
-        if (wrongSeat) return;
+        if (wrongSeat) {
+          store.setFloorToast('Wrong table — deliver to the matching guest');
+          return;
+        }
       }
     }
 

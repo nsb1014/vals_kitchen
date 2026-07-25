@@ -1,7 +1,11 @@
 import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
+  selectAdjacentDirtyTablePlacementIds,
   selectAdjacentSeatedCustomerIds,
+  selectAdjacentUnsetTablePlacementIds,
+  selectCanClearFloorTable,
+  selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
 
@@ -23,12 +27,13 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     }
 
     mount.hidden = false;
-    const unsetTables = floor.tables.filter((t) => t.state === 'unset');
-    const dirtyTables = floor.tables.filter((t) => t.state === 'dirty');
+    const canSetTable = selectCanSetFloorTable(state);
+    const canClearTable = selectCanClearFloorTable(state);
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
     const selectedTicketId = floor.selectedTicketId;
+    const floorToast = state.floorToast;
 
     const ticketStrip = floor.tickets
       .map((t) => {
@@ -46,8 +51,8 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
         </div>
         <div class="floor-actions">
           ${
-            unsetTables.length > 0
-              ? `<button type="button" class="service-btn" id="floor-set-all" data-testid="floor-set-all">Set all tables (${unsetTables.length})</button>`
+            canSetTable
+              ? `<button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table">Set table</button>`
               : ''
           }
           <button type="button" class="service-btn primary" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat next</button>
@@ -57,24 +62,26 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
               : ''
           }
           ${
-            dirtyTables.length > 0
-              ? `<button type="button" class="service-btn" id="floor-clear-dirty" data-testid="floor-clear-dirty">Clear dirty (${dirtyTables.length})</button>`
+            canClearTable
+              ? `<button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table">Clear table</button>`
               : ''
           }
         </div>
+        ${
+          floorToast
+            ? `<p class="floor-toast" data-testid="floor-toast">${floorToast}</p>`
+            : ''
+        }
       </div>
     `;
 
-    mount.querySelector('#floor-set-all')?.addEventListener('click', () => {
-      const current = useGameStore.getState().activeDay?.floor;
-      if (!current) return;
-      for (const table of current.tables) {
-        if (table.state === 'unset') {
-          void useGameStore.getState().dispatch({
-            type: 'FLOOR_SET_TABLE',
-            placementId: table.placementId,
-          });
-        }
+    mount.querySelector('#floor-set-table')?.addEventListener('click', () => {
+      const placementIds = selectAdjacentUnsetTablePlacementIds(useGameStore.getState());
+      for (const placementId of placementIds) {
+        void useGameStore.getState().dispatch({
+          type: 'FLOOR_SET_TABLE',
+          placementId,
+        });
       }
     });
 
@@ -91,16 +98,13 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       });
     });
 
-    mount.querySelector('#floor-clear-dirty')?.addEventListener('click', () => {
-      const current = useGameStore.getState().activeDay?.floor;
-      if (!current) return;
-      for (const table of current.tables) {
-        if (table.state === 'dirty') {
-          void useGameStore.getState().dispatch({
-            type: 'FLOOR_CLEAR_TABLE',
-            placementId: table.placementId,
-          });
-        }
+    mount.querySelector('#floor-clear-table')?.addEventListener('click', () => {
+      const placementIds = selectAdjacentDirtyTablePlacementIds(useGameStore.getState());
+      for (const placementId of placementIds) {
+        void useGameStore.getState().dispatch({
+          type: 'FLOOR_CLEAR_TABLE',
+          placementId,
+        });
       }
     });
 
@@ -122,6 +126,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     if (
       state.activeDay?.floor !== prev.activeDay?.floor ||
       state.floorPlayerGrid !== prev.floorPlayerGrid ||
+      state.floorToast !== prev.floorToast ||
       state.modifierDismissed !== prev.modifierDismissed ||
       state.daySummary !== prev.daySummary ||
       state.pendingReview !== prev.pendingReview ||

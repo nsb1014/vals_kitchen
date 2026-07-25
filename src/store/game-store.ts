@@ -51,6 +51,7 @@ interface StoreMeta {
   audioEnabled: boolean;
   musicEnabled: boolean;
   floorPlayerGrid: { x: number; y: number } | null;
+  floorToast: string | null;
 }
 
 export interface GameStore extends GameState, StoreMeta {
@@ -71,6 +72,7 @@ export interface GameStore extends GameState, StoreMeta {
   setMusicEnabled: (enabled: boolean) => void;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
+  setFloorToast: (message: string | null) => void;
   movePlacement: (placementId: string, x: number, y: number) => boolean;
   canPlaceAt: (placement: Placement, excludeId?: string) => boolean;
   autosave: () => Promise<void>;
@@ -97,7 +99,9 @@ const META_KEYS = [
   'setMusicEnabled',
   'setFloorNavPosition',
   'setFloorSelectedTicket',
+  'setFloorToast',
   'floorPlayerGrid',
+  'floorToast',
   'screen',
   'editLayoutMode',
   'hydrated',
@@ -114,6 +118,9 @@ const META_KEYS = [
   'audioEnabled',
   'musicEnabled',
 ] as const;
+
+const FLOOR_TOAST_MS = 2000;
+let floorToastClearTimer: ReturnType<typeof setTimeout> | null = null;
 
 function pickGameState(store: GameStore): GameState {
   const copy = { ...store } as Record<string, unknown>;
@@ -147,6 +154,7 @@ function mergeReducerState(
     audioEnabled: current.audioEnabled,
     musicEnabled: current.musicEnabled,
     floorPlayerGrid: current.floorPlayerGrid,
+    floorToast: current.floorToast,
   };
 }
 
@@ -199,6 +207,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   audioEnabled: true,
   musicEnabled: false,
   floorPlayerGrid: null,
+  floorToast: null,
 
   async hydrate() {
     const persist = await requestPersistentStorage();
@@ -222,6 +231,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       audioEnabled: true,
       musicEnabled: false,
       floorPlayerGrid: null,
+      floorToast: null,
     });
   },
 
@@ -244,6 +254,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.dayStartRating = before.rating;
         patch.editLayoutMode = false;
         patch.floorPlayerGrid = null;
+        patch.floorToast = null;
         break;
       case 'NEXT_CUSTOMER':
         patch.pendingReview = null;
@@ -255,6 +266,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.dayStartRating = null;
         patch.editLayoutMode = true;
         patch.floorPlayerGrid = null;
+        patch.floorToast = null;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
@@ -320,6 +332,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
         floorPlayerGrid: null,
+        floorToast: null,
       });
       await get().autosave();
       return { ok: true as const };
@@ -370,6 +383,22 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         floor: { ...floor, selectedTicketId: ticketId },
       },
     });
+  },
+
+  setFloorToast(message) {
+    if (floorToastClearTimer) {
+      clearTimeout(floorToastClearTimer);
+      floorToastClearTimer = null;
+    }
+    set({ floorToast: message });
+    if (message) {
+      floorToastClearTimer = setTimeout(() => {
+        if (get().floorToast === message) {
+          set({ floorToast: null });
+        }
+        floorToastClearTimer = null;
+      }, FLOOR_TOAST_MS);
+    }
   },
 
   dismissModifier() {

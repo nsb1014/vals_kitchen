@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adjacentDirtyTablePlacementIds,
   adjacentSeatedCustomerIds,
+  adjacentUnsetTablePlacementIds,
   isAdjacent,
   playerNearGuestSeat,
   playerNearPlacement,
@@ -99,6 +101,60 @@ describe('floor interact helpers', () => {
         ),
       };
       expect(seatedUnorderedCustomerIds(withSeated)).toEqual(['c1']);
+    });
+  });
+
+  describe('adjacentUnsetTablePlacementIds', () => {
+    it('returns unset table placementIds only when player is adjacent to that table', () => {
+      const placements = [
+        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+        { id: 'table_2', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
+      ];
+      const tables = tablesFromPlacements(placements);
+      const seats = seatsFromPlacements(placements);
+      const day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+
+      expect(
+        adjacentUnsetTablePlacementIds(day, { x: 0, y: 1 }, placements),
+      ).toEqual(['table_1']);
+      expect(
+        adjacentUnsetTablePlacementIds(day, { x: 5, y: 5 }, placements),
+      ).toEqual([]);
+    });
+
+    it('ignores ready or dirty tables', () => {
+      const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
+      const tables = tablesFromPlacements(placements).map((t) =>
+        t.placementId === 'table_1' ? setTable(t) : t,
+      );
+      const seats = seatsFromPlacements(placements);
+      const day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+
+      expect(
+        adjacentUnsetTablePlacementIds(day, { x: 0, y: 1 }, placements),
+      ).toEqual([]);
+    });
+  });
+
+  describe('adjacentDirtyTablePlacementIds', () => {
+    it('returns dirty table placementIds only when player is adjacent to that table', () => {
+      const placements = [
+        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+        { id: 'table_2', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
+      ];
+      const tables = tablesFromPlacements(placements).map((t) => ({
+        ...t,
+        state: 'dirty' as const,
+      }));
+      const seats = seatsFromPlacements(placements);
+      const day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+
+      expect(
+        adjacentDirtyTablePlacementIds(day, { x: 2, y: 1 }, placements),
+      ).toEqual(['table_2']);
+      expect(
+        adjacentDirtyTablePlacementIds(day, { x: 0, y: 1 }, placements),
+      ).toEqual(['table_1']);
     });
   });
 

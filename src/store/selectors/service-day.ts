@@ -1,7 +1,9 @@
 import type { Customer } from '../../domain/day/types.ts';
 import { isDayComplete } from '../../domain/day/serve.ts';
 import {
+  adjacentDirtyTablePlacementIds,
   adjacentSeatedCustomerIds,
+  adjacentUnsetTablePlacementIds,
   playerNearStation,
   seatedUnorderedCustomerIds,
 } from '../../domain/floor/interact.ts';
@@ -73,6 +75,28 @@ export function selectAdjacentSeatedCustomerIds(state: GameStore): string[] {
 
 export function selectCanTakeFloorOrders(state: GameStore): boolean {
   return selectAdjacentSeatedCustomerIds(state).length > 0;
+}
+
+export function selectAdjacentUnsetTablePlacementIds(state: GameStore): string[] {
+  const floor = state.activeDay?.floor;
+  const player = selectFloorPlayerGrid(state);
+  if (!floor || !player) return [];
+  return adjacentUnsetTablePlacementIds(floor, player, state.placements);
+}
+
+export function selectAdjacentDirtyTablePlacementIds(state: GameStore): string[] {
+  const floor = state.activeDay?.floor;
+  const player = selectFloorPlayerGrid(state);
+  if (!floor || !player) return [];
+  return adjacentDirtyTablePlacementIds(floor, player, state.placements);
+}
+
+export function selectCanSetFloorTable(state: GameStore): boolean {
+  return selectAdjacentUnsetTablePlacementIds(state).length > 0;
+}
+
+export function selectCanClearFloorTable(state: GameStore): boolean {
+  return selectAdjacentDirtyTablePlacementIds(state).length > 0;
 }
 
 export function selectFloorComposeTicket(state: GameState): FloorTicket | null {

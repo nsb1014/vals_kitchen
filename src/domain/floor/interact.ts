@@ -26,6 +26,42 @@ export function playerNearPlacement(
   return false;
 }
 
+function placementByIdMap(placements: Placement[]): Map<string, Placement> {
+  return new Map(placements.map((p) => [p.id, p]));
+}
+
+function adjacentTablePlacementIds(
+  floor: FloorDay,
+  player: GridPoint,
+  placements: Placement[],
+  state: FloorDay['tables'][number]['state'],
+): string[] {
+  const byId = placementByIdMap(placements);
+  return floor.tables
+    .filter((t) => t.state === state)
+    .filter((t) => {
+      const placement = byId.get(t.placementId);
+      return placement !== undefined && playerNearPlacement(player, placement);
+    })
+    .map((t) => t.placementId);
+}
+
+export function adjacentUnsetTablePlacementIds(
+  floor: FloorDay,
+  player: GridPoint,
+  placements: Placement[],
+): string[] {
+  return adjacentTablePlacementIds(floor, player, placements, 'unset');
+}
+
+export function adjacentDirtyTablePlacementIds(
+  floor: FloorDay,
+  player: GridPoint,
+  placements: Placement[],
+): string[] {
+  return adjacentTablePlacementIds(floor, player, placements, 'dirty');
+}
+
 const STATION_ITEM_KEYS = new Set(['prep_station']);
 
 function isStationPlacement(placement: Placement): boolean {
