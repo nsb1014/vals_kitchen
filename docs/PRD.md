@@ -168,7 +168,7 @@ Generated from **overlapping descriptor schemas** — phrases map to axis bands 
 | PU | "bold and garlicky" | — | "nothing too pungent" |
 | CR | "some crunch" | — | "soft textures only" |
 
-**Generation (Ruling 12):** Roll 1 of 20 archetypes → derive preference bands **only from axes strongly represented in the player's currently unlocked ingredient set** → optional avoid axis within same constraint → ±1 jitter → compose 2–3 phrases. Early narrow palettes produce simpler requests; every request must be satisfiable with some 3–6 ingredient combo from the unlocked set. Examples:
+**Generation (Ruling 12):** Roll 1 of 20 archetypes → pick a witness 3–6 ingredient combo from the unlocked set → derive **2–3 primary bands on actionable axes only** — axes that (a) appear strongly on unlocked ingredients (variance + peak value in the current pantry) and (b) change achievable dish scores across 3–6 combos. Optional avoid cue when a high-variance axis has strong carriers in the pantry (e.g. garlic for pungency) but the witness dish stays low. Compose **2–3 bubble phrases** using the same axis labels as the flavor inspector (`UM` → “savory/umami”, `PU` → “garlicky/pungent”, etc.). Pick randomly among satisfiable witness combos for day-to-day diversity. **Every like/dislike must be reachable and punishable with the current unlock set** so competent matches score high and clear mismatches score low. Examples:
 
 - "I'm craving something **really savory** with a **bright, tangy** finish. Nothing too sweet."
 - "Give me **rich and indulgent** with a **whisper of char**. Keep it **mild, no heat**."
