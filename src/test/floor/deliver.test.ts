@@ -31,9 +31,9 @@ function floorStateWithPlatedTicket() {
     { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
   ];
   const tables = tablesFromPlacements(placements).map(setTable);
-  const seats = seatsFromPlacements(placements);
   const c = customer('c1');
-  let floor = createFloorDayFromCustomers([c], tables, seats);
+  let floor = createFloorDayFromCustomers([c], tables);
+  floor = { ...floor, seats: seatsFromPlacements(placements) };
   floor = seatNextWaiting(floor);
   floor = takeOrdersForSeated(floor, ['c1']);
   const ticketId = floor.tickets[0]!.id;

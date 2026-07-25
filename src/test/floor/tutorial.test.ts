@@ -8,17 +8,16 @@ import type { Customer } from '../../domain/day/types.ts';
 const customer: Customer = {
   id: 'c1',
   archetypeId: 'a',
-  preference: { likes: {}, dislikes: {}, phrases: [] },
+  preference: { primary: {}, avoid: {}, phrases: [] },
 };
 
 describe('tutorial', () => {
   it('starts at set_tables until tables are set', () => {
     const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
-    const day = createFloorDayFromCustomers(
-      [customer],
-      tablesFromPlacements(placements),
-      seatsFromPlacements(placements),
-    );
+    const day = {
+      ...createFloorDayFromCustomers([customer], tablesFromPlacements(placements)),
+      seats: seatsFromPlacements(placements),
+    };
     expect(nextTutorialStep(day, true)).toBe('set_tables');
     expect(tutorialPrompt('set_tables')).toMatch(/Set every table/);
 

@@ -1,11 +1,13 @@
 import type { FloorTicket } from './types.ts';
 
-export const MAX_FLOOR_TICKETS = 4;
+export const MAX_TICKETS = 4;
+/** @deprecated Use {@link MAX_TICKETS} */
+export const MAX_FLOOR_TICKETS = MAX_TICKETS;
 
 export function canEnqueue(
   tickets: FloorTicket[],
   addCount: number,
-  max: number = MAX_FLOOR_TICKETS,
+  max: number = MAX_TICKETS,
 ): boolean {
   const active = tickets.filter((t) => t.status !== 'delivered').length;
   return active + addCount <= max;
@@ -14,7 +16,7 @@ export function canEnqueue(
 export function enqueueTickets(
   tickets: FloorTicket[],
   newTickets: FloorTicket[],
-  max: number = MAX_FLOOR_TICKETS,
+  max: number = MAX_TICKETS,
 ): FloorTicket[] {
   if (!canEnqueue(tickets, newTickets.length, max)) {
     throw new Error(`Ticket queue would exceed max ${max}`);

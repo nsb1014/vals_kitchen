@@ -14,8 +14,8 @@ import type { Customer } from '../../domain/day/types.ts';
 import type { CustomerPreference } from '../../domain/types.ts';
 
 const pref = (): CustomerPreference => ({
-  likes: { UM: [5, 10] },
-  dislikes: {},
+  primary: { UM: 'high' },
+  avoid: {},
   phrases: ['savory'],
 });
 
@@ -31,8 +31,8 @@ describe('floor sim', () => {
 
   it('seats waiting guest onto a ready table, then completes after eat+clear', () => {
     let tables = tablesFromPlacements(placements).map(setTable);
-    const seats = seatsFromPlacements(placements);
-    let day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+    let day = createFloorDayFromCustomers([customer('c1')], tables);
+    day = { ...day, seats: seatsFromPlacements(placements) };
     day = seatNextWaiting(day);
     expect(day.pool[0]!.stage).toBe('seated');
     expect(day.tables.find((t) => t.placementId === 'table_1')!.state).toBe('occupied');

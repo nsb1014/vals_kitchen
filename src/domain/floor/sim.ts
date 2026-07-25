@@ -10,11 +10,25 @@ const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
   'eating',
 ]);
 
+function seatsFromTables(tables: FloorTable[]): SeatSlot[] {
+  const seats: SeatSlot[] = [];
+  for (const t of tables) {
+    for (let i = 0; i < t.seatSlotCount; i++) {
+      seats.push({
+        tablePlacementId: t.placementId,
+        slotIndex: i,
+        x: i,
+        y: 1,
+        facing: 0,
+      });
+    }
+  }
+  return seats;
+}
+
 export function createFloorDayFromCustomers(
   customers: Customer[],
   tables: FloorTable[],
-  seats: SeatSlot[],
-  playerPosition: { x: number; y: number } = { x: 0, y: 0 },
 ): FloorDay {
   return {
     pool: customers.map((customer) => ({
@@ -24,12 +38,12 @@ export function createFloorDayFromCustomers(
       eatTicksRemaining: 0,
     })),
     tables: tables.map((t) => ({ ...t })),
-    seats: seats.map((s) => ({ ...s })),
+    seats: seatsFromTables(tables),
     tickets: [],
     carriedTicketId: null,
     selectedTicketId: null,
     tutorialStep: null,
-    playerPosition: { ...playerPosition },
+    playerPosition: { x: 0, y: 0 },
   };
 }
 

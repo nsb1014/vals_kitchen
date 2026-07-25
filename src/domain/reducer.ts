@@ -121,7 +121,11 @@ export function gameReducer(
       );
       const tables = tablesFromPlacements(state.placements);
       const seats = seatsFromPlacements(state.placements);
-      const floor = createFloorDayFromCustomers(generated.customers, tables, seats, { x: 1, y: 1 });
+      const floor = {
+        ...createFloorDayFromCustomers(generated.customers, tables),
+        seats,
+        playerPosition: { x: 1, y: 1 },
+      };
       const next = cloneGameState(state);
       next.activeDay = {
         seed: generated.seed,
