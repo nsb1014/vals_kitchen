@@ -64,7 +64,7 @@
 | 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
-| 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, tap-to-move, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast, distinct character frames; gzip 173,070 |
+| 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, path-lerp walk + Urban walk cycle, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast; gzip 173,070 |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -87,6 +87,7 @@
 | 2026-07-25 | Immersive floor redesign approved: concurrent ¾ service, tickets≤4, set/clear, mastery; PRD/Tech-Stack/Frontend reopen; vertical-slice plan written; initial JS budget raised to 280k pending measure |
 | 2026-07-25 | Phase 11 in progress: floor domain, OPEN_DAY FloorDay, station compose/take-orders/deliver, tap-to-move actors; fast suite 119; assets polish + measured budget still open |
 | 2026-07-25 | Phase 11 vertical slice Done: adjacency set/clear + wrong-seat toast; distinct character frames; fast suite 126; measured initial JS gzip 173,070 (cap 280,000) |
+| 2026-07-25 | Floor locomotion: world-space path lerp + RPG Urban 4-dir×3-frame walk cycle; integer 2× character scale; nav no longer cancelled on every floor clone; fast suite 128 |
 
 ---
 
