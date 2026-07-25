@@ -33,7 +33,7 @@
 │  ├── idb-keyval 6.3.0 — IndexedDB persistence       │
 │  └── lz-string 1.5.0 — Save Code compression         │
 ├──────────────────────────────────────────────────────┤
-│  vite-plugin-pwa — Workbox offline shell             │
+│  pwa-lite — custom SW + manifest (no workbox)        │
 │  Deploy: Cloudflare Workers Static Assets (primary)  │
 │  Backup: GitHub Pages                                │
 │  Target canvas: 390×844 CSS px logical               │
@@ -51,7 +51,7 @@
 | State | **Zustand 5.0.14** | Lightweight store; selectors for UI |
 | Save I/O | **idb-keyval 6.3.0** | Thin IndexedDB wrapper (~2 KB) |
 | Compression | **lz-string 1.5.0** | Save Code compression (`compressToUint8Array` + base64url) |
-| PWA | vite-plugin-pwa 1.3.0 | Offline shell, manifest, service worker |
+| PWA | In-repo `scripts/vite-pwa-lite.ts` | Offline shell + manifest; no workbox |
 | Tests | **Vitest 4.1.10** | Domain + persistence unit tests |
 
 **No backend server.** Static assets only. See [Backend-Guidelines.md](./Backend-Guidelines.md).
@@ -304,7 +304,7 @@ interface SaveEnvelope {
 | Git deploy | GitHub integration → `npx wrangler deploy` after build |
 | Headers | `public/_headers` → copied to `dist/_headers` (honored by Workers Static Assets) |
 | SPA routing | `wrangler.toml` `[assets] not_found_handling = "single-page-application"` (no `_redirects`) |
-| PWA | Service worker + `manifest.webmanifest`; Workbox precaches `/data/*.json` |
+| PWA | Service worker + `manifest.webmanifest`; custom SW caches shell and same-origin assets/`/data/*.json` |
 | Worker name | `vals-kitchen` (`wrangler.toml` `name`) |
 
 **Why primary:** No commercial ToS restriction; unlimited bandwidth; PR previews.
@@ -344,12 +344,6 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 /sw.js
   Cache-Control: no-cache, must-revalidate
 
-/registerSW.js
-  Cache-Control: no-cache, must-revalidate
-
-/workbox-*.js
-  Cache-Control: no-cache, must-revalidate
-
 /data/*
   Content-Type: application/json; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
@@ -362,7 +356,7 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 |------|-----------|
 | `/assets/*` | Content-hashed filenames — long cache safe |
 | `/index.html` | Must reference latest hashed bundles after deploy |
-| `/sw.js`, `/registerSW.js`, `/workbox-*.js` | Stale SW serves old app code; can desync from IndexedDB saves |
+| `/sw.js` | Stale SW serves old app code; can desync from IndexedDB saves |
 | `/data/*.json` | Paths not hashed; `must-revalidate` picks up content rebuilds; SW precache enables offline |
 
 ### Build / Deploy Pipeline
