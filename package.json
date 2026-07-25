@@ -1,0 +1,46 @@
+{
+  "name": "restaurant-simulator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run sync:data && tsc && vite build",
+    "build:ingredient-icons": "python3 scripts/build-ingredient-icons.py",
+    "build:assets": "tsx scripts/build-assets.ts",
+    "audit:assets": "tsx scripts/audit-assets.ts",
+    "sync:data": "mkdir -p public/data && cp src/data/*.json public/data/",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src scripts",
+    "test": "vitest run",
+    "test:sim": "vitest run --config vitest.sim.config.ts",
+    "test:e2e": "playwright test",
+    "preview": "vite preview",
+    "build:content": "tsx scripts/build-content.ts",
+    "validate:content": "tsx scripts/validate-content-cli.ts",
+    "size:check": "tsx scripts/check-bundle-size.ts"
+  },
+  "dependencies": {
+    "idb-keyval": "6.3.0",
+    "lz-string": "1.5.0",
+    "pixi.js": "8.19.0",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.62.0",
+    "@types/lz-string": "1.5.0",
+    "@types/node": "26.1.1",
+    "@typescript-eslint/eslint-plugin": "8.65.0",
+    "@typescript-eslint/parser": "8.65.0",
+    "eslint": "10.8.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.2.0",
+    "prettier": "3.9.6",
+    "tsx": "4.20.3",
+    "typescript": "5.9.3",
+    "vite": "8.1.5",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "4.1.10"
+  }
+}

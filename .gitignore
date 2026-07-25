@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+.env
+.env.local
+.npm-local/
+.npm-cache/
+.playwright-browsers/
+.playwright-download-tmp/
+test-results/
+playwright-report/
+vendor/kenney/downloads/
+vendor/kenney/extracted/
+vendor/kenney/food-tile-*.png

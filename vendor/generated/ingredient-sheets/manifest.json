@@ -1,0 +1,165 @@
+{
+  "targetSize": 32,
+  "whiteThreshold": 240,
+  "paletteColors": 64,
+  "sheets": [
+    {
+      "file": "sheet-01-alliums-roots.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "onion",
+        "garlic",
+        "ginger",
+        "carrot",
+        "potato",
+        "sweet_potato",
+        "celery",
+        "bell_pepper",
+        "zucchini",
+        "corn",
+        "eggplant",
+        "portobello_mushroom"
+      ]
+    },
+    {
+      "file": "sheet-02-greens-produce.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "lettuce",
+        "cucumber",
+        "tomato",
+        "tomato_paste",
+        "broccoli",
+        "bok_choy",
+        "thai_basil",
+        "bay_leaf",
+        "avocado",
+        "lemon",
+        "dill_pickle",
+        "kimchi"
+      ]
+    },
+    {
+      "file": "sheet-03-proteins-meat.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "chicken",
+        "chicken_thigh",
+        "chicken_wing",
+        "beef_steak",
+        "pork_chop",
+        "lamb_chop",
+        "brisket",
+        "pork_ribs",
+        "bacon",
+        "turkey",
+        "sausage",
+        "salmon_fillet"
+      ]
+    },
+    {
+      "file": "sheet-04-seafood-legumes.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "smoked_salmon",
+        "shrimp",
+        "calamari",
+        "tempura_shrimp",
+        "tofu",
+        "smoked_tofu",
+        "tempeh",
+        "falafel",
+        "jackfruit",
+        "lentils",
+        "chickpeas",
+        "white_beans"
+      ]
+    },
+    {
+      "file": "sheet-05-grains-starches.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "flour",
+        "rice",
+        "bread",
+        "pasta",
+        "rice_noodle",
+        "phyllo",
+        "potato_fries",
+        "plantain",
+        "oat_milk",
+        "yeast_doughnut",
+        "egg",
+        "almond"
+      ]
+    },
+    {
+      "file": "sheet-06-dairy-sweeteners.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "butter",
+        "cheddar",
+        "mozzarella",
+        "yogurt",
+        "cream",
+        "feta",
+        "cream_cheese",
+        "sour_cream",
+        "coconut_milk",
+        "sugar",
+        "honey",
+        "maple_syrup"
+      ]
+    },
+    {
+      "file": "sheet-07-spices-herbs.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "salt",
+        "black_pepper",
+        "cinnamon",
+        "cardamom",
+        "cumin",
+        "coriander",
+        "turmeric",
+        "paprika",
+        "smoked_paprika",
+        "chili_flake",
+        "oregano",
+        "thyme"
+      ]
+    },
+    {
+      "file": "sheet-08-pantry-fermented.png",
+      "cols": 4,
+      "rows": 3,
+      "items": [
+        "rosemary",
+        "vanilla",
+        "cocoa",
+        "yeast",
+        "olive_oil",
+        "sesame_oil",
+        "soy_sauce",
+        "shrimp_paste",
+        "fish_sauce",
+        "miso",
+        "sauerkraut",
+        "kombucha"
+      ]
+    },
+    {
+      "file": "sheet-09-beverages-broths.png",
+      "cols": 2,
+      "rows": 2,
+      "items": ["coffee", "black_tea", "vegetable_broth", "beef_broth"]
+    }
+  ]
+}

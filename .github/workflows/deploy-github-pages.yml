@@ -1,0 +1,61 @@
+name: Deploy GitHub Pages (backup)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_path:
+        description: 'Vite base path (must match repo name for project pages, e.g. /restaurant-simulator/)'
+        required: true
+        default: '/restaurant-simulator/'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync runtime content to public/data
+        run: npm run sync:data
+
+      - name: Validate content invariants
+        run: npm run validate:content
+
+      - name: Production build (GitHub Pages base path)
+        run: npm run build -- --base "${{ inputs.base_path }}"
+
+      - name: Bundle size gate
+        run: npm run size:check
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

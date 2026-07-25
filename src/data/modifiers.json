@@ -1,0 +1,79 @@
+[
+  {
+    "id": "trend_smoky",
+    "name": "Smoky Trend",
+    "description": "Smoky dishes earn +10% tips today.",
+    "effect": {
+      "type": "tip_axis_bonus",
+      "axis": "SM",
+      "multiplier": 1.1
+    }
+  },
+  {
+    "id": "critic_visit",
+    "name": "Food Critic",
+    "description": "Serve 8+ match or lose 0.2 rating.",
+    "effect": {
+      "type": "critic",
+      "threshold": 8,
+      "penalty": 0.2
+    }
+  },
+  {
+    "id": "meatless_mood",
+    "name": "Meatless Mood",
+    "description": "Plant-forward plates get a small bonus.",
+    "effect": {
+      "type": "tag_bonus",
+      "tag": "vegetable",
+      "multiplier": 1.05
+    }
+  },
+  {
+    "id": "comfort_day",
+    "name": "Comfort Day",
+    "description": "Rich dishes trend with guests.",
+    "effect": {
+      "type": "tip_axis_bonus",
+      "axis": "RI",
+      "multiplier": 1.08
+    }
+  },
+  {
+    "id": "bright_menu",
+    "name": "Bright Menu",
+    "description": "Acid-forward plates are popular.",
+    "effect": {
+      "type": "tip_axis_bonus",
+      "axis": "SO",
+      "multiplier": 1.08
+    }
+  },
+  {
+    "id": "spice_rush",
+    "name": "Spice Rush",
+    "description": "Heat lovers tip better today.",
+    "effect": {
+      "type": "tip_axis_bonus",
+      "axis": "HT",
+      "multiplier": 1.1
+    }
+  },
+  {
+    "id": "slow_lunch",
+    "name": "Slow Lunch",
+    "description": "No bonus — a calm day.",
+    "effect": {
+      "type": "none"
+    }
+  },
+  {
+    "id": "local_hero",
+    "name": "Local Hero",
+    "description": "High match scores move rating faster.",
+    "effect": {
+      "type": "rating_multiplier",
+      "multiplier": 1.15
+    }
+  }
+]

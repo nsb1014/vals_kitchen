@@ -1,0 +1,6 @@
+# Cloudflare Pages project metadata (optional local `wrangler pages deploy`).
+# Primary deploy path is Git-connected Pages in the dashboard — see docs/Deployment.md.
+
+name = "restaurant-simulator"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"

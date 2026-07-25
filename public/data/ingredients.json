@@ -1,0 +1,2970 @@
+[
+  {
+    "id": "flour",
+    "name": "Flour",
+    "category": "grain",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 1,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "newGameStarter": true,
+    "softResetStarter": true,
+    "purchaseIndex": 0
+  },
+  {
+    "id": "salt",
+    "name": "Salt",
+    "category": "seasoning",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 10,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 1,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_mineral",
+      "c_umami_base"
+    ],
+    "newGameStarter": true,
+    "softResetStarter": true,
+    "purchaseIndex": 1
+  },
+  {
+    "id": "butter",
+    "name": "Butter",
+    "category": "dairy",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 2,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 2,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 9,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_fat"
+    ],
+    "newGameStarter": true,
+    "softResetStarter": true,
+    "purchaseIndex": 2
+  },
+  {
+    "id": "onion",
+    "name": "Onion",
+    "category": "vegetable",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 1,
+      "BI": 0,
+      "UM": 3,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 8,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 4,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_allium",
+      "c_sulfur"
+    ],
+    "newGameStarter": true,
+    "softResetStarter": true,
+    "purchaseIndex": 3
+  },
+  {
+    "id": "chicken",
+    "name": "Chicken Breast",
+    "category": "protein",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 9,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 6,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_poultry",
+      "c_maillard",
+      "c_umami_base"
+    ],
+    "newGameStarter": true,
+    "softResetStarter": true,
+    "purchaseIndex": 4
+  },
+  {
+    "id": "garlic",
+    "name": "Garlic",
+    "category": "aromatic",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 5,
+      "HE": 0,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 10,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 2,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_allium",
+      "c_sulfur",
+      "c_umami_base"
+    ],
+    "newGameStarter": true,
+    "purchaseIndex": 5
+  },
+  {
+    "id": "olive_oil",
+    "name": "Olive Oil",
+    "category": "fat",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 0,
+      "HE": 2,
+      "FR": 2,
+      "EA": 0,
+      "SM": 0,
+      "PU": 1,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_fat",
+      "c_green_note"
+    ],
+    "newGameStarter": true,
+    "purchaseIndex": 6
+  },
+  {
+    "id": "rice",
+    "name": "Rice",
+    "category": "grain",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "newGameStarter": true,
+    "purchaseIndex": 7
+  },
+  {
+    "id": "egg",
+    "name": "Egg",
+    "category": "protein",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 1,
+      "SO": 0,
+      "BI": 0,
+      "UM": 4,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 5,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_egg",
+      "c_sulfur"
+    ],
+    "newGameStarter": true,
+    "purchaseIndex": 8
+  },
+  {
+    "id": "black_pepper",
+    "name": "Black Pepper",
+    "category": "spice",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 0,
+      "HE": 2,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 6,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 4,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_pepper",
+      "c_terpene"
+    ],
+    "purchaseIndex": 9
+  },
+  {
+    "id": "vegetable_broth",
+    "name": "Vegetable Broth",
+    "category": "liquid",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 3,
+      "SO": 0,
+      "BI": 0,
+      "UM": 4,
+      "HE": 2,
+      "FR": 0,
+      "EA": 3,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_broth",
+      "c_umami_base",
+      "c_green_note"
+    ],
+    "purchaseIndex": 10
+  },
+  {
+    "id": "lemon",
+    "name": "Lemon",
+    "category": "citrus",
+    "equipmentId": "prep_station",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 9,
+      "BI": 2,
+      "UM": 0,
+      "HE": 0,
+      "FR": 6,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 5,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_citrus",
+      "c_terpene"
+    ],
+    "purchaseIndex": 11
+  },
+  {
+    "id": "beef_steak",
+    "name": "Beef Steak",
+    "category": "protein",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 8,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 3,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_beef",
+      "c_maillard",
+      "c_fat"
+    ],
+    "purchaseIndex": 12
+  },
+  {
+    "id": "pork_chop",
+    "name": "Pork Chop",
+    "category": "protein",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 2,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 6,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 2,
+      "PU": 0,
+      "NU": 0,
+      "RI": 6,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_pork",
+      "c_maillard",
+      "c_fat"
+    ],
+    "purchaseIndex": 13
+  },
+  {
+    "id": "lamb_chop",
+    "name": "Lamb Chop",
+    "category": "protein",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 2,
+      "FR": 0,
+      "EA": 3,
+      "SM": 2,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_lamb",
+      "c_maillard",
+      "c_fat"
+    ],
+    "purchaseIndex": 14
+  },
+  {
+    "id": "bell_pepper",
+    "name": "Bell Pepper",
+    "category": "vegetable",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 4,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 2,
+      "FR": 3,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 6,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_capsicum",
+      "c_green_note"
+    ],
+    "purchaseIndex": 15
+  },
+  {
+    "id": "zucchini",
+    "name": "Zucchini",
+    "category": "vegetable",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 1,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 6,
+      "HT": 0,
+      "CR": 4,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_cucurbit",
+      "c_green_note"
+    ],
+    "purchaseIndex": 16
+  },
+  {
+    "id": "corn",
+    "name": "Sweet Corn",
+    "category": "vegetable",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 7,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 2,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 5,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_maillard",
+      "c_starch"
+    ],
+    "purchaseIndex": 17
+  },
+  {
+    "id": "eggplant",
+    "name": "Eggplant",
+    "category": "vegetable",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 3,
+      "UM": 4,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 2,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_nightshade",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 18
+  },
+  {
+    "id": "portobello_mushroom",
+    "name": "Portobello Mushroom",
+    "category": "vegetable",
+    "equipmentId": "grill",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 8,
+      "HE": 0,
+      "FR": 0,
+      "EA": 6,
+      "SM": 1,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_mushroom",
+      "c_umami_base",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 19
+  },
+  {
+    "id": "bread",
+    "name": "Bread",
+    "category": "grain",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 1,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 5,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_maillard",
+      "c_yeast"
+    ],
+    "purchaseIndex": 20
+  },
+  {
+    "id": "potato",
+    "name": "Baked Potato",
+    "category": "vegetable",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 5,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 2,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_starch",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 21
+  },
+  {
+    "id": "sweet_potato",
+    "name": "Sweet Potato",
+    "category": "vegetable",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 7,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_starch",
+      "c_earthy_note",
+      "c_caramel"
+    ],
+    "purchaseIndex": 22
+  },
+  {
+    "id": "salmon_fillet",
+    "name": "Salmon Fillet",
+    "category": "seafood",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 0,
+      "SA": 1,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 2,
+      "PU": 0,
+      "NU": 0,
+      "RI": 6,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_seafood",
+      "c_marine",
+      "c_fat"
+    ],
+    "purchaseIndex": 23
+  },
+  {
+    "id": "chicken_thigh",
+    "name": "Chicken Thigh",
+    "category": "protein",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 0,
+      "SA": 1,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 1,
+      "PU": 0,
+      "NU": 0,
+      "RI": 6,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_poultry",
+      "c_maillard",
+      "c_fat"
+    ],
+    "purchaseIndex": 24
+  },
+  {
+    "id": "carrot",
+    "name": "Carrot",
+    "category": "vegetable",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 6,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 1,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 6,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_terpene",
+      "c_earthy_note",
+      "c_caramel"
+    ],
+    "purchaseIndex": 25
+  },
+  {
+    "id": "broccoli",
+    "name": "Broccoli",
+    "category": "vegetable",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 4,
+      "UM": 2,
+      "HE": 2,
+      "FR": 0,
+      "EA": 3,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 5,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_brassica",
+      "c_sulfur",
+      "c_green_note"
+    ],
+    "purchaseIndex": 26
+  },
+  {
+    "id": "cheddar",
+    "name": "Cheddar",
+    "category": "dairy",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 0,
+      "SA": 6,
+      "SO": 2,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_aged_ferment",
+      "c_fat"
+    ],
+    "purchaseIndex": 27
+  },
+  {
+    "id": "bacon",
+    "name": "Bacon",
+    "category": "protein",
+    "equipmentId": "oven",
+    "flavor": {
+      "SW": 2,
+      "SA": 8,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 8,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 5,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_pork",
+      "c_smoke",
+      "c_maillard"
+    ],
+    "purchaseIndex": 28
+  },
+  {
+    "id": "chicken_wing",
+    "name": "Chicken Wing",
+    "category": "protein",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 0,
+      "SA": 3,
+      "SO": 0,
+      "BI": 0,
+      "UM": 6,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 6,
+      "LI": 0,
+      "HT": 0,
+      "CR": 7,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_poultry",
+      "c_maillard",
+      "c_fried"
+    ],
+    "purchaseIndex": 29
+  },
+  {
+    "id": "potato_fries",
+    "name": "Potato Fries",
+    "category": "vegetable",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 1,
+      "SA": 5,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 3,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 4,
+      "LI": 0,
+      "HT": 0,
+      "CR": 8,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_starch",
+      "c_fried",
+      "c_maillard"
+    ],
+    "purchaseIndex": 30
+  },
+  {
+    "id": "calamari",
+    "name": "Calamari",
+    "category": "seafood",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 5,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 2,
+      "LI": 3,
+      "HT": 0,
+      "CR": 6,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_seafood",
+      "c_marine",
+      "c_fried"
+    ],
+    "purchaseIndex": 31
+  },
+  {
+    "id": "tempura_shrimp",
+    "name": "Tempura Shrimp",
+    "category": "seafood",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 3,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 6,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 8,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_seafood",
+      "c_marine",
+      "c_fried"
+    ],
+    "purchaseIndex": 32
+  },
+  {
+    "id": "falafel",
+    "name": "Falafel",
+    "category": "legume",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 3,
+      "HE": 3,
+      "FR": 0,
+      "EA": 5,
+      "SM": 0,
+      "PU": 2,
+      "NU": 4,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 7,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_legume",
+      "c_fried",
+      "c_warm_spice"
+    ],
+    "purchaseIndex": 33
+  },
+  {
+    "id": "yeast_doughnut",
+    "name": "Yeast Doughnut",
+    "category": "pastry",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 8,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 6,
+      "LI": 0,
+      "HT": 0,
+      "CR": 4,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_yeast",
+      "c_caramel",
+      "c_fried"
+    ],
+    "purchaseIndex": 34
+  },
+  {
+    "id": "plantain",
+    "name": "Fried Plantain",
+    "category": "fruit",
+    "equipmentId": "fryer",
+    "flavor": {
+      "SW": 6,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 5,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 3,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_tropical",
+      "c_starch",
+      "c_fried"
+    ],
+    "purchaseIndex": 35
+  },
+  {
+    "id": "pasta",
+    "name": "Pasta",
+    "category": "grain",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 1,
+      "HE": 0,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "purchaseIndex": 36
+  },
+  {
+    "id": "lentils",
+    "name": "Lentils",
+    "category": "legume",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 3,
+      "HE": 0,
+      "FR": 0,
+      "EA": 6,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_legume",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 37
+  },
+  {
+    "id": "chickpeas",
+    "name": "Chickpeas",
+    "category": "legume",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 2,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 5,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_legume",
+      "c_nutty_note",
+      "c_starch"
+    ],
+    "purchaseIndex": 38
+  },
+  {
+    "id": "tomato_paste",
+    "name": "Tomato Paste",
+    "category": "vegetable",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 4,
+      "SA": 0,
+      "SO": 5,
+      "BI": 0,
+      "UM": 8,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_nightshade",
+      "c_umami_base",
+      "c_caramel"
+    ],
+    "purchaseIndex": 39
+  },
+  {
+    "id": "celery",
+    "name": "Celery",
+    "category": "vegetable",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 2,
+      "UM": 1,
+      "HE": 5,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 6,
+      "HT": 0,
+      "CR": 7,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_green_note",
+      "c_terpene",
+      "c_broth"
+    ],
+    "purchaseIndex": 40
+  },
+  {
+    "id": "bay_leaf",
+    "name": "Bay Leaf",
+    "category": "herb",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 3,
+      "UM": 0,
+      "HE": 7,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 2,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_herb_aroma",
+      "c_terpene"
+    ],
+    "purchaseIndex": 41
+  },
+  {
+    "id": "shrimp",
+    "name": "Shrimp",
+    "category": "seafood",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 3,
+      "SA": 3,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_seafood",
+      "c_marine"
+    ],
+    "purchaseIndex": 42
+  },
+  {
+    "id": "white_beans",
+    "name": "White Beans",
+    "category": "legume",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 2,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_legume",
+      "c_starch"
+    ],
+    "purchaseIndex": 43
+  },
+  {
+    "id": "beef_broth",
+    "name": "Beef Broth",
+    "category": "liquid",
+    "equipmentId": "stockpot",
+    "flavor": {
+      "SW": 0,
+      "SA": 4,
+      "SO": 0,
+      "BI": 0,
+      "UM": 8,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 1,
+      "PU": 0,
+      "NU": 0,
+      "RI": 4,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_broth",
+      "c_umami_base",
+      "c_beef"
+    ],
+    "purchaseIndex": 44
+  },
+  {
+    "id": "lettuce",
+    "name": "Lettuce",
+    "category": "vegetable",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 0,
+      "HE": 2,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 8,
+      "HT": 0,
+      "CR": 7,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_green_note"
+    ],
+    "purchaseIndex": 45
+  },
+  {
+    "id": "cucumber",
+    "name": "Cucumber",
+    "category": "vegetable",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 2,
+      "FR": 2,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 9,
+      "HT": 0,
+      "CR": 7,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_cucurbit",
+      "c_green_note"
+    ],
+    "purchaseIndex": 46
+  },
+  {
+    "id": "tomato",
+    "name": "Tomato",
+    "category": "vegetable",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 4,
+      "SA": 0,
+      "SO": 4,
+      "BI": 0,
+      "UM": 5,
+      "HE": 0,
+      "FR": 3,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 3,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_nightshade",
+      "c_umami_base",
+      "c_green_note"
+    ],
+    "purchaseIndex": 47
+  },
+  {
+    "id": "mozzarella",
+    "name": "Mozzarella",
+    "category": "dairy",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 2,
+      "SA": 3,
+      "SO": 0,
+      "BI": 0,
+      "UM": 3,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 5,
+      "LI": 3,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_fat"
+    ],
+    "purchaseIndex": 48
+  },
+  {
+    "id": "yogurt",
+    "name": "Yogurt",
+    "category": "dairy",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 6,
+      "BI": 0,
+      "UM": 1,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 4,
+      "LI": 4,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_lactic_ferment"
+    ],
+    "purchaseIndex": 49
+  },
+  {
+    "id": "cream",
+    "name": "Heavy Cream",
+    "category": "dairy",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 1,
+      "RI": 9,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_fat"
+    ],
+    "purchaseIndex": 50
+  },
+  {
+    "id": "avocado",
+    "name": "Avocado",
+    "category": "fruit",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 7,
+      "LI": 3,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_fat",
+      "c_green_note"
+    ],
+    "purchaseIndex": 51
+  },
+  {
+    "id": "feta",
+    "name": "Feta",
+    "category": "dairy",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 8,
+      "SO": 5,
+      "BI": 0,
+      "UM": 4,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 5,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_lactic_ferment",
+      "c_aged_ferment"
+    ],
+    "purchaseIndex": 52
+  },
+  {
+    "id": "smoked_salmon",
+    "name": "Smoked Salmon",
+    "category": "seafood",
+    "equipmentId": "cold_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 6,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 7,
+      "PU": 0,
+      "NU": 0,
+      "RI": 5,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_seafood",
+      "c_smoke",
+      "c_marine"
+    ],
+    "purchaseIndex": 53
+  },
+  {
+    "id": "sugar",
+    "name": "Sugar",
+    "category": "sweetener",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 10,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 2,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_caramel"
+    ],
+    "purchaseIndex": 54
+  },
+  {
+    "id": "vanilla",
+    "name": "Vanilla",
+    "category": "flavoring",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 5,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 3,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 1,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_vanilla_note",
+      "c_caramel"
+    ],
+    "purchaseIndex": 55
+  },
+  {
+    "id": "yeast",
+    "name": "Yeast",
+    "category": "leavener",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 1,
+      "BI": 2,
+      "UM": 4,
+      "HE": 0,
+      "FR": 0,
+      "EA": 3,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_yeast",
+      "c_umami_base"
+    ],
+    "purchaseIndex": 56
+  },
+  {
+    "id": "cocoa",
+    "name": "Cocoa",
+    "category": "flavoring",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 7,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 5,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_cocoa",
+      "c_roasted",
+      "c_pyrazine"
+    ],
+    "purchaseIndex": 57
+  },
+  {
+    "id": "maple_syrup",
+    "name": "Maple Syrup",
+    "category": "sweetener",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 9,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 1,
+      "SM": 2,
+      "PU": 0,
+      "NU": 2,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_caramel",
+      "c_roasted"
+    ],
+    "purchaseIndex": 58
+  },
+  {
+    "id": "almond",
+    "name": "Almond",
+    "category": "nut",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 0,
+      "BI": 1,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 9,
+      "RI": 4,
+      "LI": 0,
+      "HT": 0,
+      "CR": 7,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_nutty_note",
+      "c_benzaldehyde"
+    ],
+    "purchaseIndex": 59
+  },
+  {
+    "id": "cream_cheese",
+    "name": "Cream Cheese",
+    "category": "dairy",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 2,
+      "SA": 3,
+      "SO": 4,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_lactic_ferment",
+      "c_fat"
+    ],
+    "purchaseIndex": 60
+  },
+  {
+    "id": "phyllo",
+    "name": "Phyllo Dough",
+    "category": "pastry",
+    "equipmentId": "pastry_bench",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 9,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "purchaseIndex": 61
+  },
+  {
+    "id": "brisket",
+    "name": "Brisket",
+    "category": "protein",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 0,
+      "SA": 4,
+      "SO": 0,
+      "BI": 0,
+      "UM": 8,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 9,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_beef",
+      "c_smoke",
+      "c_maillard"
+    ],
+    "purchaseIndex": 62
+  },
+  {
+    "id": "pork_ribs",
+    "name": "Pork Ribs",
+    "category": "protein",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 3,
+      "SA": 3,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 8,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_pork",
+      "c_smoke",
+      "c_maillard"
+    ],
+    "purchaseIndex": 63
+  },
+  {
+    "id": "smoked_paprika",
+    "name": "Smoked Paprika",
+    "category": "spice",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 0,
+      "BI": 1,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 3,
+      "SM": 9,
+      "PU": 3,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 2,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_capsicum",
+      "c_smoke"
+    ],
+    "purchaseIndex": 64
+  },
+  {
+    "id": "turkey",
+    "name": "Smoked Turkey",
+    "category": "protein",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 0,
+      "SA": 2,
+      "SO": 0,
+      "BI": 0,
+      "UM": 6,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 4,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_poultry",
+      "c_smoke",
+      "c_maillard"
+    ],
+    "purchaseIndex": 65
+  },
+  {
+    "id": "sausage",
+    "name": "Smoked Sausage",
+    "category": "protein",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 0,
+      "SA": 7,
+      "SO": 0,
+      "BI": 0,
+      "UM": 7,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 6,
+      "PU": 4,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 2,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_pork",
+      "c_smoke",
+      "c_warm_spice"
+    ],
+    "purchaseIndex": 66
+  },
+  {
+    "id": "smoked_tofu",
+    "name": "Smoked Tofu",
+    "category": "legume",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 6,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 7,
+      "PU": 0,
+      "NU": 2,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_soy",
+      "c_smoke",
+      "c_legume"
+    ],
+    "purchaseIndex": 67
+  },
+  {
+    "id": "jackfruit",
+    "name": "Smoked Jackfruit",
+    "category": "fruit",
+    "equipmentId": "smoker",
+    "flavor": {
+      "SW": 5,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 3,
+      "HE": 0,
+      "FR": 6,
+      "EA": 2,
+      "SM": 4,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_tropical",
+      "c_smoke"
+    ],
+    "purchaseIndex": 68
+  },
+  {
+    "id": "soy_sauce",
+    "name": "Soy Sauce",
+    "category": "condiment",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 2,
+      "SA": 9,
+      "SO": 0,
+      "BI": 0,
+      "UM": 9,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_soy",
+      "c_aged_ferment",
+      "c_umami_base"
+    ],
+    "purchaseIndex": 69
+  },
+  {
+    "id": "ginger",
+    "name": "Ginger",
+    "category": "aromatic",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 3,
+      "FR": 3,
+      "EA": 1,
+      "SM": 0,
+      "PU": 7,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 5,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_ginger_note",
+      "c_terpene"
+    ],
+    "purchaseIndex": 70
+  },
+  {
+    "id": "bok_choy",
+    "name": "Bok Choy",
+    "category": "vegetable",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 3,
+      "UM": 2,
+      "HE": 2,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 6,
+      "HT": 0,
+      "CR": 6,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_brassica",
+      "c_sulfur",
+      "c_green_note"
+    ],
+    "purchaseIndex": 71
+  },
+  {
+    "id": "sesame_oil",
+    "name": "Sesame Oil",
+    "category": "fat",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 2,
+      "PU": 0,
+      "NU": 8,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_fat",
+      "c_nutty_note",
+      "c_roasted"
+    ],
+    "purchaseIndex": 72
+  },
+  {
+    "id": "rice_noodle",
+    "name": "Rice Noodle",
+    "category": "grain",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 1,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 1,
+      "RI": 0,
+      "LI": 5,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "purchaseIndex": 73
+  },
+  {
+    "id": "tofu",
+    "name": "Tofu",
+    "category": "legume",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 3,
+      "HE": 0,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 0,
+      "NU": 2,
+      "RI": 2,
+      "LI": 5,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_soy",
+      "c_legume"
+    ],
+    "purchaseIndex": 74
+  },
+  {
+    "id": "shrimp_paste",
+    "name": "Shrimp Paste",
+    "category": "condiment",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 8,
+      "SO": 0,
+      "BI": 0,
+      "UM": 9,
+      "HE": 0,
+      "FR": 0,
+      "EA": 3,
+      "SM": 0,
+      "PU": 7,
+      "NU": 0,
+      "RI": 2,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_marine",
+      "c_fish_ferment",
+      "c_umami_base"
+    ],
+    "purchaseIndex": 75
+  },
+  {
+    "id": "chili_flake",
+    "name": "Chili Flake",
+    "category": "spice",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 1,
+      "UM": 0,
+      "HE": 0,
+      "FR": 2,
+      "EA": 0,
+      "SM": 3,
+      "PU": 5,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 9,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_capsicum"
+    ],
+    "purchaseIndex": 76
+  },
+  {
+    "id": "thai_basil",
+    "name": "Thai Basil",
+    "category": "herb",
+    "equipmentId": "wok",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 9,
+      "FR": 3,
+      "EA": 0,
+      "SM": 0,
+      "PU": 4,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_herb_aroma",
+      "c_terpene",
+      "c_anise_note"
+    ],
+    "purchaseIndex": 77
+  },
+  {
+    "id": "dill_pickle",
+    "name": "Dill Pickle",
+    "category": "vegetable",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 0,
+      "SA": 6,
+      "SO": 8,
+      "BI": 0,
+      "UM": 0,
+      "HE": 4,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 3,
+      "NU": 0,
+      "RI": 0,
+      "LI": 3,
+      "HT": 0,
+      "CR": 7,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_lactic_ferment",
+      "c_cucurbit",
+      "c_herb_aroma"
+    ],
+    "purchaseIndex": 78
+  },
+  {
+    "id": "kimchi",
+    "name": "Kimchi",
+    "category": "vegetable",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 0,
+      "SA": 6,
+      "SO": 7,
+      "BI": 0,
+      "UM": 5,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 7,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 6,
+      "CR": 5,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_lactic_ferment",
+      "c_brassica",
+      "c_capsicum"
+    ],
+    "purchaseIndex": 79
+  },
+  {
+    "id": "miso",
+    "name": "Miso",
+    "category": "condiment",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 3,
+      "SA": 8,
+      "SO": 0,
+      "BI": 0,
+      "UM": 9,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_soy",
+      "c_aged_ferment",
+      "c_umami_base"
+    ],
+    "purchaseIndex": 80
+  },
+  {
+    "id": "sauerkraut",
+    "name": "Sauerkraut",
+    "category": "vegetable",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 0,
+      "SA": 5,
+      "SO": 8,
+      "BI": 2,
+      "UM": 2,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 3,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 6,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_lactic_ferment",
+      "c_brassica",
+      "c_sulfur"
+    ],
+    "purchaseIndex": 81
+  },
+  {
+    "id": "tempeh",
+    "name": "Tempeh",
+    "category": "legume",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 5,
+      "HE": 0,
+      "FR": 0,
+      "EA": 5,
+      "SM": 0,
+      "PU": 0,
+      "NU": 5,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_soy",
+      "c_legume",
+      "c_aged_ferment"
+    ],
+    "purchaseIndex": 82
+  },
+  {
+    "id": "kombucha",
+    "name": "Kombucha",
+    "category": "beverage",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 7,
+      "BI": 2,
+      "UM": 0,
+      "HE": 0,
+      "FR": 4,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 7,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_lactic_ferment",
+      "c_yeast",
+      "c_tea_note"
+    ],
+    "purchaseIndex": 83
+  },
+  {
+    "id": "sour_cream",
+    "name": "Sour Cream",
+    "category": "dairy",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 1,
+      "SA": 2,
+      "SO": 6,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 7,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_dairy_lactone",
+      "c_lactic_ferment",
+      "c_fat"
+    ],
+    "purchaseIndex": 84
+  },
+  {
+    "id": "fish_sauce",
+    "name": "Fish Sauce",
+    "category": "condiment",
+    "equipmentId": "fermentation_crock",
+    "flavor": {
+      "SW": 0,
+      "SA": 10,
+      "SO": 2,
+      "BI": 0,
+      "UM": 10,
+      "HE": 0,
+      "FR": 0,
+      "EA": 0,
+      "SM": 0,
+      "PU": 6,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_marine",
+      "c_fish_ferment",
+      "c_umami_base"
+    ],
+    "purchaseIndex": 85
+  },
+  {
+    "id": "coffee",
+    "name": "Coffee",
+    "category": "beverage",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 2,
+      "BI": 8,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 4,
+      "SM": 3,
+      "PU": 0,
+      "NU": 2,
+      "RI": 5,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_roasted",
+      "c_pyrazine",
+      "c_cocoa"
+    ],
+    "purchaseIndex": 86
+  },
+  {
+    "id": "black_tea",
+    "name": "Black Tea",
+    "category": "beverage",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 6,
+      "UM": 0,
+      "HE": 2,
+      "FR": 2,
+      "EA": 3,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 0,
+      "LI": 4,
+      "HT": 0,
+      "CR": 0,
+      "TE": 1
+    },
+    "compoundIds": [
+      "c_tea_note",
+      "c_tannin"
+    ],
+    "purchaseIndex": 87
+  },
+  {
+    "id": "cinnamon",
+    "name": "Cinnamon",
+    "category": "spice",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 5,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 3,
+      "FR": 0,
+      "EA": 1,
+      "SM": 0,
+      "PU": 5,
+      "NU": 0,
+      "RI": 2,
+      "LI": 0,
+      "HT": 2,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_warm_spice",
+      "c_terpene"
+    ],
+    "purchaseIndex": 88
+  },
+  {
+    "id": "cardamom",
+    "name": "Cardamom",
+    "category": "spice",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 0,
+      "HE": 7,
+      "FR": 3,
+      "EA": 0,
+      "SM": 0,
+      "PU": 5,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_warm_spice",
+      "c_terpene",
+      "c_anise_note"
+    ],
+    "purchaseIndex": 89
+  },
+  {
+    "id": "honey",
+    "name": "Honey",
+    "category": "sweetener",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 9,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 2,
+      "FR": 4,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 0,
+      "RI": 3,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_caramel",
+      "c_floral_note"
+    ],
+    "purchaseIndex": 90
+  },
+  {
+    "id": "oat_milk",
+    "name": "Oat Milk",
+    "category": "dairy_alt",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 3,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 0,
+      "NU": 3,
+      "RI": 4,
+      "LI": 5,
+      "HT": 0,
+      "CR": 0,
+      "TE": -1
+    },
+    "compoundIds": [
+      "c_grain",
+      "c_starch"
+    ],
+    "purchaseIndex": 91
+  },
+  {
+    "id": "coconut_milk",
+    "name": "Coconut Milk",
+    "category": "dairy_alt",
+    "equipmentId": "barista_station",
+    "flavor": {
+      "SW": 4,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 0,
+      "FR": 2,
+      "EA": 0,
+      "SM": 0,
+      "PU": 0,
+      "NU": 4,
+      "RI": 8,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_tropical",
+      "c_fat",
+      "c_dairy_lactone"
+    ],
+    "purchaseIndex": 92
+  },
+  {
+    "id": "cumin",
+    "name": "Cumin",
+    "category": "spice",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 3,
+      "UM": 0,
+      "HE": 2,
+      "FR": 0,
+      "EA": 7,
+      "SM": 3,
+      "PU": 6,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 1,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_warm_spice",
+      "c_terpene",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 93
+  },
+  {
+    "id": "coriander",
+    "name": "Coriander",
+    "category": "spice",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 2,
+      "SA": 0,
+      "SO": 0,
+      "BI": 0,
+      "UM": 0,
+      "HE": 5,
+      "FR": 4,
+      "EA": 1,
+      "SM": 0,
+      "PU": 3,
+      "NU": 2,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_warm_spice",
+      "c_terpene",
+      "c_citrus"
+    ],
+    "purchaseIndex": 94
+  },
+  {
+    "id": "turmeric",
+    "name": "Turmeric",
+    "category": "spice",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 5,
+      "UM": 0,
+      "HE": 0,
+      "FR": 0,
+      "EA": 7,
+      "SM": 0,
+      "PU": 4,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 1,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_ginger_note",
+      "c_terpene",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 95
+  },
+  {
+    "id": "oregano",
+    "name": "Oregano",
+    "category": "herb",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 3,
+      "UM": 0,
+      "HE": 9,
+      "FR": 0,
+      "EA": 2,
+      "SM": 0,
+      "PU": 4,
+      "NU": 0,
+      "RI": 0,
+      "LI": 2,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_herb_aroma",
+      "c_terpene"
+    ],
+    "purchaseIndex": 96
+  },
+  {
+    "id": "thyme",
+    "name": "Thyme",
+    "category": "herb",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 2,
+      "UM": 0,
+      "HE": 8,
+      "FR": 1,
+      "EA": 2,
+      "SM": 0,
+      "PU": 3,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_herb_aroma",
+      "c_terpene"
+    ],
+    "purchaseIndex": 97
+  },
+  {
+    "id": "rosemary",
+    "name": "Rosemary",
+    "category": "herb",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 0,
+      "SA": 0,
+      "SO": 0,
+      "BI": 4,
+      "UM": 0,
+      "HE": 9,
+      "FR": 1,
+      "EA": 2,
+      "SM": 0,
+      "PU": 4,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 0,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_herb_aroma",
+      "c_terpene",
+      "c_pine_note"
+    ],
+    "purchaseIndex": 98
+  },
+  {
+    "id": "paprika",
+    "name": "Paprika",
+    "category": "spice",
+    "equipmentId": "spice_rack",
+    "flavor": {
+      "SW": 4,
+      "SA": 0,
+      "SO": 0,
+      "BI": 1,
+      "UM": 0,
+      "HE": 0,
+      "FR": 2,
+      "EA": 3,
+      "SM": 1,
+      "PU": 2,
+      "NU": 0,
+      "RI": 0,
+      "LI": 0,
+      "HT": 1,
+      "CR": 0,
+      "TE": 0
+    },
+    "compoundIds": [
+      "c_capsicum",
+      "c_earthy_note"
+    ],
+    "purchaseIndex": 99
+  }
+]

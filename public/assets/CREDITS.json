@@ -1,0 +1,1794 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/build-assets.ts",
+  "generatedAt": "2026-07-25T04:08:35.497Z",
+  "policy": "CC0-only",
+  "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
+  "packs": [
+    {
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0"
+    },
+    {
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "note": "Purpose-made 32×32 pixel-art icons generated for this project; dedicated to CC0."
+    },
+    {
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "note": "16×16 top-down rogue idle sprite for customer NPC."
+    },
+    {
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0"
+    },
+    {
+      "pack": "Kenney Interface Sounds",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "license": "CC0"
+    },
+    {
+      "pack": "Kenney Music Jingles",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/music-jingles",
+      "license": "CC0"
+    }
+  ],
+  "entries": [
+    {
+      "path": "atlases/tiles.json#floor_a",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor tiles"
+      ],
+      "sourceFile": "tile_0048.png"
+    },
+    {
+      "path": "atlases/tiles.json#floor_b",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor tiles"
+      ],
+      "sourceFile": "tile_0049.png"
+    },
+    {
+      "path": "atlases/furniture.json#prep_station",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (prep_station)"
+      ],
+      "sourceFile": "tile_0080.png"
+    },
+    {
+      "path": "atlases/furniture.json#grill",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (grill)"
+      ],
+      "sourceFile": "tile_0096.png"
+    },
+    {
+      "path": "atlases/furniture.json#oven",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (oven)"
+      ],
+      "sourceFile": "tile_0112.png"
+    },
+    {
+      "path": "atlases/furniture.json#fryer",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (fryer)"
+      ],
+      "sourceFile": "tile_0128.png"
+    },
+    {
+      "path": "atlases/furniture.json#stockpot",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (stockpot)"
+      ],
+      "sourceFile": "tile_0144.png"
+    },
+    {
+      "path": "atlases/furniture.json#cold_station",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (cold_station)"
+      ],
+      "sourceFile": "tile_0160.png"
+    },
+    {
+      "path": "atlases/furniture.json#pastry_bench",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (pastry_bench)"
+      ],
+      "sourceFile": "tile_0176.png"
+    },
+    {
+      "path": "atlases/furniture.json#smoker",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (smoker)"
+      ],
+      "sourceFile": "tile_0192.png"
+    },
+    {
+      "path": "atlases/furniture.json#wok",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (wok)"
+      ],
+      "sourceFile": "tile_0208.png"
+    },
+    {
+      "path": "atlases/furniture.json#fermentation_crock",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (fermentation_crock)"
+      ],
+      "sourceFile": "tile_0224.png"
+    },
+    {
+      "path": "atlases/furniture.json#barista_station",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (barista_station)"
+      ],
+      "sourceFile": "tile_0240.png"
+    },
+    {
+      "path": "atlases/furniture.json#spice_rack",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (spice_rack)"
+      ],
+      "sourceFile": "tile_0256.png"
+    },
+    {
+      "path": "atlases/furniture.json#table_2seat",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (table_2seat)"
+      ],
+      "sourceFile": "tile_0100.png"
+    },
+    {
+      "path": "atlases/furniture.json#decor_plant",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (decor_plant)"
+      ],
+      "sourceFile": "tile_0105.png"
+    },
+    {
+      "path": "atlases/characters.json#customer",
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:CustomerLayer"
+      ],
+      "sourceFile": "Tiles/tile_0088.png",
+      "approximationNote": "Rogue idle facing down — generic top-down customer."
+    },
+    {
+      "path": "atlases/food.json#icon_almond",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "almond.png"
+    },
+    {
+      "path": "atlases/food.json#icon_avocado",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "avocado.png"
+    },
+    {
+      "path": "atlases/food.json#icon_bacon",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "bacon.png"
+    },
+    {
+      "path": "atlases/food.json#icon_bay_leaf",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "bay_leaf.png"
+    },
+    {
+      "path": "atlases/food.json#icon_beef_broth",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "beef_broth.png"
+    },
+    {
+      "path": "atlases/food.json#icon_beef_steak",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "beef_steak.png"
+    },
+    {
+      "path": "atlases/food.json#icon_bell_pepper",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "bell_pepper.png"
+    },
+    {
+      "path": "atlases/food.json#icon_black_pepper",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "black_pepper.png"
+    },
+    {
+      "path": "atlases/food.json#icon_black_tea",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "black_tea.png"
+    },
+    {
+      "path": "atlases/food.json#icon_bok_choy",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "bok_choy.png"
+    },
+    {
+      "path": "atlases/food.json#icon_bread",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "bread.png"
+    },
+    {
+      "path": "atlases/food.json#icon_brisket",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "brisket.png"
+    },
+    {
+      "path": "atlases/food.json#icon_broccoli",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "broccoli.png"
+    },
+    {
+      "path": "atlases/food.json#icon_butter",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "butter.png"
+    },
+    {
+      "path": "atlases/food.json#icon_calamari",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "calamari.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cardamom",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cardamom.png"
+    },
+    {
+      "path": "atlases/food.json#icon_carrot",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "carrot.png"
+    },
+    {
+      "path": "atlases/food.json#icon_celery",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "celery.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cheddar",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cheddar.png"
+    },
+    {
+      "path": "atlases/food.json#icon_chicken",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "chicken.png"
+    },
+    {
+      "path": "atlases/food.json#icon_chicken_thigh",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "chicken_thigh.png"
+    },
+    {
+      "path": "atlases/food.json#icon_chicken_wing",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "chicken_wing.png"
+    },
+    {
+      "path": "atlases/food.json#icon_chickpeas",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "chickpeas.png"
+    },
+    {
+      "path": "atlases/food.json#icon_chili_flake",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "chili_flake.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cinnamon",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cinnamon.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cocoa",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cocoa.png"
+    },
+    {
+      "path": "atlases/food.json#icon_coconut_milk",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "coconut_milk.png"
+    },
+    {
+      "path": "atlases/food.json#icon_coffee",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "coffee.png"
+    },
+    {
+      "path": "atlases/food.json#icon_coriander",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "coriander.png"
+    },
+    {
+      "path": "atlases/food.json#icon_corn",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "corn.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cream",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cream.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cream_cheese",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cream_cheese.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cucumber",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cucumber.png"
+    },
+    {
+      "path": "atlases/food.json#icon_cumin",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "cumin.png"
+    },
+    {
+      "path": "atlases/food.json#icon_dill_pickle",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "dill_pickle.png"
+    },
+    {
+      "path": "atlases/food.json#icon_egg",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "egg.png"
+    },
+    {
+      "path": "atlases/food.json#icon_eggplant",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "eggplant.png"
+    },
+    {
+      "path": "atlases/food.json#icon_falafel",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "falafel.png"
+    },
+    {
+      "path": "atlases/food.json#icon_feta",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "feta.png"
+    },
+    {
+      "path": "atlases/food.json#icon_fish_sauce",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "fish_sauce.png"
+    },
+    {
+      "path": "atlases/food.json#icon_flour",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "flour.png"
+    },
+    {
+      "path": "atlases/food.json#icon_garlic",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "garlic.png"
+    },
+    {
+      "path": "atlases/food.json#icon_ginger",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "ginger.png"
+    },
+    {
+      "path": "atlases/food.json#icon_honey",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "honey.png"
+    },
+    {
+      "path": "atlases/food.json#icon_jackfruit",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "jackfruit.png"
+    },
+    {
+      "path": "atlases/food.json#icon_kimchi",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "kimchi.png"
+    },
+    {
+      "path": "atlases/food.json#icon_kombucha",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "kombucha.png"
+    },
+    {
+      "path": "atlases/food.json#icon_lamb_chop",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "lamb_chop.png"
+    },
+    {
+      "path": "atlases/food.json#icon_lemon",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "lemon.png"
+    },
+    {
+      "path": "atlases/food.json#icon_lentils",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "lentils.png"
+    },
+    {
+      "path": "atlases/food.json#icon_lettuce",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "lettuce.png"
+    },
+    {
+      "path": "atlases/food.json#icon_maple_syrup",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "maple_syrup.png"
+    },
+    {
+      "path": "atlases/food.json#icon_miso",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "miso.png"
+    },
+    {
+      "path": "atlases/food.json#icon_mozzarella",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "mozzarella.png"
+    },
+    {
+      "path": "atlases/food.json#icon_oat_milk",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "oat_milk.png"
+    },
+    {
+      "path": "atlases/food.json#icon_olive_oil",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "olive_oil.png"
+    },
+    {
+      "path": "atlases/food.json#icon_onion",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "onion.png"
+    },
+    {
+      "path": "atlases/food.json#icon_oregano",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "oregano.png"
+    },
+    {
+      "path": "atlases/food.json#icon_paprika",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "paprika.png"
+    },
+    {
+      "path": "atlases/food.json#icon_pasta",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "pasta.png"
+    },
+    {
+      "path": "atlases/food.json#icon_phyllo",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "phyllo.png"
+    },
+    {
+      "path": "atlases/food.json#icon_plantain",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "plantain.png"
+    },
+    {
+      "path": "atlases/food.json#icon_pork_chop",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "pork_chop.png"
+    },
+    {
+      "path": "atlases/food.json#icon_pork_ribs",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "pork_ribs.png"
+    },
+    {
+      "path": "atlases/food.json#icon_portobello_mushroom",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "portobello_mushroom.png"
+    },
+    {
+      "path": "atlases/food.json#icon_potato",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "potato.png"
+    },
+    {
+      "path": "atlases/food.json#icon_potato_fries",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "potato_fries.png"
+    },
+    {
+      "path": "atlases/food.json#icon_rice",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "rice.png"
+    },
+    {
+      "path": "atlases/food.json#icon_rice_noodle",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "rice_noodle.png"
+    },
+    {
+      "path": "atlases/food.json#icon_rosemary",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "rosemary.png"
+    },
+    {
+      "path": "atlases/food.json#icon_salmon_fillet",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "salmon_fillet.png"
+    },
+    {
+      "path": "atlases/food.json#icon_salt",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "salt.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sauerkraut",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sauerkraut.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sausage",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sausage.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sesame_oil",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sesame_oil.png"
+    },
+    {
+      "path": "atlases/food.json#icon_shrimp",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "shrimp.png"
+    },
+    {
+      "path": "atlases/food.json#icon_shrimp_paste",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "shrimp_paste.png"
+    },
+    {
+      "path": "atlases/food.json#icon_smoked_paprika",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "smoked_paprika.png"
+    },
+    {
+      "path": "atlases/food.json#icon_smoked_salmon",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "smoked_salmon.png"
+    },
+    {
+      "path": "atlases/food.json#icon_smoked_tofu",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "smoked_tofu.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sour_cream",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sour_cream.png"
+    },
+    {
+      "path": "atlases/food.json#icon_soy_sauce",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "soy_sauce.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sugar",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sugar.png"
+    },
+    {
+      "path": "atlases/food.json#icon_sweet_potato",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "sweet_potato.png"
+    },
+    {
+      "path": "atlases/food.json#icon_tempeh",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "tempeh.png"
+    },
+    {
+      "path": "atlases/food.json#icon_tempura_shrimp",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "tempura_shrimp.png"
+    },
+    {
+      "path": "atlases/food.json#icon_thai_basil",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "thai_basil.png"
+    },
+    {
+      "path": "atlases/food.json#icon_thyme",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "thyme.png"
+    },
+    {
+      "path": "atlases/food.json#icon_tofu",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "tofu.png"
+    },
+    {
+      "path": "atlases/food.json#icon_tomato",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "tomato.png"
+    },
+    {
+      "path": "atlases/food.json#icon_tomato_paste",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "tomato_paste.png"
+    },
+    {
+      "path": "atlases/food.json#icon_turkey",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "turkey.png"
+    },
+    {
+      "path": "atlases/food.json#icon_turmeric",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "turmeric.png"
+    },
+    {
+      "path": "atlases/food.json#icon_vanilla",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "vanilla.png"
+    },
+    {
+      "path": "atlases/food.json#icon_vegetable_broth",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "vegetable_broth.png"
+    },
+    {
+      "path": "atlases/food.json#icon_white_beans",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "white_beans.png"
+    },
+    {
+      "path": "atlases/food.json#icon_yeast",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "yeast.png"
+    },
+    {
+      "path": "atlases/food.json#icon_yeast_doughnut",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "yeast_doughnut.png"
+    },
+    {
+      "path": "atlases/food.json#icon_yogurt",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "yogurt.png"
+    },
+    {
+      "path": "atlases/food.json#icon_zucchini",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:shop",
+        "ui:compose",
+        "ui:flavor-inspector",
+        "ui:recipe-book"
+      ],
+      "sourceFile": "zucchini.png"
+    },
+    {
+      "path": "sfx/serve.ogg",
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_rpgaudio/Audio/knifeSlice.ogg"
+    },
+    {
+      "path": "sfx/review.ogg",
+      "pack": "Kenney Interface Sounds",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_interfacesounds/Audio/confirmation_001.ogg"
+    },
+    {
+      "path": "sfx/purchase.ogg",
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_rpgaudio/Audio/handleCoins.ogg"
+    },
+    {
+      "path": "sfx/placement.ogg",
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_rpgaudio/Audio/metalClick.ogg"
+    },
+    {
+      "path": "sfx/day-open.ogg",
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_rpgaudio/Audio/doorOpen_1.ogg"
+    },
+    {
+      "path": "sfx/day-close.ogg",
+      "pack": "Kenney RPG Audio",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_rpgaudio/Audio/doorClose_3.ogg"
+    },
+    {
+      "path": "sfx/ui-click.ogg",
+      "pack": "Kenney Interface Sounds",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_interfacesounds/Audio/click_001.ogg"
+    },
+    {
+      "path": "music/restaurant-loop.ogg",
+      "pack": "Kenney Music Jingles",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/music-jingles",
+      "license": "CC0",
+      "usedIn": [
+        "app:AudioManager"
+      ],
+      "sourceFile": "kenney_musicjingles/Audio/Pizzicato jingles/jingles_PIZZI01.ogg"
+    },
+    {
+      "path": "CREDITS.json",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "build:generated artifact from CC0 atlas/audio pipeline"
+      ]
+    },
+    {
+      "path": "atlases/characters.png",
+      "pack": "Kenney Tiny Dungeon",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0",
+      "usedIn": [
+        "build:generated artifact from CC0 atlas/audio pipeline"
+      ]
+    },
+    {
+      "path": "atlases/food.png",
+      "pack": "Restaurant Simulator Ingredient Icons",
+      "author": "Restaurant Simulator project",
+      "sourceUrl": "vendor/generated/ingredient-sheets/",
+      "license": "CC0",
+      "usedIn": [
+        "build:generated artifact from CC0 atlas/audio pipeline"
+      ]
+    },
+    {
+      "path": "atlases/furniture.png",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "build:generated artifact from CC0 atlas/audio pipeline"
+      ]
+    },
+    {
+      "path": "atlases/tiles.png",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "build:generated artifact from CC0 atlas/audio pipeline"
+      ]
+    }
+  ],
+  "shippedFiles": [
+    "CREDITS.json",
+    "atlases/characters.json",
+    "atlases/characters.png",
+    "atlases/food.json",
+    "atlases/food.png",
+    "atlases/furniture.json",
+    "atlases/furniture.png",
+    "atlases/tiles.json",
+    "atlases/tiles.png",
+    "music/restaurant-loop.ogg",
+    "sfx/day-close.ogg",
+    "sfx/day-open.ogg",
+    "sfx/placement.ogg",
+    "sfx/purchase.ogg",
+    "sfx/review.ogg",
+    "sfx/serve.ogg",
+    "sfx/ui-click.ogg"
+  ]
+}

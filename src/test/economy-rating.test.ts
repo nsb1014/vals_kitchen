@@ -1,0 +1,108 @@
+import { describe, expect, it } from 'vitest';
+import {
+  equipmentCost,
+  ingredientUnlockCost,
+  tableCost,
+} from '../domain/economy/costs.ts';
+import {
+  basePayout,
+  computeTip,
+  dayBonusEarnings,
+  matchQualityFactor,
+  prestigeMultiplier,
+  ratingMultiplier,
+} from '../domain/economy/tips.ts';
+import { applyReview, reviewDelta } from '../domain/rating/update.ts';
+import { prestigeRatingDeltaMultiplier } from '../domain/balance/prestige-pacing.ts';
+import { applyPrestige } from '../domain/rating/prestige.ts';
+import { applySoftReset } from '../domain/rating/soft-reset.ts';
+import { createNewGameState } from '../domain/state/game-state.ts';
+import {
+  NEW_GAME_STARTER_IDS,
+  SOFT_RESET_STARTER_IDS,
+} from '../domain/types.ts';
+
+describe('economy engine', () => {
+  it('matches PRD cost formulas', () => {
+    expect(ingredientUnlockCost(0)).toBe(150);
+    expect(ingredientUnlockCost(1)).toBe(Math.floor(150 * 1.14));
+    expect(tableCost(0)).toBe(200);
+    expect(equipmentCost(0)).toBe(500);
+  });
+
+  it('matches PRD tip pipeline using exact formula components', () => {
+    const day = 50;
+    const base = basePayout(day);
+    expect(base).toBe(Math.floor(20 + 8 * Math.pow(day, 0.55)));
+    expect(ratingMultiplier(4.2)).toBeCloseTo(Math.pow(4.2 / 3, 1.3), 5);
+    expect(prestigeMultiplier(2)).toBeCloseTo(Math.pow(1.18, 2), 5);
+    expect(matchQualityFactor(8)).toBeCloseTo(0.3 + 0.7 * Math.pow(0.8, 1.5), 5);
+    expect(
+      computeTip({ day, rating: 4.2, prestige: 2, matchStars: 8 }),
+    ).toBe(
+      Math.floor(base * ratingMultiplier(4.2) * prestigeMultiplier(2) * matchQualityFactor(8)),
+    );
+  });
+
+
+  it('awards 5% day bonus when average match is at least 7', () => {
+    expect(dayBonusEarnings(1000, 7)).toBe(50);
+    expect(dayBonusEarnings(1000, 6.9)).toBe(0);
+  });
+});
+
+describe('rating engine', () => {
+  it('applies review delta from PRD table', () => {
+    expect(reviewDelta(10)).toBeCloseTo(0.4, 5);
+    expect(reviewDelta(7)).toBeCloseTo(0.16, 5);
+    expect(reviewDelta(5)).toBeCloseTo(0, 5);
+    expect(reviewDelta(2)).toBeCloseTo(-0.24, 5);
+  });
+
+  it('clamps rating between 0 and 6', () => {
+    const high = applyReview(5.9, 10);
+    expect(high.prestigeTriggered).toBe(true);
+    expect(high.rating).toBe(3);
+
+    const low = applyReview(0.1, 0);
+    expect(low.softResetTriggered).toBe(true);
+    expect(low.rating).toBe(0);
+  });
+
+  it('triggers prestige and resets rating to 3', () => {
+    const state = createNewGameState(42);
+    const next = applyPrestige({ ...state, rating: 6 });
+    expect(next.prestige).toBe(1);
+    expect(next.rating).toBe(3);
+    expect(next.stats.prestigesTotal).toBe(1);
+  });
+
+  it('soft reset keeps prestige and recipe book but wipes run progress', () => {
+    const state = createNewGameState(42);
+    state.prestige = 2;
+    state.discoveredRecipeIds = ['recipe_a', 'recipe_b'];
+    state.cash = 5000;
+    state.unlockedIngredientIds = [...NEW_GAME_STARTER_IDS, 'tomato', 'basil'];
+    state.purchasedEquipmentIds = ['prep_station', 'grill'];
+    state.rating = 0;
+
+    const reset = applySoftReset(state);
+    expect(reset.prestige).toBe(2);
+    expect(reset.discoveredRecipeIds).toEqual(['recipe_a', 'recipe_b']);
+    expect(reset.cash).toBe(100);
+    expect(reset.unlockedIngredientIds).toEqual([...SOFT_RESET_STARTER_IDS]);
+    expect(reset.purchasedEquipmentIds).toEqual(['prep_station']);
+    expect(reset.rating).toBe(3);
+    expect(reset.activeDay).toBeNull();
+    expect(reset.gridSize).toEqual({ w: 4, h: 4 });
+  });
+
+  it('keeps positive rating delta at tier floors for high prestige', () => {
+    for (const prestige of [10, 25, 50]) {
+      const mult = prestigeRatingDeltaMultiplier(prestige);
+      expect(reviewDelta(6.5, mult)).toBeGreaterThan(0);
+      expect(reviewDelta(7.0, mult)).toBeGreaterThan(0);
+      expect(reviewDelta(5.0, mult)).toBe(0);
+    }
+  });
+});

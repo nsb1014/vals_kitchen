@@ -1,0 +1,124 @@
+import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import type { Placement } from '../../domain/state/game-state.ts';
+import { getFurnitureTexture } from '../../assets/loader.ts';
+import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
+import { gridToWorld, TILE_PX } from '../coordinates.ts';
+
+const MIN_HIT_PX = 44;
+const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
+
+interface FurnitureSprite {
+  root: Container;
+  body: Graphics;
+  sprite: Sprite | null;
+  placementId: string;
+}
+
+export class FurnitureLayer {
+  readonly view = new Container();
+  private sprites = new Map<string, FurnitureSprite>();
+  private pool: FurnitureSprite[] = [];
+
+  sync(placements: Placement[], editMode: boolean): void {
+    const seen = new Set<string>();
+
+    for (const placement of placements) {
+      seen.add(placement.id);
+      let sprite = this.sprites.get(placement.id);
+      if (!sprite) {
+        sprite = this.acquireSprite();
+        this.sprites.set(placement.id, sprite);
+        this.view.addChild(sprite.root);
+      }
+      this.drawSprite(sprite, placement, editMode);
+    }
+
+    for (const [id, sprite] of this.sprites) {
+      if (seen.has(id)) continue;
+      this.view.removeChild(sprite.root);
+      this.sprites.delete(id);
+      this.releaseSprite(sprite);
+    }
+  }
+
+  findPlacementAtWorld(wx: number, wy: number): string | null {
+    for (const [id, sprite] of this.sprites) {
+      const pos = sprite.root.position;
+      const minX = pos.x - HIT_PADDING;
+      const minY = pos.y - HIT_PADDING;
+      const maxX = pos.x + TILE_PX + HIT_PADDING;
+      const maxY = pos.y + TILE_PX + HIT_PADDING;
+      if (wx >= minX && wx <= maxX && wy >= minY && wy <= maxY) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  getSpriteRoot(placementId: string): Container | undefined {
+    return this.sprites.get(placementId)?.root;
+  }
+
+  private acquireSprite(): FurnitureSprite {
+    const pooled = this.pool.pop();
+    if (pooled) {
+      pooled.placementId = '';
+      return pooled;
+    }
+    const root = new Container();
+    root.eventMode = 'static';
+    root.cursor = 'grab';
+    const body = new Graphics();
+    const sprite = new Sprite();
+    sprite.visible = false;
+    sprite.roundPixels = true;
+    root.addChild(sprite);
+    root.addChild(body);
+    return { root, body, sprite, placementId: '' };
+  }
+
+  private releaseSprite(sprite: FurnitureSprite): void {
+    sprite.body.clear();
+    sprite.sprite!.visible = false;
+    sprite.sprite!.texture = Texture.EMPTY;
+    sprite.root.removeAllListeners();
+    sprite.root.cursor = 'grab';
+    sprite.placementId = '';
+    this.pool.push(sprite);
+  }
+
+  private drawSprite(sprite: FurnitureSprite, placement: Placement, editMode: boolean): void {
+    sprite.placementId = placement.id;
+    const { x, y } = gridToWorld(placement.x, placement.y);
+    sprite.root.position.set(x, y);
+
+    const spriteName = spriteNameForItemKey(placement.itemKey);
+    const texture = getFurnitureTexture(spriteName);
+    sprite.body.clear();
+
+    if (texture) {
+      sprite.sprite!.texture = texture;
+      sprite.sprite!.visible = true;
+      sprite.sprite!.width = TILE_PX;
+      sprite.sprite!.height = TILE_PX;
+      sprite.sprite!.position.set(0, 0);
+    } else {
+      sprite.sprite!.visible = false;
+      const color = fallbackTintForItemKey(placement.itemKey);
+      sprite.body.rect(2, 2, TILE_PX - 4, TILE_PX - 4).fill(color);
+      sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill({ color, alpha: 0.75 });
+      if (placement.itemKey.startsWith('table')) {
+        sprite.body.circle(TILE_PX / 2, TILE_PX / 2, 4).fill(0xf5deb3);
+      }
+    }
+
+    sprite.root.eventMode = editMode ? 'static' : 'none';
+    sprite.root.cursor = editMode ? 'grab' : 'default';
+    sprite.root.hitArea = new Rectangle(
+      -HIT_PADDING,
+      -HIT_PADDING,
+      TILE_PX + HIT_PADDING * 2,
+      TILE_PX + HIT_PADDING * 2,
+    );
+  }
+}

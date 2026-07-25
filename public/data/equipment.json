@@ -1,0 +1,86 @@
+[
+  {
+    "id": "prep_station",
+    "name": "Prep Station",
+    "ingredientGroupName": "Pantry & Basics",
+    "purchaseIndex": null,
+    "cost": 0
+  },
+  {
+    "id": "grill",
+    "name": "Grill",
+    "ingredientGroupName": "Grilled & Charred",
+    "purchaseIndex": 0,
+    "cost": 500
+  },
+  {
+    "id": "oven",
+    "name": "Oven",
+    "ingredientGroupName": "Roasted & Baked",
+    "purchaseIndex": 1,
+    "cost": 590
+  },
+  {
+    "id": "fryer",
+    "name": "Fryer",
+    "ingredientGroupName": "Fried & Crispy",
+    "purchaseIndex": 2,
+    "cost": 696
+  },
+  {
+    "id": "stockpot",
+    "name": "Stockpot",
+    "ingredientGroupName": "Simmered & Broths",
+    "purchaseIndex": 3,
+    "cost": 821
+  },
+  {
+    "id": "cold_station",
+    "name": "Cold Station",
+    "ingredientGroupName": "Fresh & Raw",
+    "purchaseIndex": 4,
+    "cost": 969
+  },
+  {
+    "id": "pastry_bench",
+    "name": "Pastry Bench",
+    "ingredientGroupName": "Pastry & Dough",
+    "purchaseIndex": 5,
+    "cost": 1143
+  },
+  {
+    "id": "smoker",
+    "name": "Smoker",
+    "ingredientGroupName": "Smoked & BBQ",
+    "purchaseIndex": 6,
+    "cost": 1349
+  },
+  {
+    "id": "wok",
+    "name": "Wok",
+    "ingredientGroupName": "Stir-Fry Pan",
+    "purchaseIndex": 7,
+    "cost": 1592
+  },
+  {
+    "id": "fermentation_crock",
+    "name": "Fermentation Crock",
+    "ingredientGroupName": "Pickled & Fermented",
+    "purchaseIndex": 8,
+    "cost": 1879
+  },
+  {
+    "id": "barista_station",
+    "name": "Barista Station",
+    "ingredientGroupName": "Coffee & Tea",
+    "purchaseIndex": 9,
+    "cost": 2217
+  },
+  {
+    "id": "spice_rack",
+    "name": "Spice Rack",
+    "ingredientGroupName": "Herbs & Spices",
+    "purchaseIndex": 10,
+    "cost": 2616
+  }
+]

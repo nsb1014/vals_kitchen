@@ -1,0 +1,36 @@
+name: Deep simulation tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Nightly at 06:00 UTC — not run on ordinary pushes.
+    - cron: '0 6 * * *'
+
+concurrency:
+  group: sim-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync runtime content to public/data
+        run: npm run sync:data
+
+      - name: Validate content invariants
+        run: npm run validate:content
+
+      - name: Deep simulation suite (~2.5 min)
+        run: npm run test:sim

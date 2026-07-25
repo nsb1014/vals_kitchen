@@ -1,0 +1,204 @@
+[
+  {
+    "id": "comfort_seeker",
+    "name": "Comfort Seeker",
+    "primaryAxisWeights": {
+      "UM": 3,
+      "RI": 2,
+      "SA": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "bright_palate",
+    "name": "Bright Palate",
+    "primaryAxisWeights": {
+      "SO": 3,
+      "LI": 2,
+      "FR": 1
+    },
+    "avoidProbability": 0.15
+  },
+  {
+    "id": "heat_lover",
+    "name": "Heat Lover",
+    "primaryAxisWeights": {
+      "HT": 3,
+      "PU": 2,
+      "SM": 1
+    },
+    "avoidProbability": 0.05
+  },
+  {
+    "id": "herbalist",
+    "name": "Herbalist",
+    "primaryAxisWeights": {
+      "HE": 3,
+      "LI": 2,
+      "EA": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "smoke_fan",
+    "name": "Smoke Fan",
+    "primaryAxisWeights": {
+      "SM": 3,
+      "UM": 2,
+      "RI": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "sweet_tooth",
+    "name": "Sweet Tooth",
+    "primaryAxisWeights": {
+      "SW": 3,
+      "FR": 2,
+      "NU": 1
+    },
+    "avoidProbability": 0.2
+  },
+  {
+    "id": "umami_hunter",
+    "name": "Umami Hunter",
+    "primaryAxisWeights": {
+      "UM": 4,
+      "SA": 1,
+      "PU": 1
+    },
+    "avoidProbability": 0.05
+  },
+  {
+    "id": "light_eater",
+    "name": "Light Eater",
+    "primaryAxisWeights": {
+      "LI": 3,
+      "HE": 2,
+      "SO": 1
+    },
+    "avoidProbability": 0.25
+  },
+  {
+    "id": "rich_indulger",
+    "name": "Rich Indulger",
+    "primaryAxisWeights": {
+      "RI": 4,
+      "UM": 2,
+      "NU": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "crunch_seeker",
+    "name": "Crunch Seeker",
+    "primaryAxisWeights": {
+      "CR": 3,
+      "HT": 1,
+      "SA": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "earthy_explorer",
+    "name": "Earthy Explorer",
+    "primaryAxisWeights": {
+      "EA": 3,
+      "UM": 2,
+      "HE": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "nutty_notes",
+    "name": "Nutty Notes",
+    "primaryAxisWeights": {
+      "NU": 3,
+      "RI": 1,
+      "SW": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "tang_master",
+    "name": "Tang Master",
+    "primaryAxisWeights": {
+      "SO": 4,
+      "LI": 2,
+      "FR": 1
+    },
+    "avoidProbability": 0.15
+  },
+  {
+    "id": "garlic_fan",
+    "name": "Garlic Fan",
+    "primaryAxisWeights": {
+      "PU": 4,
+      "UM": 2,
+      "RI": 1
+    },
+    "avoidProbability": 0.05
+  },
+  {
+    "id": "balanced_diner",
+    "name": "Balanced Diner",
+    "primaryAxisWeights": {
+      "UM": 2,
+      "SO": 2,
+      "LI": 2,
+      "SA": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "fruit_forward",
+    "name": "Fruit Forward",
+    "primaryAxisWeights": {
+      "FR": 3,
+      "SW": 2,
+      "SO": 1
+    },
+    "avoidProbability": 0.15
+  },
+  {
+    "id": "pepper_head",
+    "name": "Pepper Head",
+    "primaryAxisWeights": {
+      "HT": 4,
+      "PU": 2,
+      "SM": 1
+    },
+    "avoidProbability": 0.05
+  },
+  {
+    "id": "broth_soul",
+    "name": "Broth Soul",
+    "primaryAxisWeights": {
+      "UM": 3,
+      "SA": 2,
+      "LI": 1
+    },
+    "avoidProbability": 0.1
+  },
+  {
+    "id": "fresh_crunch",
+    "name": "Fresh Crunch",
+    "primaryAxisWeights": {
+      "CR": 3,
+      "LI": 2,
+      "HE": 2
+    },
+    "avoidProbability": 0.15
+  },
+  {
+    "id": "adventurous_eater",
+    "name": "Adventurous Eater",
+    "primaryAxisWeights": {
+      "SM": 2,
+      "HT": 2,
+      "EA": 2,
+      "SO": 1
+    },
+    "avoidProbability": 0.1
+  }
+]

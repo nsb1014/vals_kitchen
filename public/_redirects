@@ -1,0 +1,5 @@
+# Cloudflare Pages SPA fallback.
+# Static files (including /data/*.json and /assets/*) are served first;
+# this rule only applies when no matching file exists.
+
+/*    /index.html   200
