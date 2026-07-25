@@ -1,13 +1,18 @@
 import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
+import { findPath } from '../domain/floor/pathfinding.ts';
 import { CustomerLayer } from './layers/CustomerLayer.ts';
 import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
 import { PreviewLayer } from './layers/PreviewLayer.ts';
 import { Camera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
-import { worldToScreen } from './coordinates.ts';
+import { ActorLayer } from './world/ActorLayer.ts';
+import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
+import { NavController } from './world/NavController.ts';
+import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
+import type { FloorDay } from '../domain/floor/types.ts';
 
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -20,12 +25,15 @@ export class RestaurantApp {
   readonly camera: Camera;
   readonly gridLayer: GridLayer;
   readonly furnitureLayer: FurnitureLayer;
+  readonly actorLayer: ActorLayer;
   readonly customerLayer: CustomerLayer;
   readonly previewLayer: PreviewLayer;
   readonly dragPlacement: DragPlacement;
+  readonly nav: NavController;
 
   private unsubscribe: (() => void) | null = null;
   private mounted = false;
+  private lastFloor: FloorDay | null = null;
 
   private constructor(app: Application) {
     this.app = app;
@@ -33,11 +41,14 @@ export class RestaurantApp {
     this.camera = new Camera();
     this.gridLayer = new GridLayer();
     this.furnitureLayer = new FurnitureLayer();
+    this.actorLayer = new ActorLayer();
     this.customerLayer = new CustomerLayer();
     this.previewLayer = new PreviewLayer();
+    this.nav = new NavController({ x: 1, y: 1 });
 
     this.world.addChild(this.gridLayer.view);
     this.world.addChild(this.furnitureLayer.view);
+    this.world.addChild(this.actorLayer.view);
     this.world.addChild(this.customerLayer.view);
     this.world.addChild(this.previewLayer.view);
     this.app.stage.addChild(this.world);
@@ -74,13 +85,16 @@ export class RestaurantApp {
 
   start(): void {
     this.dragPlacement.attach();
+    this.app.canvas.addEventListener('pointerdown', this.onTapMove);
+    this.app.ticker.add(this.onTick);
     this.unsubscribe = useGameStore.subscribe((state, prev) => {
       if (
         state.placements !== prev.placements ||
         state.gridSize !== prev.gridSize ||
         state.editLayoutMode !== prev.editLayoutMode ||
         state.activeDay !== prev.activeDay ||
-        state.activeDay?.queueIndex !== prev.activeDay?.queueIndex
+        state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
+        state.activeDay?.floor !== prev.activeDay?.floor
       ) {
         this.syncFromStore(state);
       }
@@ -95,11 +109,55 @@ export class RestaurantApp {
     this.world.scale.set(this.camera.state.scale);
   }
 
+  private onTick = (): void => {
+    const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    if (!floor || state.editLayoutMode) return;
+
+    this.nav.update(this.app.ticker.deltaMS);
+    this.actorLayer.sync(floor, this.nav.position);
+
+    const width = this.app.screen.width;
+    const height = this.app.screen.height;
+    const mapWpx = state.gridSize.w * TILE_PX;
+    const mapHpx = state.gridSize.h * TILE_PX;
+    const player = this.actorLayer.getPlayerWorldPosition();
+    this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+    this.applyCamera();
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+  };
+
+  private onTapMove = (event: PointerEvent): void => {
+    const store = useGameStore.getState();
+    if (store.editLayoutMode || !store.activeDay?.floor) return;
+
+    const rect = this.app.canvas.getBoundingClientRect();
+    const sx = event.clientX - rect.left;
+    const sy = event.clientY - rect.top;
+    const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
+    const blocked = blockedCellsFromPlacements(store.placements);
+    const path = findPath(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      { x: gx, y: gy },
+    );
+    if (path) {
+      this.nav.setPath(path);
+    }
+  };
+
   private handleResize = (): void => {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
     const state = useGameStore.getState();
-    this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+    if (state.activeDay?.floor && !state.editLayoutMode) {
+      const mapWpx = state.gridSize.w * TILE_PX;
+      const mapHpx = state.gridSize.h * TILE_PX;
+      const player = this.actorLayer.getPlayerWorldPosition();
+      this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+    } else {
+      this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+    }
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
   };
@@ -107,12 +165,40 @@ export class RestaurantApp {
   syncFromStore(state: GameStore): void {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
-    this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+    const floor = state.activeDay?.floor;
+    const mapWpx = state.gridSize.w * TILE_PX;
+    const mapHpx = state.gridSize.h * TILE_PX;
+
+    if (floor) {
+      if (floor !== this.lastFloor) {
+        this.nav.setPath([]);
+        this.nav.position = { ...floor.playerPosition };
+        this.lastFloor = floor;
+      }
+      this.actorLayer.sync(floor, this.nav.position);
+      if (!state.editLayoutMode) {
+        const player = this.actorLayer.getPlayerWorldPosition();
+        this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+      } else {
+        this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+      }
+    } else {
+      this.lastFloor = null;
+      this.actorLayer.sync(null, this.nav.position);
+      this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+    }
+
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
     this.furnitureLayer.sync(state.placements, state.editLayoutMode);
-    const queueIndex = state.activeDay?.queueIndex ?? -1;
-    this.customerLayer.sync(queueIndex, state.placements, Boolean(state.activeDay));
+
+    if (floor) {
+      this.customerLayer.sync(-1, state.placements, false);
+    } else {
+      const queueIndex = state.activeDay?.queueIndex ?? -1;
+      this.customerLayer.sync(queueIndex, state.placements, Boolean(state.activeDay));
+    }
+
     if (!state.editLayoutMode) {
       this.previewLayer.hide();
     }
@@ -132,6 +218,8 @@ export class RestaurantApp {
   destroy(): void {
     if (!this.mounted) return;
     window.removeEventListener('resize', this.handleResize);
+    this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
+    this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();
     this.dragPlacement.detach();
     this.app.destroy(true, { children: true, texture: true });

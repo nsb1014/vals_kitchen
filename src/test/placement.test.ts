@@ -10,8 +10,8 @@ describe('placement via domain reducer', () => {
     const overlap: Placement = {
       id: 'table_overlap',
       itemKey: 'table_2seat',
-      x: 0,
-      y: 0,
+      x: 1,
+      y: 2,
       rotation: 0,
     };
     expect(validatePlacement(state, overlap)).toBe(false);
@@ -25,8 +25,8 @@ describe('placement via domain reducer', () => {
     const outOfBounds: Placement = {
       id: 'oob',
       itemKey: 'table_2seat',
-      x: 4,
-      y: 4,
+      x: 10,
+      y: 8,
       rotation: 0,
     };
     expect(validatePlacement(state, outOfBounds)).toBe(false);
@@ -75,7 +75,7 @@ describe('placement via domain reducer', () => {
       .state;
     const moved: Placement = { ...table, x: 1, y: 1 };
     const placed = gameReducer(removed, { type: 'PLACE_ITEM', placement: moved }, testContext).state;
-    expect(placed.placements).toHaveLength(2);
+    expect(placed.placements).toHaveLength(state.placements.length);
     expect(placed.placements.find((item) => item.id === moved.id)).toEqual(moved);
   });
 });

@@ -21,6 +21,7 @@ import {
 } from '../presentation/dish-preview.ts';
 import { buildReviewDisplay, renderStarGlyphs } from '../presentation/review-display.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
+import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 
 const SERVE_LOCK_MS = 300;
@@ -33,13 +34,17 @@ export function mountServiceDayUi(
 ): () => void {
   overlayMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
+    <div id="floor-service-hud-mount" data-testid="floor-service-hud-mount"></div>
     <div class="service-overlay" id="service-overlay" data-testid="service-overlay" hidden></div>
     <div class="modal-backdrop" id="ceremony-modal" data-testid="ceremony-modal" hidden></div>
   `;
 
   const hud = overlayMount.querySelector('#game-hud') as HTMLElement;
+  const floorHudMount = overlayMount.querySelector('#floor-service-hud-mount') as HTMLElement;
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
+
+  const cleanupFloorHud = mountFloorServiceHud(floorHudMount);
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
@@ -212,13 +217,14 @@ export function mountServiceDayUi(
       const review = buildReviewDisplay(state.pendingReview);
       const progress = selectQueueProgress(state);
       const canClose = selectCanCloseDay(state);
-      const canAdvance = selectCanAdvanceCustomer(state);
+      const canAdvance = selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
+      const floorActive = Boolean(state.activeDay?.floor);
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
             <h2 class="service-title">Customer Review</h2>
-            ${progress ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
+            ${progress && !floorActive ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="review-stars" data-testid="review-stars" aria-label="${review.starsText}">${renderStarGlyphs(review.starsFilled)}</p>
             <p class="review-detail" data-testid="review-score">${review.starsText}</p>
             <p class="review-detail">Tip: ${review.tipText}</p>
@@ -245,7 +251,7 @@ export function mountServiceDayUi(
       return;
     }
 
-    if (selectIsAwaitingServe(state)) {
+    if (selectIsAwaitingServe(state) && !state.activeDay?.floor) {
       const draftIds = selectComposeDraftIds(state);
       const ctx = getDomainContext();
       const preview = computeDishPreview(draftIds, ctx.ingredientsById);
@@ -369,6 +375,7 @@ export function mountServiceDayUi(
 
   return () => {
     unsubscribe();
+    cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     bubbleEl?.remove();

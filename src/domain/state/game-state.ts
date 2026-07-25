@@ -4,6 +4,7 @@ import {
 } from '../types.ts';
 import type { ActiveDay } from '../day/types.ts';
 import type { RecipeMasteryMap } from '../floor/mastery.ts';
+import { createStarterMap } from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
 
@@ -61,10 +62,7 @@ export function nextPlacementId(): string {
 }
 
 export function createDefaultPlacements(): Placement[] {
-  return [
-    { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
-    { id: 'table_2', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
-  ];
+  return createStarterMap().placements.map((p) => ({ ...p }));
 }
 
 export function seatingFromTableCount(tableCount: number): number {
@@ -77,6 +75,9 @@ export function seatingFromPlacements(placements: Placement[]): number {
 
 export function createNewGameState(seed?: number): GameState {
   const globalRunSeed = seed ?? createRng(Date.now()).nextInt(1, 0x7fffffff);
+  const starter = createStarterMap();
+  const placements = starter.placements.map((p) => ({ ...p }));
+  const tableCount = placements.filter((p) => p.itemKey.startsWith('table')).length;
   return {
     saveVersion: CURRENT_SAVE_VERSION,
     globalRunSeed,
@@ -88,10 +89,10 @@ export function createNewGameState(seed?: number): GameState {
     purchasedEquipmentIds: [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: [],
     recipeMastery: {},
-    gridSize: { ...STARTING_GRID },
-    placements: createDefaultPlacements(),
-    seatingCapacity: seatingFromTableCount(2),
-    tableCount: 2,
+    gridSize: { ...starter.gridSize },
+    placements,
+    seatingCapacity: seatingFromPlacements(placements),
+    tableCount,
     gridExpansionCount: 0,
     ingredientUnlockIndex: 0,
     activeDay: null,
