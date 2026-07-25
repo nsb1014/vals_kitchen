@@ -10,7 +10,7 @@
 # Cache headers: public/_headers is copied to dist/_headers at build time and
 # is honored by Workers Static Assets (see Cloudflare docs on custom headers).
 
-name = "vals_kitchen"
+name = "vals-kitchen"
 compatibility_date = "2026-07-24"
 
 [assets]
