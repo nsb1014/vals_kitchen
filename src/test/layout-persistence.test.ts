@@ -27,7 +27,7 @@ describe('layout persistence', () => {
     const table = state.placements[0]!;
     state = gameReducer(
       state,
-      { type: 'MOVE_ITEM', placementId: table.id, x: 1, y: 2 },
+      { type: 'MOVE_ITEM', placementId: table.id, x: 2, y: 4 },
       testContext,
     ).state;
 
@@ -37,8 +37,8 @@ describe('layout persistence', () => {
     expect(loaded.seatingCapacity).toBe(state.seatingCapacity);
     expect(loaded.placements.find((item) => item.id === table.id)).toEqual({
       ...table,
-      x: 1,
-      y: 2,
+      x: 2,
+      y: 4,
     });
   });
 });

@@ -92,6 +92,7 @@ const TILE_SPRITES: Record<string, string> = {
   wall_s: 'wall_s.png',
   wall_w: 'wall_w.png',
   door: 'door.png',
+  door_open: 'door_open.png',
 };
 
 const FURNITURE_SPRITES: Record<string, string> = {

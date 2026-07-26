@@ -8,6 +8,7 @@ import {
 } from './day/serve.ts';
 import { deliverAndScore } from './floor/deliver.ts';
 import {
+  completeGuestEntering,
   createFloorDayFromCustomers,
   seatNextWaiting,
   tablesFromPlacements,
@@ -40,6 +41,7 @@ export type GameAction =
   | { type: 'FLOOR_SET_TABLE'; placementId: string }
   | { type: 'FLOOR_CLEAR_TABLE'; placementId: string }
   | { type: 'FLOOR_SEAT_NEXT' }
+  | { type: 'FLOOR_COMPLETE_ENTERING' }
   | { type: 'FLOOR_TAKE_ORDERS'; customerIds: string[] }
   | { type: 'FLOOR_PLATE'; ticketId: string; ingredientIds: string[] }
   | { type: 'FLOOR_DELIVER'; ticketId: string }
@@ -217,6 +219,11 @@ export function gameReducer(
     case 'FLOOR_SEAT_NEXT': {
       const floor = requireFloor(state);
       return { state: withFloor(state, seatNextWaiting(floor)), events };
+    }
+
+    case 'FLOOR_COMPLETE_ENTERING': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, completeGuestEntering(floor)), events };
     }
 
     case 'FLOOR_TAKE_ORDERS': {

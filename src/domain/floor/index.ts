@@ -18,7 +18,9 @@ export {
   plateTicket,
 } from './tickets.ts';
 export {
+  admitNextGuest,
   beginEating,
+  completeGuestEntering,
   createFloorDayFromCustomers,
   isFloorDayComplete,
   seatNextWaiting,
@@ -26,6 +28,7 @@ export {
   takeOrdersForSeated,
   tickEating,
 } from './sim.ts';
+export { waitingAreaOccupied, entryPipelineGuest } from './entry.ts';
 export {
   adjacentSeatedCustomerIds,
   isAdjacent,

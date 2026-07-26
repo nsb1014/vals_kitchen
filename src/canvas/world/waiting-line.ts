@@ -4,8 +4,14 @@ import { TILE_PX, gridToWorld } from '../coordinates.ts';
 /**
  * Center-to-center spacing along the wait line.
  * Guests draw ~48px wide; ≥1.75 tiles keeps silhouettes from stacking.
+ * Kept for legacy multi-index helpers; entry gating uses a single wait slot.
  */
 export const WAIT_LINE_SPACING_PX = TILE_PX * 1.75;
+
+/** Single entrance waiting-area cell (just inside, north of the door). */
+export function waitingAreaGridAnchor(door: GridPoint): GridPoint {
+  return { x: door.x, y: Math.max(0, door.y - 1) };
+}
 
 /** Interior floor tile just north of the door wall/door cell (line head). */
 export function waitingGuestGridAnchor(door: GridPoint, waitingIndex = 0): GridPoint {
@@ -17,7 +23,8 @@ export function waitingGuestGridAnchor(door: GridPoint, waitingIndex = 0): GridP
 
 /**
  * Unique world feet position for waiting-pool index.
- * Index 0 at door-north; later guests alternate west/east so a queue of 4 stays on-map.
+ * Index 0 is the sole ready-to-seat waiting-area spot (door-north).
+ * Later indices alternate west/east (legacy spacing helpers / tests).
  */
 export function waitingGuestWorldPosition(
   door: GridPoint,

@@ -2,6 +2,7 @@ import type { Customer } from '../day/types.ts';
 import { markDirty, occupyTable } from './tables.ts';
 import { assignPartyToTable } from './seats.ts';
 import { enqueueTickets } from './tickets.ts';
+import { waitingAreaOccupied } from './entry.ts';
 import type { FloorDay, FloorGuest, FloorTable, FloorTicket, SeatSlot } from './types.ts';
 
 const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
@@ -10,17 +11,42 @@ const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
   'eating',
 ]);
 
+/** Promote the next queued guest to `entering` if the waiting area is free. */
+export function admitNextGuest(day: FloorDay): FloorDay {
+  if (waitingAreaOccupied(day)) return day;
+  const next = day.pool.find((g) => g.stage === 'queued');
+  if (!next) return day;
+  return {
+    ...day,
+    pool: day.pool.map((g) =>
+      g.id === next.id ? { ...g, stage: 'entering' as const } : g,
+    ),
+  };
+}
+
+/** Enter walk finished: `entering` → `waiting` (ready to seat). */
+export function completeGuestEntering(day: FloorDay): FloorDay {
+  const entering = day.pool.find((g) => g.stage === 'entering');
+  if (!entering) return day;
+  return {
+    ...day,
+    pool: day.pool.map((g) =>
+      g.id === entering.id ? { ...g, stage: 'waiting' as const } : g,
+    ),
+  };
+}
+
 export function createFloorDayFromCustomers(
   customers: Customer[],
   tables: FloorTable[],
   seats: SeatSlot[],
   playerPosition: { x: number; y: number } = { x: 0, y: 0 },
 ): FloorDay {
-  return {
+  const day: FloorDay = {
     pool: customers.map((customer) => ({
       id: customer.id,
       customer,
-      stage: 'waiting' as const,
+      stage: 'queued' as const,
       eatTicksRemaining: 0,
     })),
     tables: tables.map((t) => ({ ...t })),
@@ -31,6 +57,7 @@ export function createFloorDayFromCustomers(
     tutorialStep: null,
     playerPosition: { ...playerPosition },
   };
+  return admitNextGuest(day);
 }
 
 function takenSeatKeys(day: FloorDay): Set<string> {
@@ -71,7 +98,8 @@ export function seatNextWaiting(day: FloorDay): FloorDay {
       table.state === 'ready'
         ? day.tables.map((t) => (t.placementId === table.placementId ? occupyTable(t) : t))
         : day.tables;
-    return { ...day, pool, tables };
+    // Free the waiting area, then let the next queued guest walk in.
+    return admitNextGuest({ ...day, pool, tables });
   }
 
   return day;

@@ -9,7 +9,35 @@ import {
   seatingFromTableCount,
   STARTING_GRID,
 } from '../state/game-state.ts';
+import { seatsFromPlacements } from '../floor/seats.ts';
+import {
+  isDiningCell,
+  isKitchenCell,
+  isPerimeterWallCell,
+  mapZonesForGrid,
+} from '../floor/starter-map.ts';
 import { STARTING_EQUIPMENT_IDS } from '../types.ts';
+
+function isTableItem(itemKey: string): boolean {
+  return itemKey.startsWith('table');
+}
+
+function isStationItem(itemKey: string): boolean {
+  return itemKey.endsWith('_station');
+}
+
+/** Furniture footprints + chair slots from placements other than `excludeId`. */
+function occupiedCellsExcluding(placements: Placement[], excludeId?: string): Set<string> {
+  const others = placements.filter((item) => item.id !== excludeId);
+  const occupied = new Set<string>();
+  for (const item of others) {
+    occupied.add(`${item.x},${item.y}`);
+  }
+  for (const seat of seatsFromPlacements(others)) {
+    occupied.add(`${seat.x},${seat.y}`);
+  }
+  return occupied;
+}
 
 export type PurchaseKind =
   | { type: 'ingredient'; ingredientId: string }
@@ -117,10 +145,38 @@ export function validatePlacement(
   if (placement.x < 0 || placement.y < 0 || placement.x >= w || placement.y >= h) {
     return false;
   }
+  if (isPerimeterWallCell(placement.x, placement.y, w, h)) {
+    return false;
+  }
 
-  for (const existing of state.placements) {
-    if (existing.id === existingId) continue;
-    if (existing.x === placement.x && existing.y === placement.y) return false;
+  const zones = mapZonesForGrid(w, h);
+  if (isTableItem(placement.itemKey) && !isDiningCell(zones, placement.x, placement.y)) {
+    return false;
+  }
+  if (isStationItem(placement.itemKey) && !isKitchenCell(zones, placement.x, placement.y)) {
+    return false;
+  }
+
+  const occupiedByOthers = occupiedCellsExcluding(state.placements, existingId);
+  if (occupiedByOthers.has(`${placement.x},${placement.y}`)) {
+    return false;
+  }
+
+  if (isTableItem(placement.itemKey)) {
+    for (const seat of seatsFromPlacements([placement])) {
+      if (seat.x < 0 || seat.y < 0 || seat.x >= w || seat.y >= h) {
+        return false;
+      }
+      if (isPerimeterWallCell(seat.x, seat.y, w, h)) {
+        return false;
+      }
+      if (!isDiningCell(zones, seat.x, seat.y)) {
+        return false;
+      }
+      if (occupiedByOthers.has(`${seat.x},${seat.y}`)) {
+        return false;
+      }
+    }
   }
 
   return true;
@@ -135,7 +191,7 @@ export function applyPlaceItem(state: GameState, placement: Placement): GameStat
     throw new Error('Invalid placement');
   }
 
-  if (placement.itemKey.startsWith('table')) {
+  if (isTableItem(placement.itemKey)) {
     const placedTables = countPlacedTables(state.placements);
     if (placedTables >= state.tableCount) {
       throw new Error('No unplaced tables available');
@@ -171,6 +227,7 @@ export function applyMoveItem(
   next.placements = next.placements.map((item) =>
     item.id === placementId ? moved : item,
   );
+  next.seatingCapacity = recalculateSeatingCapacity(next.placements);
   return next;
 }
 

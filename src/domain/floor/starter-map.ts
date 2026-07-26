@@ -3,6 +3,9 @@ import type { Placement } from '../state/game-state.ts';
 /** South-edge door cell for the starter map (matches createStarterMap zones.door). */
 export const STARTER_DOOR = { x: 3, y: 7 } as const;
 
+/** Kitchen depth in columns; dining occupies the rest of the width. */
+export const STARTER_KITCHEN_WIDTH = 3;
+
 export interface MapZones {
   dining: { x: number; y: number }[];
   kitchen: { x: number; y: number }[];
@@ -54,19 +57,31 @@ export function perimeterWallEdge(
   return 'e';
 }
 
+/**
+ * Dining / kitchen / door for any grid size.
+ * Kitchen stays the eastmost STARTER_KITCHEN_WIDTH columns; dining is the rest.
+ * Door sits on the south perimeter, centered in the dining wing.
+ */
+export function mapZonesForGrid(gridW: number, gridH: number): MapZones {
+  const kitchenW = Math.min(STARTER_KITCHEN_WIDTH, Math.max(1, gridW - 2));
+  const diningW = Math.max(1, gridW - kitchenW);
+  const dining = rect(0, 0, diningW, gridH);
+  const kitchen = rect(diningW, 0, kitchenW, gridH);
+  const doorX = Math.min(diningW - 1, Math.max(1, Math.floor(diningW / 2)));
+  return {
+    dining,
+    kitchen,
+    door: { x: doorX, y: gridH - 1 },
+  };
+}
+
 /** Starter full-room map: dining left, kitchen right, door on south edge. */
 export function createStarterMap(): StarterMap {
   const gridSize = { w: 10, h: 8 };
-  // Dining is 7 cols so two W–table–E blocks fit on interior tiles (x=1..6).
-  const dining = rect(0, 0, 7, 8);
-  const kitchen = rect(7, 0, 3, 8);
+  const zones = mapZonesForGrid(gridSize.w, gridSize.h);
   return {
     gridSize,
-    zones: {
-      dining,
-      kitchen,
-      door: { ...STARTER_DOOR },
-    },
+    zones,
     placements: [
       // Inset from west wall: seats at x±1 must not land on perimeter wall cells.
       { id: 'table_1', itemKey: 'table_2seat', x: 2, y: 2, rotation: 0 },
@@ -74,6 +89,10 @@ export function createStarterMap(): StarterMap {
       { id: 'station_prep', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
     ],
   };
+}
+
+export function doorForGrid(gridW: number, gridH: number): { x: number; y: number } {
+  return mapZonesForGrid(gridW, gridH).door;
 }
 
 export function isDiningCell(zones: MapZones, x: number, y: number): boolean {

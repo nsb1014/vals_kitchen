@@ -8,5 +8,6 @@
   "wall_e": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_e.png",
   "wall_s": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_s.png",
   "wall_w": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_w.png",
-  "door": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door.png"
+  "door": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door.png",
+  "door_open": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door_open.png"
 }

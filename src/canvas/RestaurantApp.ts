@@ -21,7 +21,7 @@ import { ActorLayer } from './world/ActorLayer.ts';
 import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
-import { STARTER_DOOR } from '../domain/floor/starter-map.ts';
+import { doorForGrid } from '../domain/floor/starter-map.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -135,11 +135,15 @@ export class RestaurantApp {
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
     const blocked = blockedCellsFromPlacements(state.placements);
-    this.guestMotion.sync(floor, {
-      door: STARTER_DOOR,
+    const door = doorForGrid(state.gridSize.w, state.gridSize.h);
+    const enterResult = this.guestMotion.sync(floor, {
+      door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked },
       dtMs: this.app.ticker.deltaMS,
     });
+    if (enterResult.enteredGuestIds.length > 0) {
+      void useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    }
     this.actorLayer.sync(floor, this.nav, this.guestMotion);
 
     if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
@@ -159,7 +163,8 @@ export class RestaurantApp {
     const player = this.actorLayer.getPlayerWorldPosition();
     this.camera.followWorldPointSmooth(player.x, player.y, width, height, mapWpx, mapHpx);
     this.applyCamera();
-    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+    const doorOpen = this.guestMotion.isDoorBusy(floor, door);
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, { doorOpen });
     this.interactHintLayer.sync(
       this.computeInteractHints(floor, state.placements, this.nav.position),
     );
@@ -241,7 +246,7 @@ export class RestaurantApp {
         this.eatingTickAccumulatorMs = 0;
       }
       this.guestMotion.sync(floor, {
-        door: STARTER_DOOR,
+        door: doorForGrid(state.gridSize.w, state.gridSize.h),
         grid: {
           w: state.gridSize.w,
           h: state.gridSize.h,

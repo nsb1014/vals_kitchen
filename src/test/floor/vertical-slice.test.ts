@@ -19,6 +19,7 @@ describe('floor vertical slice loop', () => {
         .state;
     }
 
+    state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated');
     expect(seated).toBeTruthy();
@@ -81,6 +82,11 @@ describe('floor vertical slice loop', () => {
           state = gameReducer(state, { type: 'FLOOR_CLEAR_TABLE', placementId: t.placementId }, testContext)
             .state;
         }
+      }
+
+      const entering = state.activeDay!.floor!.pool.some((g) => g.stage === 'entering');
+      if (entering) {
+        state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
       }
 
       const waiting = state.activeDay!.floor!.pool.some((g) => g.stage === 'waiting');

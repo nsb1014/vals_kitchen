@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deliverAndScore } from '../../domain/floor/deliver.ts';
 import {
+  completeGuestEntering,
   createFloorDayFromCustomers,
   seatNextWaiting,
   tablesFromPlacements,
@@ -34,6 +35,7 @@ function floorStateWithPlatedTicket() {
   const seats = seatsFromPlacements(placements);
   const c = customer('c1');
   let floor = createFloorDayFromCustomers([c], tables, seats);
+  floor = completeGuestEntering(floor);
   floor = seatNextWaiting(floor);
   floor = takeOrdersForSeated(floor, ['c1']);
   const ticketId = floor.tickets[0]!.id;

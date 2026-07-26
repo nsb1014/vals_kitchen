@@ -297,6 +297,26 @@ def door() -> Image.Image:
     return im
 
 
+def door_open() -> Image.Image:
+    """Ajar door: dark doorway opening with slab swung to the west edge."""
+    im = blank(TILE, TILE)
+    # Doorway frame on the wall line
+    outline_rect(im, 2, 0, 29, 31, WALNUT_D, CHAR)
+    fill_rect(im, 4, 1, 27, 30, (28, 22, 18))  # interior dark
+    # Floor threshold peek
+    fill_rect(im, 8, 28, 23, 30, (90, 70, 48))
+    # Open slab parked on the left jamb (edge-on-ish)
+    outline_rect(im, 3, 1, 9, 30, WALNUT, WALNUT_D)
+    fill_rect(im, 4, 2, 8, 29, WALNUT)
+    for y in range(3, 29):
+        if y % 3 == 0:
+            put(im, 5, y, WALNUT_HI)
+    # Brass handle near the free edge
+    fill_rect(im, 7, 15, 8, 17, BRASS)
+    put(im, 8, 16, COPPER_HI)
+    return im
+
+
 # --- Furniture helpers (32×48, mass low) -------------------------------------------
 
 
@@ -689,6 +709,7 @@ def main() -> None:
         "wall_s": wall_oriented("s"),
         "wall_w": wall_oriented("w"),
         "door": door(),
+        "door_open": door_open(),
         "table_2seat": table_2seat(),
         "table_2seat_unset": table_2seat_unset(),
         "table_2seat_dirty": table_2seat_dirty(),
@@ -720,6 +741,7 @@ def main() -> None:
         "wall_s",
         "wall_w",
         "door",
+        "door_open",
     }
     for name, im in assets.items():
         expected = (TILE, TILE) if name in tile_names else (FURN_W, FURN_H)

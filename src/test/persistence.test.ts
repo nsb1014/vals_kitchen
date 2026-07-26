@@ -89,6 +89,7 @@ describe('persistence', () => {
       state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext)
         .state;
     }
+    state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
     state = gameReducer(

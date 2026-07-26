@@ -22,6 +22,7 @@ const ACTOR_SCALE = 1.5;
 const LEGACY_ACTOR_SCALE = 3;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
+  entering: 0xffc857,
   waiting: 0xffc857,
   seated: 0x4a90d9,
   ordered: 0x9b59b6,
@@ -181,8 +182,9 @@ export class ActorLayer {
     const seen = new Set<string>();
     let waitingIndex = 0;
     for (const guest of floor.pool) {
-      if (guest.stage === 'done') continue;
-      const waitIdx = guest.stage === 'waiting' ? waitingIndex++ : undefined;
+      if (guest.stage === 'done' || guest.stage === 'queued') continue;
+      const waitIdx =
+        guest.stage === 'waiting' || guest.stage === 'entering' ? waitingIndex++ : undefined;
       const pose = resolveGuestPose(guest, waitIdx, guestMotion);
       if (!pose) continue;
       seen.add(guest.id);
@@ -273,14 +275,18 @@ function fallbackGuestPose(
       walkFrame: 0,
     };
   }
-  if (guest.stage === 'waiting') {
+  if (guest.stage === 'waiting' || guest.stage === 'entering') {
     const index = waitingIndex ?? 0;
-    const world = waitingGuestWorldPosition(STARTER_DOOR, index);
+    const door = STARTER_DOOR;
+    const world =
+      guest.stage === 'entering'
+        ? tileCenter(door.x, door.y)
+        : waitingGuestWorldPosition(door, index);
     return {
       worldX: world.x,
       worldY: world.y,
       facing: 1,
-      isMoving: false,
+      isMoving: guest.stage === 'entering',
       walkFrame: 0,
     };
   }

@@ -1,8 +1,9 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { getTileTexture } from '../../assets/loader.ts';
 import {
-  createStarterMap,
+  isKitchenCell,
   isPerimeterWallCell,
+  mapZonesForGrid,
   perimeterWallEdge,
   type PerimeterWallEdge,
 } from '../../domain/floor/starter-map.ts';
@@ -10,10 +11,6 @@ import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
 const GRID_LINE_COLOR = 0x2a2a40;
-
-function cellKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
 
 /** Atlas frame for a perimeter wall edge (wainscot faces room interior). */
 export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterWallEdge}` {
@@ -24,8 +21,10 @@ export class GridLayer {
   readonly view = new Container();
   private floorContainer = new Container();
   private wallContainer = new Container();
+  private doorSprite: Sprite | null = null;
   private gridLines = new Graphics();
   private lastKey = '';
+  private doorOpen = false;
 
   constructor() {
     this.view.addChild(this.floorContainer);
@@ -33,7 +32,13 @@ export class GridLayer {
     this.view.addChild(this.gridLines);
   }
 
-  sync(gridW: number, gridH: number, _camera: CameraState): void {
+  sync(
+    gridW: number,
+    gridH: number,
+    _camera: CameraState,
+    opts: { doorOpen?: boolean } = {},
+  ): void {
+    const doorOpen = Boolean(opts.doorOpen);
     const floorA = getTileTexture('floor_a');
     const floorB = getTileTexture('floor_b');
     const kitchenA = getTileTexture('floor_kitchen_a') ?? floorA;
@@ -42,31 +47,24 @@ export class GridLayer {
     const wallE = getTileTexture('wall_e') ?? wallN;
     const wallS = getTileTexture('wall_s') ?? wallN;
     const wallW = getTileTexture('wall_w') ?? wallN;
-    const doorTex = getTileTexture('door');
+    const doorClosed = getTileTexture('door');
+    const doorOpenTex = getTileTexture('door_open') ?? doorClosed;
     const key = `${gridW}x${gridH}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
 
     if (key !== this.lastKey) {
       this.lastKey = key;
       this.floorContainer.removeChildren();
       this.wallContainer.removeChildren();
+      this.doorSprite = null;
 
-      const starter = createStarterMap();
-      const kitchen = new Set(
-        (gridW === starter.gridSize.w && gridH === starter.gridSize.h
-          ? starter.zones.kitchen
-          : []
-        ).map((c) => cellKey(c.x, c.y)),
-      );
-      const door =
-        gridW === starter.gridSize.w && gridH === starter.gridSize.h
-          ? starter.zones.door
-          : { x: Math.floor(gridW / 2), y: gridH - 1 };
+      const zones = mapZonesForGrid(gridW, gridH);
+      const door = zones.door;
 
       for (let gy = 0; gy < gridH; gy += 1) {
         for (let gx = 0; gx < gridW; gx += 1) {
           const { x, y } = gridToWorld(gx, gy);
           const useA = (gx + gy) % 2 === 0;
-          const inKitchen = kitchen.has(cellKey(gx, gy));
+          const inKitchen = isKitchenCell(zones, gx, gy);
           const texture = inKitchen
             ? useA
               ? kitchenA
@@ -101,7 +99,7 @@ export class GridLayer {
       const placeWall = (gx: number, gy: number, isDoor: boolean) => {
         const { x, y } = gridToWorld(gx, gy);
         const edge = perimeterWallEdge(gx, gy, gridW, gridH);
-        const texture = isDoor ? doorTex : edge ? wallByEdge[edge] : wallN;
+        const texture = isDoor ? doorClosed : edge ? wallByEdge[edge] : wallN;
         if (texture) {
           const tile = new Sprite(texture);
           tile.roundPixels = true;
@@ -109,6 +107,7 @@ export class GridLayer {
           tile.height = TILE_PX;
           tile.position.set(x, y);
           this.wallContainer.addChild(tile);
+          if (isDoor) this.doorSprite = tile;
           return;
         }
         const block = new Graphics();
@@ -123,6 +122,13 @@ export class GridLayer {
           placeWall(gx, gy, isDoor);
         }
       }
+      this.doorOpen = !doorOpen; // force texture refresh below
+    }
+
+    if (this.doorSprite && doorOpen !== this.doorOpen) {
+      this.doorOpen = doorOpen;
+      const tex = doorOpen ? doorOpenTex : doorClosed;
+      if (tex) this.doorSprite.texture = tex;
     }
 
     this.gridLines.clear();

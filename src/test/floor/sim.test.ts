@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import {
   beginEating,
+  completeGuestEntering,
   createFloorDayFromCustomers,
   isFloorDayComplete,
   seatNextWaiting,
@@ -33,6 +34,7 @@ describe('floor sim', () => {
     let tables = tablesFromPlacements(placements).map(setTable);
     const seats = seatsFromPlacements(placements);
     let day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+    day = completeGuestEntering(day);
     day = seatNextWaiting(day);
     expect(day.pool[0]!.stage).toBe('seated');
     expect(day.tables.find((t) => t.placementId === 'table_1')!.state).toBe('occupied');

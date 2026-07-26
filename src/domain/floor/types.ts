@@ -16,7 +16,15 @@ export interface SeatSlot {
   facing: 0 | 90 | 180 | 270;
 }
 
-export type GuestStage = 'waiting' | 'seated' | 'ordered' | 'eating' | 'leaving' | 'done';
+export type GuestStage =
+  | 'queued'
+  | 'entering'
+  | 'waiting'
+  | 'seated'
+  | 'ordered'
+  | 'eating'
+  | 'leaving'
+  | 'done';
 
 export interface FloorTicket {
   id: string;

@@ -1,7 +1,7 @@
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import { findPath, type GridPoint, type WalkGrid } from '../../domain/floor/pathfinding.ts';
 import {
-  waitingGuestGridAnchor,
+  waitingAreaGridAnchor,
   waitingGuestWorldPosition,
 } from './waiting-line.ts';
 import { NavController } from './NavController.ts';
@@ -22,27 +22,41 @@ export interface GuestMotionSyncOpts {
   dtMs: number;
 }
 
+export interface GuestMotionSyncResult {
+  /** Guest ids whose enter walk just finished this sync. */
+  enteredGuestIds: string[];
+}
+
 /**
  * Canvas-side guest locomotion. Domain may snap `guest.seat`; this lerps
- * wait-line → seat (and leave → door) via NavController so seating is visible.
+ * door → wait area (entering) and wait → seat / leave → door via NavController.
  */
 export class GuestMotion {
   private readonly navs = new Map<string, NavController>();
+  private readonly enterStarted = new Set<string>();
 
-  sync(floor: FloorDay, opts: GuestMotionSyncOpts): void {
+  sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
+    const enteredGuestIds: string[] = [];
     let waitingIndex = 0;
 
     for (const guest of floor.pool) {
-      if (guest.stage === 'done') continue;
+      if (guest.stage === 'done' || guest.stage === 'queued') continue;
       seen.add(guest.id);
-      const waitIdx = guest.stage === 'waiting' ? waitingIndex++ : 0;
-      this.syncGuest(guest, waitIdx, opts);
+      const waitIdx =
+        guest.stage === 'waiting' || guest.stage === 'entering' ? waitingIndex++ : 0;
+      const finished = this.syncGuest(guest, waitIdx, opts);
+      if (finished) enteredGuestIds.push(guest.id);
     }
 
     for (const id of this.navs.keys()) {
-      if (!seen.has(id)) this.navs.delete(id);
+      if (!seen.has(id)) {
+        this.navs.delete(id);
+        this.enterStarted.delete(id);
+      }
     }
+
+    return { enteredGuestIds };
   }
 
   pose(guestId: string): GuestPose | null {
@@ -57,26 +71,67 @@ export class GuestMotion {
     };
   }
 
-  private syncGuest(guest: FloorGuest, waitingIndex: number, opts: GuestMotionSyncOpts): void {
+  /** True while any guest is walking through the doorway (enter or leave). */
+  isDoorBusy(floor: FloorDay, door: GridPoint): boolean {
+    for (const guest of floor.pool) {
+      if (guest.stage === 'entering') return true;
+      if (guest.stage !== 'leaving') continue;
+      const nav = this.navs.get(guest.id);
+      if (!nav) continue;
+      if (nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) return true;
+      if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) return true;
+    }
+    return floor.pool.some((g) => g.stage === 'entering');
+  }
+
+  private syncGuest(
+    guest: FloorGuest,
+    waitingIndex: number,
+    opts: GuestMotionSyncOpts,
+  ): boolean {
     let nav = this.navs.get(guest.id);
     if (!nav) {
-      const start = this.defaultCell(guest, waitingIndex, opts.door);
+      const start =
+        guest.stage === 'entering'
+          ? { ...opts.door }
+          : this.defaultCell(guest, waitingIndex, opts.door);
       nav = new NavController(start, 2.4);
       this.navs.set(guest.id, nav);
     }
 
+    if (guest.stage === 'entering') {
+      const waitCell = waitingAreaGridAnchor(opts.door);
+      if (!this.enterStarted.has(guest.id)) {
+        nav.snapTo(opts.door);
+        this.enterStarted.add(guest.id);
+        const path = findPath(opts.grid, opts.door, waitCell) ?? directPath(opts.door, waitCell);
+        nav.setPath(path);
+      }
+      if (opts.dtMs > 0) nav.update(opts.dtMs);
+      if (!nav.isMoving && nav.position.x === waitCell.x && nav.position.y === waitCell.y) {
+        const world = waitingGuestWorldPosition(opts.door, 0);
+        nav.worldX = world.x;
+        nav.worldY = world.y;
+        nav.facing = 1;
+        return true;
+      }
+      return false;
+    }
+
     if (guest.stage === 'waiting') {
-      const cell = waitingGuestGridAnchor(opts.door, waitingIndex);
-      const world = waitingGuestWorldPosition(opts.door, waitingIndex);
+      const cell = waitingAreaGridAnchor(opts.door);
+      const world = waitingGuestWorldPosition(opts.door, 0);
       if (nav.isMoving) {
-        nav.snapTo(cell);
-      } else if (nav.position.x !== cell.x || nav.position.y !== cell.y) {
+        if (opts.dtMs > 0) nav.update(opts.dtMs);
+        return false;
+      }
+      if (nav.position.x !== cell.x || nav.position.y !== cell.y) {
         nav.snapTo(cell);
       }
       nav.worldX = world.x;
       nav.worldY = world.y;
       nav.facing = 1;
-      return;
+      return false;
     }
 
     if (
@@ -84,7 +139,7 @@ export class GuestMotion {
       guest.stage === 'ordered' ||
       guest.stage === 'eating'
     ) {
-      if (!guest.seat) return;
+      if (!guest.seat) return false;
       const seatCell = { x: guest.seat.x, y: guest.seat.y };
       const sit = seatSitWorldPosition(guest.seat);
       const atSeat =
@@ -96,7 +151,7 @@ export class GuestMotion {
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
-        return;
+        return false;
       }
 
       if (!nav.isMoving) {
@@ -113,7 +168,7 @@ export class GuestMotion {
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
       }
-      return;
+      return false;
     }
 
     if (guest.stage === 'leaving') {
@@ -124,11 +179,13 @@ export class GuestMotion {
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
     }
+    return false;
   }
 
   private defaultCell(guest: FloorGuest, waitingIndex: number, door: GridPoint): GridPoint {
     if (guest.seat) return { x: guest.seat.x, y: guest.seat.y };
-    return waitingGuestGridAnchor(door, waitingIndex);
+    if (guest.stage === 'entering') return { ...door };
+    return waitingAreaGridAnchor(door);
   }
 }
 

@@ -233,7 +233,9 @@ export function isDayComplete(state: GameState): boolean {
   if (!floor) return queueDone;
 
   const floorIdle =
-    floor.pool.every((g) => g.stage === 'waiting') &&
+    floor.pool.every(
+      (g) => g.stage === 'waiting' || g.stage === 'queued' || g.stage === 'entering',
+    ) &&
     floor.tables.every((t) => t.state === 'unset') &&
     floor.tickets.length === 0;
 

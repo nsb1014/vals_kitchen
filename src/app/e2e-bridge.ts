@@ -138,6 +138,10 @@ export function installE2eBridge(): void {
         }
       }
 
+      if (floor().pool.some((g) => g.stage === 'entering')) {
+        await dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+      }
+
       if (floor().pool.some((g) => g.stage === 'waiting')) {
         await dispatch({ type: 'FLOOR_SEAT_NEXT' });
       }

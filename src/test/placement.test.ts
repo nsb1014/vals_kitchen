@@ -38,11 +38,11 @@ describe('placement via domain reducer', () => {
     const table = state.placements[0]!;
     const moved = gameReducer(
       state,
-      { type: 'MOVE_ITEM', placementId: table.id, x: 1, y: 1 },
+      { type: 'MOVE_ITEM', placementId: table.id, x: 2, y: 4 },
       testContext,
     ).state;
     expect(
-      moved.placements.some((item) => item.id === table.id && item.x === 1 && item.y === 1),
+      moved.placements.some((item) => item.id === table.id && item.x === 2 && item.y === 4),
     ).toBe(true);
     expect(moved.seatingCapacity).toBe(4);
     expect(moved.placements).toHaveLength(state.placements.length);
@@ -74,7 +74,7 @@ describe('placement via domain reducer', () => {
     const table = state.placements[0]!;
     const removed = gameReducer(state, { type: 'REMOVE_ITEM', placementId: table.id }, testContext)
       .state;
-    const moved: Placement = { ...table, x: 1, y: 1 };
+    const moved: Placement = { ...table, x: 2, y: 4 };
     const placed = gameReducer(removed, { type: 'PLACE_ITEM', placement: moved }, testContext).state;
     expect(placed.placements).toHaveLength(state.placements.length);
     expect(placed.placements.find((item) => item.id === moved.id)).toEqual(moved);

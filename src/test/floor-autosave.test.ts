@@ -80,6 +80,7 @@ async function advanceFloorToCarryTicket(): Promise<{
       placementId: table.placementId,
     });
   }
+  await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
 
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;

@@ -53,7 +53,8 @@ export function getTileTexture(
     | 'wall_e'
     | 'wall_s'
     | 'wall_w'
-    | 'door',
+    | 'door'
+    | 'door_open',
 ): Texture | null {
   const sheet = sheets.tiles;
   if (!sheet) return null;
