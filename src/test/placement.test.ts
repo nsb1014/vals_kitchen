@@ -7,11 +7,12 @@ import { testContext } from './test-helpers.ts';
 describe('placement via domain reducer', () => {
   it('rejects overlapping placements', () => {
     const state = createNewGameState(42);
+    const occupied = state.placements.find((p) => p.itemKey.startsWith('table'))!;
     const overlap: Placement = {
       id: 'table_overlap',
       itemKey: 'table_2seat',
-      x: 1,
-      y: 2,
+      x: occupied.x,
+      y: occupied.y,
       rotation: 0,
     };
     expect(validatePlacement(state, overlap)).toBe(false);

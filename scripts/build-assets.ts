@@ -87,6 +87,10 @@ const TILE_SPRITES: Record<string, string> = {
   floor_kitchen_a: 'floor_kitchen_a.png',
   floor_kitchen_b: 'floor_kitchen_b.png',
   wall: 'wall.png',
+  wall_n: 'wall_n.png',
+  wall_e: 'wall_e.png',
+  wall_s: 'wall_s.png',
+  wall_w: 'wall_w.png',
   door: 'door.png',
 };
 
@@ -104,6 +108,8 @@ const FURNITURE_SPRITES: Record<string, string> = {
   barista_station: 'barista_station.png',
   spice_rack: 'spice_rack.png',
   table_2seat: 'table_2seat.png',
+  table_2seat_unset: 'table_2seat_unset.png',
+  table_2seat_dirty: 'table_2seat_dirty.png',
   chair: 'chair.png',
   chair_side: 'chair_side.png',
   decor_plant: 'decor_plant.png',

@@ -62,6 +62,26 @@
     },
     "floor_kitchen_b": {
       "frame": {
+        "x": 96,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "wall": {
+      "frame": {
         "x": 0,
         "y": 32,
         "w": 32,
@@ -80,7 +100,7 @@
         "h": 32
       }
     },
-    "wall": {
+    "wall_n": {
       "frame": {
         "x": 32,
         "y": 32,
@@ -100,10 +120,70 @@
         "h": 32
       }
     },
-    "door": {
+    "wall_e": {
       "frame": {
         "x": 64,
         "y": 32,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "wall_s": {
+      "frame": {
+        "x": 96,
+        "y": 32,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "wall_w": {
+      "frame": {
+        "x": 0,
+        "y": 64,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "door": {
+      "frame": {
+        "x": 32,
+        "y": 64,
         "w": 32,
         "h": 32
       },
@@ -127,8 +207,8 @@
     "image": "tiles.png",
     "format": "RGBA8888",
     "size": {
-      "w": 96,
-      "h": 64
+      "w": 128,
+      "h": 96
     },
     "scale": "1"
   }

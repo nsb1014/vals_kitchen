@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-26T14:09:40.658Z",
+  "generatedAt": "2026-07-26T16:36:20.843Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -103,6 +103,54 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall.png",
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#wall_n",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "wall_n.png",
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#wall_e",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "wall_e.png",
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#wall_s",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "wall_s.png",
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#wall_w",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:GridLayer floor / wall tiles"
+      ],
+      "sourceFile": "wall_w.png",
       "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
@@ -271,6 +319,30 @@
         "canvas:FurnitureLayer (table_2seat)"
       ],
       "sourceFile": "table_2seat.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#table_2seat_unset",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (table_2seat_unset)"
+      ],
+      "sourceFile": "table_2seat_unset.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#table_2seat_dirty",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (table_2seat_dirty)"
+      ],
+      "sourceFile": "table_2seat_dirty.png",
       "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {

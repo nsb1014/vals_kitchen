@@ -49,6 +49,10 @@ export function getTileTexture(
     | 'floor_kitchen_a'
     | 'floor_kitchen_b'
     | 'wall'
+    | 'wall_n'
+    | 'wall_e'
+    | 'wall_s'
+    | 'wall_w'
     | 'door',
 ): Texture | null {
   const sheet = sheets.tiles;

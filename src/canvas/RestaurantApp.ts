@@ -264,10 +264,14 @@ export class RestaurantApp {
 
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+    const tableStates = new Map(
+      (state.activeDay?.floor?.tables ?? []).map((t) => [t.placementId, t.state] as const),
+    );
     this.furnitureLayer.sync(
       state.placements,
       state.editLayoutMode,
       state.activeDay?.floor?.seats ?? seatsFromPlacements(state.placements),
+      tableStates,
     );
 
     if (floor) {

@@ -1,6 +1,11 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { getTileTexture } from '../../assets/loader.ts';
-import { createStarterMap, isPerimeterWallCell } from '../../domain/floor/starter-map.ts';
+import {
+  createStarterMap,
+  isPerimeterWallCell,
+  perimeterWallEdge,
+  type PerimeterWallEdge,
+} from '../../domain/floor/starter-map.ts';
 import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
@@ -8,6 +13,11 @@ const GRID_LINE_COLOR = 0x2a2a40;
 
 function cellKey(x: number, y: number): string {
   return `${x},${y}`;
+}
+
+/** Atlas frame for a perimeter wall edge (wainscot faces room interior). */
+export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterWallEdge}` {
+  return `wall_${edge}`;
 }
 
 export class GridLayer {
@@ -28,9 +38,12 @@ export class GridLayer {
     const floorB = getTileTexture('floor_b');
     const kitchenA = getTileTexture('floor_kitchen_a') ?? floorA;
     const kitchenB = getTileTexture('floor_kitchen_b') ?? floorB;
-    const wallTex = getTileTexture('wall');
+    const wallN = getTileTexture('wall_n') ?? getTileTexture('wall');
+    const wallE = getTileTexture('wall_e') ?? wallN;
+    const wallS = getTileTexture('wall_s') ?? wallN;
+    const wallW = getTileTexture('wall_w') ?? wallN;
     const doorTex = getTileTexture('door');
-    const key = `${gridW}x${gridH}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallTex)}`;
+    const key = `${gridW}x${gridH}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
 
     if (key !== this.lastKey) {
       this.lastKey = key;
@@ -78,9 +91,17 @@ export class GridLayer {
         }
       }
 
+      const wallByEdge = {
+        n: wallN,
+        e: wallE,
+        s: wallS,
+        w: wallW,
+      } as const;
+
       const placeWall = (gx: number, gy: number, isDoor: boolean) => {
         const { x, y } = gridToWorld(gx, gy);
-        const texture = isDoor ? doorTex : wallTex;
+        const edge = perimeterWallEdge(gx, gy, gridW, gridH);
+        const texture = isDoor ? doorTex : edge ? wallByEdge[edge] : wallN;
         if (texture) {
           const tile = new Sprite(texture);
           tile.roundPixels = true;

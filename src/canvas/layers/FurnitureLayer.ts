@@ -1,6 +1,6 @@
 import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { Placement } from '../../domain/state/game-state.ts';
-import type { SeatSlot } from '../../domain/floor/types.ts';
+import type { SeatSlot, TableSurfaceState } from '../../domain/floor/types.ts';
 import { getFurnitureTexture } from '../../assets/loader.ts';
 import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
 import { furnitureDrawOffset, furnitureDrawSize, chairDrawFit } from '../furniture-fit.ts';
@@ -23,7 +23,12 @@ export class FurnitureLayer {
   private chairSprites = new Map<string, FurnitureSprite>();
   private pool: FurnitureSprite[] = [];
 
-  sync(placements: Placement[], editMode: boolean, seats: SeatSlot[] = []): void {
+  sync(
+    placements: Placement[],
+    editMode: boolean,
+    seats: SeatSlot[] = [],
+    tableStates: ReadonlyMap<string, TableSurfaceState> | null = null,
+  ): void {
     const seen = new Set<string>();
 
     for (const placement of placements) {
@@ -34,7 +39,10 @@ export class FurnitureLayer {
         this.sprites.set(placement.id, sprite);
         this.view.addChild(sprite.root);
       }
-      this.drawSprite(sprite, placement, editMode);
+      const tableState = placement.itemKey.startsWith('table')
+        ? (tableStates?.get(placement.id) ?? null)
+        : null;
+      this.drawSprite(sprite, placement, editMode, tableState);
     }
 
     for (const [id, sprite] of this.sprites) {
@@ -148,12 +156,17 @@ export class FurnitureLayer {
     sprite.root.cursor = 'default';
   }
 
-  private drawSprite(sprite: FurnitureSprite, placement: Placement, editMode: boolean): void {
+  private drawSprite(
+    sprite: FurnitureSprite,
+    placement: Placement,
+    editMode: boolean,
+    tableState: TableSurfaceState | null,
+  ): void {
     sprite.placementId = placement.id;
     const { x, y } = gridToWorld(placement.x, placement.y);
     sprite.root.position.set(x, y);
 
-    const spriteName = spriteNameForItemKey(placement.itemKey);
+    const spriteName = spriteNameForItemKey(placement.itemKey, tableState);
     const texture = getFurnitureTexture(spriteName);
     sprite.body.clear();
 
@@ -165,7 +178,14 @@ export class FurnitureLayer {
       sprite.body.rect(2, 2, TILE_PX - 4, TILE_PX - 4).fill(color);
       sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill({ color, alpha: 0.75 });
       if (placement.itemKey.startsWith('table')) {
-        sprite.body.circle(TILE_PX / 2, TILE_PX / 2, 4).fill(0xf5deb3);
+        if (tableState === 'ready' || tableState === 'occupied') {
+          sprite.body.circle(TILE_PX / 2 - 6, TILE_PX / 2, 3).fill(0xf5deb3);
+          sprite.body.circle(TILE_PX / 2 + 6, TILE_PX / 2, 3).fill(0xf5deb3);
+        } else if (tableState === 'dirty') {
+          sprite.body.circle(TILE_PX / 2 - 5, TILE_PX / 2 - 2, 3).fill(0xc4b59a);
+          sprite.body.circle(TILE_PX / 2 + 5, TILE_PX / 2 + 1, 2).fill(0x8b4513);
+          sprite.body.circle(TILE_PX / 2, TILE_PX / 2 + 4, 1).fill(0x6b3a2a);
+        }
       }
     }
 

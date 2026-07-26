@@ -4,5 +4,9 @@
   "floor_kitchen_a": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_a.png",
   "floor_kitchen_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_b.png",
   "wall": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall.png",
+  "wall_n": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_n.png",
+  "wall_e": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_e.png",
+  "wall_s": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_s.png",
+  "wall_w": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_w.png",
   "door": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door.png"
 }

@@ -38,6 +38,22 @@ export function isPerimeterWallCell(
   return x === 0 || y === 0 || x === gridW - 1 || y === gridH - 1;
 }
 
+/** Cardinal edge for a perimeter cell. Corners prefer N/S so horizontal runs stay consistent. */
+export type PerimeterWallEdge = 'n' | 'e' | 's' | 'w';
+
+export function perimeterWallEdge(
+  x: number,
+  y: number,
+  gridW: number,
+  gridH: number,
+): PerimeterWallEdge | null {
+  if (!isPerimeterWallCell(x, y, gridW, gridH)) return null;
+  if (y === 0) return 'n';
+  if (y === gridH - 1) return 's';
+  if (x === 0) return 'w';
+  return 'e';
+}
+
 /** Starter full-room map: dining left, kitchen right, door on south edge. */
 export function createStarterMap(): StarterMap {
   const gridSize = { w: 10, h: 8 };

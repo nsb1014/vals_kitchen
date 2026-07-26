@@ -227,6 +227,7 @@ def kitchen_floor(seed_shift: int = 0) -> Image.Image:
 
 
 def wall() -> Image.Image:
+    """North-edge wall: paper upper, wainscot lower (interior toward +Y)."""
     im = blank(TILE, TILE)
     # warm paper upper
     fill_rect(im, 0, 0, TILE - 1, 18, PAPER)
@@ -253,6 +254,22 @@ def wall() -> Image.Image:
         vline(im, x0 + 1, 23, 29, SAGE_HI)
     hline(im, 0, TILE - 1, TILE - 1, WAINSCOT_D)
     return im
+
+
+def wall_oriented(edge: str) -> Image.Image:
+    """Orient base north wall so wainscot faces the room interior on each edge."""
+    base = wall()
+    if edge == "n":
+        return base
+    if edge == "s":
+        return base.transpose(Image.FLIP_TOP_BOTTOM)
+    if edge == "w":
+        # CCW 90°: wainscot (bottom) → east/right (interior)
+        return base.transpose(Image.ROTATE_90)
+    if edge == "e":
+        # CW 90°: wainscot (bottom) → west/left (interior)
+        return base.transpose(Image.ROTATE_270)
+    raise ValueError(f"unknown wall edge {edge}")
 
 
 def door() -> Image.Image:
@@ -316,7 +333,8 @@ def draw_knob(im: Image.Image, x: int, y: int) -> None:
 # --- Furniture / stations ----------------------------------------------------------
 
 
-def table_2seat() -> Image.Image:
+def table_bare() -> Image.Image:
+    """Bare wood tabletop (unset / cleared) — no place settings."""
     im = blank(FURN_W, FURN_H)
     # perspective-ish oval top via layered rects
     fill_rect(im, 6, 36, 8, 45, WOOD_LEG)
@@ -329,13 +347,44 @@ def table_2seat() -> Image.Image:
     hline(im, 5, 26, 26, WALNUT)
     hline(im, 5, 26, 30, WALNUT)
     hline(im, 4, 27, 34, WALNUT_D)
-    # place settings
+    return im
+
+
+def table_2seat_unset() -> Image.Image:
+    return table_bare()
+
+
+def table_2seat() -> Image.Image:
+    """Set table: placemats + glass + napkin on bare wood."""
+    im = table_bare()
     outline_rect(im, 7, 26, 13, 32, CREAM, CREAM_D)
     outline_rect(im, 18, 26, 24, 32, CREAM, CREAM_D)
     put(im, 10, 28, GLASS)
     put(im, 21, 28, GLASS)
     put(im, 9, 29, CLOTH)
     put(im, 20, 29, CLOTH)
+    return im
+
+
+def table_2seat_dirty() -> Image.Image:
+    """Dirty table: empty plates, crumbs, and napkin mess after guests leave."""
+    im = table_bare()
+    # used plates
+    outline_rect(im, 7, 26, 13, 32, CREAM_D, shade(CREAM_D, -20, -18, -14))
+    outline_rect(im, 18, 26, 24, 32, CREAM_D, shade(CREAM_D, -20, -18, -14))
+    fill_rect(im, 8, 27, 12, 31, shade(CREAM, -8, -10, -12))
+    fill_rect(im, 19, 27, 23, 31, shade(CREAM, -8, -10, -12))
+    # sauce / crumb stains
+    put(im, 9, 28, CLOTH_D)
+    put(im, 11, 30, WALNUT_D)
+    put(im, 20, 29, CLOTH)
+    put(im, 22, 27, OAK_KNOT)
+    put(im, 10, 31, OAK_SEAM)
+    put(im, 21, 31, OAK_SEAM)
+    # crumpled napkin
+    put(im, 14, 28, CLOTH)
+    put(im, 15, 29, CLOTH_D)
+    put(im, 16, 28, CLOTH_D)
     return im
 
 
@@ -634,9 +683,15 @@ def main() -> None:
         "floor_wood_b": wood_floor(1),
         "floor_kitchen_a": kitchen_floor(0),
         "floor_kitchen_b": kitchen_floor(1),
-        "wall": wall(),
+        "wall": wall_oriented("n"),
+        "wall_n": wall_oriented("n"),
+        "wall_e": wall_oriented("e"),
+        "wall_s": wall_oriented("s"),
+        "wall_w": wall_oriented("w"),
         "door": door(),
         "table_2seat": table_2seat(),
+        "table_2seat_unset": table_2seat_unset(),
+        "table_2seat_dirty": table_2seat_dirty(),
         "chair": chair(),
         "chair_side": chair_side(),
         "prep_station": prep_station(),
@@ -660,6 +715,10 @@ def main() -> None:
         "floor_kitchen_a",
         "floor_kitchen_b",
         "wall",
+        "wall_n",
+        "wall_e",
+        "wall_s",
+        "wall_w",
         "door",
     }
     for name, im in assets.items():
