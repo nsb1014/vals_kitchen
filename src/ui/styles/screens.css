@@ -96,7 +96,7 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.25rem;
-  padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.35rem 0.5rem;
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
 }
@@ -125,7 +125,7 @@
   position: absolute;
   left: 0.75rem;
   right: 0.75rem;
-  bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+  bottom: var(--vk-nav-height);
   z-index: 49;
   margin: 0;
   padding: 0.5rem 0.75rem;
@@ -433,7 +433,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 0.5rem 1rem calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.5rem 1rem calc(0.5rem + var(--vk-nav-height));
 }
 
 .pager-btn {

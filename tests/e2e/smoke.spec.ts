@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   assertCanvasHasRenderedContent,
+  assertFloorChromeBelowCanvas,
   assertNoDiagnostics,
   assertNoHorizontalOverflow,
   assertPrimaryControlsInViewport,
@@ -233,6 +234,7 @@ test.describe('mobile viewport', () => {
     await page.locator('[data-testid="open-day-btn"]').click();
     await page.locator('[data-testid="start-service-btn"]').click();
     await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+    await assertFloorChromeBelowCanvas(page);
     await assertNoHorizontalOverflow(page);
     await serveCurrentCustomer(page);
     await assertNoHorizontalOverflow(page);

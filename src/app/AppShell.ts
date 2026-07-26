@@ -2,6 +2,7 @@ export interface AppShellElements {
   shell: HTMLElement;
   surface: HTMLElement;
   canvasMount: HTMLElement;
+  chromeMount: HTMLElement;
   overlayMount: HTMLElement;
   bubbleMount: HTMLElement;
   hud: HTMLElement;
@@ -26,6 +27,12 @@ export function mountAppShell(): AppShellElements {
   bubbleMount.id = 'bubble-mount';
   bubbleMount.className = 'bubble-mount';
 
+  const chromeMount = document.createElement('div');
+  chromeMount.id = 'chrome-mount';
+  chromeMount.className = 'chrome-mount';
+  chromeMount.dataset.testid = 'chrome-mount';
+  chromeMount.hidden = true;
+
   const overlayMount = document.createElement('div');
   overlayMount.id = 'overlay-mount';
   overlayMount.className = 'overlay-mount';
@@ -36,6 +43,7 @@ export function mountAppShell(): AppShellElements {
 
   canvasMount.appendChild(bubbleMount);
   surface.appendChild(canvasMount);
+  surface.appendChild(chromeMount);
   surface.appendChild(overlayMount);
   surface.appendChild(hud);
 
@@ -43,6 +51,7 @@ export function mountAppShell(): AppShellElements {
     shell: shell as HTMLElement,
     surface: surfaceEl,
     canvasMount,
+    chromeMount,
     overlayMount,
     bubbleMount,
     hud,

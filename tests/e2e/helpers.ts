@@ -291,6 +291,15 @@ export async function assertPrimaryControlsInViewport(page: Page): Promise<void>
   }
 }
 
+/** Floor chrome is a dedicated strip below the canvas, not an overlay on the playfield. */
+export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
+  const canvas = await page.locator('#canvas-mount').boundingBox();
+  const panel = await page.locator('[data-testid="floor-service-panel"]').boundingBox();
+  expect(canvas).not.toBeNull();
+  expect(panel).not.toBeNull();
+  expect(panel!.y).toBeGreaterThanOrEqual(canvas!.y + canvas!.height - 1);
+}
+
 declare global {
   interface Window {
     __E2E__?: {
