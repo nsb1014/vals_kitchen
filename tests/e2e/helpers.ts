@@ -300,6 +300,36 @@ export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
   expect(panel!.y).toBeGreaterThanOrEqual(canvas!.y + canvas!.height - 1);
 }
 
+/** Status HUD is a dedicated strip above the canvas, not an overlay on the playfield. */
+export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
+  const hud = await page.locator('[data-testid="game-hud"]').boundingBox();
+  const canvas = await page.locator('#canvas-mount').boundingBox();
+  expect(hud).not.toBeNull();
+  expect(canvas).not.toBeNull();
+  expect(hud!.y + hud!.height).toBeLessThanOrEqual(canvas!.y + 1);
+}
+
+/** Floor actions stay clear of the shell bottom safe inset (Android nav clearance). */
+export async function assertFloorChromeAboveSafeBottom(page: Page): Promise<void> {
+  const clearance = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="floor-service-panel"]');
+    const shell = document.querySelector('.game-shell');
+    if (!panel || !shell) return null;
+    const panelBox = panel.getBoundingClientRect();
+    const shellStyle = getComputedStyle(shell);
+    const padBottom = Number.parseFloat(shellStyle.paddingBottom) || 0;
+    const shellBox = shell.getBoundingClientRect();
+    return {
+      panelBottom: panelBox.bottom,
+      contentBottom: shellBox.bottom - padBottom,
+      padBottom,
+    };
+  });
+  expect(clearance).not.toBeNull();
+  expect(clearance!.padBottom).toBeGreaterThanOrEqual(15);
+  expect(clearance!.panelBottom).toBeLessThanOrEqual(clearance!.contentBottom + 1);
+}
+
 declare global {
   interface Window {
     __E2E__?: {

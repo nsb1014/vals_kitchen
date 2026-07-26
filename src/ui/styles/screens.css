@@ -96,7 +96,7 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.25rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.25rem 0.5rem;
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
 }
@@ -144,6 +144,7 @@
   display: none !important;
 }
 
+.game-surface:not([data-screen='restaurant']) .status-mount,
 .game-surface:not([data-screen='restaurant']) .canvas-mount,
 .game-surface:not([data-screen='restaurant']) .layout-hud {
   visibility: hidden;

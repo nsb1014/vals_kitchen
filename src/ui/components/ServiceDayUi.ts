@@ -43,14 +43,17 @@ export function mountServiceDayUi(
   bubbleMount: HTMLElement,
   getRestaurantApp: () => RestaurantApp | null,
   chromeMount: HTMLElement,
+  statusMount: HTMLElement,
 ): () => void {
-  overlayMount.innerHTML = `
+  statusMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
+  `;
+  overlayMount.innerHTML = `
     <div class="service-overlay" id="service-overlay" data-testid="service-overlay" hidden></div>
     <div class="modal-backdrop" id="ceremony-modal" data-testid="ceremony-modal" hidden></div>
   `;
 
-  const hud = overlayMount.querySelector('#game-hud') as HTMLElement;
+  const hud = statusMount.querySelector('#game-hud') as HTMLElement;
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
 
@@ -537,6 +540,7 @@ export function mountServiceDayUi(
     window.removeEventListener('resize', positionChatBubble);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     bubbleEl?.remove();
+    statusMount.innerHTML = '';
     overlayMount.innerHTML = '';
   };
 }

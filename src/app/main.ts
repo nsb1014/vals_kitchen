@@ -16,7 +16,8 @@ async function bootstrap(): Promise<void> {
   installE2eBridge();
   await loadBootContent();
 
-  const { canvasMount, chromeMount, overlayMount, bubbleMount, hud, surface } = mountAppShell();
+  const { statusMount, canvasMount, chromeMount, overlayMount, bubbleMount, hud, surface } =
+    mountAppShell();
   showScreen('restaurant');
 
   const screensMount = document.createElement('div');
@@ -64,6 +65,7 @@ async function bootstrap(): Promise<void> {
     bubbleMount,
     () => restaurantApp,
     chromeMount,
+    statusMount,
   );
 
   const unsubscribeScreen = subscribeScreenFromStore(

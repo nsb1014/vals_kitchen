@@ -36,7 +36,9 @@ body {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: 100svh;
+  /* inset defines height; keep svh/dvh as a floor for odd containing blocks */
+  min-height: 100svh;
+  min-height: 100dvh;
   padding:
     env(safe-area-inset-top, 0px)
     env(safe-area-inset-right, 0px)
@@ -61,6 +63,11 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+}
+
+.status-mount {
+  flex: 0 0 auto;
+  z-index: 20;
 }
 
 .chrome-mount {
@@ -105,7 +112,7 @@ body {
 
 .layout-hud {
   flex: 0 0 auto;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   background: rgba(42, 33, 28, 0.92);
   border-top: 1px solid var(--vk-border);
   contain: layout style;
