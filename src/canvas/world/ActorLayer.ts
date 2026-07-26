@@ -92,13 +92,20 @@ export class ActorLayer {
       destination: GridPoint | null;
     },
     guestMotion?: GuestMotion | null,
+    opts: { showPlayerWithoutFloor?: boolean } = {},
   ): void {
     this.markerLayer.clear();
     if (!floor) {
+      this.clearGuests();
+      this.plateGraphics.clear();
+      if (opts.showPlayerWithoutFloor) {
+        this.drawDestination(nav.destination);
+        this.syncPlayer(nav);
+        this.actorContainer.children.sort((a, b) => a.y - b.y);
+        return;
+      }
       this.playerSprite.visible = false;
       this.playerFallback.clear();
-      this.plateGraphics.clear();
-      this.clearGuests();
       return;
     }
 

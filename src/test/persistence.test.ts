@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalize } from '../persistence/serialize.ts';
-import { SAVE_KEY } from '../persistence/serialize.ts';
+import { SAVE_KEY, computeChecksum } from '../persistence/serialize.ts';
 import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
-import { createNewGameState, CURRENT_SAVE_VERSION } from '../domain/state/game-state.ts';
+import {
+  createNewGameState,
+  CURRENT_SAVE_VERSION,
+  normalizeGameState,
+} from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { testContext } from './test-helpers.ts';
@@ -131,7 +135,7 @@ describe('persistence', () => {
     expect(canonicalize(loaded.activeDay?.floor)).toBe(canonicalize(mutatedFloor));
   });
 
-  it('migrates v1 saves to v2 with empty recipeMastery', () => {
+  it('migrates v1 saves through to current with empty recipeMastery', () => {
     const v1 = createNewGameState(111);
     v1.prestige = 1;
     delete (v1 as { recipeMastery?: unknown }).recipeMastery;
@@ -142,11 +146,37 @@ describe('persistence', () => {
       gameState: v1,
     };
     const migrated = migrateSave(envelope);
-    expect(migrated.saveVersion).toBe(2);
+    expect(migrated.saveVersion).toBe(CURRENT_SAVE_VERSION);
     expect(migrated.gameState.recipeMastery).toEqual({});
     expect(migrated.gameState.prestige).toBe(1);
   });
 
+  it('migrates width-annex v2 saves into a same-size back kitchen room', () => {
+    const starterW = createNewGameState(1).gridSize.w;
+    const wide = createNewGameState(4242);
+    wide.kitchenAnnexOwned = true;
+    wide.gridSize = { w: starterW + 2, h: wide.gridSize.h };
+    wide.placements = [
+      ...wide.placements.filter((p) => p.itemKey.startsWith('table') || p.itemKey === 'prep_station'),
+      { id: 'annex_grill', itemKey: 'grill', x: starterW, y: 3, rotation: 0 },
+    ];
+    delete (wide as { backKitchenPlacements?: unknown }).backKitchenPlacements;
+
+    const envelope = {
+      saveVersion: 2,
+      checksum: computeChecksum(wide),
+      createdAt: '2026-07-26T00:00:00.000Z',
+      gameState: wide,
+    };
+    const migrated = migrateSave(envelope);
+    expect(migrated.saveVersion).toBe(CURRENT_SAVE_VERSION);
+
+    const loaded = normalizeGameState(migrated.gameState);
+    expect(loaded.kitchenAnnexOwned).toBe(true);
+    expect(loaded.gridSize.w).toBe(starterW);
+    expect(loaded.backKitchenPlacements.some((p) => p.id === 'annex_grill')).toBe(true);
+    expect(loaded.placements.some((p) => p.id === 'annex_grill')).toBe(false);
+  });
   it('falls back to backup when primary save is corrupt', async () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);

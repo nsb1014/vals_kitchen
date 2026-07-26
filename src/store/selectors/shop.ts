@@ -37,7 +37,10 @@ export function selectUnplacedItems(
     });
   }
 
-  const placed = placedEquipmentIds(state.placements);
+  const placed = placedEquipmentIds([
+    ...state.placements,
+    ...state.backKitchenPlacements,
+  ]);
   for (const equipmentId of state.purchasedEquipmentIds) {
     if (placed.has(equipmentId)) continue;
     items.push({

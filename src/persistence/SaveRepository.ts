@@ -8,7 +8,7 @@ import {
   validateEnvelope,
   type SaveEnvelope,
 } from './serialize.ts';
-import { exportSaveCode, parseSaveCode } from './saveCode.ts';
+import { exportSaveCode, migrateSave, parseSaveCode } from './saveCode.ts';
 
 export type StorageAdapter = {
   get: <T>(key: string) => Promise<T | undefined>;
@@ -30,7 +30,7 @@ export interface SaveRepository {
   importSaveCode(code: string): GameState;
 }
 
-function isSaveEnvelope(value: unknown): value is SaveEnvelope {
+function rawLooksLikeEnvelope(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
   return typeof record.saveVersion === 'number' && 'gameState' in record;
@@ -40,11 +40,12 @@ function createReadEnvelope(storage: StorageAdapter) {
   return async function readEnvelope(key: string): Promise<SaveEnvelope | null> {
     const raw = await storage.get<unknown>(key);
     if (!raw) return null;
-    if (!isSaveEnvelope(raw)) {
+    if (!rawLooksLikeEnvelope(raw)) {
       throw new Error(`Corrupt save at ${key}`);
     }
-    validateEnvelope(raw);
-    return raw;
+    const migrated = migrateSave(raw);
+    validateEnvelope(migrated);
+    return migrated;
   };
 }
 

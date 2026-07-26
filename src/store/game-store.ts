@@ -2,8 +2,17 @@ import { createStore } from 'zustand/vanilla';
 import { ensureContentForAction, getDomainContext } from '../app/content-loader.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
 import { dayBonusEarnings, volumeBonusEarnings } from '../domain/economy/tips.ts';
-import { validatePlacement } from '../domain/economy/purchases.ts';
+import {
+  findTransferDropCell,
+  isConnectingDoorCell,
+  validatePlacement,
+} from '../domain/economy/purchases.ts';
 import { gameReducer, type GameAction, type ReducerEvent } from '../domain/reducer.ts';
+import {
+  connectingDoorInterior,
+  otherFloorRoom,
+  type FloorRoomId,
+} from '../domain/floor/starter-map.ts';
 import {
   createNewGameState,
   type GameState,
@@ -38,6 +47,8 @@ export type CeremonyKind = 'prestige' | 'soft_reset';
 interface StoreMeta {
   screen: ScreenId;
   editLayoutMode: boolean;
+  /** Which same-size floor screen is shown (main dining+kitchen vs back kitchen). */
+  activeFloorRoom: FloorRoomId;
   hydrated: boolean;
   persistGranted: boolean;
   modifierDismissed: boolean;
@@ -75,8 +86,12 @@ export interface GameStore extends GameState, StoreMeta {
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
   setFloorToast: (message: string | null) => void;
+  setActiveFloorRoom: (room: FloorRoomId) => void;
+  enterConnectingDoor: () => boolean;
   movePlacement: (placementId: string, x: number, y: number) => boolean;
+  transferPlacementViaDoor: (placementId: string) => boolean;
   canPlaceAt: (placement: Placement, excludeId?: string) => boolean;
+  activeRoomPlacements: () => Placement[];
   autosave: () => Promise<void>;
 }
 
@@ -89,7 +104,11 @@ const META_KEYS = [
   'dismissCeremony',
   'toggleEditLayout',
   'movePlacement',
+  'transferPlacementViaDoor',
   'canPlaceAt',
+  'activeRoomPlacements',
+  'setActiveFloorRoom',
+  'enterConnectingDoor',
   'autosave',
   'navigateTo',
   'openFlavorInspector',
@@ -107,6 +126,7 @@ const META_KEYS = [
   'floorToast',
   'screen',
   'editLayoutMode',
+  'activeFloorRoom',
   'hydrated',
   'persistGranted',
   'modifierDismissed',
@@ -143,6 +163,7 @@ function mergeReducerState(
     ...nextState,
     screen: current.screen,
     editLayoutMode: current.editLayoutMode,
+    activeFloorRoom: current.activeFloorRoom,
     hydrated: current.hydrated,
     persistGranted: current.persistGranted,
     modifierDismissed: current.modifierDismissed,
@@ -178,6 +199,9 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
     actionType === 'PURCHASE' ||
     actionType === 'OPEN_DAY' ||
     actionType === 'PLACE_ITEM' ||
+    actionType === 'MOVE_ITEM' ||
+    actionType === 'TRANSFER_ITEM_ROOM' ||
+    actionType === 'REMOVE_ITEM' ||
     actionType.startsWith('FLOOR_')
   );
 }
@@ -224,6 +248,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   ...createNewGameState(),
   screen: 'restaurant',
   editLayoutMode: false,
+  activeFloorRoom: 'main',
   hydrated: false,
   persistGranted: false,
   modifierDismissed: false,
@@ -248,6 +273,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       ...state,
       screen: 'restaurant',
       editLayoutMode: false,
+      activeFloorRoom: 'main',
       hydrated: true,
       persistGranted: persist.granted,
       modifierDismissed: state.activeDay ? true : false,
@@ -284,6 +310,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.ceremonyPrestige = null;
         patch.dayStartRating = before.rating;
         patch.editLayoutMode = false;
+        patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = result.state.activeDay?.floor?.playerPosition ?? null;
         patch.floorToast = null;
         break;
@@ -296,6 +323,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.pendingReview = null;
         patch.dayStartRating = null;
         patch.editLayoutMode = false;
+        patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = null;
         patch.floorToast = null;
         break;
@@ -347,6 +375,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         ...imported,
         screen: 'restaurant',
         editLayoutMode: false,
+        activeFloorRoom: 'main',
         hydrated: true,
         modifierDismissed: imported.activeDay ? true : false,
         pendingReview: null,
@@ -449,32 +478,105 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const next = !current.editLayoutMode;
     set({
       editLayoutMode: next,
+      activeFloorRoom: next ? current.activeFloorRoom : 'main',
       pendingPlacementItemKey: next ? current.pendingPlacementItemKey : null,
     });
   },
 
+  activeRoomPlacements() {
+    const current = get();
+    return current.activeFloorRoom === 'main'
+      ? current.placements
+      : current.backKitchenPlacements;
+  },
+
+  setActiveFloorRoom(room) {
+    const current = get();
+    if (room === 'back_kitchen' && !current.kitchenAnnexOwned) return;
+    set({ activeFloorRoom: room });
+  },
+
+  enterConnectingDoor() {
+    const current = get();
+    if (!current.kitchenAnnexOwned) return false;
+    const nextRoom = otherFloorRoom(current.activeFloorRoom);
+    const spawn = connectingDoorInterior(
+      nextRoom,
+      current.gridSize.w,
+      current.gridSize.h,
+    );
+    set({
+      activeFloorRoom: nextRoom,
+      floorPlayerGrid: spawn,
+    });
+    return true;
+  },
+
   canPlaceAt(placement, excludeId) {
-    return validatePlacement(pickGameState(get()), placement, excludeId);
+    const current = get();
+    return validatePlacement(
+      pickGameState(current),
+      placement,
+      excludeId,
+      current.activeFloorRoom,
+    );
   },
 
   movePlacement(placementId, x, y) {
     const current = get();
     if (current.activeDay) return false;
-    const existing = current.placements.find((item) => item.id === placementId);
+    const room = current.activeFloorRoom;
+    const existing = current.activeRoomPlacements().find((item) => item.id === placementId);
     if (!existing) return false;
 
+    if (isConnectingDoorCell(pickGameState(current), room, x, y)) {
+      return get().transferPlacementViaDoor(placementId);
+    }
+
     const moved: Placement = { ...existing, x, y };
-    if (!validatePlacement(pickGameState(current), moved, placementId)) {
+    if (!validatePlacement(pickGameState(current), moved, placementId, room)) {
       return false;
     }
 
     try {
       const result = gameReducer(
         pickGameState(current),
-        { type: 'MOVE_ITEM', placementId, x, y },
+        { type: 'MOVE_ITEM', placementId, x, y, room },
         getDomainContext(),
       );
       set(mergeReducerState(current, result.state));
+      void get().autosave();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  transferPlacementViaDoor(placementId) {
+    const current = get();
+    if (current.activeDay || !current.kitchenAnnexOwned) return false;
+    const fromRoom = current.activeFloorRoom;
+    const toRoom = otherFloorRoom(fromRoom);
+    const drop = findTransferDropCell(pickGameState(current), toRoom);
+    if (!drop) return false;
+
+    try {
+      const result = gameReducer(
+        pickGameState(current),
+        {
+          type: 'TRANSFER_ITEM_ROOM',
+          placementId,
+          fromRoom,
+          toRoom,
+          x: drop.x,
+          y: drop.y,
+        },
+        getDomainContext(),
+      );
+      set({
+        ...mergeReducerState(current, result.state),
+        activeFloorRoom: toRoom,
+      });
       void get().autosave();
       return true;
     } catch {

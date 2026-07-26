@@ -84,7 +84,7 @@ export function migrateSave(raw: unknown): SaveEnvelope {
   }
 
   const record = raw as Record<string, unknown>;
-  const version = typeof record.saveVersion === 'number' ? record.saveVersion : 0;
+  let version = typeof record.saveVersion === 'number' ? record.saveVersion : 0;
 
   if (version > CURRENT_SAVE_VERSION) {
     throw new Error(`Save version ${version} is newer than supported version ${CURRENT_SAVE_VERSION}`);
@@ -94,17 +94,45 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     throw new Error('Invalid save: missing saveVersion');
   }
 
+  type MigratingEnvelope = {
+    saveVersion: number;
+    checksum: string;
+    createdAt: string;
+    gameState: Record<string, unknown> & Partial<GameState>;
+  };
+
+  let envelope = raw as MigratingEnvelope;
+
   if (version === 1) {
-    const envelope = raw as SaveEnvelope & { gameState: GameState };
-    return {
+    envelope = {
       ...envelope,
       saveVersion: 2,
       gameState: {
         ...envelope.gameState,
-        recipeMastery: envelope.gameState.recipeMastery ?? {},
+        recipeMastery: (envelope.gameState.recipeMastery as GameState['recipeMastery']) ?? {},
       },
-    } as SaveEnvelope;
+    };
+    version = 2;
   }
 
-  return raw as SaveEnvelope;
+  if (version === 2) {
+    // Width-annex → separate back-kitchen room; normalizeGameState reclaims columns
+    // when backKitchenPlacements is absent on the gameState.
+    const nextState = { ...envelope.gameState };
+    delete nextState.backKitchenPlacements;
+    envelope = {
+      ...envelope,
+      saveVersion: 3,
+      gameState: nextState,
+    };
+    version = 3;
+  }
+
+  return {
+    ...envelope,
+    saveVersion: CURRENT_SAVE_VERSION,
+    checksum: String(envelope.checksum ?? ''),
+    createdAt: String(envelope.createdAt ?? ''),
+    gameState: envelope.gameState as GameState,
+  };
 }

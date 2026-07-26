@@ -69,7 +69,7 @@ export function selectSeatedUnorderedCustomerIds(state: GameState): string[] {
 export function selectAdjacentSeatedCustomerIds(state: GameStore): string[] {
   const floor = state.activeDay?.floor;
   const player = selectFloorPlayerGrid(state);
-  if (!floor || !player) return [];
+  if (!floor || !player || state.activeFloorRoom !== 'main') return [];
   return adjacentSeatedCustomerIds(floor, player);
 }
 
@@ -80,14 +80,14 @@ export function selectCanTakeFloorOrders(state: GameStore): boolean {
 export function selectAdjacentUnsetTablePlacementIds(state: GameStore): string[] {
   const floor = state.activeDay?.floor;
   const player = selectFloorPlayerGrid(state);
-  if (!floor || !player) return [];
+  if (!floor || !player || state.activeFloorRoom !== 'main') return [];
   return adjacentUnsetTablePlacementIds(floor, player, state.placements);
 }
 
 export function selectAdjacentDirtyTablePlacementIds(state: GameStore): string[] {
   const floor = state.activeDay?.floor;
   const player = selectFloorPlayerGrid(state);
-  if (!floor || !player) return [];
+  if (!floor || !player || state.activeFloorRoom !== 'main') return [];
   return adjacentDirtyTablePlacementIds(floor, player, state.placements);
 }
 
@@ -116,6 +116,10 @@ export function selectShowFloorCompose(state: GameStore): boolean {
     return false;
   }
   const player = selectFloorPlayerGrid(state);
-  if (!player || !playerNearStation(player, state.placements)) return false;
+  const roomPlacements =
+    state.activeFloorRoom === 'back_kitchen'
+      ? state.backKitchenPlacements
+      : state.placements;
+  if (!player || !playerNearStation(player, roomPlacements)) return false;
   return selectFloorComposeTicket(state) !== null;
 }

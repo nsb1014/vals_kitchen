@@ -23,8 +23,10 @@ import {
   applyPlaceItem,
   applyPurchase,
   applyRemoveItem,
+  applyTransferItemRoom,
   type PurchaseKind,
 } from './economy/purchases.ts';
+import type { FloorRoomId } from './floor/starter-map.ts';
 import type { GameState, Placement } from './state/game-state.ts';
 import { cloneGameState } from './state/game-state.ts';
 
@@ -35,9 +37,17 @@ export type GameAction =
   | { type: 'NEXT_CUSTOMER' }
   | { type: 'CLOSE_DAY' }
   | { type: 'PURCHASE'; purchase: PurchaseKind }
-  | { type: 'PLACE_ITEM'; placement: Placement }
+  | { type: 'PLACE_ITEM'; placement: Placement; room?: FloorRoomId }
   | { type: 'REMOVE_ITEM'; placementId: string }
-  | { type: 'MOVE_ITEM'; placementId: string; x: number; y: number }
+  | { type: 'MOVE_ITEM'; placementId: string; x: number; y: number; room?: FloorRoomId }
+  | {
+      type: 'TRANSFER_ITEM_ROOM';
+      placementId: string;
+      fromRoom: FloorRoomId;
+      toRoom: FloorRoomId;
+      x: number;
+      y: number;
+    }
   | { type: 'FLOOR_SET_TABLE'; placementId: string }
   | { type: 'FLOOR_CLEAR_TABLE'; placementId: string }
   | { type: 'FLOOR_SEAT_NEXT' }
@@ -189,7 +199,10 @@ export function gameReducer(
       if (state.activeDay) {
         throw new Error('Cannot edit layout during service');
       }
-      return { state: applyPlaceItem(state, action.placement), events };
+      return {
+        state: applyPlaceItem(state, action.placement, action.room ?? 'main'),
+        events,
+      };
     }
 
     case 'REMOVE_ITEM': {
@@ -204,7 +217,30 @@ export function gameReducer(
         throw new Error('Cannot edit layout during service');
       }
       return {
-        state: applyMoveItem(state, action.placementId, action.x, action.y),
+        state: applyMoveItem(
+          state,
+          action.placementId,
+          action.x,
+          action.y,
+          action.room ?? 'main',
+        ),
+        events,
+      };
+    }
+
+    case 'TRANSFER_ITEM_ROOM': {
+      if (state.activeDay) {
+        throw new Error('Cannot edit layout during service');
+      }
+      return {
+        state: applyTransferItemRoom(
+          state,
+          action.placementId,
+          action.fromRoom,
+          action.toRoom,
+          action.x,
+          action.y,
+        ),
         events,
       };
     }

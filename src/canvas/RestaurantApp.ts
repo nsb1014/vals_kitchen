@@ -21,7 +21,12 @@ import { ActorLayer } from './world/ActorLayer.ts';
 import { walkBlockedCells } from './world/blocked-cells.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
-import { doorForGrid } from '../domain/floor/starter-map.ts';
+import {
+  connectingDoorInterior,
+  doorForGrid,
+  type FloorRoomId,
+} from '../domain/floor/starter-map.ts';
+import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -45,6 +50,7 @@ export class RestaurantApp {
   private unsubscribe: (() => void) | null = null;
   private mounted = false;
   private lastFloorSeed: number | null = null;
+  private lastRoom: FloorRoomId | null = null;
   private eatingTickAccumulatorMs = 0;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
@@ -107,8 +113,10 @@ export class RestaurantApp {
     this.unsubscribe = useGameStore.subscribe((state, prev) => {
       if (
         state.placements !== prev.placements ||
+        state.backKitchenPlacements !== prev.backKitchenPlacements ||
         state.gridSize !== prev.gridSize ||
         state.kitchenAnnexOwned !== prev.kitchenAnnexOwned ||
+        state.activeFloorRoom !== prev.activeFloorRoom ||
         state.editLayoutMode !== prev.editLayoutMode ||
         state.activeDay !== prev.activeDay ||
         state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
@@ -128,8 +136,20 @@ export class RestaurantApp {
     this.world.scale.set(transform.scale);
   }
 
-  private zoneOpts(state: { kitchenAnnexOwned: boolean }): { kitchenAnnexOwned: boolean } {
-    return { kitchenAnnexOwned: state.kitchenAnnexOwned };
+  private roomPlacements(state: GameStore): Placement[] {
+    return state.activeFloorRoom === 'back_kitchen'
+      ? state.backKitchenPlacements
+      : state.placements;
+  }
+
+  private walkOpts(state: GameStore): {
+    kitchenAnnexOwned: boolean;
+    room: FloorRoomId;
+  } {
+    return {
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+      room: state.activeFloorRoom,
+    };
   }
 
   private onTick = (): void => {
@@ -139,23 +159,48 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    const zoneOpts = this.zoneOpts(state);
-    const blocked = walkBlockedCells(
+
+    // Room transition when the cook steps onto the connecting door.
+    if (
+      isConnectingDoorCell(state, state.activeFloorRoom, this.nav.position.x, this.nav.position.y)
+    ) {
+      const entered = useGameStore.getState().enterConnectingDoor();
+      if (entered) {
+        const next = useGameStore.getState();
+        const spawn = connectingDoorInterior(
+          next.activeFloorRoom,
+          next.gridSize.w,
+          next.gridSize.h,
+        );
+        this.nav.snapTo(spawn);
+        this.syncFromStore(next);
+        return;
+      }
+    }
+
+    const roomPlacements = this.roomPlacements(state);
+    // Guests always path on the main floor.
+    const mainBlocked = walkBlockedCells(
       state.placements,
       state.gridSize.w,
       state.gridSize.h,
-      zoneOpts,
+      { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
     );
-    const door = doorForGrid(state.gridSize.w, state.gridSize.h, zoneOpts);
+    const door = doorForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' });
     const enterResult = this.guestMotion.sync(floor, {
       door,
-      grid: { w: state.gridSize.w, h: state.gridSize.h, blocked },
+      grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
       dtMs: this.app.ticker.deltaMS,
     });
     if (enterResult.enteredGuestIds.length > 0) {
       void useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     }
-    this.actorLayer.sync(floor, this.nav, this.guestMotion);
+
+    if (state.activeFloorRoom === 'main') {
+      this.actorLayer.sync(floor, this.nav, this.guestMotion);
+    } else {
+      this.actorLayer.sync(null, this.nav, null, { showPlayerWithoutFloor: true });
+    }
 
     if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
@@ -174,13 +219,17 @@ export class RestaurantApp {
     const player = this.actorLayer.getPlayerWorldPosition();
     this.camera.followWorldPointSmooth(player.x, player.y, width, height, mapWpx, mapHpx);
     this.applyCamera();
-    const doorOpen = this.guestMotion.isDoorBusy(floor, door);
+    const doorOpen =
+      state.activeFloorRoom === 'main' && this.guestMotion.isDoorBusy(floor, door);
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       doorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
+      room: state.activeFloorRoom,
     });
     this.interactHintLayer.sync(
-      this.computeInteractHints(floor, state.placements, this.nav.position),
+      state.activeFloorRoom === 'main'
+        ? this.computeInteractHints(floor, roomPlacements, this.nav.position)
+        : this.computeStationHints(roomPlacements, this.nav.position, floor),
     );
   };
 
@@ -195,7 +244,22 @@ export class RestaurantApp {
     const tapCell = { x: gx, y: gy };
     const floor = store.activeDay.floor;
 
-    if (floor.carriedTicketId) {
+    if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
+      const entered = store.enterConnectingDoor();
+      if (entered) {
+        const next = useGameStore.getState();
+        const spawn = connectingDoorInterior(
+          next.activeFloorRoom,
+          next.gridSize.w,
+          next.gridSize.h,
+        );
+        this.nav.snapTo(spawn);
+        this.syncFromStore(next);
+      }
+      return;
+    }
+
+    if (store.activeFloorRoom === 'main' && floor.carriedTicketId) {
       const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
       if (ticket) {
         const guest = floor.pool.find((g) => g.customer.id === ticket.customerId);
@@ -217,10 +281,10 @@ export class RestaurantApp {
     }
 
     const blocked = walkBlockedCells(
-      store.placements,
+      this.roomPlacements(store),
       store.gridSize.w,
       store.gridSize.h,
-      this.zoneOpts(store),
+      this.walkOpts(store),
     );
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
@@ -247,6 +311,7 @@ export class RestaurantApp {
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       kitchenAnnexOwned: state.kitchenAnnexOwned,
+      room: state.activeFloorRoom,
     });
   };
 
@@ -256,32 +321,43 @@ export class RestaurantApp {
     const floor = state.activeDay?.floor;
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
-    const zoneOpts = this.zoneOpts(state);
+    const roomPlacements = this.roomPlacements(state);
 
     if (floor) {
-      // Only reseat the player when a new service day starts — floor object
-      // identity changes on every reducer action and must not cancel walks.
       const daySeed = state.activeDay?.seed ?? null;
       if (daySeed !== this.lastFloorSeed) {
         this.nav.snapTo(floor.playerPosition);
         this.lastFloorSeed = daySeed;
+        this.lastRoom = 'main';
         this.eatingTickAccumulatorMs = 0;
+      } else if (this.lastRoom !== state.activeFloorRoom) {
+        const spawn = connectingDoorInterior(
+          state.activeFloorRoom,
+          state.gridSize.w,
+          state.gridSize.h,
+        );
+        this.nav.snapTo(state.floorPlayerGrid ?? spawn);
+        this.lastRoom = state.activeFloorRoom;
       }
+
+      const mainBlocked = walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h, {
+        kitchenAnnexOwned: state.kitchenAnnexOwned,
+        room: 'main',
+      });
       this.guestMotion.sync(floor, {
-        door: doorForGrid(state.gridSize.w, state.gridSize.h, zoneOpts),
+        door: doorForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' }),
         grid: {
           w: state.gridSize.w,
           h: state.gridSize.h,
-          blocked: walkBlockedCells(
-            state.placements,
-            state.gridSize.w,
-            state.gridSize.h,
-            zoneOpts,
-          ),
+          blocked: mainBlocked,
         },
         dtMs: 0,
       });
-      this.actorLayer.sync(floor, this.nav, this.guestMotion);
+      if (state.activeFloorRoom === 'main') {
+        this.actorLayer.sync(floor, this.nav, this.guestMotion);
+      } else {
+        this.actorLayer.sync(null, this.nav, null, { showPlayerWithoutFloor: true });
+      }
       if (!state.editLayoutMode) {
         const player = this.actorLayer.getPlayerWorldPosition();
         this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
@@ -290,6 +366,7 @@ export class RestaurantApp {
       }
     } else {
       this.lastFloorSeed = null;
+      this.lastRoom = state.activeFloorRoom;
       this.actorLayer.sync(null, this.nav);
       this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
     }
@@ -297,19 +374,22 @@ export class RestaurantApp {
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       kitchenAnnexOwned: state.kitchenAnnexOwned,
+      room: state.activeFloorRoom,
     });
     const tableStates = new Map(
       (state.activeDay?.floor?.tables ?? []).map((t) => [t.placementId, t.state] as const),
     );
     this.furnitureLayer.sync(
-      state.placements,
+      roomPlacements,
       state.editLayoutMode,
-      state.activeDay?.floor?.seats ?? seatsFromPlacements(state.placements),
-      tableStates,
+      state.activeFloorRoom === 'main'
+        ? (state.activeDay?.floor?.seats ?? seatsFromPlacements(state.placements))
+        : [],
+      state.activeFloorRoom === 'main' ? tableStates : new Map(),
     );
 
-    if (floor) {
-      this.customerLayer.sync(-1, state.placements, false);
+    if (floor || state.activeFloorRoom === 'back_kitchen') {
+      this.customerLayer.sync(-1, roomPlacements, false);
     } else {
       const queueIndex = state.activeDay?.queueIndex ?? -1;
       this.customerLayer.sync(queueIndex, state.placements, Boolean(state.activeDay));
@@ -322,6 +402,22 @@ export class RestaurantApp {
     if (!floor || state.editLayoutMode) {
       this.interactHintLayer.clear();
     }
+  }
+
+  private computeStationHints(
+    placements: Placement[],
+    player: { x: number; y: number },
+    floor: FloorDay,
+  ): { x: number; y: number }[] {
+    if (!floor.selectedTicketId || floor.carriedTicketId) return [];
+    const hints: { x: number; y: number }[] = [];
+    for (const placement of placements) {
+      if (placement.itemKey.startsWith('table')) continue;
+      if (playerNearPlacement(player, placement)) {
+        hints.push({ x: placement.x, y: placement.y });
+      }
+    }
+    return hints;
   }
 
   private computeInteractHints(

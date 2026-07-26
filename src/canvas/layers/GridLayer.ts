@@ -4,7 +4,9 @@ import {
   isKitchenCell,
   isPerimeterWallCell,
   mapZonesForGrid,
+  openDoorCellsForRoom,
   perimeterWallEdge,
+  type FloorRoomId,
 } from '../../domain/floor/starter-map.ts';
 import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
@@ -15,7 +17,7 @@ export class GridLayer {
   readonly view = new Container();
   private floorContainer = new Container();
   private wallContainer = new Container();
-  private doorSprite: Sprite | null = null;
+  private doorSprites: Sprite[] = [];
   private gridLines = new Graphics();
   private lastKey = '';
   private doorOpen = false;
@@ -30,11 +32,15 @@ export class GridLayer {
     gridW: number,
     gridH: number,
     _camera: CameraState,
-    opts: { doorOpen?: boolean; kitchenAnnexOwned?: boolean } = {},
+    opts: {
+      doorOpen?: boolean;
+      kitchenAnnexOwned?: boolean;
+      room?: FloorRoomId;
+    } = {},
   ): void {
     const doorOpen = Boolean(opts.doorOpen);
     const kitchenAnnexOwned = Boolean(opts.kitchenAnnexOwned);
-    const zoneOpts = { kitchenAnnexOwned };
+    const room: FloorRoomId = opts.room ?? 'main';
     const floorA = getTileTexture('floor_a');
     const floorB = getTileTexture('floor_b');
     const kitchenA = getTileTexture('floor_kitchen_a') ?? floorA;
@@ -45,16 +51,17 @@ export class GridLayer {
     const wallW = getTileTexture('wall_w') ?? wallN;
     const doorClosed = getTileTexture('door');
     const doorOpenTex = getTileTexture('door_open') ?? doorClosed;
-    const key = `${gridW}x${gridH}:annex${kitchenAnnexOwned}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
+    const key = `${gridW}x${gridH}:room${room}:annex${kitchenAnnexOwned}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
 
     if (key !== this.lastKey) {
       this.lastKey = key;
       this.floorContainer.removeChildren();
       this.wallContainer.removeChildren();
-      this.doorSprite = null;
+      this.doorSprites = [];
 
-      const zones = mapZonesForGrid(gridW, gridH, zoneOpts);
-      const door = zones.door;
+      const zones = mapZonesForGrid(gridW, gridH, { room });
+      const openDoors = openDoorCellsForRoom(room, gridW, gridH, kitchenAnnexOwned);
+      const doorKeys = new Set(openDoors.map((d) => `${d.x},${d.y}`));
 
       for (let gy = 0; gy < gridH; gy += 1) {
         for (let gx = 0; gx < gridW; gx += 1) {
@@ -103,7 +110,7 @@ export class GridLayer {
           tile.height = TILE_PX;
           tile.position.set(x, y);
           this.wallContainer.addChild(tile);
-          if (isDoor) this.doorSprite = tile;
+          if (isDoor) this.doorSprites.push(tile);
           return;
         }
         const block = new Graphics();
@@ -114,17 +121,21 @@ export class GridLayer {
       for (let gy = 0; gy < gridH; gy += 1) {
         for (let gx = 0; gx < gridW; gx += 1) {
           if (!isPerimeterWallCell(gx, gy, gridW, gridH)) continue;
-          const isDoor = gx === door.x && gy === door.y;
+          const isDoor = doorKeys.has(`${gx},${gy}`);
           placeWall(gx, gy, isDoor);
         }
       }
       this.doorOpen = !doorOpen; // force texture refresh below
     }
 
-    if (this.doorSprite && doorOpen !== this.doorOpen) {
+    if (this.doorSprites.length > 0 && doorOpen !== this.doorOpen) {
       this.doorOpen = doorOpen;
       const tex = doorOpen ? doorOpenTex : doorClosed;
-      if (tex) this.doorSprite.texture = tex;
+      if (tex) {
+        for (const sprite of this.doorSprites) {
+          sprite.texture = tex;
+        }
+      }
     }
 
     this.gridLines.clear();

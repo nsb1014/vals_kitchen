@@ -1,31 +1,32 @@
 import type { Placement } from '../state/game-state.ts';
 
-/** South-edge door cell for the starter map (matches createStarterMap zones.door). */
+/** South-edge guest door cell for the starter map (matches createStarterMap zones.door). */
 export const STARTER_DOOR = { x: 3, y: 7 } as const;
 
-/** Kitchen depth in columns; dining occupies the rest of the width. */
+/** Kitchen depth in columns on the main dining+kitchen floor; dining occupies the rest. */
 export const STARTER_KITCHEN_WIDTH = 3;
 
-/**
- * Extra kitchen columns unlocked by the back-kitchen / pantry annex.
- * Doubles interior kitchen depth so all 12 stations stay pathable.
- */
-export const KITCHEN_ANNEX_EXTRA_WIDTH = 2;
+/** Which screen of the floor the player is viewing. */
+export type FloorRoomId = 'main' | 'back_kitchen';
 
 export interface MapZoneOptions {
-  /** When true, kitchen occupies starter width + annex columns. */
-  kitchenAnnexOwned?: boolean;
+  /**
+   * Which room’s zones to compute. Main keeps dining + east kitchen;
+   * back kitchen is a same-size all-kitchen room (annex unlock).
+   */
+  room?: FloorRoomId;
 }
 
 export interface MapZones {
   dining: { x: number; y: number }[];
   kitchen: { x: number; y: number }[];
+  /** Guest entrance on main; connecting door on back kitchen. */
   door: { x: number; y: number };
 }
 
-/** Eastmost kitchen column count for the current annex unlock state. */
-export function kitchenWidthForGrid(opts: MapZoneOptions = {}): number {
-  return STARTER_KITCHEN_WIDTH + (opts.kitchenAnnexOwned ? KITCHEN_ANNEX_EXTRA_WIDTH : 0);
+/** Eastmost kitchen column count on the main floor (fixed; annex is a separate room). */
+export function kitchenWidthForGrid(_opts: MapZoneOptions = {}): number {
+  return STARTER_KITCHEN_WIDTH;
 }
 
 export interface StarterMap {
@@ -78,16 +79,91 @@ export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterW
   return `wall_${edge}`;
 }
 
+/** Mid-height east-wall connecting door on the main floor (into the back kitchen). */
+export function connectingDoorForMain(gridW: number, gridH: number): { x: number; y: number } {
+  return { x: gridW - 1, y: Math.floor(gridH / 2) };
+}
+
+/** Mid-height west-wall connecting door on the back-kitchen floor (back to main). */
+export function connectingDoorForBackKitchen(
+  gridW: number,
+  gridH: number,
+): { x: number; y: number } {
+  void gridW;
+  return { x: 0, y: Math.floor(gridH / 2) };
+}
+
+/** Connecting door cell for the given room, or null when the annex is locked. */
+export function connectingDoorForRoom(
+  room: FloorRoomId,
+  gridW: number,
+  gridH: number,
+  kitchenAnnexOwned: boolean,
+): { x: number; y: number } | null {
+  if (!kitchenAnnexOwned) return null;
+  return room === 'main'
+    ? connectingDoorForMain(gridW, gridH)
+    : connectingDoorForBackKitchen(gridW, gridH);
+}
+
+/**
+ * Walkable door cells for the active room.
+ * Main: guest south door + (when unlocked) east connecting door.
+ * Back kitchen: west connecting door only.
+ */
+export function openDoorCellsForRoom(
+  room: FloorRoomId,
+  gridW: number,
+  gridH: number,
+  kitchenAnnexOwned: boolean,
+): { x: number; y: number }[] {
+  if (room === 'back_kitchen') {
+    const door = connectingDoorForBackKitchen(gridW, gridH);
+    return kitchenAnnexOwned ? [door] : [];
+  }
+  const doors = [doorForGrid(gridW, gridH)];
+  if (kitchenAnnexOwned) {
+    doors.push(connectingDoorForMain(gridW, gridH));
+  }
+  return doors;
+}
+
+/** Interior cell just inside a connecting door (spawn / transfer target preference). */
+export function connectingDoorInterior(
+  room: FloorRoomId,
+  gridW: number,
+  gridH: number,
+): { x: number; y: number } {
+  const door =
+    room === 'main'
+      ? connectingDoorForMain(gridW, gridH)
+      : connectingDoorForBackKitchen(gridW, gridH);
+  if (room === 'main') {
+    return { x: Math.max(1, door.x - 1), y: door.y };
+  }
+  return { x: Math.min(gridW - 2, door.x + 1), y: door.y };
+}
+
 /**
  * Dining / kitchen / door for any grid size.
- * Kitchen stays the eastmost columns (starter width, or +annex); dining is the rest.
- * Door sits on the south perimeter, centered in the dining wing.
+ * Main: kitchen is the eastmost STARTER_KITCHEN_WIDTH columns; dining is the rest;
+ * guest door sits on the south perimeter, centered in the dining wing.
+ * Back kitchen: entire map is kitchen; door is the west connecting door.
  */
 export function mapZonesForGrid(
   gridW: number,
   gridH: number,
   opts: MapZoneOptions = {},
 ): MapZones {
+  const room = opts.room ?? 'main';
+  if (room === 'back_kitchen') {
+    return {
+      dining: [],
+      kitchen: rect(0, 0, gridW, gridH),
+      door: connectingDoorForBackKitchen(gridW, gridH),
+    };
+  }
+
   const kitchenW = Math.min(kitchenWidthForGrid(opts), Math.max(1, gridW - 2));
   const diningW = Math.max(1, gridW - kitchenW);
   const dining = rect(0, 0, diningW, gridH);
@@ -130,4 +206,8 @@ export function isDiningCell(zones: MapZones, x: number, y: number): boolean {
 
 export function isKitchenCell(zones: MapZones, x: number, y: number): boolean {
   return zones.kitchen.some((c) => c.x === x && c.y === y);
+}
+
+export function otherFloorRoom(room: FloorRoomId): FloorRoomId {
+  return room === 'main' ? 'back_kitchen' : 'main';
 }

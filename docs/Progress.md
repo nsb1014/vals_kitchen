@@ -73,6 +73,7 @@
 | B | Service immersion | Done | Carry plate, leaving→door, interact hints, soft camera; fast suite 133 |
 | C | Loop completeness | Done | Review Continue, floor autosave, summary Shop/Floor, tutorial close; fast suite 144 |
 | D | Meta depth | Done | Mastery review line, recipe book progress, day pacing HUD; fast suite 147 |
+| — | Kitchen annex redesign | Done | Separate same-size back-kitchen room + door transfer (replaces +2 width); save v3; fast suite 206 |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 

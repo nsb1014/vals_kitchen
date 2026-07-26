@@ -4,7 +4,7 @@ import {
 } from '../types.ts';
 import type { ActiveDay } from '../day/types.ts';
 import type { RecipeMasteryMap } from '../floor/mastery.ts';
-import { createStarterMap } from '../floor/starter-map.ts';
+import { createStarterMap, isPerimeterWallCell } from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
 
@@ -15,10 +15,9 @@ export const MIN_DISH_INGREDIENTS = 3;
 export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
-/** Width may exceed MAX_GRID_SIZE by the annex extra columns. */
-export const MAX_GRID_WIDTH_WITH_ANNEX = MAX_GRID_SIZE + 2;
 export const RECIPE_BONUS_STARS = 0.75;
-export const CURRENT_SAVE_VERSION = 2 as const;
+/** Save v3: back kitchen is a separate same-size room (replaces +2 width annex). */
+export const CURRENT_SAVE_VERSION = 3 as const;
 
 export interface Placement {
   id: string;
@@ -46,11 +45,14 @@ export interface GameState {
   discoveredRecipeIds: string[];
   recipeMastery: RecipeMasteryMap;
   gridSize: { w: number; h: number };
+  /** Furniture on the main dining + kitchen floor. */
   placements: Placement[];
+  /** Stations on the unlocked back-kitchen room (same grid dimensions). */
+  backKitchenPlacements: Placement[];
   seatingCapacity: number;
   tableCount: number;
   gridExpansionCount: number;
-  /** One-time unlock: back-kitchen / pantry annex (extra kitchen columns). */
+  /** One-time unlock: separate back-kitchen room + connecting door. */
   kitchenAnnexOwned: boolean;
   ingredientUnlockIndex: number;
   activeDay: ActiveDay | null;
@@ -77,6 +79,93 @@ export function seatingFromPlacements(placements: Placement[]): number {
   return seatsFromPlacements(placements).length;
 }
 
+/**
+ * Migrate saves that widened the main floor by +2 annex columns into the
+ * same-size back-kitchen room model. Idempotent when backKitchenPlacements exists
+ * and width no longer carries the annex bonus.
+ */
+export function migrateAnnexWidthToBackRoom(raw: {
+  kitchenAnnexOwned?: boolean;
+  gridSize?: { w: number; h: number };
+  placements?: Placement[];
+  backKitchenPlacements?: Placement[];
+}): {
+  gridSize: { w: number; h: number };
+  placements: Placement[];
+  backKitchenPlacements: Placement[];
+} {
+  const starter = createStarterMap();
+  const kitchenAnnexOwned = Boolean(raw.kitchenAnnexOwned);
+  let gridSize = { ...(raw.gridSize ?? starter.gridSize) };
+  let placements = (raw.placements ?? starter.placements).map((p) => ({ ...p }));
+  let backKitchenPlacements = (raw.backKitchenPlacements ?? []).map((p) => ({ ...p }));
+
+  const hadSeparateRoomField = raw.backKitchenPlacements !== undefined;
+  if (kitchenAnnexOwned && !hadSeparateRoomField) {
+    // Width-annex era always added +2 columns once.
+    const reclaim = 2;
+    const newW = Math.min(MAX_GRID_SIZE, Math.max(starter.gridSize.w, gridSize.w - reclaim));
+    if (newW < gridSize.w) {
+      const stay: Placement[] = [];
+      const moved: Placement[] = [];
+      for (const p of placements) {
+        if (p.x >= newW - 1) {
+          moved.push(p);
+        } else {
+          stay.push(p);
+        }
+      }
+      placements = stay;
+      gridSize = { ...gridSize, w: newW };
+      const occupied = new Set(backKitchenPlacements.map((p) => `${p.x},${p.y}`));
+      let cursorY = 1;
+      let cursorX = 1;
+      for (const p of moved) {
+        while (
+          isPerimeterWallCell(cursorX, cursorY, gridSize.w, gridSize.h) ||
+          occupied.has(`${cursorX},${cursorY}`)
+        ) {
+          cursorY += 1;
+          if (cursorY >= gridSize.h - 1) {
+            cursorY = 1;
+            cursorX += 1;
+          }
+          if (cursorX >= gridSize.w - 1) break;
+        }
+        if (cursorX >= gridSize.w - 1) break;
+        const next = { ...p, x: cursorX, y: cursorY };
+        occupied.add(`${cursorX},${cursorY}`);
+        backKitchenPlacements.push(next);
+        cursorY += 1;
+      }
+    }
+  }
+
+  // Clamp any stray placements onto walls after width changes.
+  placements = placements.filter(
+    (p) =>
+      p.x >= 0 &&
+      p.y >= 0 &&
+      p.x < gridSize.w &&
+      p.y < gridSize.h &&
+      !isPerimeterWallCell(p.x, p.y, gridSize.w, gridSize.h),
+  );
+  backKitchenPlacements = backKitchenPlacements.filter(
+    (p) =>
+      p.x >= 0 &&
+      p.y >= 0 &&
+      p.x < gridSize.w &&
+      p.y < gridSize.h &&
+      !isPerimeterWallCell(p.x, p.y, gridSize.w, gridSize.h),
+  );
+
+  if (gridSize.w > MAX_GRID_SIZE) {
+    gridSize = { ...gridSize, w: MAX_GRID_SIZE };
+  }
+
+  return { gridSize, placements, backKitchenPlacements };
+}
+
 export function createNewGameState(seed?: number): GameState {
   const globalRunSeed = seed ?? createRng(Date.now()).nextInt(1, 0x7fffffff);
   const starter = createStarterMap();
@@ -95,6 +184,7 @@ export function createNewGameState(seed?: number): GameState {
     recipeMastery: {},
     gridSize: { ...starter.gridSize },
     placements,
+    backKitchenPlacements: [],
     seatingCapacity: seatingFromPlacements(placements),
     tableCount,
     gridExpansionCount: 0,
@@ -111,8 +201,10 @@ export function createNewGameState(seed?: number): GameState {
 }
 
 export function normalizeGameState(raw: GameState): GameState {
-  const placements = raw.placements ?? createDefaultPlacements();
-  const tableCount = raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
+  const migrated = migrateAnnexWidthToBackRoom(raw);
+  const placements = migrated.placements;
+  const tableCount =
+    raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
   return {
     saveVersion: CURRENT_SAVE_VERSION,
     globalRunSeed: raw.globalRunSeed ?? 1,
@@ -124,8 +216,9 @@ export function normalizeGameState(raw: GameState): GameState {
     purchasedEquipmentIds: raw.purchasedEquipmentIds ?? [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: raw.discoveredRecipeIds ?? [],
     recipeMastery: raw.recipeMastery ?? {},
-    gridSize: raw.gridSize ?? { ...STARTING_GRID },
+    gridSize: migrated.gridSize,
     placements,
+    backKitchenPlacements: migrated.backKitchenPlacements,
     seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),
     tableCount,
     gridExpansionCount: raw.gridExpansionCount ?? 0,

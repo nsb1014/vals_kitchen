@@ -157,7 +157,7 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       id: 'kitchen_annex',
       name: 'Back Kitchen Annex',
       description:
-        'Unlock the pantry annex: +2 kitchen columns so all stations stay walkable.',
+        'Unlock a same-size back kitchen through a connecting door — more station space without widening the map.',
       cost: annexCost,
       availability: state.kitchenAnnexOwned
         ? 'owned'

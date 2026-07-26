@@ -67,9 +67,16 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
 
     if (state.editLayoutMode) {
       hintEl.hidden = false;
-      hintEl.textContent = state.pendingPlacementItemKey
-        ? 'Tap an empty valid tile to place the selected item.'
-        : 'Drag tables and kitchen stations to a valid tile. Chairs stay with their table.';
+      if (state.pendingPlacementItemKey) {
+        hintEl.textContent = 'Tap an empty valid tile to place the selected item.';
+      } else if (state.kitchenAnnexOwned) {
+        const roomLabel =
+          state.activeFloorRoom === 'back_kitchen' ? 'Back kitchen' : 'Main floor';
+        hintEl.textContent = `${roomLabel}: drag furniture, or drop a station on the connecting door to move it to the other room. Tap the door to switch rooms.`;
+      } else {
+        hintEl.textContent =
+          'Drag tables and kitchen stations to a valid tile. Chairs stay with their table.';
+      }
     } else {
       hintEl.hidden = true;
       hintEl.textContent = '';
@@ -89,6 +96,8 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       state.daySummary !== prev.daySummary ||
       state.screen !== prev.screen ||
       state.placements !== prev.placements ||
+      state.backKitchenPlacements !== prev.backKitchenPlacements ||
+      state.activeFloorRoom !== prev.activeFloorRoom ||
       state.tableCount !== prev.tableCount ||
       state.purchasedEquipmentIds !== prev.purchasedEquipmentIds ||
       state.pendingPlacementItemKey !== prev.pendingPlacementItemKey

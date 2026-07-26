@@ -3,7 +3,6 @@ import type { DomainContext } from '../context.ts';
 import type { GameState, Placement } from '../state/game-state.ts';
 import {
   MAX_GRID_SIZE,
-  MAX_GRID_WIDTH_WITH_ANNEX,
   cloneGameState,
   nextPlacementId,
   seatingFromPlacements,
@@ -12,11 +11,14 @@ import {
 } from '../state/game-state.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import {
+  connectingDoorForRoom,
+  connectingDoorInterior,
   isDiningCell,
   isKitchenCell,
   isPerimeterWallCell,
-  KITCHEN_ANNEX_EXTRA_WIDTH,
   mapZonesForGrid,
+  otherFloorRoom,
+  type FloorRoomId,
 } from '../floor/starter-map.ts';
 import { EQUIPMENT_IDS, STARTING_EQUIPMENT_IDS } from '../types.ts';
 
@@ -63,8 +65,8 @@ function equipmentGateOwned(state: GameState, equipmentId: string): boolean {
   return state.purchasedEquipmentIds.includes(equipmentId);
 }
 
-function zoneOpts(state: GameState): { kitchenAnnexOwned: boolean } {
-  return { kitchenAnnexOwned: state.kitchenAnnexOwned };
+function placementsForRoom(state: GameState, room: FloorRoomId): Placement[] {
+  return room === 'main' ? state.placements : state.backKitchenPlacements;
 }
 
 export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainContext): boolean {
@@ -102,9 +104,6 @@ export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainCon
     }
     case 'kitchen_annex': {
       if (state.kitchenAnnexOwned) return false;
-      if (state.gridSize.w + KITCHEN_ANNEX_EXTRA_WIDTH > MAX_GRID_WIDTH_WITH_ANNEX) {
-        return false;
-      }
       return state.cash >= kitchenAnnexCost(state.prestige);
     }
   }
@@ -157,10 +156,7 @@ export function applyPurchase(
     case 'kitchen_annex': {
       next.cash -= kitchenAnnexCost(state.prestige);
       next.kitchenAnnexOwned = true;
-      next.gridSize = {
-        ...next.gridSize,
-        w: Math.min(MAX_GRID_WIDTH_WITH_ANNEX, next.gridSize.w + KITCHEN_ANNEX_EXTRA_WIDTH),
-      };
+      // Unlocks the separate back-kitchen room + connecting door; map size unchanged.
       break;
     }
   }
@@ -172,7 +168,12 @@ export function validatePlacement(
   state: GameState,
   placement: Placement,
   existingId?: string,
+  room: FloorRoomId = 'main',
 ): boolean {
+  if (room === 'back_kitchen' && !state.kitchenAnnexOwned) {
+    return false;
+  }
+
   const { w, h } = state.gridSize;
   if (placement.x < 0 || placement.y < 0 || placement.x >= w || placement.y >= h) {
     return false;
@@ -181,15 +182,17 @@ export function validatePlacement(
     return false;
   }
 
-  const zones = mapZonesForGrid(w, h, zoneOpts(state));
-  if (isTableItem(placement.itemKey) && !isDiningCell(zones, placement.x, placement.y)) {
-    return false;
+  const zones = mapZonesForGrid(w, h, { room });
+  if (isTableItem(placement.itemKey)) {
+    if (room !== 'main') return false;
+    if (!isDiningCell(zones, placement.x, placement.y)) return false;
   }
   if (isStationItem(placement.itemKey) && !isKitchenCell(zones, placement.x, placement.y)) {
     return false;
   }
 
-  const occupiedByOthers = occupiedCellsExcluding(state.placements, existingId);
+  const roomPlacements = placementsForRoom(state, room);
+  const occupiedByOthers = occupiedCellsExcluding(roomPlacements, existingId);
   if (occupiedByOthers.has(`${placement.x},${placement.y}`)) {
     return false;
   }
@@ -218,8 +221,12 @@ export function recalculateSeatingCapacity(placements: Placement[]): number {
   return seatingFromPlacements(placements);
 }
 
-export function applyPlaceItem(state: GameState, placement: Placement): GameState {
-  if (!validatePlacement(state, placement)) {
+export function applyPlaceItem(
+  state: GameState,
+  placement: Placement,
+  room: FloorRoomId = 'main',
+): GameState {
+  if (!validatePlacement(state, placement, undefined, room)) {
     throw new Error('Invalid placement');
   }
 
@@ -231,15 +238,27 @@ export function applyPlaceItem(state: GameState, placement: Placement): GameStat
   }
 
   const next = cloneGameState(state);
-  next.placements = [...next.placements, { ...placement, id: placement.id || nextPlacementId() }];
-  next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  const entry = { ...placement, id: placement.id || nextPlacementId() };
+  if (room === 'main') {
+    next.placements = [...next.placements, entry];
+    next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  } else {
+    next.backKitchenPlacements = [...next.backKitchenPlacements, entry];
+  }
   return next;
 }
 
 export function applyRemoveItem(state: GameState, placementId: string): GameState {
   const next = cloneGameState(state);
-  next.placements = next.placements.filter((item) => item.id !== placementId);
-  next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  const inMain = next.placements.some((item) => item.id === placementId);
+  if (inMain) {
+    next.placements = next.placements.filter((item) => item.id !== placementId);
+    next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  } else {
+    next.backKitchenPlacements = next.backKitchenPlacements.filter(
+      (item) => item.id !== placementId,
+    );
+  }
   return next;
 }
 
@@ -248,19 +267,117 @@ export function applyMoveItem(
   placementId: string,
   x: number,
   y: number,
+  room: FloorRoomId = 'main',
 ): GameState {
-  const existing = state.placements.find((item) => item.id === placementId);
+  const roomPlacements = placementsForRoom(state, room);
+  const existing = roomPlacements.find((item) => item.id === placementId);
   if (!existing) throw new Error('Placement not found');
   const moved = { ...existing, x, y };
-  if (!validatePlacement(state, moved, placementId)) {
+  if (!validatePlacement(state, moved, placementId, room)) {
     throw new Error('Invalid placement');
   }
   const next = cloneGameState(state);
-  next.placements = next.placements.map((item) =>
-    item.id === placementId ? moved : item,
-  );
-  next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  if (room === 'main') {
+    next.placements = next.placements.map((item) =>
+      item.id === placementId ? moved : item,
+    );
+    next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  } else {
+    next.backKitchenPlacements = next.backKitchenPlacements.map((item) =>
+      item.id === placementId ? moved : item,
+    );
+  }
   return next;
+}
+
+/** First free kitchen cell near the connecting-door interior for a room transfer. */
+export function findTransferDropCell(
+  state: GameState,
+  targetRoom: FloorRoomId,
+): { x: number; y: number } | null {
+  if (targetRoom === 'back_kitchen' && !state.kitchenAnnexOwned) return null;
+  const { w, h } = state.gridSize;
+  const preferred = connectingDoorInterior(targetRoom, w, h);
+  const zones = mapZonesForGrid(w, h, { room: targetRoom });
+  const occupied = occupiedCellsExcluding(placementsForRoom(state, targetRoom));
+
+  const candidates: { x: number; y: number }[] = [preferred];
+  for (let radius = 1; radius < Math.max(w, h); radius += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        candidates.push({ x: preferred.x + dx, y: preferred.y + dy });
+      }
+    }
+  }
+
+  for (const cell of candidates) {
+    if (cell.x < 0 || cell.y < 0 || cell.x >= w || cell.y >= h) continue;
+    if (isPerimeterWallCell(cell.x, cell.y, w, h)) continue;
+    if (!isKitchenCell(zones, cell.x, cell.y)) continue;
+    if (occupied.has(`${cell.x},${cell.y}`)) continue;
+    return cell;
+  }
+  return null;
+}
+
+/**
+ * Move a station from one room to the other (door-drop transfer).
+ * Tables cannot leave the main floor.
+ */
+export function applyTransferItemRoom(
+  state: GameState,
+  placementId: string,
+  fromRoom: FloorRoomId,
+  toRoom: FloorRoomId,
+  x: number,
+  y: number,
+): GameState {
+  if (fromRoom === toRoom) {
+    return applyMoveItem(state, placementId, x, y, fromRoom);
+  }
+  if (!state.kitchenAnnexOwned) {
+    throw new Error('Back kitchen not unlocked');
+  }
+  const source = placementsForRoom(state, fromRoom).find((p) => p.id === placementId);
+  if (!source) throw new Error('Placement not found');
+  if (isTableItem(source.itemKey)) {
+    throw new Error('Tables cannot transfer to the back kitchen');
+  }
+
+  const withoutSource = cloneGameState(state);
+  if (fromRoom === 'main') {
+    withoutSource.placements = withoutSource.placements.filter((p) => p.id !== placementId);
+  } else {
+    withoutSource.backKitchenPlacements = withoutSource.backKitchenPlacements.filter(
+      (p) => p.id !== placementId,
+    );
+  }
+
+  const moved = { ...source, x, y };
+  if (!validatePlacement(withoutSource, moved, undefined, toRoom)) {
+    throw new Error('Invalid placement');
+  }
+
+  const next = withoutSource;
+  if (toRoom === 'main') {
+    next.placements = [...next.placements, moved];
+    next.seatingCapacity = recalculateSeatingCapacity(next.placements);
+  } else {
+    next.backKitchenPlacements = [...next.backKitchenPlacements, moved];
+  }
+  return next;
+}
+
+/** True when the cell is the connecting door on the active room (transfer / navigate target). */
+export function isConnectingDoorCell(
+  state: GameState,
+  room: FloorRoomId,
+  x: number,
+  y: number,
+): boolean {
+  const door = connectingDoorForRoom(room, state.gridSize.w, state.gridSize.h, state.kitchenAnnexOwned);
+  return door !== null && door.x === x && door.y === y;
 }
 
 export function resetRunLayout(state: GameState): GameState {
@@ -270,6 +387,7 @@ export function resetRunLayout(state: GameState): GameState {
     { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
     { id: 'table_2', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
   ];
+  next.backKitchenPlacements = [];
   next.seatingCapacity = seatingFromTableCount(2);
   next.tableCount = 2;
   next.gridExpansionCount = 0;
@@ -281,4 +399,4 @@ export function isStartingEquipment(id: string): boolean {
   return (STARTING_EQUIPMENT_IDS as readonly string[]).includes(id);
 }
 
-export { isStationItem };
+export { isStationItem, otherFloorRoom, placementsForRoom };

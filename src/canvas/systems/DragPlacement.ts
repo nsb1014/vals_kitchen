@@ -1,5 +1,6 @@
 import { nextPlacementId } from '../../domain/state/game-state.ts';
 import type { Placement } from '../../domain/state/game-state.ts';
+import { isConnectingDoorCell } from '../../domain/economy/purchases.ts';
 import type { GameStore } from '../../store/game-store.ts';
 import {
   computeGrabOffset,
@@ -65,16 +66,26 @@ export class DragPlacement {
         rotation: 0,
       };
       if (store.canPlaceAt(candidate)) {
-        void store.dispatch({ type: 'PLACE_ITEM', placement: candidate });
+        void store.dispatch({
+          type: 'PLACE_ITEM',
+          placement: candidate,
+          room: store.activeFloorRoom,
+        });
         store.cancelPlacement();
       }
+      return;
+    }
+
+    // Tap connecting door (without a drag) to switch rooms while editing.
+    if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
+      store.enterConnectingDoor();
       return;
     }
 
     const placementId = this.furnitureLayer.findPlacementAtWorld(world.x, world.y);
     if (!placementId) return;
 
-    const placement = store.placements.find((item) => item.id === placementId);
+    const placement = store.activeRoomPlacements().find((item) => item.id === placementId);
     if (!placement) return;
 
     this.drag = {
@@ -101,17 +112,21 @@ export class DragPlacement {
     const sy = event.clientY - rect.top;
     const { gx, gy } = screenToDragGrid(sx, sy, this.camera.state, this.drag.grabOffset);
     const store = this.getStore();
-    const existing = store.placements.find((item) => item.id === this.drag!.placementId);
-    if (existing && (existing.x !== gx || existing.y !== gy)) {
-      const candidate: Placement = {
-        id: this.drag.placementId,
-        itemKey: this.drag.itemKey,
-        x: gx,
-        y: gy,
-        rotation: existing.rotation,
-      };
-      if (store.canPlaceAt(candidate, this.drag.placementId)) {
-        store.movePlacement(this.drag.placementId, gx, gy);
+    const existing = store.activeRoomPlacements().find((item) => item.id === this.drag!.placementId);
+    if (existing) {
+      if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
+        store.transferPlacementViaDoor(this.drag.placementId);
+      } else if (existing.x !== gx || existing.y !== gy) {
+        const candidate: Placement = {
+          id: this.drag.placementId,
+          itemKey: this.drag.itemKey,
+          x: gx,
+          y: gy,
+          rotation: existing.rotation,
+        };
+        if (store.canPlaceAt(candidate, this.drag.placementId)) {
+          store.movePlacement(this.drag.placementId, gx, gy);
+        }
       }
     }
 
@@ -126,6 +141,7 @@ export class DragPlacement {
     if (!this.drag) return;
     const store = this.getStore();
     const { gx, gy } = screenToDragGrid(sx, sy, this.camera.state, this.drag.grabOffset);
+    const overDoor = isConnectingDoorCell(store, store.activeFloorRoom, gx, gy);
     const candidate: Placement = {
       id: this.drag.placementId,
       itemKey: this.drag.itemKey,
@@ -133,7 +149,10 @@ export class DragPlacement {
       y: gy,
       rotation: 0,
     };
-    const valid = store.canPlaceAt(candidate, this.drag.placementId);
+    const valid =
+      overDoor && !this.drag.itemKey.startsWith('table')
+        ? store.kitchenAnnexOwned
+        : store.canPlaceAt(candidate, this.drag.placementId);
     this.previewLayer.show(gx, gy, this.drag.itemKey, valid);
   };
 }

@@ -11,6 +11,7 @@ function resetStore(seed: number): void {
     ...createNewGameState(seed),
     screen: 'restaurant',
     editLayoutMode: false,
+    activeFloorRoom: 'main',
     hydrated: true,
     persistGranted: false,
     modifierDismissed: false,
