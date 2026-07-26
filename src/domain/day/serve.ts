@@ -1,7 +1,7 @@
 import { aggregateDish } from '../flavor/aggregate.ts';
 import { findMatchingRecipe, RECIPE_MATCH_BONUS } from '../flavor/recipe-match.ts';
 import { computeMatchStars } from '../flavor/scoring.ts';
-import { computeTip } from '../economy/tips.ts';
+import { computeTip, dayBonusEarnings, volumeBonusEarnings } from '../economy/tips.ts';
 import { prestigeRatingDeltaMultiplier } from '../balance/prestige-pacing.ts';
 import { applyReview } from '../rating/update.ts';
 import { applyPrestige } from '../rating/prestige.ts';
@@ -258,8 +258,14 @@ export function closeDay(state: GameState): GameState {
       ? activeDay.dayMatchSum / activeDay.customersServed
       : 0;
 
-  if (averageMatch >= 7.0) {
-    const bonus = Math.floor(activeDay.dayEarnings * 0.05);
+  const matchBonus = dayBonusEarnings(activeDay.dayEarnings, averageMatch);
+  const volumeBonus = volumeBonusEarnings(
+    activeDay.dayEarnings,
+    activeDay.customersServed,
+    next.seatingCapacity,
+  );
+  const bonus = matchBonus + volumeBonus;
+  if (bonus > 0) {
     next.cash += bonus;
     next.stats.totalEarnings += bonus;
   }

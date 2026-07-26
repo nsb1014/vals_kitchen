@@ -42,20 +42,19 @@ export function mountServiceDayUi(
   overlayMount: HTMLElement,
   bubbleMount: HTMLElement,
   getRestaurantApp: () => RestaurantApp | null,
+  chromeMount: HTMLElement,
 ): () => void {
   overlayMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
-    <div id="floor-service-hud-mount" data-testid="floor-service-hud-mount"></div>
     <div class="service-overlay" id="service-overlay" data-testid="service-overlay" hidden></div>
     <div class="modal-backdrop" id="ceremony-modal" data-testid="ceremony-modal" hidden></div>
   `;
 
   const hud = overlayMount.querySelector('#game-hud') as HTMLElement;
-  const floorHudMount = overlayMount.querySelector('#floor-service-hud-mount') as HTMLElement;
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
 
-  const cleanupFloorHud = mountFloorServiceHud(floorHudMount);
+  const cleanupFloorHud = mountFloorServiceHud(chromeMount);
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
@@ -169,6 +168,7 @@ export function mountServiceDayUi(
             <h2 class="service-title" data-testid="day-summary-title">Day Summary</h2>
             <p class="review-detail">${state.daySummary.earningsLine}</p>
             ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${state.daySummary.bonusLine}</p>` : ''}
+            ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${state.daySummary.volumeBonusLine}</p>` : ''}
             <p class="review-detail">${state.daySummary.averageMatchText}</p>
             <p class="review-detail">${state.daySummary.ratingDeltaText}</p>
             <p class="review-detail">${state.daySummary.unlockProgressText}</p>

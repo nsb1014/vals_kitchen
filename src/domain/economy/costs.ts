@@ -29,6 +29,11 @@ export function gridExpansionCost(expansionCount: number): number {
   return upgradeCost(300, 1.15, expansionCount);
 }
 
+/** One-time kitchen annex unlock (base before prestige scaling). */
+export function kitchenAnnexBaseCost(): number {
+  return 800;
+}
+
 export function bulkUpgradeCost(
   base: number,
   rate: number,

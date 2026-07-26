@@ -3,6 +3,7 @@ import type { DomainContext } from '../context.ts';
 import type { GameState, Placement } from '../state/game-state.ts';
 import {
   MAX_GRID_SIZE,
+  MAX_GRID_WIDTH_WITH_ANNEX,
   cloneGameState,
   nextPlacementId,
   seatingFromPlacements,
@@ -14,16 +15,19 @@ import {
   isDiningCell,
   isKitchenCell,
   isPerimeterWallCell,
+  KITCHEN_ANNEX_EXTRA_WIDTH,
   mapZonesForGrid,
 } from '../floor/starter-map.ts';
-import { STARTING_EQUIPMENT_IDS } from '../types.ts';
+import { EQUIPMENT_IDS, STARTING_EQUIPMENT_IDS } from '../types.ts';
+
+const EQUIPMENT_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
 
 function isTableItem(itemKey: string): boolean {
   return itemKey.startsWith('table');
 }
 
 function isStationItem(itemKey: string): boolean {
-  return itemKey.endsWith('_station');
+  return EQUIPMENT_ITEM_KEYS.has(itemKey);
 }
 
 /** Furniture footprints + chair slots from placements other than `excludeId`. */
@@ -43,7 +47,13 @@ export type PurchaseKind =
   | { type: 'ingredient'; ingredientId: string }
   | { type: 'equipment'; equipmentId: string }
   | { type: 'table' }
-  | { type: 'grid_expansion' };
+  | { type: 'grid_expansion' }
+  | { type: 'kitchen_annex' };
+
+/** One-time back-kitchen annex cost (prestige-scaled). Tunable default — PRD §6.2. */
+export function kitchenAnnexCost(prestige: number): number {
+  return scaledUpgradeCost(800, 1, 0, prestige);
+}
 
 function countPlacedTables(placements: Placement[]): number {
   return placements.filter((item) => item.itemKey.startsWith('table')).length;
@@ -51,6 +61,10 @@ function countPlacedTables(placements: Placement[]): number {
 
 function equipmentGateOwned(state: GameState, equipmentId: string): boolean {
   return state.purchasedEquipmentIds.includes(equipmentId);
+}
+
+function zoneOpts(state: GameState): { kitchenAnnexOwned: boolean } {
+  return { kitchenAnnexOwned: state.kitchenAnnexOwned };
 }
 
 export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainContext): boolean {
@@ -78,11 +92,20 @@ export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainCon
       return state.cash >= cost;
     }
     case 'grid_expansion': {
-      if (state.gridSize.w >= MAX_GRID_SIZE || state.gridSize.h >= MAX_GRID_SIZE) {
+      const canGrowW = state.gridSize.w < MAX_GRID_SIZE;
+      const canGrowH = state.gridSize.h < MAX_GRID_SIZE;
+      if (!canGrowW && !canGrowH) {
         return false;
       }
       const cost = scaledUpgradeCost(300, 1.15, state.gridExpansionCount, state.prestige);
       return state.cash >= cost;
+    }
+    case 'kitchen_annex': {
+      if (state.kitchenAnnexOwned) return false;
+      if (state.gridSize.w + KITCHEN_ANNEX_EXTRA_WIDTH > MAX_GRID_WIDTH_WITH_ANNEX) {
+        return false;
+      }
+      return state.cash >= kitchenAnnexCost(state.prestige);
     }
   }
 }
@@ -126,8 +149,17 @@ export function applyPurchase(
       next.cash -= cost;
       next.gridExpansionCount += 1;
       next.gridSize = {
-        w: Math.min(MAX_GRID_SIZE, next.gridSize.w + 1),
-        h: Math.min(MAX_GRID_SIZE, next.gridSize.h + 1),
+        w: next.gridSize.w < MAX_GRID_SIZE ? next.gridSize.w + 1 : next.gridSize.w,
+        h: next.gridSize.h < MAX_GRID_SIZE ? next.gridSize.h + 1 : next.gridSize.h,
+      };
+      break;
+    }
+    case 'kitchen_annex': {
+      next.cash -= kitchenAnnexCost(state.prestige);
+      next.kitchenAnnexOwned = true;
+      next.gridSize = {
+        ...next.gridSize,
+        w: Math.min(MAX_GRID_WIDTH_WITH_ANNEX, next.gridSize.w + KITCHEN_ANNEX_EXTRA_WIDTH),
       };
       break;
     }
@@ -149,7 +181,7 @@ export function validatePlacement(
     return false;
   }
 
-  const zones = mapZonesForGrid(w, h);
+  const zones = mapZonesForGrid(w, h, zoneOpts(state));
   if (isTableItem(placement.itemKey) && !isDiningCell(zones, placement.x, placement.y)) {
     return false;
   }
@@ -241,9 +273,12 @@ export function resetRunLayout(state: GameState): GameState {
   next.seatingCapacity = seatingFromTableCount(2);
   next.tableCount = 2;
   next.gridExpansionCount = 0;
+  next.kitchenAnnexOwned = false;
   return next;
 }
 
 export function isStartingEquipment(id: string): boolean {
   return (STARTING_EQUIPMENT_IDS as readonly string[]).includes(id);
 }
+
+export { isStationItem };

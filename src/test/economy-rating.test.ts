@@ -11,6 +11,7 @@ import {
   matchQualityFactor,
   prestigeMultiplier,
   ratingMultiplier,
+  volumeBonusEarnings,
 } from '../domain/economy/tips.ts';
 import { applyReview, reviewDelta } from '../domain/rating/update.ts';
 import { prestigeRatingDeltaMultiplier } from '../domain/balance/prestige-pacing.ts';
@@ -48,6 +49,19 @@ describe('economy engine', () => {
   it('awards 5% day bonus when average match is at least 7', () => {
     expect(dayBonusEarnings(1000, 7)).toBe(50);
     expect(dayBonusEarnings(1000, 6.9)).toBe(0);
+  });
+
+  it('awards volume bonus from seat utilization, not day length', () => {
+    // Full capacity: +10% of tip earnings.
+    expect(volumeBonusEarnings(1000, 8, 8)).toBe(100);
+    // Half seats filled: +5%.
+    expect(volumeBonusEarnings(1000, 4, 8)).toBe(50);
+    // Same covers with more seats → lower utilization (buy seats to raise the pool).
+    expect(volumeBonusEarnings(1000, 4, 16)).toBe(25);
+    // Serving more covers at full utilization scales with earnings (more seats → bigger day).
+    expect(volumeBonusEarnings(2000, 16, 16)).toBe(200);
+    expect(volumeBonusEarnings(1000, 0, 8)).toBe(0);
+    expect(volumeBonusEarnings(0, 8, 8)).toBe(0);
   });
 });
 

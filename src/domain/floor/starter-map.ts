@@ -6,10 +6,26 @@ export const STARTER_DOOR = { x: 3, y: 7 } as const;
 /** Kitchen depth in columns; dining occupies the rest of the width. */
 export const STARTER_KITCHEN_WIDTH = 3;
 
+/**
+ * Extra kitchen columns unlocked by the back-kitchen / pantry annex.
+ * Doubles interior kitchen depth so all 12 stations stay pathable.
+ */
+export const KITCHEN_ANNEX_EXTRA_WIDTH = 2;
+
+export interface MapZoneOptions {
+  /** When true, kitchen occupies starter width + annex columns. */
+  kitchenAnnexOwned?: boolean;
+}
+
 export interface MapZones {
   dining: { x: number; y: number }[];
   kitchen: { x: number; y: number }[];
   door: { x: number; y: number };
+}
+
+/** Eastmost kitchen column count for the current annex unlock state. */
+export function kitchenWidthForGrid(opts: MapZoneOptions = {}): number {
+  return STARTER_KITCHEN_WIDTH + (opts.kitchenAnnexOwned ? KITCHEN_ANNEX_EXTRA_WIDTH : 0);
 }
 
 export interface StarterMap {
@@ -64,11 +80,15 @@ export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterW
 
 /**
  * Dining / kitchen / door for any grid size.
- * Kitchen stays the eastmost STARTER_KITCHEN_WIDTH columns; dining is the rest.
+ * Kitchen stays the eastmost columns (starter width, or +annex); dining is the rest.
  * Door sits on the south perimeter, centered in the dining wing.
  */
-export function mapZonesForGrid(gridW: number, gridH: number): MapZones {
-  const kitchenW = Math.min(STARTER_KITCHEN_WIDTH, Math.max(1, gridW - 2));
+export function mapZonesForGrid(
+  gridW: number,
+  gridH: number,
+  opts: MapZoneOptions = {},
+): MapZones {
+  const kitchenW = Math.min(kitchenWidthForGrid(opts), Math.max(1, gridW - 2));
   const diningW = Math.max(1, gridW - kitchenW);
   const dining = rect(0, 0, diningW, gridH);
   const kitchen = rect(diningW, 0, kitchenW, gridH);
@@ -96,8 +116,12 @@ export function createStarterMap(): StarterMap {
   };
 }
 
-export function doorForGrid(gridW: number, gridH: number): { x: number; y: number } {
-  return mapZonesForGrid(gridW, gridH).door;
+export function doorForGrid(
+  gridW: number,
+  gridH: number,
+  opts: MapZoneOptions = {},
+): { x: number; y: number } {
+  return mapZonesForGrid(gridW, gridH, opts).door;
 }
 
 export function isDiningCell(zones: MapZones, x: number, y: number): boolean {

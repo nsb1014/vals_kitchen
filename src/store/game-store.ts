@@ -1,7 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 import { ensureContentForAction, getDomainContext } from '../app/content-loader.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
-import { dayBonusEarnings } from '../domain/economy/tips.ts';
+import { dayBonusEarnings, volumeBonusEarnings } from '../domain/economy/tips.ts';
 import { validatePlacement } from '../domain/economy/purchases.ts';
 import { gameReducer, type GameAction, type ReducerEvent } from '../domain/reducer.ts';
 import {
@@ -192,6 +192,11 @@ function buildDaySummary(
       ? activeDay.dayMatchSum / activeDay.customersServed
       : 0;
   const dayBonus = dayBonusEarnings(activeDay.dayEarnings, averageMatch);
+  const volumeBonus = volumeBonusEarnings(
+    activeDay.dayEarnings,
+    activeDay.customersServed,
+    before.seatingCapacity,
+  );
   const masteryLines: string[] = [];
   for (const [recipeId, afterEntry] of Object.entries(after.recipeMastery)) {
     const beforeEntry = before.recipeMastery[recipeId];
@@ -203,10 +208,12 @@ function buildDaySummary(
   return buildDaySummaryDisplay({
     dayEarnings: activeDay.dayEarnings,
     dayBonus,
+    volumeBonus,
     averageMatch,
     ratingStart: before.rating,
     ratingEnd: after.rating,
     customersServed: activeDay.customersServed,
+    seatingCapacity: before.seatingCapacity,
     unlockCount: before.unlockedIngredientIds.length,
     totalIngredients: getDomainContext().ingredients.length,
     masteryLines,

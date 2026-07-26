@@ -40,3 +40,23 @@ export function dayBonusEarnings(dayEarnings: number, averageMatch: number): num
   }
   return 0;
 }
+
+/**
+ * End-of-day volume bonus: up to +10% of tip earnings when covers fill seating capacity.
+ * Utilization = customersServed / seatingCapacity (clamped 0–1). Day length is irrelevant —
+ * the daily pool is already capped by seats (§5 customers_per_day), so this rewards buying
+ * and filling more seats, not stretching the same covers over a longer session.
+ */
+export const VOLUME_BONUS_RATE = 0.1;
+
+export function volumeBonusEarnings(
+  dayEarnings: number,
+  customersServed: number,
+  seatingCapacity: number,
+): number {
+  if (dayEarnings <= 0 || customersServed <= 0 || seatingCapacity <= 0) {
+    return 0;
+  }
+  const utilization = Math.min(1, customersServed / seatingCapacity);
+  return Math.floor(dayEarnings * VOLUME_BONUS_RATE * utilization);
+}

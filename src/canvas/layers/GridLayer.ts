@@ -30,9 +30,11 @@ export class GridLayer {
     gridW: number,
     gridH: number,
     _camera: CameraState,
-    opts: { doorOpen?: boolean } = {},
+    opts: { doorOpen?: boolean; kitchenAnnexOwned?: boolean } = {},
   ): void {
     const doorOpen = Boolean(opts.doorOpen);
+    const kitchenAnnexOwned = Boolean(opts.kitchenAnnexOwned);
+    const zoneOpts = { kitchenAnnexOwned };
     const floorA = getTileTexture('floor_a');
     const floorB = getTileTexture('floor_b');
     const kitchenA = getTileTexture('floor_kitchen_a') ?? floorA;
@@ -43,7 +45,7 @@ export class GridLayer {
     const wallW = getTileTexture('wall_w') ?? wallN;
     const doorClosed = getTileTexture('door');
     const doorOpenTex = getTileTexture('door_open') ?? doorClosed;
-    const key = `${gridW}x${gridH}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
+    const key = `${gridW}x${gridH}:annex${kitchenAnnexOwned}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
 
     if (key !== this.lastKey) {
       this.lastKey = key;
@@ -51,7 +53,7 @@ export class GridLayer {
       this.wallContainer.removeChildren();
       this.doorSprite = null;
 
-      const zones = mapZonesForGrid(gridW, gridH);
+      const zones = mapZonesForGrid(gridW, gridH, zoneOpts);
       const door = zones.door;
 
       for (let gy = 0; gy < gridH; gy += 1) {

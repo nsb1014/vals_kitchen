@@ -144,6 +144,10 @@ export function mountShopScreen(container: HTMLElement): () => void {
         }
         if (id === 'grid_expansion') {
           await store.dispatch({ type: 'PURCHASE', purchase: { type: 'grid_expansion' } });
+          return;
+        }
+        if (id === 'kitchen_annex') {
+          await store.dispatch({ type: 'PURCHASE', purchase: { type: 'kitchen_annex' } });
         }
       });
     });
@@ -160,7 +164,8 @@ export function mountShopScreen(container: HTMLElement): () => void {
       state.unlockedIngredientIds !== prev.unlockedIngredientIds ||
       state.purchasedEquipmentIds !== prev.purchasedEquipmentIds ||
       state.tableCount !== prev.tableCount ||
-      state.gridSize !== prev.gridSize
+      state.gridSize !== prev.gridSize ||
+      state.kitchenAnnexOwned !== prev.kitchenAnnexOwned
     ) {
       render();
     }

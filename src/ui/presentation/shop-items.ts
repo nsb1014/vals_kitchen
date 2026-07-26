@@ -1,4 +1,4 @@
-import { canPurchase, type PurchaseKind } from '../../domain/economy/purchases.ts';
+import { canPurchase, kitchenAnnexCost, type PurchaseKind } from '../../domain/economy/purchases.ts';
 import { scaledUpgradeCost } from '../../domain/economy/costs.ts';
 import type { DomainContext } from '../../domain/context.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
@@ -30,7 +30,7 @@ export interface ShopIngredientRow {
 }
 
 export interface ShopUtilityRow {
-  kind: 'table' | 'grid_expansion';
+  kind: 'table' | 'grid_expansion' | 'kitchen_annex';
   id: string;
   name: string;
   description: string;
@@ -56,6 +56,9 @@ function deriveAvailability(
     return 'owned';
   }
   if (purchase.type === 'equipment' && state.purchasedEquipmentIds.includes(purchase.equipmentId)) {
+    return 'owned';
+  }
+  if (purchase.type === 'kitchen_annex' && state.kitchenAnnexOwned) {
     return 'owned';
   }
   if (canPurchase(state, purchase, ctx)) return 'available';
@@ -119,10 +122,14 @@ export function buildIngredientShopRows(
 export function buildUtilityShopRows(state: GameState, ctx: DomainContext): ShopUtilityRow[] {
   const tableCost = scaledUpgradeCost(200, 1.12, state.tableCount, state.prestige);
   const gridCost = scaledUpgradeCost(300, 1.15, state.gridExpansionCount, state.prestige);
+  const annexCost = kitchenAnnexCost(state.prestige);
   const gridMaxed = state.gridSize.w >= MAX_GRID_SIZE && state.gridSize.h >= MAX_GRID_SIZE;
+  const nextW = Math.min(MAX_GRID_SIZE, state.gridSize.w + 1);
+  const nextH = Math.min(MAX_GRID_SIZE, state.gridSize.h + 1);
 
   const tablePurchase: PurchaseKind = { type: 'table' };
   const gridPurchase: PurchaseKind = { type: 'grid_expansion' };
+  const annexPurchase: PurchaseKind = { type: 'kitchen_annex' };
 
   return [
     {
@@ -138,12 +145,24 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       kind: 'grid_expansion',
       id: 'grid_expansion',
       name: 'Expand Grid',
-      description: `Grow floor to ${Math.min(MAX_GRID_SIZE, state.gridSize.w + 1)}×${Math.min(MAX_GRID_SIZE, state.gridSize.h + 1)} (max ${MAX_GRID_SIZE}×${MAX_GRID_SIZE}).`,
+      description: `Grow floor to ${nextW}×${nextH} (max ${MAX_GRID_SIZE}×${MAX_GRID_SIZE}).`,
       cost: gridCost,
       availability: gridMaxed
         ? 'owned'
         : deriveAvailability(state, gridPurchase, ctx, false),
       purchase: gridPurchase,
+    },
+    {
+      kind: 'kitchen_annex',
+      id: 'kitchen_annex',
+      name: 'Back Kitchen Annex',
+      description:
+        'Unlock the pantry annex: +2 kitchen columns so all stations stay walkable.',
+      cost: annexCost,
+      availability: state.kitchenAnnexOwned
+        ? 'owned'
+        : deriveAvailability(state, annexPurchase, ctx, false),
+      purchase: annexPurchase,
     },
   ];
 }

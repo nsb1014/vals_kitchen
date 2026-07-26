@@ -108,6 +108,7 @@ export class RestaurantApp {
       if (
         state.placements !== prev.placements ||
         state.gridSize !== prev.gridSize ||
+        state.kitchenAnnexOwned !== prev.kitchenAnnexOwned ||
         state.editLayoutMode !== prev.editLayoutMode ||
         state.activeDay !== prev.activeDay ||
         state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
@@ -127,6 +128,10 @@ export class RestaurantApp {
     this.world.scale.set(transform.scale);
   }
 
+  private zoneOpts(state: { kitchenAnnexOwned: boolean }): { kitchenAnnexOwned: boolean } {
+    return { kitchenAnnexOwned: state.kitchenAnnexOwned };
+  }
+
   private onTick = (): void => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
@@ -134,8 +139,14 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    const blocked = walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h);
-    const door = doorForGrid(state.gridSize.w, state.gridSize.h);
+    const zoneOpts = this.zoneOpts(state);
+    const blocked = walkBlockedCells(
+      state.placements,
+      state.gridSize.w,
+      state.gridSize.h,
+      zoneOpts,
+    );
+    const door = doorForGrid(state.gridSize.w, state.gridSize.h, zoneOpts);
     const enterResult = this.guestMotion.sync(floor, {
       door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked },
@@ -164,7 +175,10 @@ export class RestaurantApp {
     this.camera.followWorldPointSmooth(player.x, player.y, width, height, mapWpx, mapHpx);
     this.applyCamera();
     const doorOpen = this.guestMotion.isDoorBusy(floor, door);
-    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, { doorOpen });
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      doorOpen,
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+    });
     this.interactHintLayer.sync(
       this.computeInteractHints(floor, state.placements, this.nav.position),
     );
@@ -202,7 +216,12 @@ export class RestaurantApp {
       }
     }
 
-    const blocked = walkBlockedCells(store.placements, store.gridSize.w, store.gridSize.h);
+    const blocked = walkBlockedCells(
+      store.placements,
+      store.gridSize.w,
+      store.gridSize.h,
+      this.zoneOpts(store),
+    );
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
@@ -226,7 +245,9 @@ export class RestaurantApp {
       this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
     }
     this.applyCamera();
-    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+    });
   };
 
   syncFromStore(state: GameStore): void {
@@ -235,6 +256,7 @@ export class RestaurantApp {
     const floor = state.activeDay?.floor;
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
+    const zoneOpts = this.zoneOpts(state);
 
     if (floor) {
       // Only reseat the player when a new service day starts — floor object
@@ -246,11 +268,16 @@ export class RestaurantApp {
         this.eatingTickAccumulatorMs = 0;
       }
       this.guestMotion.sync(floor, {
-        door: doorForGrid(state.gridSize.w, state.gridSize.h),
+        door: doorForGrid(state.gridSize.w, state.gridSize.h, zoneOpts),
         grid: {
           w: state.gridSize.w,
           h: state.gridSize.h,
-          blocked: walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h),
+          blocked: walkBlockedCells(
+            state.placements,
+            state.gridSize.w,
+            state.gridSize.h,
+            zoneOpts,
+          ),
         },
         dtMs: 0,
       });
@@ -268,7 +295,9 @@ export class RestaurantApp {
     }
 
     this.applyCamera();
-    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+    });
     const tableStates = new Map(
       (state.activeDay?.floor?.tables ?? []).map((t) => [t.placementId, t.state] as const),
     );

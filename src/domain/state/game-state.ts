@@ -15,6 +15,8 @@ export const MIN_DISH_INGREDIENTS = 3;
 export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
+/** Width may exceed MAX_GRID_SIZE by the annex extra columns. */
+export const MAX_GRID_WIDTH_WITH_ANNEX = MAX_GRID_SIZE + 2;
 export const RECIPE_BONUS_STARS = 0.75;
 export const CURRENT_SAVE_VERSION = 2 as const;
 
@@ -48,6 +50,8 @@ export interface GameState {
   seatingCapacity: number;
   tableCount: number;
   gridExpansionCount: number;
+  /** One-time unlock: back-kitchen / pantry annex (extra kitchen columns). */
+  kitchenAnnexOwned: boolean;
   ingredientUnlockIndex: number;
   activeDay: ActiveDay | null;
   composeDraftIngredientIds?: string[];
@@ -94,6 +98,7 @@ export function createNewGameState(seed?: number): GameState {
     seatingCapacity: seatingFromPlacements(placements),
     tableCount,
     gridExpansionCount: 0,
+    kitchenAnnexOwned: false,
     ingredientUnlockIndex: 0,
     activeDay: null,
     composeDraftIngredientIds: undefined,
@@ -124,6 +129,7 @@ export function normalizeGameState(raw: GameState): GameState {
     seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),
     tableCount,
     gridExpansionCount: raw.gridExpansionCount ?? 0,
+    kitchenAnnexOwned: raw.kitchenAnnexOwned ?? false,
     ingredientUnlockIndex: raw.ingredientUnlockIndex ?? 0,
     activeDay: raw.activeDay ?? null,
     composeDraftIngredientIds: raw.composeDraftIngredientIds,

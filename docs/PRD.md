@@ -246,6 +246,7 @@ The customer request generator **must not emit preferences outside the flavor en
 |--------|---------|
 | Customer tip (primary) | See §7.3 full pipeline |
 | Day bonus (optional) | +5% of day earnings if average match ≥7.0 |
+| Volume bonus | `floor(dayEarnings × 0.10 × min(1, customersServed / seatingCapacity))` — rewards filling seats / covers, not day length |
 
 ### 6.2 Money Sinks
 
@@ -255,6 +256,7 @@ The customer request generator **must not emit preferences outside the flavor en
 | Table / seating slot (#n) | `floor(200 × 1.12^n)` | n = 0…20 |
 | Kitchen equipment (#n of 12) | `floor(500 × 1.18^n)` | n = 0…11 |
 | Grid expansion tile (#n) | `floor(300 × 1.15^n)` | n = 0…15 |
+| Kitchen annex (one-time) | `floor(800 × prestige_economy_mult)` | Back-kitchen / pantry wing; +2 kitchen columns |
 
 **Bulk-buy closed form** (for UI "buy N" previews):
 
@@ -314,6 +316,7 @@ Individual ingredient purchase costs still use the ingredient row in §6.2 (`flo
 
 - **Seating capacity** = number of placed table seats (each table tile contributes seats per furniture definition).
 - More tables → higher `customers_per_day` cap → more income per day, but layout space and grid expansion costs create tradeoffs.
+- **Kitchen annex (2026-07-26):** one-time shop unlock expands the east kitchen by **+2 columns** (grid width grows by 2; dining footprint unchanged). Starter kitchen has only ~12 interior cells — packing all 12 stations blocks walkability. The annex doubles interior kitchen depth so stations remain pathable. Walls, south door, and dining zones stay functional. Stations may be placed on annex kitchen tiles in Edit Restaurant after unlock.
 
 ---
 
@@ -462,7 +465,7 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 |----------|----------|-----------------|
 | Tables | 2-seat, 4-seat (+ chairs) | Chair slots = seating capacity |
 | Kitchen stations | Prep, grill, oven, … | Ingredient gates + compose interact |
-| Room expansions | Dining wing, kitchen wing | Placable area + nav mesh |
+| Room expansions | Dining wing, kitchen wing, **kitchen annex** | Placable area + nav mesh |
 | Decor | Plants, rugs, lighting | **Cosmetic only** |
 | Walls / floor | Tile variants | Cosmetic / blocking |
 
