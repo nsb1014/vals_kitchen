@@ -5,9 +5,8 @@ import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
-import { waitingGuestGridAnchor } from './waiting-line.ts';
+import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
-import { waitingStackWorldX } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
@@ -257,15 +256,7 @@ function resolveGuestPose(
   guestMotion: GuestMotion | null,
 ): GuestPose | null {
   const motionPose = guestMotion?.pose(guest.id) ?? null;
-  if (motionPose) {
-    if (guest.stage === 'waiting' && waitingIndex !== undefined) {
-      return {
-        ...motionPose,
-        worldX: waitingStackWorldX(motionPose.worldX, waitingIndex),
-      };
-    }
-    return motionPose;
-  }
+  if (motionPose) return motionPose;
   return fallbackGuestPose(guest, waitingIndex);
 }
 
@@ -285,12 +276,11 @@ function fallbackGuestPose(
     };
   }
   if (guest.stage === 'waiting') {
-    const door = waitingGuestGridAnchor(STARTER_DOOR);
-    const center = tileCenter(door.x, door.y);
     const index = waitingIndex ?? 0;
+    const world = waitingGuestWorldPosition(STARTER_DOOR, index);
     return {
-      worldX: waitingStackWorldX(center.x, index),
-      worldY: center.y,
+      worldX: world.x,
+      worldY: world.y,
       facing: 1,
       isMoving: false,
       walkFrame: 0,

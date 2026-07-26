@@ -13,5 +13,6 @@
   "spice_rack": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/spice_rack.png",
   "table_2seat": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/table_2seat.png",
   "chair": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/chair.png",
+  "chair_side": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/chair_side.png",
   "decor_plant": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/decor_plant.png"
 }

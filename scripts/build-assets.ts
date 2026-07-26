@@ -105,6 +105,7 @@ const FURNITURE_SPRITES: Record<string, string> = {
   spice_rack: 'spice_rack.png',
   table_2seat: 'table_2seat.png',
   chair: 'chair.png',
+  chair_side: 'chair_side.png',
   decor_plant: 'decor_plant.png',
 };
 

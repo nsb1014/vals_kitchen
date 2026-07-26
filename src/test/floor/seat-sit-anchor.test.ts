@@ -5,7 +5,7 @@ import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import type { Placement } from '../../domain/state/game-state.ts';
 
 describe('¾ seat sit anchors', () => {
-  it('places two south seats on the same column under a 2-top, facing the table', () => {
+  it('places west+east seats beside a 2-top, facing the table', () => {
     const placements: Placement[] = [
       { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 2, rotation: 0 },
     ];
@@ -14,44 +14,49 @@ describe('¾ seat sit anchors', () => {
     expect(seats[0]).toMatchObject({
       tablePlacementId: 'table_a',
       slotIndex: 0,
-      x: 2,
-      y: 3,
-      facing: 180,
+      x: 1,
+      y: 2,
+      facing: 90,
     });
     expect(seats[1]).toMatchObject({
       tablePlacementId: 'table_a',
       slotIndex: 1,
-      x: 2,
-      y: 3,
-      facing: 180,
+      x: 3,
+      y: 2,
+      facing: 270,
     });
   });
 
-  it('flanks left/right and tucks north under the table top', () => {
-    const seatL = {
+  it('tucks side seats inward under the table top (not a full tile south)', () => {
+    const seatW = {
       tablePlacementId: 't',
       slotIndex: 0,
-      x: 2,
-      y: 3,
-      facing: 180 as const,
+      x: 1,
+      y: 2,
+      facing: 90 as const,
     };
-    const seatR = { ...seatL, slotIndex: 1 };
-    const left = seatSitWorldPosition(seatL);
-    const right = seatSitWorldPosition(seatR);
+    const seatE = { ...seatW, slotIndex: 1, x: 3, facing: 270 as const };
+    const west = seatSitWorldPosition(seatW);
+    const east = seatSitWorldPosition(seatE);
 
-    // Same south row, flanking the table center (x = 2.5 tiles).
     const tableCenterX = 2 * TILE_PX + TILE_PX / 2;
-    expect(left.x).toBeLessThan(tableCenterX);
-    expect(right.x).toBeGreaterThan(tableCenterX);
+    const tableCenterY = 2 * TILE_PX + TILE_PX / 2;
 
-    // Nav-center tucked north; visual feet (y + TILE_PX/2 - 2) land near the table lip.
-    const southTileCenterY = 3 * TILE_PX + TILE_PX / 2;
-    const tableSouthEdgeY = 3 * TILE_PX;
-    const leftFeetY = left.y + TILE_PX / 2 - 2;
-    expect(left.y).toBeLessThan(southTileCenterY);
-    expect(right.y).toBeLessThan(southTileCenterY);
-    expect(leftFeetY).toBeLessThan(tableSouthEdgeY + TILE_PX * 0.35);
-    expect(leftFeetY).toBeGreaterThan(tableSouthEdgeY - 6);
-    expect(Math.abs(left.y - right.y)).toBeLessThan(1);
+    // West left of center, east right of center; both on the table row.
+    expect(west.x).toBeLessThan(tableCenterX);
+    expect(east.x).toBeGreaterThan(tableCenterX);
+    expect(Math.abs(west.y - tableCenterY)).toBeLessThan(1);
+    expect(Math.abs(east.y - tableCenterY)).toBeLessThan(1);
+
+    // Tucked toward table — not still at side-cell centers.
+    const westCellCenterX = 1 * TILE_PX + TILE_PX / 2;
+    const eastCellCenterX = 3 * TILE_PX + TILE_PX / 2;
+    expect(west.x).toBeGreaterThan(westCellCenterX);
+    expect(east.x).toBeLessThan(eastCellCenterX);
+
+    // Must not sit on the south cell in front of the table.
+    const southCellCenterY = 3 * TILE_PX + TILE_PX / 2;
+    expect(west.y).toBeLessThan(southCellCenterY - TILE_PX * 0.4);
+    expect(east.y).toBeLessThan(southCellCenterY - TILE_PX * 0.4);
   });
 });

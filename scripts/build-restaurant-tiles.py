@@ -358,6 +358,32 @@ def chair() -> Image.Image:
     return im
 
 
+def chair_side() -> Image.Image:
+    """¾ side chair facing right (back on left, seat toward table on right)."""
+    im = blank(FURN_W, FURN_H)
+    # Back legs (far) + front legs
+    fill_rect(im, 8, 38, 10, 46, WOOD_LEG)
+    fill_rect(im, 20, 39, 22, 46, WOOD_LEG)
+    fill_rect(im, 9, 38, 10, 39, WALNUT_D)
+    # Seat plank + red cushion (tapers slightly toward table / right)
+    outline_rect(im, 9, 30, 24, 38, WALNUT_HI, WALNUT_D)
+    fill_rect(im, 10, 31, 23, 36, WALNUT)
+    fill_rect(im, 11, 32, 22, 35, CLOTH)
+    hline(im, 11, 22, 32, shade(CLOTH, 20, 10, 8))
+    hline(im, 11, 22, 35, CLOTH_D)
+    # Tall backrest on the left (away from table when west-seated)
+    outline_rect(im, 6, 10, 14, 32, WALNUT, WALNUT_D)
+    fill_rect(im, 7, 11, 13, 30, WALNUT_HI)
+    for y in (14, 18, 22, 26):
+        hline(im, 8, 12, y, WALNUT_D)
+    vline(im, 7, 12, 29, shade(WALNUT_HI, 14, 10, 6))
+    vline(im, 13, 12, 29, WALNUT_D)
+    # Arm / side rail toward seat
+    fill_rect(im, 14, 28, 20, 30, WALNUT)
+    hline(im, 14, 20, 28, WALNUT_HI)
+    return im
+
+
 def prep_station() -> Image.Image:
     im = base_counter(STEEL_HI, STEEL, STEEL_D, 20, 44)
     outline_rect(im, 5, 22, 18, 30, WALNUT_HI, WALNUT_D)
@@ -612,6 +638,7 @@ def main() -> None:
         "door": door(),
         "table_2seat": table_2seat(),
         "chair": chair(),
+        "chair_side": chair_side(),
         "prep_station": prep_station(),
         "grill": grill(),
         "oven": oven(),

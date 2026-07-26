@@ -1,6 +1,9 @@
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import { findPath, type GridPoint, type WalkGrid } from '../../domain/floor/pathfinding.ts';
-import { waitingGuestGridAnchor } from './waiting-line.ts';
+import {
+  waitingGuestGridAnchor,
+  waitingGuestWorldPosition,
+} from './waiting-line.ts';
 import { NavController } from './NavController.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 import { TILE_PX } from '../coordinates.ts';
@@ -63,13 +66,15 @@ export class GuestMotion {
     }
 
     if (guest.stage === 'waiting') {
-      const cell = waitingGuestGridAnchor(opts.door);
-      // Stack offset applied in ActorLayer; keep nav on door-north cell.
+      const cell = waitingGuestGridAnchor(opts.door, waitingIndex);
+      const world = waitingGuestWorldPosition(opts.door, waitingIndex);
       if (nav.isMoving) {
         nav.snapTo(cell);
       } else if (nav.position.x !== cell.x || nav.position.y !== cell.y) {
         nav.snapTo(cell);
       }
+      nav.worldX = world.x;
+      nav.worldY = world.y;
       nav.facing = 1;
       return;
     }
@@ -123,8 +128,7 @@ export class GuestMotion {
 
   private defaultCell(guest: FloorGuest, waitingIndex: number, door: GridPoint): GridPoint {
     if (guest.seat) return { x: guest.seat.x, y: guest.seat.y };
-    void waitingIndex;
-    return waitingGuestGridAnchor(door);
+    return waitingGuestGridAnchor(door, waitingIndex);
   }
 }
 
@@ -134,11 +138,6 @@ function directPath(from: GridPoint, to: GridPoint): GridPoint[] {
     { ...from },
     { ...to },
   ];
-}
-
-/** Waiting-line world X stack (matches ActorLayer). */
-export function waitingStackWorldX(baseX: number, waitingIndex: number): number {
-  return baseX + (waitingIndex - 1) * 10;
 }
 
 export { TILE_PX };

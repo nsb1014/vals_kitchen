@@ -280,9 +280,29 @@
         "h": 48
       }
     },
-    "decor_plant": {
+    "chair_side": {
       "frame": {
         "x": 96,
+        "y": 144,
+        "w": 32,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 48
+      }
+    },
+    "decor_plant": {
+      "frame": {
+        "x": 144,
         "y": 144,
         "w": 32,
         "h": 48

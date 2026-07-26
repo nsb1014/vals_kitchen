@@ -3,28 +3,25 @@ import type { SeatSlot } from './types.ts';
 
 /**
  * Derive chair slots from table placements.
- * 2-tops: both south seats share the cell under the table (flank via render offsets), facing 180 (toward table).
- * 4-tops: south pair + north pair around the table cell.
+ * 2-tops: west + east of the table footprint, facing inward (¾ diner sides).
+ * 4-tops: west, east, south, north around the table cell.
  */
 export function seatsFromPlacements(placements: Placement[]): SeatSlot[] {
   const seats: SeatSlot[] = [];
   for (const p of placements) {
     if (!p.itemKey.startsWith('table')) continue;
     const slotCount = p.itemKey.includes('4') ? 4 : 2;
-    if (slotCount === 2) {
-      seats.push(
-        { tablePlacementId: p.id, slotIndex: 0, x: p.x, y: p.y + 1, facing: 180 },
-        { tablePlacementId: p.id, slotIndex: 1, x: p.x, y: p.y + 1, facing: 180 },
-      );
-      continue;
-    }
-    // 4-top: south pair (facing up) then north pair (facing down).
+    // West of table, face east (90); east of table, face west (270).
     seats.push(
-      { tablePlacementId: p.id, slotIndex: 0, x: p.x, y: p.y + 1, facing: 180 },
-      { tablePlacementId: p.id, slotIndex: 1, x: p.x, y: p.y + 1, facing: 180 },
-      { tablePlacementId: p.id, slotIndex: 2, x: p.x, y: Math.max(0, p.y - 1), facing: 0 },
-      { tablePlacementId: p.id, slotIndex: 3, x: p.x, y: Math.max(0, p.y - 1), facing: 0 },
+      { tablePlacementId: p.id, slotIndex: 0, x: p.x - 1, y: p.y, facing: 90 },
+      { tablePlacementId: p.id, slotIndex: 1, x: p.x + 1, y: p.y, facing: 270 },
     );
+    if (slotCount === 4) {
+      seats.push(
+        { tablePlacementId: p.id, slotIndex: 2, x: p.x, y: p.y + 1, facing: 180 },
+        { tablePlacementId: p.id, slotIndex: 3, x: p.x, y: Math.max(0, p.y - 1), facing: 0 },
+      );
+    }
   }
   return seats;
 }

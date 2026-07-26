@@ -106,6 +106,8 @@ export class FurnitureLayer {
     sprite.body.clear();
     sprite.sprite!.visible = false;
     sprite.sprite!.texture = Texture.EMPTY;
+    sprite.sprite!.anchor.set(0, 0);
+    sprite.sprite!.scale.set(1, 1);
     sprite.root.removeAllListeners();
     sprite.root.cursor = 'grab';
     sprite.placementId = '';
@@ -114,21 +116,32 @@ export class FurnitureLayer {
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
-    // Sit anchor uses nav-center space; guest feet = sit.y + TILE_PX/2 - 2.
+    // Sit anchor uses nav-center space; guest feet = sit.y + TILE_PX / 2 - 2.
     const sit = seatSitWorldPosition(seat);
     const feetY = sit.y + TILE_PX / 2 - 2;
     sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
     sprite.body.clear();
-    const texture = getFurnitureTexture('chair');
+    const sideFacing = seat.facing === 90 || seat.facing === 270;
+    const texture =
+      (sideFacing ? getFurnitureTexture('chair_side') : null) ?? getFurnitureTexture('chair');
     if (texture) {
       const fit = chairDrawFit(texture);
-      sprite.sprite!.texture = texture;
-      sprite.sprite!.visible = true;
-      sprite.sprite!.width = fit.w;
-      sprite.sprite!.height = fit.h;
-      sprite.sprite!.position.set(fit.x, TILE_PX - fit.h);
+      const spr = sprite.sprite!;
+      spr.texture = texture;
+      spr.visible = true;
+      spr.anchor.set(0.5, 1);
+      spr.scale.set(1, 1);
+      spr.width = fit.w;
+      spr.height = fit.h;
+      // chair_side faces right (west seat → table); flip for east seats facing left.
+      if (seat.facing === 270) {
+        spr.scale.x = -Math.abs(spr.scale.x);
+      }
+      spr.position.set(TILE_PX / 2, TILE_PX);
     } else {
       sprite.sprite!.visible = false;
+      sprite.sprite!.anchor.set(0, 0);
+      sprite.sprite!.scale.set(1, 1);
       sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill(0x7a5230);
     }
     sprite.root.eventMode = 'none';
@@ -171,6 +184,8 @@ export class FurnitureLayer {
     const { x, y } = furnitureDrawOffset(w, h);
     sprite.texture = texture;
     sprite.visible = true;
+    sprite.anchor.set(0, 0);
+    sprite.scale.set(1, 1);
     sprite.width = w;
     sprite.height = h;
     sprite.position.set(x, y);

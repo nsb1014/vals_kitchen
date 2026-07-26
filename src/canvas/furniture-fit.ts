@@ -1,9 +1,8 @@
 import { TILE_PX } from './coordinates.ts';
 
 /**
- * Max chair overhang into the tile above.
- * Sit anchors already tuck chairs under the table lip; allow enough silhouette
- * for a readable ¾ chair without burying the tabletop.
+ * Max chair overhang above the seat-cell top.
+ * Side chairs tuck under the table lip; keep enough silhouette without burying tops.
  */
 export const CHAIR_MAX_OVERHANG_PX = 14;
 

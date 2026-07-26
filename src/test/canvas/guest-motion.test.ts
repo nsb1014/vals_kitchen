@@ -51,9 +51,9 @@ describe('GuestMotion', () => {
       seat: {
         tablePlacementId: 'table_1',
         slotIndex: 0,
-        x: 1,
-        y: 3,
-        facing: 180,
+        x: 0,
+        y: 2,
+        facing: 90,
       },
     });
     motion.sync(floorWith([seated]), {
@@ -66,8 +66,8 @@ describe('GuestMotion', () => {
     expect(mid!.isMoving).toBe(true);
 
     // Must not already be at the sit anchor after one frame.
-    const seatX = 1 * TILE_PX + TILE_PX / 2;
-    expect(Math.hypot(mid!.worldX - seatX, mid!.worldY - 3 * TILE_PX)).toBeGreaterThan(8);
+    const seatX = 0 * TILE_PX + TILE_PX / 2;
+    expect(Math.hypot(mid!.worldX - seatX, mid!.worldY - 2 * TILE_PX)).toBeGreaterThan(8);
 
     // Advance far enough to arrive.
     for (let i = 0; i < 200; i++) {
@@ -80,6 +80,6 @@ describe('GuestMotion', () => {
     }
     const end = motion.pose('g1')!;
     expect(end.isMoving).toBe(false);
-    expect(end.facing).toBe(2); // up toward table
+    expect(end.facing).toBe(0); // right toward table
   });
 });

@@ -161,7 +161,7 @@ describe('floor interact helpers', () => {
   describe('adjacentSeatedCustomerIds', () => {
     it('returns seated guest ids only when player is Chebyshev-adjacent to their seat', () => {
       const placements = [
-        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+        { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 0, rotation: 0 },
         { id: 'table_2', itemKey: 'table_2seat', x: 4, y: 0, rotation: 0 },
       ];
       const tables = tablesFromPlacements(placements).map(setTable);
@@ -184,7 +184,7 @@ describe('floor interact helpers', () => {
         ),
       };
 
-      // 2-top seats share a cell under their table; adjacency is per-table column.
+      // 2-top seats sit west/east of their table; adjacency is per seat cell.
       expect(adjacentSeatedCustomerIds(withSeated, { x: seat1.x - 1, y: seat1.y })).toEqual([
         'c1',
       ]);
