@@ -15,7 +15,7 @@ import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
 import { InteractHintLayer } from './layers/InteractHintLayer.ts';
 import { PreviewLayer } from './layers/PreviewLayer.ts';
-import { Camera } from './systems/Camera.ts';
+import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
 import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
@@ -118,8 +118,9 @@ export class RestaurantApp {
   }
 
   private applyCamera(): void {
-    this.world.position.set(this.camera.state.stageOffsetX, this.camera.state.stageOffsetY);
-    this.world.scale.set(this.camera.state.scale);
+    const transform = worldTransformFromCamera(this.camera.state);
+    this.world.position.set(transform.x, transform.y);
+    this.world.scale.set(transform.scale);
   }
 
   private onTick = (): void => {

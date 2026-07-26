@@ -38,8 +38,9 @@ export function createStarterMap(): StarterMap {
       door: { ...STARTER_DOOR },
     },
     placements: [
+      // Leave a one-tile gap so south-facing 2-top seat pairs do not merge into a chair strip.
       { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },
-      { id: 'table_2', itemKey: 'table_2seat', x: 3, y: 2, rotation: 0 },
+      { id: 'table_2', itemKey: 'table_2seat', x: 4, y: 2, rotation: 0 },
       { id: 'station_prep', itemKey: 'prep_station', x: 7, y: 2, rotation: 0 },
     ],
   };

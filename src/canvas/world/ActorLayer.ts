@@ -5,6 +5,7 @@ import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
+import { waitingGuestGridAnchor } from './waiting-line.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 
@@ -241,9 +242,10 @@ function guestPosition(guest: FloorGuest, waitingIndex?: number): { x: number; y
     return tileCenter(guest.seat.x, guest.seat.y);
   }
   if (guest.stage === 'waiting') {
-    const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);
+    const door = waitingGuestGridAnchor(STARTER_DOOR);
+    const center = tileCenter(door.x, door.y);
     const index = waitingIndex ?? 0;
-    return { x: door.x + (index - 1) * WAITING_STACK_SPACING, y: door.y };
+    return { x: center.x + (index - 1) * WAITING_STACK_SPACING, y: center.y };
   }
   if (guest.stage === 'leaving') {
     const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);

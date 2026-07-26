@@ -91,7 +91,10 @@ export function screenToGrid(sx: number, sy: number, camera: CameraState): {
   return snapWorldToGrid(world.x, world.y);
 }
 
-/** Integer scale that fits the grid in the viewport while keeping pixel-crisp tiles. */
+/** Fit the grid in the viewport. Prefer integer scale for pixel-crisp tiles; when
+ *  floor(scale)===1 would leave large empty margins, use exact fit instead so
+ *  starter rooms are not postage stamps on wide short canvases.
+ */
 export function computeGridScale(
   gridW: number,
   gridH: number,
@@ -101,9 +104,14 @@ export function computeGridScale(
   const worldW = gridW * TILE_PX;
   const worldH = gridH * TILE_PX;
   if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return 1;
-  const scaleX = Math.floor(viewW / worldW);
-  const scaleY = Math.floor(viewH / worldH);
-  return Math.max(1, Math.min(scaleX, scaleY));
+  const exact = Math.min(viewW / worldW, viewH / worldH);
+  if (!Number.isFinite(exact) || exact <= 0) return 1;
+  const integer = Math.max(1, Math.floor(exact));
+  if (integer >= 2) return integer;
+  const fillW = (worldW * integer) / viewW;
+  const fillH = (worldH * integer) / viewH;
+  if (fillW >= 0.55 && fillH >= 0.55) return integer;
+  return Math.round(exact * 100) / 100;
 }
 
 export function computeCameraCenter(

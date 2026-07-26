@@ -1,17 +1,32 @@
 import {
+  TILE_PX,
   computeCameraCenter,
+  computeGridScale,
   type CameraState,
 } from '../coordinates.ts';
 
 export interface FollowTarget {
   x: number;
   y: number;
+  scale: number;
   stageOffsetX: number;
   stageOffsetY: number;
 }
 
+export function worldTransformFromCamera(camera: CameraState): {
+  x: number;
+  y: number;
+  scale: number;
+} {
+  return {
+    x: camera.stageOffsetX - camera.x * camera.scale,
+    y: camera.stageOffsetY - camera.y * camera.scale,
+    scale: camera.scale,
+  };
+}
+
 export function computeFollowTarget(
-  currentState: CameraState,
+  _currentState: CameraState,
   worldX: number,
   worldY: number,
   viewW: number,
@@ -19,7 +34,9 @@ export function computeFollowTarget(
   mapWpx: number,
   mapHpx: number,
 ): FollowTarget {
-  const scale = currentState.scale;
+  const gridW = Math.max(1, Math.round(mapWpx / TILE_PX));
+  const gridH = Math.max(1, Math.round(mapHpx / TILE_PX));
+  const scale = computeGridScale(gridW, gridH, viewW, viewH);
   const scaledMapW = mapWpx * scale;
   const scaledMapH = mapHpx * scale;
   const stageOffsetX =
@@ -34,7 +51,7 @@ export function computeFollowTarget(
   x = Math.max(0, Math.min(x, Math.max(0, mapWpx - visibleWorldW)));
   y = Math.max(0, Math.min(y, Math.max(0, mapHpx - visibleWorldH)));
 
-  return { x, y, stageOffsetX, stageOffsetY };
+  return { x, y, scale, stageOffsetX, stageOffsetY };
 }
 
 export function lerpFollowPosition(
@@ -111,6 +128,7 @@ export class Camera {
       ...this.state,
       x,
       y,
+      scale: target.scale,
       stageOffsetX: target.stageOffsetX,
       stageOffsetY: target.stageOffsetY,
     };

@@ -80,6 +80,13 @@ describe('coordinates', () => {
     expect(scale).toBeGreaterThan(1);
   });
 
+  it('uses exact fit for starter rooms that would otherwise be postage stamps', () => {
+    const scale = computeGridScale(10, 8, 1024, 310);
+    expect(scale).toBeGreaterThan(1);
+    expect(scale).toBeLessThan(2);
+    expect(8 * TILE_PX * scale).toBeLessThanOrEqual(310);
+  });
+
   describe('drag snap with grab offset', () => {
     it('exposes ambiguous snap when pointer alone hits a tile center boundary', () => {
       const tileCenterY = gridToWorld(0, 2).y + TILE_PX / 2;
