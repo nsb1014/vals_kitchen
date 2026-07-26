@@ -3,6 +3,7 @@ import {
   createStarterMap,
   isDiningCell,
   isKitchenCell,
+  isPerimeterWallCell,
 } from '../../domain/floor/starter-map.ts';
 
 describe('createStarterMap', () => {
@@ -15,5 +16,9 @@ describe('createStarterMap', () => {
     expect(isKitchenCell(map.zones, prep!.x, prep!.y)).toBe(true);
     expect(isDiningCell(map.zones, 1, 2)).toBe(true);
     expect(isKitchenCell(map.zones, 1, 2)).toBe(false);
+    expect(isPerimeterWallCell(prep!.x, prep!.y, map.gridSize.w, map.gridSize.h)).toBe(false);
+    for (const p of map.placements) {
+      expect(isPerimeterWallCell(p.x, p.y, map.gridSize.w, map.gridSize.h)).toBe(false);
+    }
   });
 });

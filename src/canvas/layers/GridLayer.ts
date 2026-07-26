@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { getTileTexture } from '../../assets/loader.ts';
-import { createStarterMap } from '../../domain/floor/starter-map.ts';
+import { createStarterMap, isPerimeterWallCell } from '../../domain/floor/starter-map.ts';
 import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
@@ -95,14 +95,12 @@ export class GridLayer {
         this.wallContainer.addChild(block);
       };
 
-      for (let gx = 0; gx < gridW; gx += 1) {
-        placeWall(gx, 0, false);
-        const bottomDoor = gx === door.x && door.y === gridH - 1;
-        placeWall(gx, gridH - 1, bottomDoor);
-      }
-      for (let gy = 1; gy < gridH - 1; gy += 1) {
-        placeWall(0, gy, false);
-        placeWall(gridW - 1, gy, false);
+      for (let gy = 0; gy < gridH; gy += 1) {
+        for (let gx = 0; gx < gridW; gx += 1) {
+          if (!isPerimeterWallCell(gx, gy, gridW, gridH)) continue;
+          const isDoor = gx === door.x && gy === door.y;
+          placeWall(gx, gy, isDoor);
+        }
       }
     }
 

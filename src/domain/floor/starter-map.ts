@@ -25,11 +25,25 @@ function rect(x0: number, y0: number, w: number, h: number): { x: number; y: num
   return cells;
 }
 
+/**
+ * Perimeter wall cells match GridLayer (x/y == 0 or max). Interior walkable
+ * dining for side seats needs table.x in [2, diningMaxX-1] so x±1 stays off walls.
+ */
+export function isPerimeterWallCell(
+  x: number,
+  y: number,
+  gridW: number,
+  gridH: number,
+): boolean {
+  return x === 0 || y === 0 || x === gridW - 1 || y === gridH - 1;
+}
+
 /** Starter full-room map: dining left, kitchen right, door on south edge. */
 export function createStarterMap(): StarterMap {
   const gridSize = { w: 10, h: 8 };
-  const dining = rect(0, 0, 6, 8);
-  const kitchen = rect(6, 0, 4, 8);
+  // Dining is 7 cols so two W–table–E blocks fit on interior tiles (x=1..6).
+  const dining = rect(0, 0, 7, 8);
+  const kitchen = rect(7, 0, 3, 8);
   return {
     gridSize,
     zones: {
@@ -38,10 +52,10 @@ export function createStarterMap(): StarterMap {
       door: { ...STARTER_DOOR },
     },
     placements: [
-      // Tables inset so west/east side seats stay on dining tiles (not stacked between tops).
-      { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },
-      { id: 'table_2', itemKey: 'table_2seat', x: 4, y: 2, rotation: 0 },
-      { id: 'station_prep', itemKey: 'prep_station', x: 7, y: 2, rotation: 0 },
+      // Inset from west wall: seats at x±1 must not land on perimeter wall cells.
+      { id: 'table_1', itemKey: 'table_2seat', x: 2, y: 2, rotation: 0 },
+      { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 2, rotation: 0 },
+      { id: 'station_prep', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
     ],
   };
 }
