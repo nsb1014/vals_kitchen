@@ -14,7 +14,9 @@ const MANIFEST = {
 
 /**
  * Minimal installable PWA without workbox / vite-plugin-pwa.
- * Precaches the built shell + hashed assets + /data/*.json after first load.
+ *
+ * HTML / JS / CSS / SW: network-first so deploys reach clients.
+ * Hashed atlases + /data: cache-first (immutable or content-addressed).
  */
 export function pwaLite(): Plugin {
   let outDir = 'dist';
@@ -44,14 +46,10 @@ if ('serviceWorker' in navigator) {
       const absOut = path.resolve(outDir);
       writeFileSync(path.join(absOut, 'manifest.webmanifest'), `${JSON.stringify(MANIFEST, null, 2)}\n`);
 
-      // Runtime precache: cache-first for same-origin GETs after install.
-      // Version bump via build timestamp so updates replace the SW.
       const version = Date.now().toString(36);
       const sw = `/* pwa-lite ${version} */
 const CACHE = 'rs-shell-${version}';
 const PRECACHE = [
-  '${base}',
-  '${base}index.html',
   '${base}manifest.webmanifest',
 ];
 
@@ -69,31 +67,69 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function isImmutableAsset(pathname) {
+  return (
+    pathname.includes('/assets/atlases/') ||
+    pathname.includes('/assets/audio/') ||
+    pathname.includes('/data/') ||
+    /\\/assets\\/[\\w.-]+\\.[a-f0-9]{8}\\.\\w+$/i.test(pathname)
+  );
+}
+
+function isShellRequest(req, pathname) {
+  return (
+    req.mode === 'navigate' ||
+    pathname === '${base}' ||
+    pathname === '${base}index.html' ||
+    pathname === '${base}sw.js' ||
+    pathname.endsWith('.html') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.webmanifest')
+  );
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  const pathname = url.pathname;
 
-  event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(req);
-      if (cached) return cached;
-      try {
+  if (isShellRequest(req, pathname) && !pathname.includes('/assets/atlases/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok && pathname !== '${base}sw.js') {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy));
+          }
+          return res;
+        })
+        .catch(async () => {
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          if (req.mode === 'navigate') {
+            const shell = await caches.match('${base}index.html');
+            if (shell) return shell;
+          }
+          throw new Error('offline');
+        }),
+    );
+    return;
+  }
+
+  if (isImmutableAsset(pathname)) {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(req);
+        if (cached) return cached;
         const res = await fetch(req);
-        if (res.ok && (url.pathname.startsWith('${base}') || url.pathname.includes('/data/'))) {
-          cache.put(req, res.clone());
-        }
+        if (res.ok) cache.put(req, res.clone());
         return res;
-      } catch (err) {
-        if (req.mode === 'navigate') {
-          const shell = await cache.match('${base}index.html');
-          if (shell) return shell;
-        }
-        throw err;
-      }
-    }),
-  );
+      }),
+    );
+  }
 });
 `;
       writeFileSync(path.join(absOut, 'sw.js'), sw);

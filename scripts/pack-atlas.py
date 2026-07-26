@@ -11,13 +11,23 @@ from pathlib import Path
 from PIL import Image
 
 
-def pack_atlas(entries: list[tuple[str, Path]], out_png: Path, out_json: Path, cell: int | None = None) -> None:
+def pack_atlas(
+    entries: list[tuple[str, Path]],
+    out_png: Path,
+    out_json: Path,
+    cell: int | None = None,
+    scale: int = 1,
+) -> None:
     if not entries:
         raise SystemExit('No entries to pack')
+    if scale < 1:
+        raise SystemExit(f'Invalid scale: {scale}')
 
     images: list[tuple[str, Image.Image]] = []
     for name, path in entries:
         img = Image.open(path).convert('RGBA')
+        if scale > 1:
+            img = img.resize((img.width * scale, img.height * scale), Image.NEAREST)
         images.append((name, img))
 
     max_w = max(img.width for _, img in images)
@@ -71,12 +81,13 @@ def pack_atlas(entries: list[tuple[str, Path]], out_png: Path, out_json: Path, c
 
 def main() -> None:
     if len(sys.argv) < 4:
-        raise SystemExit('Usage: pack-atlas.py <manifest.json> <out.png> <out.json> [cell]')
+        raise SystemExit('Usage: pack-atlas.py <manifest.json> <out.png> <out.json> [cell] [scale]')
 
     manifest_path = Path(sys.argv[1])
     out_png = Path(sys.argv[2])
     out_json = Path(sys.argv[3])
     cell = int(sys.argv[4]) if len(sys.argv) > 4 else None
+    scale = int(sys.argv[5]) if len(sys.argv) > 5 else 1
 
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     entries: list[tuple[str, Path]] = []
@@ -86,7 +97,7 @@ def main() -> None:
             raise SystemExit(f'Missing source: {path}')
         entries.append((name, path))
 
-    pack_atlas(entries, out_png, out_json, cell)
+    pack_atlas(entries, out_png, out_json, cell, scale)
 
 
 if __name__ == '__main__':

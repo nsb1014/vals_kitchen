@@ -88,6 +88,7 @@
 | 2026-07-25 | Phase 11 in progress: floor domain, OPEN_DAY FloorDay, station compose/take-orders/deliver, tap-to-move actors; fast suite 119; assets polish + measured budget still open |
 | 2026-07-25 | Phase 11 vertical slice Done: adjacency set/clear + wrong-seat toast; distinct character frames; fast suite 126; measured initial JS gzip 173,070 (cap 280,000) |
 | 2026-07-25 | Floor locomotion: world-space path lerp + RPG Urban 4-dir×3-frame walk cycle; integer 2× character scale; nav no longer cancelled on every floor clone; fast suite 128 |
+| 2026-07-25 | Approach A: network-first PWA shell/JS; slower walk + dest marker; 32×32 NN character atlas + 64px player draw; reused actor sprites; fast suite green |
 
 ---
 

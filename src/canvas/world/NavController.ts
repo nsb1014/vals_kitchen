@@ -18,7 +18,7 @@ export class NavController {
   /** Distance walked in tiles (for walk-cycle phasing). */
   distanceWalked = 0;
 
-  constructor(start: GridPoint, speedTilesPerSecond = 3.2) {
+  constructor(start: GridPoint, speedTilesPerSecond = 2) {
     this.position = { ...start };
     this.speedTilesPerMs = speedTilesPerSecond / 1000;
     this.snapTo(start);
@@ -26,6 +26,13 @@ export class NavController {
 
   get isMoving(): boolean {
     return this.path.length > 0 && this.index < this.path.length - 1;
+  }
+
+  /** Final cell of the active path while walking. */
+  get destination(): GridPoint | null {
+    if (!this.isMoving) return null;
+    const end = this.path[this.path.length - 1];
+    return end ? { ...end } : null;
   }
 
   snapTo(cell: GridPoint): void {
@@ -45,13 +52,19 @@ export class NavController {
       this.progress = 0;
       return;
     }
+    const start = path[0]!;
+    const sameCell = start.x === this.position.x && start.y === this.position.y;
     this.path = path.map((p) => ({ ...p }));
     this.index = 0;
     this.progress = 0;
-    this.position = { ...this.path[0]! };
-    const world = cellCenter(this.position);
-    this.worldX = world.x;
-    this.worldY = world.y;
+    this.position = { ...start };
+    // Keep mid-tile world position when repathing from the same cell so the
+    // sprite does not snap back to the cell center like a placed object.
+    if (!sameCell) {
+      const world = cellCenter(this.position);
+      this.worldX = world.x;
+      this.worldY = world.y;
+    }
     this.updateFacingFromSegment();
   }
 
@@ -59,9 +72,9 @@ export class NavController {
     if (!this.isMoving) return;
     // Cap catch-up when the tab was backgrounded, but still consume the
     // full allowed delta in substeps so callers can pass larger ticks.
-    let remaining = Math.min(dtMs, 250);
+    let remaining = Math.min(dtMs, 100);
     while (remaining > 0 && this.isMoving) {
-      const step = Math.min(remaining, 50);
+      const step = Math.min(remaining, 32);
       remaining -= step;
       this.progress += this.speedTilesPerMs * step;
       this.distanceWalked += this.speedTilesPerMs * step;
@@ -94,7 +107,7 @@ export class NavController {
   /** Walk-cycle frame 0..2 from distance traveled. */
   walkFrame(): number {
     if (!this.isMoving) return 0;
-    return Math.floor(this.distanceWalked * 3) % 3;
+    return Math.floor(this.distanceWalked * 4) % 3;
   }
 
   private updateFacingFromSegment(): void {

@@ -4,8 +4,16 @@ import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
 
-/** Integer multiple of source art only — fractional scales muddy Kenney pixels. */
-const ACTOR_SCALE = TILE_PX / ART_TILE_PX; // 2
+/**
+ * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
+ * Player draws at 2× that → 64px (taller than a floor tile) for a readable ¾ silhouette.
+ * Guests stay 1× atlas size → 32px.
+ */
+const PLAYER_SCALE = 2;
+const GUEST_SCALE = 1;
+/** Fallback when atlas still has legacy 16×16 frames. */
+const LEGACY_PLAYER_SCALE = (TILE_PX / ART_TILE_PX) * 2; // 4
+const LEGACY_GUEST_SCALE = TILE_PX / ART_TILE_PX; // 2
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   waiting: 0xffc857,
@@ -17,6 +25,7 @@ const GUEST_STAGE_CUE: Record<string, number> = {
 
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
+const DEST_MARKER_COLOR = 0xf0e6a8;
 
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 
@@ -33,14 +42,30 @@ function guestVariant(guestId: string): 'a' | 'b' {
   return Math.abs(hash) % 2 === 0 ? 'a' : 'b';
 }
 
+function scaleForTexture(texture: Texture, intended: number, legacy: number): number {
+  // Pre-upscale atlas frames are 32×32; older 16×16 builds need a larger draw scale.
+  return texture.height <= 16 ? legacy : intended;
+}
+
 export class ActorLayer {
   readonly view = new Container();
-  private actorContainer = new Container();
+  private readonly markerLayer = new Graphics();
+  private readonly actorContainer = new Container();
+  private readonly playerSprite = new Sprite();
+  private readonly playerFallback = new Graphics();
+  private readonly guestSprites = new Map<string, { root: Container; sprite: Sprite; cue: Graphics }>();
   private playerWorld = { x: 0, y: 0 };
+  private lastPlayerFrameKey = '';
 
   constructor() {
     this.view.sortableChildren = true;
     this.actorContainer.sortableChildren = true;
+    this.playerSprite.roundPixels = true;
+    this.playerSprite.anchor.set(0.5, 1);
+    this.playerSprite.visible = false;
+    this.actorContainer.addChild(this.playerSprite);
+    this.actorContainer.addChild(this.playerFallback);
+    this.view.addChild(this.markerLayer);
     this.view.addChild(this.actorContainer);
   }
 
@@ -52,80 +77,134 @@ export class ActorLayer {
       facing: 0 | 1 | 2 | 3;
       isMoving: boolean;
       walkFrame: () => number;
+      destination: GridPoint | null;
     },
   ): void {
-    this.actorContainer.removeChildren();
-    if (!floor) return;
-
-    for (const guest of floor.pool) {
-      if (guest.stage === 'done') continue;
-      const pos = guestPosition(guest);
-      if (!pos) continue;
-      const variant = guestVariant(guest.id);
-      const texture =
-        getCharacterTexture(`guest_${variant}_down_0`) ??
-        getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b');
-      const feetY = pos.y + TILE_PX / 2 - 2;
-      if (texture) {
-        placeActor(this.actorContainer, texture, pos.x, feetY, GUEST_STAGE_CUE[guest.stage]);
-      } else {
-        placeFallback(this.actorContainer, pos.x, feetY, GUEST_STAGE_CUE[guest.stage] ?? FALLBACK_GUEST_COLOR);
-      }
+    this.markerLayer.clear();
+    if (!floor) {
+      this.playerSprite.visible = false;
+      this.playerFallback.clear();
+      this.clearGuests();
+      return;
     }
 
-    this.playerWorld = { x: nav.worldX, y: nav.worldY };
-    const facing = FACING_NAMES[nav.facing];
-    const frame = nav.isMoving ? nav.walkFrame() : 0;
-    const walkName = `player_${facing}_${frame}`;
-    const idleName = `player_${facing}_0`;
-    const playerTexture =
-      getCharacterTexture(walkName) ??
-      getCharacterTexture(idleName) ??
-      getCharacterTexture('player') ??
-      getCharacterTexture('customer');
-    const feetY = nav.worldY + TILE_PX / 2 - 2;
-    if (playerTexture) {
-      placeActor(this.actorContainer, playerTexture, nav.worldX, feetY);
-    } else {
-      placeFallback(this.actorContainer, nav.worldX, feetY, FALLBACK_PLAYER_COLOR);
-    }
-
+    this.drawDestination(nav.destination);
+    this.syncGuests(floor);
+    this.syncPlayer(nav);
     this.actorContainer.children.sort((a, b) => a.y - b.y);
   }
 
   getPlayerWorldPosition(): { x: number; y: number } {
     return { ...this.playerWorld };
   }
-}
 
-function placeActor(
-  container: Container,
-  texture: Texture,
-  feetX: number,
-  feetY: number,
-  stageCue?: number,
-): void {
-  const wrapper = new Container();
-  const sprite = new Sprite(texture);
-  sprite.roundPixels = true;
-  sprite.anchor.set(0.5, 1);
-  sprite.scale.set(ACTOR_SCALE);
-  wrapper.addChild(sprite);
-  if (stageCue !== undefined) {
-    const cue = new Graphics();
-    cue.circle(0, 3, 2).fill({ color: stageCue, alpha: 0.9 });
-    wrapper.addChild(cue);
+  private drawDestination(dest: GridPoint | null): void {
+    if (!dest) return;
+    const { x, y } = gridToWorld(dest.x, dest.y);
+    const cx = x + TILE_PX / 2;
+    const cy = y + TILE_PX / 2;
+    this.markerLayer.circle(cx, cy, 5).stroke({ width: 2, color: DEST_MARKER_COLOR, alpha: 0.85 });
+    this.markerLayer.circle(cx, cy, 2).fill({ color: DEST_MARKER_COLOR, alpha: 0.9 });
   }
-  wrapper.position.set(Math.round(feetX), Math.round(feetY));
-  wrapper.zIndex = wrapper.y;
-  container.addChild(wrapper);
-}
 
-function placeFallback(container: Container, feetX: number, feetY: number, color: number): void {
-  const gfx = new Graphics();
-  gfx.circle(Math.round(feetX), Math.round(feetY) - 8, 8).fill(color);
-  gfx.zIndex = feetY;
-  container.addChild(gfx);
+  private syncPlayer(nav: {
+    worldX: number;
+    worldY: number;
+    facing: 0 | 1 | 2 | 3;
+    isMoving: boolean;
+    walkFrame: () => number;
+  }): void {
+    this.playerWorld = { x: nav.worldX, y: nav.worldY };
+    const facing = FACING_NAMES[nav.facing];
+    const frame = nav.isMoving ? nav.walkFrame() : 0;
+    const frameKey = `${facing}_${frame}`;
+    const feetY = nav.worldY + TILE_PX / 2 - 2;
+
+    if (frameKey !== this.lastPlayerFrameKey) {
+      this.lastPlayerFrameKey = frameKey;
+      const texture =
+        getCharacterTexture(`player_${facing}_${frame}`) ??
+        getCharacterTexture(`player_${facing}_0`) ??
+        getCharacterTexture('player') ??
+        getCharacterTexture('customer');
+      if (texture) {
+        this.playerSprite.texture = texture;
+        this.playerSprite.scale.set(scaleForTexture(texture, PLAYER_SCALE, LEGACY_PLAYER_SCALE));
+        this.playerSprite.visible = true;
+        this.playerFallback.clear();
+      } else {
+        this.playerSprite.visible = false;
+      }
+    }
+
+    if (this.playerSprite.visible) {
+      this.playerSprite.position.set(Math.round(nav.worldX), Math.round(feetY));
+      this.playerSprite.zIndex = this.playerSprite.y;
+    } else {
+      this.playerFallback.clear();
+      this.playerFallback.circle(Math.round(nav.worldX), Math.round(feetY) - 16, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback.zIndex = feetY;
+    }
+  }
+
+  private syncGuests(floor: FloorDay): void {
+    const seen = new Set<string>();
+    for (const guest of floor.pool) {
+      if (guest.stage === 'done') continue;
+      const pos = guestPosition(guest);
+      if (!pos) continue;
+      seen.add(guest.id);
+      let entry = this.guestSprites.get(guest.id);
+      if (!entry) {
+        const root = new Container();
+        const sprite = new Sprite();
+        sprite.roundPixels = true;
+        sprite.anchor.set(0.5, 1);
+        const cue = new Graphics();
+        root.addChild(sprite);
+        root.addChild(cue);
+        this.actorContainer.addChild(root);
+        entry = { root, sprite, cue };
+        this.guestSprites.set(guest.id, entry);
+        const variant = guestVariant(guest.id);
+        const texture =
+          getCharacterTexture(`guest_${variant}_down_0`) ??
+          getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b');
+        if (texture) {
+          sprite.texture = texture;
+          sprite.scale.set(scaleForTexture(texture, GUEST_SCALE, LEGACY_GUEST_SCALE));
+          sprite.visible = true;
+        } else {
+          sprite.visible = false;
+        }
+      }
+
+      const feetY = pos.y + TILE_PX / 2 - 2;
+      entry.root.position.set(Math.round(pos.x), Math.round(feetY));
+      entry.root.zIndex = entry.root.y;
+      entry.cue.clear();
+      const cueColor = GUEST_STAGE_CUE[guest.stage];
+      if (cueColor !== undefined) {
+        entry.cue.circle(0, 3, 2).fill({ color: cueColor, alpha: 0.9 });
+      }
+      if (!entry.sprite.visible) {
+        entry.cue.circle(0, -8, 8).fill(cueColor ?? FALLBACK_GUEST_COLOR);
+      }
+    }
+
+    for (const [id, entry] of this.guestSprites) {
+      if (seen.has(id)) continue;
+      this.actorContainer.removeChild(entry.root);
+      this.guestSprites.delete(id);
+    }
+  }
+
+  private clearGuests(): void {
+    for (const entry of this.guestSprites.values()) {
+      this.actorContainer.removeChild(entry.root);
+    }
+    this.guestSprites.clear();
+  }
 }
 
 function guestPosition(guest: FloorGuest): { x: number; y: number } | null {
@@ -134,5 +213,4 @@ function guestPosition(guest: FloorGuest): { x: number; y: number } | null {
   return null;
 }
 
-// silence unused GridPoint import if tree-shaken — kept for call-site typing clarity
 export type { GridPoint };
