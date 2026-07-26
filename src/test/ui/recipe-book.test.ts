@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRecipeBookProgress,
   filterDiscoveredRecipes,
+  mapRecipeToEntry,
   paginateRecipeEntries,
   virtualWindowRange,
 } from '../../ui/presentation/recipe-book.ts';
@@ -23,6 +24,17 @@ describe('recipe book presentation', () => {
     expect(filtered.every((recipe) => discovered.includes(recipe.id))).toBe(true);
   });
 
+  it('maps mastery progress toward the next level', () => {
+    const recipe = testContext.recipes[0]!;
+    const nameMap = new Map([[recipe.ingredientIds[0]!, 'Ing']]);
+    const mid = mapRecipeToEntry(recipe, nameMap, { level: 3, progress: 1 });
+    expect(mid.masteryLevel).toBe(3);
+    expect(mid.masteryProgressLabel).toBe('Lv.3 · 1/4 to next');
+
+    const maxed = mapRecipeToEntry(recipe, nameMap, { level: 10, progress: 0 });
+    expect(maxed.masteryProgressLabel).toBe('Lv.10 · max');
+  });
+
   it('paginates and virtualizes without rendering full corpus', () => {
     const entries = Array.from({ length: 120 }, (_, index) => ({
       id: `r${index}`,
@@ -31,6 +43,7 @@ describe('recipe book presentation', () => {
       ingredientIds: ['flour'],
       ingredientNames: ['Flour'],
       masteryLevel: 0,
+      masteryProgressLabel: 'Lv.0 · max',
     }));
     const page = paginateRecipeEntries(entries, 1, 40);
     expect(page.entries).toHaveLength(40);

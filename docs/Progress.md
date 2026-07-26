@@ -26,7 +26,7 @@
 | Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
 | Overnight program Track B — service immersion | **Done** — carry plate, door wait/leave, interact hints, soft camera; fast suite 133 ([plan](./superpowers/plans/2026-07-26-track-b-service-immersion.md)) |
 | Overnight program Track C — loop completeness | **Done** — mid-day review Continue, floor autosave/hydrate, summary→shop/floor, tutorial close step; fast suite 144 ([plan](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)) |
-| Overnight program Track D — meta depth | **Not started** |
+| Overnight program Track D — meta depth | **Done** — mastery on reviews + recipe-book progress + pacing HUD; fast suite 147 ([plan](./superpowers/plans/2026-07-26-track-d-meta-depth.md)) |
 
 ---
 
@@ -72,7 +72,7 @@
 | A | Cozy visual identity | Done | Generated diner tiles/furniture, feet-align, character walk packs, `--vk-*` UI palette; fast suite 131; gzip 179,236 |
 | B | Service immersion | Done | Carry plate, leaving→door, interact hints, soft camera; fast suite 133 |
 | C | Loop completeness | Done | Review Continue, floor autosave, summary Shop/Floor, tutorial close; fast suite 144 |
-| D | Meta depth | Not started | Mastery/pacing closer to GPGP |
+| D | Meta depth | Done | Mastery review line, recipe book progress, day pacing HUD; fast suite 147 |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -100,13 +100,14 @@
 | 2026-07-26 | Overnight program design (locked north star); Track A Done: cozy generated restaurant art + warm UI; fast suite 131; gzip 179,236 |
 | 2026-07-26 | Track B Done: carry plate, door wait/leave ticks, interact adjacency hints, soft camera follow; fast suite 133 |
 | 2026-07-26 | Track C Done: mid-day review Continue, FLOOR_/OPEN_DAY autosave, summary mastery + Shop/Floor CTAs, tutorial close step; fast suite 144 |
+| 2026-07-26 | Track D Done: mastery on serve reviews + recipe-book progress labels + pacing HUD; fast suite 147 |
 
 ---
 
 ## Cross-References
 
 - Implementation plan detail: [Plan.md](./Plan.md)
-- Overnight program: [design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [Track A](./superpowers/plans/2026-07-26-track-a-visual-identity.md), [Track B](./superpowers/plans/2026-07-26-track-b-service-immersion.md), [Track C](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)
+- Overnight program: [design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [A](./superpowers/plans/2026-07-26-track-a-visual-identity.md), [B](./superpowers/plans/2026-07-26-track-b-service-immersion.md), [C](./superpowers/plans/2026-07-26-track-c-loop-completeness.md), [D](./superpowers/plans/2026-07-26-track-d-meta-depth.md)
 - Immersive floor: [design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [vertical-slice plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)
 - Known risks: [Error-Tracker.md](./Error-Tracker.md)
 - Product requirements: [PRD.md](./PRD.md)

@@ -78,6 +78,30 @@ describe('deliverAndScore', () => {
     expect(result.state.activeDay!.floor!.tickets[0]!.status).toBe('delivered');
   });
 
+  it('returns mastery metadata when a named recipe matches', () => {
+    const recipe = testContext.recipes.find((r) => r.id === 'recipe_0413')!;
+    const { state, ticketId } = floorStateWithPlatedTicket();
+    const floor = state.activeDay!.floor!;
+    state.activeDay = {
+      ...state.activeDay!,
+      floor: {
+        ...floor,
+        tickets: floor.tickets.map((t) =>
+          t.id === ticketId
+            ? { ...t, status: 'plated' as const, ingredientIds: [...recipe.ingredientIds] }
+            : t,
+        ),
+      },
+    };
+
+    const result = deliverAndScore(state, ticketId, testContext);
+
+    expect(result.recipeId).toBe(recipe.id);
+    expect(result.masteryLevel).toBe(1);
+    expect(result.masteryLeveledUp).toBe(true);
+    expect(result.masteryBonusApplied).toBe(0);
+  });
+
   it('refuses wrong ticket status', () => {
     const { state } = floorStateWithPlatedTicket();
     const openId = state.activeDay!.floor!.tickets[0]!.id;

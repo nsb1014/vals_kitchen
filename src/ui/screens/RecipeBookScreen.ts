@@ -52,7 +52,11 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     const nameMap = new Map(ctx.ingredients.map((item) => [item.id, item.name]));
     const filtered = filterDiscoveredRecipes(ctx.recipes, state.discoveredRecipeIds, query);
     return filtered.map((recipe) =>
-      mapRecipeToEntry(recipe, nameMap, state.recipeMastery[recipe.id]?.level ?? 0),
+      mapRecipeToEntry(
+        recipe,
+        nameMap,
+        state.recipeMastery[recipe.id] ?? { level: 0, progress: 0 },
+      ),
     );
   };
 
@@ -89,7 +93,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
           .map(
             (entry) => `
           <article class="recipe-row" style="height:${ROW_HEIGHT}px">
-            <h3>${entry.name} <span class="recipe-mastery">Lv.${entry.masteryLevel}</span></h3>
+            <h3>${entry.name} <span class="recipe-mastery">${entry.masteryProgressLabel}</span></h3>
             <p class="recipe-meta">${entry.cuisineTag}</p>
             <p class="recipe-ingredients">${entry.ingredientIds.map((id, i) => `${renderFoodIconHtml(id, 20)}<span>${entry.ingredientNames[i] ?? id}</span>`).join(' ')}</p>
           </article>`,

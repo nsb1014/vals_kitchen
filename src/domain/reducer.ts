@@ -54,7 +54,15 @@ export type ReducerEvent =
   | { type: 'PRESTIGE_TRIGGERED'; prestige: number }
   | { type: 'SOFT_RESET_TRIGGERED' }
   | { type: 'RECIPE_DISCOVERED'; recipeId: string; recipeName: string }
-  | { type: 'CUSTOMER_SERVED'; matchStars: number; tip: number; ratingDelta: number };
+  | {
+      type: 'CUSTOMER_SERVED';
+      matchStars: number;
+      tip: number;
+      ratingDelta: number;
+      masteryLevel?: number;
+      masteryLeveledUp?: boolean;
+      masteryBonus?: number;
+    };
 
 function requireFloor(state: GameState) {
   if (!state.activeDay?.floor) {
@@ -86,6 +94,13 @@ function serveEvents(
     matchStars: result.matchStars,
     tip: result.tip,
     ratingDelta: result.ratingDelta,
+    ...(result.masteryLevel !== undefined
+      ? {
+          masteryLevel: result.masteryLevel,
+          masteryLeveledUp: result.masteryLeveledUp,
+          masteryBonus: result.masteryBonusApplied,
+        }
+      : {}),
   });
   if (result.prestigeTriggered) {
     events.push({ type: 'PRESTIGE_TRIGGERED', prestige: result.state.prestige });

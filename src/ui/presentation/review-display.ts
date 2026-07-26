@@ -7,6 +7,7 @@ export interface ReviewDisplay {
   ratingDeltaText: string;
   ratingDeltaPositive: boolean;
   recipeLine: string | null;
+  masteryLine: string | null;
 }
 
 export function formatStars(matchStars: number): string {
@@ -31,6 +32,7 @@ export function buildReviewDisplay(input: {
   tip: number;
   ratingDelta: number;
   recipeName: string | null;
+  masteryLine?: string | null;
 }): ReviewDisplay {
   const starsFilled = Math.round(input.matchStars);
   return {
@@ -40,6 +42,7 @@ export function buildReviewDisplay(input: {
     ratingDeltaText: formatRatingDelta(input.ratingDelta),
     ratingDeltaPositive: input.ratingDelta >= 0,
     recipeLine: input.recipeName ? `Named dish: ${input.recipeName}` : null,
+    masteryLine: input.masteryLine ?? null,
   };
 }
 
