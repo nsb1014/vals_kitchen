@@ -171,26 +171,9 @@ export async function completeServiceDay(page: Page): Promise<void> {
   await page.locator('[data-testid="start-service-btn"]').click();
   await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
 
-  for (let guard = 0; guard < 200; guard += 1) {
-    if (await page.locator('[data-testid="day-summary-title"]').isVisible()) {
-      break;
-    }
-
-    if (await page.locator('[data-testid="close-day-btn"]').isVisible()) {
-      await page.locator('[data-testid="close-day-btn"]').click();
-      continue;
-    }
-
-    if (await page.locator('[data-testid="continue-service-btn"]').isVisible()) {
-      await page.locator('[data-testid="continue-service-btn"]').click();
-      continue;
-    }
-
-    const step = await page.evaluate(async () => window.__E2E__!.advanceFloorServiceOnce());
-    if (step === 'idle') {
-      throw new Error('service day flow stalled — floor bridge returned idle');
-    }
-  }
+  await page.evaluate(async () => {
+    await window.__E2E__!.completeFloorServiceDay();
+  });
 
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();
   await page.locator('[data-testid="summary-back-floor"]').click();
@@ -332,6 +315,7 @@ declare global {
       advanceFloorServiceOnce: () => Promise<
         'pending_review' | 'day_complete' | 'advanced' | 'idle'
       >;
+      completeFloorServiceDay: () => Promise<void>;
       dispatch: (action: { type: string; [key: string]: unknown }) => Promise<void>;
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;

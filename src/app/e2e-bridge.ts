@@ -28,6 +28,8 @@ export interface E2eBridge {
   exportSaveCode: () => string;
   /** Drive one step of the floor service loop (for e2e smoke). */
   advanceFloorServiceOnce: () => Promise<'pending_review' | 'day_complete' | 'advanced' | 'idle'>;
+  /** Run the full floor day to summary (dismisses reviews, closes day). */
+  completeFloorServiceDay: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   dismissPendingReview: () => void;
@@ -177,6 +179,33 @@ export function installE2eBridge(): void {
 
       if (isDayComplete(useGameStore.getState())) return 'day_complete';
       return 'advanced';
+    },
+
+    async completeFloorServiceDay() {
+      for (let guard = 0; guard < 500; guard += 1) {
+        const state = useGameStore.getState();
+        if (state.daySummary) return;
+
+        if (state.pendingReview) {
+          if (isDayComplete(state)) {
+            await state.dispatch({ type: 'CLOSE_DAY' });
+          } else {
+            state.dismissPendingReview();
+          }
+          continue;
+        }
+
+        if (state.activeDay && isDayComplete(state)) {
+          await state.dispatch({ type: 'CLOSE_DAY' });
+          continue;
+        }
+
+        const step = await window.__E2E__!.advanceFloorServiceOnce();
+        if (step === 'idle') {
+          throw new Error('floor service stalled (idle)');
+        }
+      }
+      throw new Error('floor service day did not complete within guard limit');
     },
   };
 }

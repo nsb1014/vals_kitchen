@@ -151,8 +151,29 @@ test.describe('persistence', () => {
 
     const before = await page.evaluate(() => window.__E2E__!.getState());
     expect(before.composeDraftIngredientIds.length).toBe(3);
+    const beforeFloorTicketCount = await page.evaluate(() => {
+      const floor = (
+        window.__E2E__!.getGameState() as {
+          activeDay?: { floor?: { tickets: unknown[] } } | null;
+        }
+      ).activeDay?.floor;
+      return floor?.tickets.length ?? 0;
+    });
+    expect(beforeFloorTicketCount).toBeGreaterThan(0);
 
-    await expect.poll(() => readSaveFromIndexedDb(page)).not.toBeNull();
+    await expect
+      .poll(async () => {
+        const save = (await readSaveFromIndexedDb(page)) as {
+          gameState?: { composeDraftIngredientIds?: string[] };
+          composeDraftIngredientIds?: string[];
+        } | null;
+        return (
+          save?.gameState?.composeDraftIngredientIds?.length ??
+          save?.composeDraftIngredientIds?.length ??
+          0
+        );
+      })
+      .toBe(3);
 
     await page.reload({ waitUntil: 'networkidle' });
     await waitForGameReady(page);
