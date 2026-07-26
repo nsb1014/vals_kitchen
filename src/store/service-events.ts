@@ -12,6 +12,19 @@ export interface ServiceUiPatch {
   recentReviews?: RecentReviewEntry[];
 }
 
+export function formatMasteryLine(input: {
+  masteryLevel?: number;
+  masteryLeveledUp?: boolean;
+  masteryBonus?: number;
+}): string | null {
+  if (input.masteryLevel === undefined) return null;
+  if (input.masteryLeveledUp) {
+    return `Mastery up! Lv.${input.masteryLevel}`;
+  }
+  const bonus = input.masteryBonus ?? 0;
+  return `Mastery Lv.${input.masteryLevel} (+${bonus.toFixed(2)}★)`;
+}
+
 export function mapReducerEventsToUi(
   events: ReducerEvent[],
   before: GameState,
@@ -31,6 +44,7 @@ export function mapReducerEventsToUi(
           tip: event.tip,
           ratingDelta: event.ratingDelta,
           recipeName,
+          masteryLine: formatMasteryLine(event),
         };
         break;
       case 'PRESTIGE_TRIGGERED':

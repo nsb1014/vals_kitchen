@@ -1,4 +1,9 @@
 import type { Recipe } from '../../domain/types.ts';
+import {
+  MASTERY_MAX_LEVEL,
+  servesToReachNext,
+  type RecipeMasteryEntry,
+} from '../../domain/floor/mastery.ts';
 
 export const RECIPE_PAGE_SIZE = 40;
 
@@ -9,6 +14,7 @@ export interface RecipeBookEntry {
   ingredientNames: string[];
   ingredientIds: string[];
   masteryLevel: number;
+  masteryProgressLabel: string;
 }
 
 export interface RecipeBookPage {
@@ -23,6 +29,18 @@ export interface RecipeBookProgress {
   discovered: number;
   total: number;
   percentLabel: string;
+}
+
+export function formatMasteryProgressLabel(entry: RecipeMasteryEntry): string {
+  const { level, progress } = entry;
+  if (level >= MASTERY_MAX_LEVEL) {
+    return `Lv.${level} · max`;
+  }
+  const needed = servesToReachNext(level);
+  if (needed <= 0) {
+    return `Lv.${level} · max`;
+  }
+  return `Lv.${level} · ${progress}/${needed} to next`;
 }
 
 export function buildRecipeBookProgress(
@@ -58,7 +76,7 @@ export function filterDiscoveredRecipes(
 export function mapRecipeToEntry(
   recipe: Recipe,
   ingredientNameById: Map<string, string>,
-  masteryLevel = 0,
+  mastery: RecipeMasteryEntry = { level: 0, progress: 0 },
 ): RecipeBookEntry {
   return {
     id: recipe.id,
@@ -66,7 +84,8 @@ export function mapRecipeToEntry(
     cuisineTag: recipe.cuisineTag,
     ingredientIds: [...recipe.ingredientIds],
     ingredientNames: recipe.ingredientIds.map((id) => ingredientNameById.get(id) ?? id),
-    masteryLevel,
+    masteryLevel: mastery.level,
+    masteryProgressLabel: formatMasteryProgressLabel(mastery),
   };
 }
 

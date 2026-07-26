@@ -243,6 +243,7 @@ export function mountServiceDayUi(
             <p class="review-detail">Tip: ${review.tipText}</p>
             <p class="review-detail ${review.ratingDeltaPositive ? 'review-positive' : 'review-negative'}">Rating ${review.ratingDeltaText}</p>
             ${review.recipeLine ? `<p class="review-detail review-positive">${review.recipeLine}</p>` : ''}
+            ${review.masteryLine ? `<p class="review-detail review-positive" data-testid="review-mastery">${review.masteryLine}</p>` : ''}
             <div class="service-actions">
               ${
                 canClose

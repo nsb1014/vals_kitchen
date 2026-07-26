@@ -30,6 +30,7 @@ export interface ServeReview {
   tip: number;
   ratingDelta: number;
   recipeName: string | null;
+  masteryLine?: string | null;
 }
 
 export type CeremonyKind = 'prestige' | 'soft_reset';

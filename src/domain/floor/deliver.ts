@@ -60,6 +60,9 @@ export function deliverAndScore(
     result = {
       ...result,
       state: { ...result.state, recipeMastery: masteryResult.mastery },
+      masteryLevel: masteryResult.level,
+      masteryLeveledUp: masteryResult.leveledUp,
+      masteryBonusApplied: masteryBonus,
     };
   }
 

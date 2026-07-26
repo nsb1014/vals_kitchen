@@ -22,6 +22,11 @@ export interface ServeResult {
   recipeName: string | null;
   prestigeTriggered: boolean;
   softResetTriggered: boolean;
+  /** Mastery level after this serve (matched recipes only). */
+  masteryLevel?: number;
+  masteryLeveledUp?: boolean;
+  /** Stars bonus applied to this serve's score (pre-serve level). */
+  masteryBonusApplied?: number;
 }
 
 export interface DishScore {

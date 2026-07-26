@@ -33,5 +33,17 @@ describe('review display presentation', () => {
     expect(display.ratingDeltaText).toBe('-0.20★');
     expect(display.ratingDeltaPositive).toBe(false);
     expect(display.recipeLine).toBeNull();
+    expect(display.masteryLine).toBeNull();
+  });
+
+  it('includes mastery line on the review card when provided', () => {
+    const display = buildReviewDisplay({
+      matchStars: 8.2,
+      tip: 148,
+      ratingDelta: 0.16,
+      recipeName: 'Rustic Pantry Bowl',
+      masteryLine: 'Mastery Lv.2 (+0.10★)',
+    });
+    expect(display.masteryLine).toBe('Mastery Lv.2 (+0.10★)');
   });
 });

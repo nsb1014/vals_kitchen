@@ -34,6 +34,10 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
     const selectedTicketId = floor.selectedTicketId;
     const floorToast = state.floorToast;
+    const pacingHint =
+      state.day > 1
+        ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
+        : null;
 
     const ticketStrip = floor.tickets
       .map((t) => {
@@ -46,6 +50,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
     mount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
         ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
+        ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
         <div class="floor-ticket-strip" data-testid="floor-ticket-strip">
           ${ticketStrip || '<span class="floor-ticket-empty">No tickets</span>'}
         </div>
