@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-25T18:59:33.710Z",
+  "generatedAt": "2026-07-26T03:04:25.734Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -307,7 +307,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0023.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_down_0",
@@ -319,7 +319,7 @@
         "canvas:ActorLayer (player)"
       ],
       "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_up_0",
@@ -331,7 +331,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0025.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_right_0",
@@ -343,7 +343,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0026.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_left_1",
@@ -355,7 +355,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0050.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_down_1",
@@ -367,7 +367,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0051.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_up_1",
@@ -379,7 +379,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0052.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_right_1",
@@ -391,7 +391,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0053.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_left_2",
@@ -403,7 +403,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0077.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_down_2",
@@ -415,7 +415,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0078.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_up_2",
@@ -427,7 +427,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0079.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_right_2",
@@ -439,7 +439,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0080.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#guest_a_down_0",
@@ -451,7 +451,7 @@
         "canvas:ActorLayer (guest A)"
       ],
       "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#guest_b_down_0",
@@ -463,7 +463,7 @@
         "canvas:ActorLayer (guest B)"
       ],
       "sourceFile": "Tiles/tile_0105.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#guest_b_left_0",
@@ -475,7 +475,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0104.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#guest_b_up_0",
@@ -487,7 +487,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0106.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#guest_b_right_0",
@@ -499,7 +499,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0107.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#customer",
@@ -512,7 +512,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#customer_b",
@@ -524,7 +524,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0105.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player",
@@ -536,7 +536,7 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/characters.json#player_walk",
@@ -548,7 +548,7 @@
         "canvas:ActorLayer (player walk)"
       ],
       "sourceFile": "Tiles/tile_0051.png",
-      "approximationNote": "RPG Urban Pack character walk frames (4-dir × 3-frame)."
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
       "path": "atlases/food.json#icon_almond",

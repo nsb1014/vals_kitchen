@@ -191,9 +191,21 @@ function runIngredientIconBuilder(): void {
   });
 }
 
-function runPacker(manifestFile: string, outPng: string, outJson: string, cell?: number): void {
+function runPacker(
+  manifestFile: string,
+  outPng: string,
+  outJson: string,
+  cell?: number,
+  scale?: number,
+): void {
   const args = [path.join(__dirname, 'pack-atlas.py'), manifestFile, outPng, outJson];
   if (cell !== undefined) args.push(String(cell));
+  if (scale !== undefined) {
+    if (cell === undefined) {
+      throw new Error('runPacker: cell is required when scale is set');
+    }
+    args.push(String(scale));
+  }
   execFileSync('python3', args, { stdio: 'inherit' });
 }
 
@@ -261,7 +273,7 @@ function buildCredits(shippedFiles: string[]): void {
       license: 'CC0',
       usedIn: characterUsedIn[name] ?? ['canvas:ActorLayer'],
       sourceFile: rel,
-      approximationNote: 'RPG Urban Pack character walk frames (4-dir × 3-frame).',
+      approximationNote: 'RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors.',
     });
   }
 
@@ -391,7 +403,8 @@ function main(): void {
     charManifestPath,
     path.join(OUT, 'atlases', 'characters.png'),
     path.join(OUT, 'atlases', 'characters.json'),
-    16,
+    32,
+    2,
   );
 
   runIngredientIconBuilder();

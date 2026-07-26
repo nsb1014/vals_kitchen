@@ -44,4 +44,32 @@ describe('NavController', () => {
     expect(nav.worldX).toBe(3 * TILE_PX + TILE_PX / 2);
     expect(nav.worldY).toBe(4 * TILE_PX + TILE_PX / 2);
   });
+
+  it('exposes destination while path is active', () => {
+    const nav = new NavController({ x: 0, y: 0 }, 2);
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 3, y: 0 },
+    ]);
+    expect(nav.destination).toEqual({ x: 3, y: 0 });
+    for (let i = 0; i < 20; i += 1) nav.update(100);
+    expect(nav.isMoving).toBe(false);
+    expect(nav.destination).toBeNull();
+  });
+
+  it('keeps world position when repathing from the same cell', () => {
+    const nav = new NavController({ x: 0, y: 0 }, 10);
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ]);
+    nav.update(50);
+    const midX = nav.worldX;
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ]);
+    expect(nav.worldX).toBeCloseTo(midX);
+    expect(nav.facing).toBe(1); // down
+  });
 });
