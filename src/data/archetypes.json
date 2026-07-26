@@ -143,7 +143,7 @@
     "id": "balanced_diner",
     "name": "Balanced Diner",
     "primaryAxisWeights": {
-      "UM": 2,
+      "UM": 3,
       "SO": 2,
       "LI": 2,
       "SA": 1

@@ -38,5 +38,13 @@
   "customer": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
   "customer_b": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0105.png",
   "player": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0024.png",
-  "player_walk": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0051.png"
+  "player_walk": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/kenney/sources/rpg-urban-pack/Tiles/tile_0051.png",
+  "guest_a_sit_left": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_a_sit_left.png",
+  "guest_a_sit_down": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_a_sit_down.png",
+  "guest_a_sit_up": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_a_sit_up.png",
+  "guest_a_sit_right": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_a_sit_right.png",
+  "guest_b_sit_left": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_b_sit_left.png",
+  "guest_b_sit_down": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_b_sit_down.png",
+  "guest_b_sit_up": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_b_sit_up.png",
+  "guest_b_sit_right": "/var/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/character-sit/guest_b_sit_right.png"
 }

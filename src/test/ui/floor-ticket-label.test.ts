@@ -42,7 +42,7 @@ describe('floor ticket labels', () => {
     expect(withName.buttonText).not.toMatch(/ticket_/);
     expect(withName.buttonText).toContain('Comfort Seeker');
     expect(withName.buttonText).toContain('Open');
-    expect(withName.preferenceSummary).toMatch(/savory/i);
+    expect(withName.preferenceSummary).toMatch(/^Wants:.*savory/i);
 
     const fallback = formatFloorTicketLabel({
       ticket: ticket('plated'),

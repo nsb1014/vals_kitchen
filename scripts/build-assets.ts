@@ -52,6 +52,13 @@ const PACKS: Record<string, PackMeta> = {
     license: 'CC0',
     note: 'Purpose-made 32×32 pixel-art icons generated for this project; dedicated to CC0.',
   },
+  generatedSit: {
+    pack: 'Project-generated character sit poses (CC0)',
+    author: "Val's Kitchen project",
+    sourceUrl: 'vendor/generated/character-sit/',
+    license: 'CC0',
+    note: 'Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project.',
+  },
   tinyDungeon: {
     pack: 'Kenney Tiny Dungeon',
     author: 'Kenney Vleugels',
@@ -163,8 +170,21 @@ const CHARACTER_SPRITES = {
   player_walk: 'Tiles/tile_0051.png',
 } as const;
 
+/** Project-derived sit poses (generated under vendor/generated/character-sit/). */
+const CHARACTER_SIT_SPRITES = {
+  guest_a_sit_left: 'guest_a_sit_left.png',
+  guest_a_sit_down: 'guest_a_sit_down.png',
+  guest_a_sit_up: 'guest_a_sit_up.png',
+  guest_a_sit_right: 'guest_a_sit_right.png',
+  guest_b_sit_left: 'guest_b_sit_left.png',
+  guest_b_sit_down: 'guest_b_sit_down.png',
+  guest_b_sit_up: 'guest_b_sit_up.png',
+  guest_b_sit_right: 'guest_b_sit_right.png',
+} as const;
+
 const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
 const GENERATED_ICONS = path.join(ROOT, 'scripts', '.asset-build', 'ingredient-icons');
+const GENERATED_SIT = path.join(ROOT, 'vendor', 'generated', 'character-sit');
 
 const AUDIO_FILES: Record<string, { rel: string; pack: keyof typeof PACKS }> = {
   'sfx/serve.ogg': { rel: 'kenney_rpgaudio/Audio/knifeSlice.ogg', pack: 'rpgAudio' },
@@ -204,6 +224,12 @@ function assertVendor(): void {
 
 function runRestaurantTileBuilder(): void {
   execFileSync('python3', [path.join(__dirname, 'build-restaurant-tiles.py')], {
+    stdio: 'inherit',
+  });
+}
+
+function runCharacterSitBuilder(): void {
+  execFileSync('python3', [path.join(__dirname, 'build-character-sit-frames.py')], {
     stdio: 'inherit',
   });
 }
@@ -306,6 +332,19 @@ function buildCredits(shippedFiles: string[]): void {
     });
   }
 
+  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
+    add({
+      path: `atlases/characters.json#${name}`,
+      pack: PACKS.generatedSit.pack,
+      author: PACKS.generatedSit.author,
+      sourceUrl: PACKS.generatedSit.sourceUrl,
+      license: 'CC0',
+      usedIn: ['canvas:ActorLayer (seated guests)'],
+      sourceFile: file,
+      approximationNote: PACKS.generatedSit.note,
+    });
+  }
+
   for (const [ingredientId] of Object.entries(
     JSON.parse(readFileSync(path.join(GENERATED_ICONS, 'manifest.json'), 'utf8')) as Record<
       string,
@@ -391,6 +430,7 @@ function listShippedFiles(dir: string, prefix = ''): string[] {
 function main(): void {
   assertVendor();
   runRestaurantTileBuilder();
+  runCharacterSitBuilder();
 
   const tmp = path.join(ROOT, 'scripts', '.asset-build');
   mkdirSync(tmp, { recursive: true });
@@ -426,6 +466,14 @@ function main(): void {
   const charManifest: Record<string, string> = {};
   for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
     charManifest[name] = vendorPath(`rpg-urban-pack/${rel}`);
+  }
+  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
+    const sitPath = path.join(GENERATED_SIT, file);
+    if (!existsSync(sitPath)) {
+      console.error(`Missing generated sit frame: ${sitPath}`);
+      process.exit(1);
+    }
+    charManifest[name] = sitPath;
   }
   const charManifestPath = path.join(tmp, 'characters.manifest.json');
   writeManifest(charManifest, charManifestPath);

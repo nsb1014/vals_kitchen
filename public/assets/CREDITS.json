@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-26T16:41:05.930Z",
+  "generatedAt": "2026-07-26T21:10:05.667Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -17,6 +17,13 @@
       "sourceUrl": "vendor/generated/ingredient-sheets/",
       "license": "CC0",
       "note": "Purpose-made 32×32 pixel-art icons generated for this project; dedicated to CC0."
+    },
+    {
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "note": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
     },
     {
       "pack": "Kenney Tiny Dungeon",
@@ -873,6 +880,102 @@
       ],
       "sourceFile": "Tiles/tile_0051.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_left",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_a_sit_left.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_down",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_a_sit_down.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_up",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_a_sit_up.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_right",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_a_sit_right.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_left",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_b_sit_left.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_down",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_b_sit_down.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_up",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_b_sit_up.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_right",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_b_sit_right.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
     },
     {
       "path": "atlases/food.json#icon_almond",

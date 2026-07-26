@@ -15,11 +15,11 @@ export { carryPlateGeometry } from './carry-plate.ts';
  * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
  * Player and guests share one draw scale so they match each other and the
  * 32×48 furniture — earlier 2.5× / 1.75× made the cook a giant next to guests.
- * 1.5× → 48px tall (~1.5 tiles), readable without dwarfing tables.
+ * 1.3× → ~42px tall (~1.3 tiles), fits chairs without becoming unreadable.
  */
-const ACTOR_SCALE = 1.5;
-/** Fallback when atlas still has legacy 16×16 frames (16×3 = 48px). */
-const LEGACY_ACTOR_SCALE = 3;
+const ACTOR_SCALE = 1.3;
+/** Fallback when atlas still has legacy 16×16 frames (16×2.6 ≈ 42px). */
+const LEGACY_ACTOR_SCALE = 2.6;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -204,15 +204,25 @@ export class ActorLayer {
 
       const variant = guestVariant(guest.id);
       const facingName = FACING_NAMES[pose.facing];
-      const frame = pose.isMoving ? pose.walkFrame : 0;
-      const frameKey = `${variant}_${facingName}_${frame}`;
+      const seated =
+        pose.isSeated === true ||
+        ((guest.stage === 'seated' || guest.stage === 'ordered' || guest.stage === 'eating') &&
+          !pose.isMoving);
+      const frame = seated ? 0 : pose.isMoving ? pose.walkFrame : 0;
+      const frameKey = seated
+        ? `sit_${variant}_${facingName}`
+        : `${variant}_${facingName}_${frame}`;
       if (frameKey !== entry.lastFrameKey) {
         entry.lastFrameKey = frameKey;
-        const texture =
-          getCharacterTexture(`guest_${variant}_${facingName}_${frame}`) ??
-          getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
-          getCharacterTexture(`guest_${variant}_down_0`) ??
-          getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b');
+        const texture = seated
+          ? (getCharacterTexture(`guest_${variant}_sit_${facingName}`) ??
+            getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
+            getCharacterTexture(`guest_${variant}_down_0`) ??
+            getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b'))
+          : (getCharacterTexture(`guest_${variant}_${facingName}_${frame}`) ??
+            getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
+            getCharacterTexture(`guest_${variant}_down_0`) ??
+            getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b'));
         if (texture) {
           entry.sprite.texture = texture;
           entry.sprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
@@ -273,6 +283,7 @@ function fallbackGuestPose(
       facing: seatFacingToActorFacing(guest.seat.facing),
       isMoving: false,
       walkFrame: 0,
+      isSeated: true,
     };
   }
   if (guest.stage === 'waiting' || guest.stage === 'entering') {

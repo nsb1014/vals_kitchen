@@ -175,6 +175,128 @@ const PHRASES: Record<AxisKey, Partial<Record<Band, string>>> = {
   CR: { high: 'some crunch', low: 'soft textures only' },
 };
 
+function archetypeWeight(archetype: Archetype, axis: AxisKey): number {
+  return archetype.primaryAxisWeights[axis] ?? 0;
+}
+
+/** Axes the archetype name implies, strongest first. */
+export function archetypeSignatureAxes(archetype: Archetype): AxisKey[] {
+  return (Object.entries(archetype.primaryAxisWeights) as [AxisKey, number][])
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([axis]) => axis);
+}
+
+/** Signature axes that the current pantry can actually express. */
+export function signatureActionableAxes(
+  archetype: Archetype,
+  profile: UnlockedFlavorProfile,
+): AxisKey[] {
+  const actionable = new Set(profile.actionableAxes);
+  return archetypeSignatureAxes(archetype).filter((axis) => actionable.has(axis));
+}
+
+/**
+ * Archetypes whose names stay honest for this pantry: the strongest
+ * signature axis must be actionable and able to reach a craving band
+ * (mid for mild names, high for strongly weighted ones).
+ */
+export function pantryFitArchetypes(
+  archetypes: Archetype[],
+  profile: UnlockedFlavorProfile,
+  envelope: FlavorEnvelope,
+): Archetype[] {
+  const fit = archetypes.filter((archetype) => {
+    const signature = archetypeSignatureAxes(archetype);
+    if (signature.length === 0) return true;
+    const top = signature[0]!;
+    if (!profile.actionableAxes.includes(top)) return false;
+    const max = envelope.maxByAxis[top] ?? 0;
+    const weight = archetype.primaryAxisWeights[top] ?? 0;
+    // bandForValue: <=3 low, <=6 mid, else high.
+    if (weight >= 3) return max > 6;
+    return max > 3;
+  });
+  return fit.length > 0 ? fit : archetypes;
+}
+
+/** Prefer unique pantry-fit archetypes so a day samples distinct taste identities. */
+export function pickDayArchetypes(
+  archetypes: Archetype[],
+  profile: UnlockedFlavorProfile,
+  envelope: FlavorEnvelope,
+  count: number,
+  rng: Rng,
+): Archetype[] {
+  const pool = [...pantryFitArchetypes(archetypes, profile, envelope)];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rng.nextInt(0, i);
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+
+  const picked: Archetype[] = [];
+  const usedIds = new Set<string>();
+  const usedTopAxes = new Set<AxisKey>();
+
+  // Pass 1: unique guest identity + unique top craving axis (kills hearty/umami clones).
+  for (const archetype of pool) {
+    if (picked.length >= count) break;
+    if (usedIds.has(archetype.id)) continue;
+    const top = signatureActionableAxes(archetype, profile)[0];
+    if (top && usedTopAxes.has(top)) continue;
+    usedIds.add(archetype.id);
+    if (top) usedTopAxes.add(top);
+    picked.push(archetype);
+  }
+
+  // Pass 2: unique ids, allow shared top axes only if needed.
+  for (const archetype of pool) {
+    if (picked.length >= count) break;
+    if (usedIds.has(archetype.id)) continue;
+    usedIds.add(archetype.id);
+    picked.push(archetype);
+  }
+
+  while (picked.length < count) {
+    picked.push(pool[rng.nextInt(0, pool.length - 1)]!);
+  }
+  return picked;
+}
+
+/**
+ * Named cravings must ask for the flavor to be present — never "low"/absence
+ * on a signature axis (Garlic Fan must not say "nothing too pungent").
+ */
+function bandForNamedAxis(
+  archetype: Archetype,
+  axis: AxisKey,
+  dishValue: number,
+  isSignature: boolean,
+): Band | null {
+  const natural = bandForValue(dishValue);
+  if (!isSignature) return natural;
+  const weight = archetypeWeight(archetype, axis);
+  if (weight < 2) return natural;
+  if (dishValue < 4) return null;
+  if (dishValue >= 7 || weight >= 3) return 'high';
+  if (PHRASES[axis].mid) return 'mid';
+  // No mid phrase — only keep if strong enough to claim high.
+  return dishValue >= 5 ? 'high' : null;
+}
+
+function preferenceHonorsName(
+  preference: CustomerPreference,
+  archetype: Archetype,
+  signature: AxisKey[],
+): boolean {
+  if (signature.length === 0) return true;
+  const top = signature[0]!;
+  const band = preference.primary[top];
+  if (!band || band === 'low') return false;
+  // Strongly named axes (weight >= 3) should read as a craving (high).
+  if ((archetype.primaryAxisWeights[top] ?? 0) >= 3 && band !== 'high') return false;
+  return true;
+}
+
 function rankedActionableAxes(
   archetype: Archetype,
   dish: FlavorVector,
@@ -190,14 +312,19 @@ function rankedActionableAxes(
         );
 
   return pool
-    .map((axis) => ({
-      axis,
-      score:
-        (archetype.primaryAxisWeights[axis] ?? 0.35) *
-        (0.4 + dish[axis] / 10) *
-        ((envelope.maxByAxis[axis] ?? 0) - (envelope.minByAxis[axis] ?? 0) + 1) *
-        ((profile.ingredientVariance[axis] ?? 0) + 1),
-    }))
+    .map((axis) => {
+      const weight = archetypeWeight(archetype, axis);
+      // Named preferences must dominate ranking so "Garlic Fan" actually asks for PU.
+      const namedBoost = weight >= 3 ? 3.5 : weight >= 2 ? 2.25 : weight > 0 ? 1.35 : 0.2;
+      return {
+        axis,
+        score:
+          namedBoost *
+          (0.4 + dish[axis] / 10) *
+          ((envelope.maxByAxis[axis] ?? 0) - (envelope.minByAxis[axis] ?? 0) + 1) *
+          ((profile.ingredientVariance[axis] ?? 0) + 1),
+      };
+    })
     .sort((a, b) => b.score - a.score || a.axis.localeCompare(b.axis))
     .map((entry) => entry.axis);
 }
@@ -243,7 +370,11 @@ function buildAvoidOptions(
   return options;
 }
 
-function preferenceAxisWindows(ranked: AxisKey[], axisCount: number): AxisKey[][] {
+function preferenceAxisWindows(
+  ranked: AxisKey[],
+  axisCount: number,
+  signature: AxisKey[],
+): AxisKey[][] {
   const windows: AxisKey[][] = [];
   for (let offset = 0; offset <= ranked.length - axisCount; offset++) {
     windows.push(ranked.slice(offset, offset + axisCount));
@@ -251,7 +382,12 @@ function preferenceAxisWindows(ranked: AxisKey[], axisCount: number): AxisKey[][
   if (windows.length === 0 && ranked.length >= axisCount) {
     windows.push(ranked.slice(0, axisCount));
   }
-  return windows;
+
+  // Prefer windows that include at least one signature axis (name → preference honesty).
+  if (signature.length === 0) return windows;
+  const withSig = windows.filter((axes) => axes.some((axis) => signature.includes(axis)));
+  const withoutSig = windows.filter((axes) => !axes.some((axis) => signature.includes(axis)));
+  return [...withSig, ...withoutSig];
 }
 
 function preferenceFromCombo(
@@ -261,19 +397,32 @@ function preferenceFromCombo(
   floor: number,
   envelope: FlavorEnvelope,
   profile: UnlockedFlavorProfile,
+  requireSignature: boolean,
 ): CustomerPreference | null {
   const dish = aggregateDish(targetCombo.map((item) => item.flavor));
   const ids = targetCombo.map((item) => item.id);
   const ranked = rankedActionableAxes(archetype, dish, envelope, profile);
   if (ranked.length < MIN_PRIMARY_CUE_COUNT) return null;
+  const signature = signatureActionableAxes(archetype, profile);
+  const signatureSet = new Set(signature);
 
   for (const axisCount of [3, 2]) {
     if (ranked.length < axisCount) continue;
-    for (const axes of preferenceAxisWindows(ranked, axisCount)) {
-      const primary: Partial<Record<AxisKey, Band>> = {};
-      for (const axis of axes) {
-        primary[axis] = bandForValue(dish[axis]);
+    for (const axes of preferenceAxisWindows(ranked, axisCount, signature)) {
+      if (requireSignature && signature.length > 0 && !axes.includes(signature[0]!)) {
+        continue;
       }
+      const primary: Partial<Record<AxisKey, Band>> = {};
+      let rejected = false;
+      for (const axis of axes) {
+        const band = bandForNamedAxis(archetype, axis, dish[axis], signatureSet.has(axis));
+        if (!band || !PHRASES[axis][band]) {
+          rejected = true;
+          break;
+        }
+        primary[axis] = band;
+      }
+      if (rejected) continue;
 
       for (const avoid of buildAvoidOptions(ranked, primary, dish, profile)) {
         const preference: CustomerPreference = {
@@ -283,7 +432,9 @@ function preferenceFromCombo(
         };
         if (
           primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
+          preference.phrases.length >= 2 &&
           preferenceUsesActionableAxes(preference, profile) &&
+          (!requireSignature || preferenceHonorsName(preference, archetype, signature)) &&
           computeMatchStars(dish, preference, ids, compoundAffinity) >= floor
         ) {
           return preference;
@@ -334,29 +485,70 @@ export function generateCustomerRequest(
     [candidateCombos[i], candidateCombos[j]] = [candidateCombos[j]!, candidateCombos[i]!];
   }
 
+  const signature = signatureActionableAxes(archetype, profile);
+  const topSignature = signature[0];
+  const canHonorSignature =
+    !topSignature ||
+    ((archetype.primaryAxisWeights[topSignature] ?? 0) >= 3
+      ? (envelope.maxByAxis[topSignature] ?? 0) > 6
+      : (envelope.maxByAxis[topSignature] ?? 0) > 3);
+
+  // Prefer witnesses that actually carry the archetype's top craving.
+  if (topSignature && canHonorSignature) {
+    if (candidateCombos.length <= 400) {
+      candidateCombos.sort(
+        (a, b) =>
+          Math.max(...b.map((item) => item.flavor[topSignature])) -
+          Math.max(...a.map((item) => item.flavor[topSignature])),
+      );
+    } else {
+      const strong: Ingredient[][] = [];
+      const weak: Ingredient[][] = [];
+      for (const combo of candidateCombos) {
+        if (Math.max(...combo.map((item) => item.flavor[topSignature])) >= 7) {
+          strong.push(combo);
+        } else {
+          weak.push(combo);
+        }
+      }
+      candidateCombos.length = 0;
+      candidateCombos.push(...strong, ...weak);
+    }
+  }
+
   const richCandidates: CustomerRequest[] = [];
   const fallbackCandidates: CustomerRequest[] = [];
 
-  for (const combo of candidateCombos) {
-    const preference = preferenceFromCombo(
-      combo,
-      archetype,
-      compoundAffinity,
-      floor,
-      envelope,
-      profile,
-    );
-    if (!preference) continue;
-    const request: CustomerRequest = {
-      preference,
-      witnessIngredientIds: combo.map((item) => item.id),
-    };
-    if (primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT && preference.phrases.length >= 2) {
-      richCandidates.push(request);
-      if (richCandidates.length >= REQUEST_CANDIDATE_CAP) break;
-    } else {
-      fallbackCandidates.push(request);
+  for (const requireSignature of signature.length > 0 && canHonorSignature
+    ? [true, false]
+    : [false]) {
+    for (const combo of candidateCombos) {
+      const preference = preferenceFromCombo(
+        combo,
+        archetype,
+        compoundAffinity,
+        floor,
+        envelope,
+        profile,
+        requireSignature,
+      );
+      if (!preference) continue;
+      const request: CustomerRequest = {
+        preference,
+        witnessIngredientIds: combo.map((item) => item.id),
+      };
+      if (
+        primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
+        preference.phrases.length >= 2 &&
+        (!requireSignature || preferenceHonorsName(preference, archetype, signature))
+      ) {
+        richCandidates.push(request);
+        if (richCandidates.length >= REQUEST_CANDIDATE_CAP) break;
+      } else if (preference.phrases.length >= 1) {
+        fallbackCandidates.push(request);
+      }
     }
+    if (richCandidates.length > 0) break;
   }
 
   const pool =

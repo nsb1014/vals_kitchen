@@ -31,10 +31,11 @@ export function formatFloorTicketLabel(input: {
   const preferenceSummary = input.customer
     ? shortenPreference(formatCustomerRequestText(input.customer.preference))
     : '';
-  const buttonText = preferenceSummary
-    ? `${guestLabel} · ${statusLabel} — ${preferenceSummary}`
+  const preferenceChip = preferenceSummary ? `Wants: ${preferenceSummary}` : '';
+  const buttonText = preferenceChip
+    ? `${guestLabel} · ${statusLabel} — ${preferenceChip}`
     : `${guestLabel} · ${statusLabel}`;
-  return { guestLabel, statusLabel, preferenceSummary, buttonText };
+  return { guestLabel, statusLabel, preferenceSummary: preferenceChip, buttonText };
 }
 
 function shortenPreference(text: string, maxLen = 42): string {

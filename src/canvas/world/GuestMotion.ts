@@ -14,6 +14,8 @@ export interface GuestPose {
   facing: 0 | 1 | 2 | 3;
   isMoving: boolean;
   walkFrame: number;
+  /** True when guest has arrived at a seat (seated / ordered / eating). */
+  isSeated?: boolean;
 }
 
 export interface GuestMotionSyncOpts {
@@ -34,6 +36,7 @@ export interface GuestMotionSyncResult {
 export class GuestMotion {
   private readonly navs = new Map<string, NavController>();
   private readonly enterStarted = new Set<string>();
+  private readonly seatedIds = new Set<string>();
 
   sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
@@ -50,6 +53,7 @@ export class GuestMotion {
       if (!seen.has(id)) {
         this.navs.delete(id);
         this.enterStarted.delete(id);
+        this.seatedIds.delete(id);
       }
     }
 
@@ -65,6 +69,7 @@ export class GuestMotion {
       facing: nav.facing,
       isMoving: nav.isMoving,
       walkFrame: nav.walkFrame(),
+      isSeated: this.seatedIds.has(guestId),
     };
   }
 
@@ -147,8 +152,11 @@ export class GuestMotion {
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
+        this.seatedIds.add(guest.id);
         return false;
       }
+
+      this.seatedIds.delete(guest.id);
 
       if (!nav.isMoving) {
         const path =
@@ -163,9 +171,12 @@ export class GuestMotion {
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
+        this.seatedIds.add(guest.id);
       }
       return false;
     }
+
+    this.seatedIds.delete(guest.id);
 
     if (guest.stage === 'leaving') {
       const door = { ...opts.door };
