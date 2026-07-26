@@ -3,7 +3,7 @@ import { createStarterMap } from '../../domain/floor/starter-map.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 
 describe('starter service seating layout', () => {
-  it('keeps two table seat pairs separated (no contiguous four-chair strip)', () => {
+  it('keeps two table seat pairs on separate table columns (no merged chair strip)', () => {
     const map = createStarterMap();
     const seats = seatsFromPlacements(map.placements);
     expect(seats).toHaveLength(4);
@@ -16,13 +16,14 @@ describe('starter service seating layout', () => {
     }
     expect(byTable.size).toBe(2);
 
-    const xs = [...byTable.values()].map((pair) => {
-      const sorted = [...pair].sort((a, b) => a.x - b.x || a.y - b.y);
-      return { min: sorted[0]!.x, max: sorted[1]!.x, y: sorted[0]!.y };
+    const columns = [...byTable.values()].map((pair) => {
+      expect(pair.every((s) => s.x === pair[0]!.x && s.y === pair[0]!.y)).toBe(true);
+      expect(pair.every((s) => s.facing === 180)).toBe(true);
+      return pair[0]!.x;
     });
 
-    // Seat pairs must not merge into one unbroken horizontal run.
-    const [a, b] = xs[0]!.min < xs[1]!.min ? [xs[0]!, xs[1]!] : [xs[1]!, xs[0]!];
-    expect(a.max + 1).toBeLessThan(b.min);
+    columns.sort((a, b) => a - b);
+    // Distinct table columns with at least one empty column between them.
+    expect(columns[0]! + 1).toBeLessThan(columns[1]!);
   });
 });

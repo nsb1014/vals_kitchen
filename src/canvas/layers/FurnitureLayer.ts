@@ -5,6 +5,7 @@ import { getFurnitureTexture } from '../../assets/loader.ts';
 import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
 import { furnitureDrawOffset, furnitureDrawSize, chairDrawFit } from '../furniture-fit.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
+import { seatSitWorldPosition } from '../world/seat-sit.ts';
 
 const MIN_HIT_PX = 44;
 const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
@@ -113,8 +114,10 @@ export class FurnitureLayer {
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
-    const { x, y } = gridToWorld(seat.x, seat.y);
-    sprite.root.position.set(x, y);
+    // Sit anchor uses nav-center space; guest feet = sit.y + TILE_PX/2 - 2.
+    const sit = seatSitWorldPosition(seat);
+    const feetY = sit.y + TILE_PX / 2 - 2;
+    sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
     sprite.body.clear();
     const texture = getFurnitureTexture('chair');
     if (texture) {
@@ -123,7 +126,7 @@ export class FurnitureLayer {
       sprite.sprite!.visible = true;
       sprite.sprite!.width = fit.w;
       sprite.sprite!.height = fit.h;
-      sprite.sprite!.position.set(fit.x, fit.y);
+      sprite.sprite!.position.set(fit.x, TILE_PX - fit.h);
     } else {
       sprite.sprite!.visible = false;
       sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill(0x7a5230);

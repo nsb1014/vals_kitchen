@@ -1,4 +1,5 @@
 import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
+import { getDomainContext } from '../../app/content-loader.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   selectAdjacentDirtyTablePlacementIds,
@@ -8,6 +9,15 @@ import {
   selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
+import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export function mountFloorServiceHud(mount: HTMLElement): () => void {
   const render = () => {
@@ -39,11 +49,31 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
         ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
         : null;
 
+    const ctx = getDomainContext();
+    const partyIndexByCustomerId = new Map<string, number>();
+    let partyCounter = 0;
+    for (const g of floor.pool) {
+      if (g.stage === 'done') continue;
+      partyCounter += 1;
+      partyIndexByCustomerId.set(g.customer.id, partyCounter);
+    }
+
     const ticketStrip = floor.tickets
       .map((t) => {
         const isOpen = t.status === 'open';
         const selected = isOpen && selectedTicketId === t.id;
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'}>${t.id} (${t.status})</button>`;
+        const guest = floor.pool.find((g) => g.customer.id === t.customerId);
+        const archetypeName = guest
+          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)?.name
+          : undefined;
+        const label = formatFloorTicketLabel({
+          ticket: t,
+          customer: guest?.customer,
+          archetypeName,
+          partyNumber: partyIndexByCustomerId.get(t.customerId) ?? 1,
+          selected,
+        });
+        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.preferenceSummary || label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span>${label.preferenceSummary ? `<span class="floor-ticket-pref">${escapeHtml(label.preferenceSummary)}</span>` : ''}</button>`;
       })
       .join('');
 

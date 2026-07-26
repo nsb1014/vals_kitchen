@@ -160,9 +160,14 @@ describe('floor interact helpers', () => {
 
   describe('adjacentSeatedCustomerIds', () => {
     it('returns seated guest ids only when player is Chebyshev-adjacent to their seat', () => {
-      const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
+      const placements = [
+        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+        { id: 'table_2', itemKey: 'table_2seat', x: 4, y: 0, rotation: 0 },
+      ];
       const tables = tablesFromPlacements(placements).map(setTable);
       const seats = seatsFromPlacements(placements);
+      const seat1 = seats.find((s) => s.tablePlacementId === 'table_1')!;
+      const seat2 = seats.find((s) => s.tablePlacementId === 'table_2')!;
       const day = createFloorDayFromCustomers(
         [customer('c1'), customer('c2')],
         tables,
@@ -172,15 +177,19 @@ describe('floor interact helpers', () => {
         ...day,
         pool: day.pool.map((g, i) =>
           i === 0
-            ? { ...g, stage: 'seated' as const, seat: seats[0] }
+            ? { ...g, stage: 'seated' as const, seat: seat1 }
             : i === 1
-              ? { ...g, stage: 'seated' as const, seat: seats[1] }
+              ? { ...g, stage: 'seated' as const, seat: seat2 }
               : g,
         ),
       };
 
-      expect(adjacentSeatedCustomerIds(withSeated, { x: seats[0]!.x - 1, y: seats[0]!.y })).toEqual([
+      // 2-top seats share a cell under their table; adjacency is per-table column.
+      expect(adjacentSeatedCustomerIds(withSeated, { x: seat1.x - 1, y: seat1.y })).toEqual([
         'c1',
+      ]);
+      expect(adjacentSeatedCustomerIds(withSeated, { x: seat2.x + 1, y: seat2.y })).toEqual([
+        'c2',
       ]);
       expect(adjacentSeatedCustomerIds(withSeated, { x: 10, y: 10 })).toEqual([]);
     });

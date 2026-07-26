@@ -17,6 +17,7 @@ import {
   selectShowFloorCompose,
 } from '../../store/selectors/service-day.ts';
 import { formatCustomerRequestText } from '../presentation/customer-request.ts';
+import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
 import {
   canToggleIngredient,
   computeDishPreview,
@@ -28,6 +29,14 @@ import { worldToScreen } from '../../canvas/coordinates.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export function mountServiceDayUi(
   overlayMount: HTMLElement,
@@ -301,12 +310,28 @@ export function mountServiceDayUi(
         )
         .join('');
 
+      let ticketBadge = '';
+      if (ticket) {
+        const guest = state.activeDay?.floor?.pool.find((g) => g.customer.id === ticket.customerId);
+        const archetypeName = guest
+          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)?.name
+          : undefined;
+        const label = formatFloorTicketLabel({
+          ticket,
+          customer: guest?.customer,
+          archetypeName,
+          partyNumber: 1,
+          selected: true,
+        });
+        ticketBadge = `<p class="queue-badge">${escapeHtml(`${label.guestLabel} · ${label.statusLabel}`)}</p>`;
+      }
+
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
             <h2 class="service-title">Plate Dish</h2>
-            ${ticket ? `<p class="queue-badge">Ticket ${ticket.id}</p>` : ''}
+            ${ticketBadge}
             <p class="compose-meta">Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients (${preview.ingredientCount} selected)</p>
             <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${ingredientButtons}</div>
             ${

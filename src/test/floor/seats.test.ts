@@ -3,7 +3,7 @@ import type { Placement } from '../../domain/state/game-state.ts';
 import { assignPartyToTable, seatsFromPlacements } from '../../domain/floor/seats.ts';
 
 describe('seatsFromPlacements', () => {
-  it('derives two south-facing seats per table_2seat', () => {
+  it('derives two south-facing seats under a table_2seat (same column, face table)', () => {
     const placements: Placement[] = [
       { id: 'table_a', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
       { id: 'table_b', itemKey: 'table_2seat', x: 2, y: 0, rotation: 0 },
@@ -11,12 +11,12 @@ describe('seatsFromPlacements', () => {
     const seats = seatsFromPlacements(placements);
     expect(seats).toHaveLength(4);
     expect(seats.filter((s) => s.tablePlacementId === 'table_a')).toEqual([
-      { tablePlacementId: 'table_a', slotIndex: 0, x: 0, y: 1, facing: 0 },
-      { tablePlacementId: 'table_a', slotIndex: 1, x: 1, y: 1, facing: 0 },
+      { tablePlacementId: 'table_a', slotIndex: 0, x: 0, y: 1, facing: 180 },
+      { tablePlacementId: 'table_a', slotIndex: 1, x: 0, y: 1, facing: 180 },
     ]);
     expect(seats.filter((s) => s.tablePlacementId === 'table_b')).toEqual([
-      { tablePlacementId: 'table_b', slotIndex: 0, x: 2, y: 1, facing: 0 },
-      { tablePlacementId: 'table_b', slotIndex: 1, x: 3, y: 1, facing: 0 },
+      { tablePlacementId: 'table_b', slotIndex: 0, x: 2, y: 1, facing: 180 },
+      { tablePlacementId: 'table_b', slotIndex: 1, x: 2, y: 1, facing: 180 },
     ]);
   });
 
@@ -49,7 +49,7 @@ describe('assignPartyToTable', () => {
       slotIndex: 0,
       x: 0,
       y: 1,
-      facing: 0,
+      facing: 180,
     });
   });
 

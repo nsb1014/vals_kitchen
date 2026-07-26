@@ -19,7 +19,9 @@ import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
 import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
+import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
+import { STARTER_DOOR } from '../domain/floor/starter-map.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -38,6 +40,7 @@ export class RestaurantApp {
   readonly interactHintLayer: InteractHintLayer;
   readonly dragPlacement: DragPlacement;
   readonly nav: NavController;
+  readonly guestMotion: GuestMotion;
 
   private unsubscribe: (() => void) | null = null;
   private mounted = false;
@@ -57,6 +60,7 @@ export class RestaurantApp {
     this.previewLayer = new PreviewLayer();
     this.interactHintLayer = new InteractHintLayer();
     this.nav = new NavController({ x: 1, y: 1 });
+    this.guestMotion = new GuestMotion();
 
     this.world.addChild(this.gridLayer.view);
     this.world.addChild(this.furnitureLayer.view);
@@ -130,7 +134,13 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    this.actorLayer.sync(floor, this.nav);
+    const blocked = blockedCellsFromPlacements(state.placements);
+    this.guestMotion.sync(floor, {
+      door: STARTER_DOOR,
+      grid: { w: state.gridSize.w, h: state.gridSize.h, blocked },
+      dtMs: this.app.ticker.deltaMS,
+    });
+    this.actorLayer.sync(floor, this.nav, this.guestMotion);
 
     if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
@@ -230,7 +240,16 @@ export class RestaurantApp {
         this.lastFloorSeed = daySeed;
         this.eatingTickAccumulatorMs = 0;
       }
-      this.actorLayer.sync(floor, this.nav);
+      this.guestMotion.sync(floor, {
+        door: STARTER_DOOR,
+        grid: {
+          w: state.gridSize.w,
+          h: state.gridSize.h,
+          blocked: blockedCellsFromPlacements(state.placements),
+        },
+        dtMs: 0,
+      });
+      this.actorLayer.sync(floor, this.nav, this.guestMotion);
       if (!state.editLayoutMode) {
         const player = this.actorLayer.getPlayerWorldPosition();
         this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);

@@ -1,7 +1,11 @@
 import { TILE_PX } from './coordinates.ts';
 
-/** Max chair overhang into the tile above — keeps tables readable in service mode. */
-export const CHAIR_MAX_OVERHANG_PX = 8;
+/**
+ * Max chair overhang into the tile above.
+ * Sit anchors already tuck chairs under the table lip; allow enough silhouette
+ * for a readable ¾ chair without burying the tabletop.
+ */
+export const CHAIR_MAX_OVERHANG_PX = 14;
 
 export function furnitureDrawSize(texture: { width: number; height: number }): { w: number; h: number } {
   const scale = TILE_PX / 32;

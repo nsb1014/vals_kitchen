@@ -6,6 +6,9 @@ import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
 import { waitingGuestGridAnchor } from './waiting-line.ts';
+import type { GuestMotion, GuestPose } from './GuestMotion.ts';
+import { waitingStackWorldX } from './GuestMotion.ts';
+import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 
@@ -32,7 +35,6 @@ const GUEST_STAGE_CUE: Record<string, number> = {
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
-const WAITING_STACK_SPACING = 10;
 const LEAVING_DOOR_OFFSET_X = 4;
 
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
@@ -62,7 +64,10 @@ export class ActorLayer {
   private readonly playerSprite = new Sprite();
   private readonly playerFallback = new Graphics();
   private readonly plateGraphics = new Graphics();
-  private readonly guestSprites = new Map<string, { root: Container; sprite: Sprite; cue: Graphics }>();
+  private readonly guestSprites = new Map<
+    string,
+    { root: Container; sprite: Sprite; cue: Graphics; lastFrameKey: string }
+  >();
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
   private lastPlayerFrameKey = '';
@@ -90,6 +95,7 @@ export class ActorLayer {
       walkFrame: () => number;
       destination: GridPoint | null;
     },
+    guestMotion?: GuestMotion | null,
   ): void {
     this.markerLayer.clear();
     if (!floor) {
@@ -101,7 +107,7 @@ export class ActorLayer {
     }
 
     this.drawDestination(nav.destination);
-    this.syncGuests(floor);
+    this.syncGuests(floor, guestMotion ?? null);
     this.syncPlayer(nav);
     this.syncCarryPlate(floor.carriedTicketId != null);
     this.actorContainer.children.sort((a, b) => a.y - b.y);
@@ -174,14 +180,14 @@ export class ActorLayer {
     this.plateGraphics.zIndex = this.playerFeetY + 1;
   }
 
-  private syncGuests(floor: FloorDay): void {
+  private syncGuests(floor: FloorDay, guestMotion: GuestMotion | null): void {
     const seen = new Set<string>();
     let waitingIndex = 0;
     for (const guest of floor.pool) {
       if (guest.stage === 'done') continue;
       const waitIdx = guest.stage === 'waiting' ? waitingIndex++ : undefined;
-      const pos = guestPosition(guest, waitIdx);
-      if (!pos) continue;
+      const pose = resolveGuestPose(guest, waitIdx, guestMotion);
+      if (!pose) continue;
       seen.add(guest.id);
       let entry = this.guestSprites.get(guest.id);
       if (!entry) {
@@ -193,23 +199,32 @@ export class ActorLayer {
         root.addChild(sprite);
         root.addChild(cue);
         this.actorContainer.addChild(root);
-        entry = { root, sprite, cue };
+        entry = { root, sprite, cue, lastFrameKey: '' };
         this.guestSprites.set(guest.id, entry);
-        const variant = guestVariant(guest.id);
+      }
+
+      const variant = guestVariant(guest.id);
+      const facingName = FACING_NAMES[pose.facing];
+      const frame = pose.isMoving ? pose.walkFrame : 0;
+      const frameKey = `${variant}_${facingName}_${frame}`;
+      if (frameKey !== entry.lastFrameKey) {
+        entry.lastFrameKey = frameKey;
         const texture =
+          getCharacterTexture(`guest_${variant}_${facingName}_${frame}`) ??
+          getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
           getCharacterTexture(`guest_${variant}_down_0`) ??
           getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b');
         if (texture) {
-          sprite.texture = texture;
-          sprite.scale.set(scaleForTexture(texture, GUEST_SCALE, LEGACY_GUEST_SCALE));
-          sprite.visible = true;
+          entry.sprite.texture = texture;
+          entry.sprite.scale.set(scaleForTexture(texture, GUEST_SCALE, LEGACY_GUEST_SCALE));
+          entry.sprite.visible = true;
         } else {
-          sprite.visible = false;
+          entry.sprite.visible = false;
         }
       }
 
-      const feetY = pos.y + TILE_PX / 2 - 2;
-      entry.root.position.set(Math.round(pos.x), Math.round(feetY));
+      const feetY = pose.worldY + TILE_PX / 2 - 2;
+      entry.root.position.set(Math.round(pose.worldX), Math.round(feetY));
       entry.root.zIndex = entry.root.y;
       entry.cue.clear();
       const cueColor = GUEST_STAGE_CUE[guest.stage];
@@ -236,20 +251,60 @@ export class ActorLayer {
   }
 }
 
-function guestPosition(guest: FloorGuest, waitingIndex?: number): { x: number; y: number } | null {
+function resolveGuestPose(
+  guest: FloorGuest,
+  waitingIndex: number | undefined,
+  guestMotion: GuestMotion | null,
+): GuestPose | null {
+  const motionPose = guestMotion?.pose(guest.id) ?? null;
+  if (motionPose) {
+    if (guest.stage === 'waiting' && waitingIndex !== undefined) {
+      return {
+        ...motionPose,
+        worldX: waitingStackWorldX(motionPose.worldX, waitingIndex),
+      };
+    }
+    return motionPose;
+  }
+  return fallbackGuestPose(guest, waitingIndex);
+}
+
+function fallbackGuestPose(
+  guest: FloorGuest,
+  waitingIndex?: number,
+): GuestPose | null {
   if (guest.stage === 'seated' || guest.stage === 'ordered' || guest.stage === 'eating') {
     if (!guest.seat) return null;
-    return tileCenter(guest.seat.x, guest.seat.y);
+    const sit = seatSitWorldPosition(guest.seat);
+    return {
+      worldX: sit.x,
+      worldY: sit.y,
+      facing: seatFacingToActorFacing(guest.seat.facing),
+      isMoving: false,
+      walkFrame: 0,
+    };
   }
   if (guest.stage === 'waiting') {
     const door = waitingGuestGridAnchor(STARTER_DOOR);
     const center = tileCenter(door.x, door.y);
     const index = waitingIndex ?? 0;
-    return { x: center.x + (index - 1) * WAITING_STACK_SPACING, y: center.y };
+    return {
+      worldX: waitingStackWorldX(center.x, index),
+      worldY: center.y,
+      facing: 1,
+      isMoving: false,
+      walkFrame: 0,
+    };
   }
   if (guest.stage === 'leaving') {
     const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);
-    return { x: door.x + LEAVING_DOOR_OFFSET_X, y: door.y };
+    return {
+      worldX: door.x + LEAVING_DOOR_OFFSET_X,
+      worldY: door.y,
+      facing: 1,
+      isMoving: false,
+      walkFrame: 0,
+    };
   }
   return null;
 }
