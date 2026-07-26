@@ -185,7 +185,7 @@ export async function completeServiceDay(page: Page): Promise<void> {
   }
 
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();
-  await page.locator('[data-testid="dismiss-summary"]').click();
+  await page.locator('[data-testid="summary-back-floor"]').click();
   await expect(page.locator('[data-testid="open-day-btn"]')).toBeVisible();
 }
 
