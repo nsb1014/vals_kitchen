@@ -45,7 +45,7 @@ test.describe('deferred content', () => {
     await expect.poll(() => page.evaluate(() => window.__E2E__?.isScoringReady())).toBe(true);
 
     await page.locator('[data-testid="start-service-btn"]').click();
-    await expect(page.locator('[data-testid="chat-bubble"]')).toBeVisible();
+    await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
 
     await serveCurrentCustomer(page);
     await expect.poll(() => page.evaluate(() => window.__E2E__?.isRecipesReady())).toBe(true);
@@ -117,7 +117,37 @@ test.describe('persistence', () => {
     await gotoFreshGame(page);
     await page.locator('[data-testid="open-day-btn"]').click();
     await page.locator('[data-testid="start-service-btn"]').click();
-    await selectThreeDraftIngredients(page);
+    await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+
+    await page.evaluate(async () => {
+      const bridge = window.__E2E__!;
+      const game = bridge.getGameState() as {
+        activeDay?: { floor?: { tables: Array<{ placementId: string; state: string }> } } | null;
+        unlockedIngredientIds: string[];
+      };
+      const floor = game.activeDay?.floor;
+      if (!floor) throw new Error('expected floor day');
+      for (const table of floor.tables) {
+        if (table.state === 'unset') {
+          await bridge.dispatch({ type: 'FLOOR_SET_TABLE', placementId: table.placementId });
+        }
+      }
+      await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      const afterSeat = bridge.getGameState() as {
+        activeDay?: {
+          floor?: { pool: Array<{ stage: string; customer: { id: string } }> };
+        } | null;
+        unlockedIngredientIds: string[];
+      };
+      const seated = afterSeat.activeDay?.floor?.pool.find((g) => g.stage === 'seated');
+      if (!seated) throw new Error('expected seated guest');
+      await bridge.dispatch({
+        type: 'FLOOR_TAKE_ORDERS',
+        customerIds: [seated.customer.id],
+      });
+      const draftIds = afterSeat.unlockedIngredientIds.slice(0, 3);
+      await bridge.dispatch({ type: 'SET_COMPOSE_DRAFT', ingredientIds: draftIds });
+    });
 
     const before = await page.evaluate(() => window.__E2E__!.getState());
     expect(before.composeDraftIngredientIds.length).toBe(3);
@@ -131,7 +161,7 @@ test.describe('persistence', () => {
     expect(after.activeDay).not.toBeNull();
     expect(after.activeDay!.queueIndex).toBe(before.activeDay!.queueIndex);
     expect(after.composeDraftIngredientIds).toEqual(before.composeDraftIngredientIds);
-    await expect(page.locator('[data-testid="chat-bubble"]')).toBeVisible();
+    await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
   });
 });
 
@@ -160,13 +190,6 @@ test.describe('save code', () => {
   });
 });
 
-async function selectThreeDraftIngredients(page: import('@playwright/test').Page): Promise<void> {
-  const chips = page.locator('[data-testid="ingredient-chip"]:not([disabled])');
-  for (let i = 0; i < 3; i += 1) {
-    await chips.nth(i).click();
-  }
-}
-
 test.describe('mobile viewport', () => {
   test.use({
     viewport: { width: 390, height: 844 },
@@ -182,7 +205,7 @@ test.describe('mobile viewport', () => {
 
     await page.locator('[data-testid="open-day-btn"]').click();
     await page.locator('[data-testid="start-service-btn"]').click();
-    await expect(page.locator('[data-testid="chat-bubble"]')).toBeVisible();
+    await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await serveCurrentCustomer(page);
     await assertNoHorizontalOverflow(page);

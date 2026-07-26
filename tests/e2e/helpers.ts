@@ -149,11 +149,18 @@ export async function selectIngredientCount(page: Page, count: number): Promise<
   }
 }
 
+/** Serve one floor guest via bridge (set → seat → order → plate → deliver). */
 export async function serveCurrentCustomer(page: Page): Promise<void> {
-  await selectIngredientCount(page, 3);
-  const serveBtn = page.locator('[data-testid="serve-btn"]');
-  await expect(serveBtn).toBeEnabled();
-  await serveBtn.click();
+  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+
+  for (let guard = 0; guard < 40; guard += 1) {
+    if (await page.locator('[data-testid="review-score"]').isVisible()) {
+      break;
+    }
+    const step = await page.evaluate(async () => window.__E2E__!.advanceFloorServiceOnce());
+    if (step === 'pending_review' || step === 'day_complete') break;
+  }
+
   await expect(page.locator('[data-testid="review-score"]')).toBeVisible();
   const scoreText = await page.locator('[data-testid="review-score"]').innerText();
   expect(scoreText).toMatch(/\d+\.\d+ \/ 10/);
@@ -162,26 +169,27 @@ export async function serveCurrentCustomer(page: Page): Promise<void> {
 export async function completeServiceDay(page: Page): Promise<void> {
   await page.locator('[data-testid="open-day-btn"]').click();
   await page.locator('[data-testid="start-service-btn"]').click();
-  await expect(page.locator('[data-testid="chat-bubble"]')).toBeVisible();
-  await expect(page.locator('[data-testid="chat-bubble"]')).not.toBeEmpty();
+  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
 
-  while (true) {
-    if (await page.locator('[data-testid="serve-btn"]').isVisible()) {
-      await serveCurrentCustomer(page);
+  for (let guard = 0; guard < 200; guard += 1) {
+    if (await page.locator('[data-testid="day-summary-title"]').isVisible()) {
+      break;
     }
 
     if (await page.locator('[data-testid="close-day-btn"]').isVisible()) {
       await page.locator('[data-testid="close-day-btn"]').click();
-      break;
-    }
-
-    if (await page.locator('[data-testid="next-customer-btn"]').isVisible()) {
-      await page.locator('[data-testid="next-customer-btn"]').click();
-      await expect(page.locator('[data-testid="chat-bubble"]')).toBeVisible();
       continue;
     }
 
-    throw new Error('service day flow stalled — no serve/review/advance controls');
+    if (await page.locator('[data-testid="continue-service-btn"]').isVisible()) {
+      await page.locator('[data-testid="continue-service-btn"]').click();
+      continue;
+    }
+
+    const step = await page.evaluate(async () => window.__E2E__!.advanceFloorServiceOnce());
+    if (step === 'idle') {
+      throw new Error('service day flow stalled — floor bridge returned idle');
+    }
   }
 
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();
@@ -312,11 +320,21 @@ declare global {
         composeDraftIngredientIds: string[];
         screen: string;
       };
-      getGameState: () => { day: number; cash: number; placements: Array<{ id: string; x: number; y: number }> };
+      getGameState: () => {
+        day: number;
+        cash: number;
+        placements: Array<{ id: string; x: number; y: number }>;
+      };
       isScoringReady: () => boolean;
       isRecipesReady: () => boolean;
       gridCellToScreen: (gx: number, gy: number) => { x: number; y: number };
       exportSaveCode: () => string;
+      advanceFloorServiceOnce: () => Promise<
+        'pending_review' | 'day_complete' | 'advanced' | 'idle'
+      >;
+      dispatch: (action: { type: string; [key: string]: unknown }) => Promise<void>;
+      setFloorNavPosition: (pos: { x: number; y: number }) => void;
+      dismissPendingReview: () => void;
     };
   }
 }

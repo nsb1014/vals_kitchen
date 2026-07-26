@@ -4,6 +4,9 @@ import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
+import { carryPlateGeometry } from './carry-plate.ts';
+
+export { carryPlateGeometry } from './carry-plate.ts';
 
 /**
  * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
@@ -28,10 +31,6 @@ const GUEST_STAGE_CUE: Record<string, number> = {
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
-const PLATE_COLOR = 0xf5e6c8;
-const FOOD_ACCENT_COLOR = 0xc45c26;
-/** World Y offset from feet for carried plate (above head). */
-const PLATE_FEET_OFFSET_Y = -32;
 const WAITING_STACK_SPACING = 10;
 const LEAVING_DOOR_OFFSET_X = 4;
 
@@ -40,18 +39,6 @@ const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
   const { x, y } = gridToWorld(gx, gy);
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
-}
-
-/** Pure geometry for the carry-plate overlay (feet-anchored). */
-export function carryPlateGeometry(feet: { x: number; y: number }): {
-  plate: { x: number; y: number; rx: number; ry: number; color: number };
-  food: { x: number; y: number; r: number; color: number };
-} {
-  const y = feet.y + PLATE_FEET_OFFSET_Y;
-  return {
-    plate: { x: feet.x, y, rx: 7, ry: 4, color: PLATE_COLOR },
-    food: { x: feet.x, y: y - 1, r: 3, color: FOOD_ACCENT_COLOR },
-  };
 }
 
 function guestVariant(guestId: string): 'a' | 'b' {
