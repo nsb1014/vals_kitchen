@@ -113,7 +113,9 @@ describe('floor vertical slice loop', () => {
         state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: open.id }, testContext).state;
       }
 
-      if (state.activeDay!.floor!.pool.some((g) => g.stage === 'eating')) {
+      if (
+        state.activeDay!.floor!.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')
+      ) {
         state = gameReducer(state, { type: 'FLOOR_TICK_EATING' }, testContext).state;
       }
     }

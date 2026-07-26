@@ -118,27 +118,41 @@ function guestsActiveOnTable(day: FloorDay, tablePlacementId: string): boolean {
   );
 }
 
-/** Decrement eat timers; guests that finish become done and may dirty their table. */
+/**
+ * Decrement eat / leave timers.
+ * Eating → 0: stage `leaving`, clear seat, reuse eatTicksRemaining as leave countdown (2).
+ * Leaving → 0: stage `done`. Table dirties when the last ACTIVE_AT_TABLE guest departs.
+ */
 export function tickEating(day: FloorDay): FloorDay {
   let next: FloorDay = { ...day, pool: day.pool.map((g) => ({ ...g })), tables: day.tables.map((t) => ({ ...t })) };
 
   for (let i = 0; i < next.pool.length; i++) {
     const g = next.pool[i]!;
-    if (g.stage !== 'eating') continue;
-    const remaining = g.eatTicksRemaining - 1;
-    if (remaining > 0) {
-      next.pool[i] = { ...g, eatTicksRemaining: remaining };
+    if (g.stage === 'eating') {
+      const remaining = g.eatTicksRemaining - 1;
+      if (remaining > 0) {
+        next.pool[i] = { ...g, eatTicksRemaining: remaining };
+        continue;
+      }
+      const tableId = g.seat?.tablePlacementId;
+      next.pool[i] = { ...g, stage: 'leaving', eatTicksRemaining: 2, seat: undefined };
+      if (tableId && !guestsActiveOnTable(next, tableId)) {
+        next = {
+          ...next,
+          tables: next.tables.map((t) =>
+            t.placementId === tableId && t.state === 'occupied' ? markDirty(t) : t,
+          ),
+        };
+      }
       continue;
     }
-    const tableId = g.seat?.tablePlacementId;
-    next.pool[i] = { ...g, stage: 'done', eatTicksRemaining: 0, seat: undefined };
-    if (tableId && !guestsActiveOnTable(next, tableId)) {
-      next = {
-        ...next,
-        tables: next.tables.map((t) =>
-          t.placementId === tableId && t.state === 'occupied' ? markDirty(t) : t,
-        ),
-      };
+    if (g.stage === 'leaving') {
+      const remaining = g.eatTicksRemaining - 1;
+      if (remaining > 0) {
+        next.pool[i] = { ...g, eatTicksRemaining: remaining };
+      } else {
+        next.pool[i] = { ...g, stage: 'done', eatTicksRemaining: 0 };
+      }
     }
   }
 

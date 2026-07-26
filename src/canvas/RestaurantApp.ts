@@ -2,11 +2,18 @@ import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
-import { isAdjacent, playerNearGuestSeat } from '../domain/floor/interact.ts';
+import {
+  isAdjacent,
+  playerNearGuestSeat,
+  playerNearPlacement,
+} from '../domain/floor/interact.ts';
+import type { FloorDay } from '../domain/floor/types.ts';
+import type { Placement } from '../domain/state/game-state.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
 import { CustomerLayer } from './layers/CustomerLayer.ts';
 import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
+import { InteractHintLayer } from './layers/InteractHintLayer.ts';
 import { PreviewLayer } from './layers/PreviewLayer.ts';
 import { Camera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
@@ -28,6 +35,7 @@ export class RestaurantApp {
   readonly actorLayer: ActorLayer;
   readonly customerLayer: CustomerLayer;
   readonly previewLayer: PreviewLayer;
+  readonly interactHintLayer: InteractHintLayer;
   readonly dragPlacement: DragPlacement;
   readonly nav: NavController;
 
@@ -47,10 +55,12 @@ export class RestaurantApp {
     this.actorLayer = new ActorLayer();
     this.customerLayer = new CustomerLayer();
     this.previewLayer = new PreviewLayer();
+    this.interactHintLayer = new InteractHintLayer();
     this.nav = new NavController({ x: 1, y: 1 });
 
     this.world.addChild(this.gridLayer.view);
     this.world.addChild(this.furnitureLayer.view);
+    this.world.addChild(this.interactHintLayer.view);
     this.world.addChild(this.actorLayer.view);
     this.world.addChild(this.customerLayer.view);
     this.world.addChild(this.previewLayer.view);
@@ -68,7 +78,7 @@ export class RestaurantApp {
   static async create(mount: HTMLElement): Promise<RestaurantApp> {
     const app = new Application();
     await app.init({
-      background: '#1a1a2e',
+      background: '#2a211c',
       antialias: false,
       autoDensity: true,
       resolution: integerResolution(),
@@ -121,7 +131,7 @@ export class RestaurantApp {
     useGameStore.getState().setFloorNavPosition(this.nav.position);
     this.actorLayer.sync(floor, this.nav);
 
-    if (floor.pool.some((g) => g.stage === 'eating')) {
+    if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
       while (this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS) {
         this.eatingTickAccumulatorMs -= RestaurantApp.EATING_TICK_INTERVAL_MS;
@@ -136,9 +146,12 @@ export class RestaurantApp {
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
     const player = this.actorLayer.getPlayerWorldPosition();
-    this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+    this.camera.followWorldPointSmooth(player.x, player.y, width, height, mapWpx, mapHpx);
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state);
+    this.interactHintLayer.sync(
+      this.computeInteractHints(floor, state.placements, this.nav.position),
+    );
   };
 
   private onTapMove = (event: PointerEvent): void => {
@@ -247,6 +260,80 @@ export class RestaurantApp {
     if (!state.editLayoutMode) {
       this.previewLayer.hide();
     }
+
+    if (!floor || state.editLayoutMode) {
+      this.interactHintLayer.clear();
+    }
+  }
+
+  private computeInteractHints(
+    floor: FloorDay,
+    placements: Placement[],
+    player: { x: number; y: number },
+  ): { x: number; y: number }[] {
+    const hints: { x: number; y: number }[] = [];
+    const seen = new Set<string>();
+    const add = (x: number, y: number): void => {
+      const key = `${x},${y}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      hints.push({ x, y });
+    };
+
+    const placementById = new Map(placements.map((p) => [p.id, p]));
+
+    for (const table of floor.tables) {
+      if (table.state !== 'unset' && table.state !== 'dirty') continue;
+      const placement = placementById.get(table.placementId);
+      if (!placement) continue;
+
+      const tableAdjacent =
+        playerNearPlacement(player, placement) ||
+        floor.seats
+          .filter((seat) => seat.tablePlacementId === table.placementId)
+          .some((seat) => isAdjacent(player, seat));
+
+      if (tableAdjacent) {
+        add(placement.x, placement.y);
+      }
+    }
+
+    if (floor.carriedTicketId) {
+      const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
+      if (ticket) {
+        const guest = floor.pool.find((g) => g.customer.id === ticket.customerId);
+        if (guest?.seat && isAdjacent(player, guest.seat)) {
+          add(guest.seat.x, guest.seat.y);
+        }
+      }
+    } else {
+      if (floor.selectedTicketId) {
+        for (const placement of placements) {
+          if (
+            placement.itemKey.startsWith('table') ||
+            placement.itemKey.startsWith('chair') ||
+            placement.itemKey.startsWith('decor')
+          ) {
+            continue;
+          }
+          if (playerNearPlacement(player, placement)) {
+            add(placement.x, placement.y);
+          }
+        }
+      }
+
+      for (const guest of floor.pool) {
+        if (
+          (guest.stage === 'seated' || guest.stage === 'ordered') &&
+          guest.seat &&
+          isAdjacent(player, guest.seat)
+        ) {
+          add(guest.seat.x, guest.seat.y);
+        }
+      }
+    }
+
+    return hints;
   }
 
   getCustomerScreenAnchor(): { x: number; y: number } | null {
