@@ -10,12 +10,12 @@ export { carryPlateGeometry } from './carry-plate.ts';
 
 /**
  * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
- * Player draws at 2× that → 64px (taller than a floor tile) for a readable ¾ silhouette.
- * Guests draw at 1.5× atlas → 48px.
+ * Player draws at 2.5× that → 80px for a readable ¾ silhouette over 32px tiles.
+ * Guests draw at 1.75× atlas → 56px.
  */
-const PLAYER_SCALE = 2;
-/** Guests draw at 1.5× atlas (48px) for readable silhouettes beside 32px tiles. */
-const GUEST_SCALE = 1.5;
+const PLAYER_SCALE = 2.5;
+/** Guests draw at 1.75× atlas (56px) for readable silhouettes beside 32px tiles. */
+const GUEST_SCALE = 1.75;
 /** Fallback when atlas still has legacy 16×16 frames. */
 const LEGACY_PLAYER_SCALE = (TILE_PX / ART_TILE_PX) * 2; // 4
 const LEGACY_GUEST_SCALE = TILE_PX / ART_TILE_PX; // 2
