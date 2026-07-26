@@ -5,8 +5,8 @@ import { selectUnplacedItems } from '../../store/selectors/shop.ts';
 export function mountLayoutToolbar(container: HTMLElement): () => void {
   container.innerHTML = `
     <div class="layout-toolbar">
-      <button type="button" id="toggle-edit-layout" class="layout-btn" data-testid="toggle-edit-layout" aria-pressed="true">
-        Edit Layout
+      <button type="button" id="toggle-edit-layout" class="layout-btn" data-testid="toggle-edit-layout" aria-pressed="false">
+        Edit Restaurant
       </button>
       <div class="layout-stats" aria-live="polite">
         <span id="seating-capacity">Seats: 4</span>
@@ -29,7 +29,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
     container.hidden = hideLayout || state.screen !== 'restaurant';
     if (hideLayout || state.screen !== 'restaurant') return;
     if (toggleBtn) {
-      toggleBtn.textContent = state.editLayoutMode ? 'Done Editing' : 'Edit Layout';
+      toggleBtn.textContent = state.editLayoutMode ? 'Done Editing' : 'Edit Restaurant';
       toggleBtn.setAttribute('aria-pressed', String(state.editLayoutMode));
     }
     if (seatingEl) {
@@ -65,9 +65,11 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       paletteEl.innerHTML = '';
     }
 
-    if (state.pendingPlacementItemKey && state.editLayoutMode) {
+    if (state.editLayoutMode) {
       hintEl.hidden = false;
-      hintEl.textContent = 'Tap an empty grid tile to place the selected item.';
+      hintEl.textContent = state.pendingPlacementItemKey
+        ? 'Tap an empty valid tile to place the selected item.'
+        : 'Drag tables and kitchen stations to a valid tile. Chairs stay with their table.';
     } else {
       hintEl.hidden = true;
       hintEl.textContent = '';

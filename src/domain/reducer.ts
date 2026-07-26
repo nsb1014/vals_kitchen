@@ -186,14 +186,23 @@ export function gameReducer(
     }
 
     case 'PLACE_ITEM': {
+      if (state.activeDay) {
+        throw new Error('Cannot edit layout during service');
+      }
       return { state: applyPlaceItem(state, action.placement), events };
     }
 
     case 'REMOVE_ITEM': {
+      if (state.activeDay) {
+        throw new Error('Cannot edit layout during service');
+      }
       return { state: applyRemoveItem(state, action.placementId), events };
     }
 
     case 'MOVE_ITEM': {
+      if (state.activeDay) {
+        throw new Error('Cannot edit layout during service');
+      }
       return {
         state: applyMoveItem(state, action.placementId, action.x, action.y),
         events,

@@ -195,6 +195,11 @@ export function mountServiceDayUi(
     }
 
     if (!state.activeDay) {
+      if (state.editLayoutMode) {
+        serviceOverlay.hidden = true;
+        serviceOverlay.innerHTML = '';
+        return;
+      }
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
@@ -203,12 +208,17 @@ export function mountServiceDayUi(
             <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="open-day-btn" data-testid="open-day-btn">Open Restaurant</button>
+              <button type="button" class="service-btn" id="edit-restaurant-btn" data-testid="edit-restaurant-btn">Edit Restaurant</button>
             </div>
           </div>
         </div>
       `;
       serviceOverlay.querySelector('#open-day-btn')?.addEventListener('click', () => {
         useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }, { once: true });
+      serviceOverlay.querySelector('#edit-restaurant-btn')?.addEventListener('click', () => {
+        const store = useGameStore.getState();
+        if (!store.editLayoutMode) store.toggleEditLayout();
       }, { once: true });
       return;
     }
@@ -501,6 +511,7 @@ export function mountServiceDayUi(
       state.pendingReview !== prev.pendingReview ||
       state.daySummary !== prev.daySummary ||
       state.ceremony !== prev.ceremony ||
+      state.editLayoutMode !== prev.editLayoutMode ||
       state.cash !== prev.cash ||
       state.rating !== prev.rating ||
       state.prestige !== prev.prestige ||

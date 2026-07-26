@@ -216,7 +216,7 @@ function buildDaySummary(
 export const useGameStore = createStore<GameStore>((set, get) => ({
   ...createNewGameState(),
   screen: 'restaurant',
-  editLayoutMode: true,
+  editLayoutMode: false,
   hydrated: false,
   persistGranted: false,
   modifierDismissed: false,
@@ -240,7 +240,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     set({
       ...state,
       screen: 'restaurant',
-      editLayoutMode: state.activeDay ? false : true,
+      editLayoutMode: false,
       hydrated: true,
       persistGranted: persist.granted,
       modifierDismissed: state.activeDay ? true : false,
@@ -288,7 +288,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.modifierDismissed = false;
         patch.pendingReview = null;
         patch.dayStartRating = null;
-        patch.editLayoutMode = true;
+        patch.editLayoutMode = false;
         patch.floorPlayerGrid = null;
         patch.floorToast = null;
         break;
@@ -339,7 +339,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       set({
         ...imported,
         screen: 'restaurant',
-        editLayoutMode: !imported.activeDay,
+        editLayoutMode: false,
         hydrated: true,
         modifierDismissed: imported.activeDay ? true : false,
         pendingReview: null,
@@ -439,7 +439,11 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   toggleEditLayout() {
     const current = get();
     if (current.activeDay) return;
-    set({ editLayoutMode: !current.editLayoutMode });
+    const next = !current.editLayoutMode;
+    set({
+      editLayoutMode: next,
+      pendingPlacementItemKey: next ? current.pendingPlacementItemKey : null,
+    });
   },
 
   canPlaceAt(placement, excludeId) {
