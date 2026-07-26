@@ -25,7 +25,7 @@
 | Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
 | Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
 | Overnight program Track B — service immersion | **Done** — carry plate, door wait/leave, interact hints, soft camera; fast suite 133 ([plan](./superpowers/plans/2026-07-26-track-b-service-immersion.md)) |
-| Overnight program Track C — loop completeness | **Not started** |
+| Overnight program Track C — loop completeness | **Done** — mid-day review Continue, floor autosave/hydrate, summary→shop/floor, tutorial close step; fast suite 144 ([plan](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)) |
 | Overnight program Track D — meta depth | **Not started** |
 
 ---
@@ -71,7 +71,7 @@
 | 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, path-lerp walk + Urban walk cycle, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast; gzip 173,070 |
 | A | Cozy visual identity | Done | Generated diner tiles/furniture, feet-align, character walk packs, `--vk-*` UI palette; fast suite 131; gzip 179,236 |
 | B | Service immersion | Done | Carry plate, leaving→door, interact hints, soft camera; fast suite 133 |
-| C | Loop completeness | Not started | Tutorial → day → summary → shop airtight |
+| C | Loop completeness | Done | Review Continue, floor autosave, summary Shop/Floor, tutorial close; fast suite 144 |
 | D | Meta depth | Not started | Mastery/pacing closer to GPGP |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
@@ -99,13 +99,14 @@
 | 2026-07-25 | Approach A: network-first PWA shell/JS; slower walk + dest marker; 32×32 NN character atlas + 64px player draw; reused actor sprites; fast suite green |
 | 2026-07-26 | Overnight program design (locked north star); Track A Done: cozy generated restaurant art + warm UI; fast suite 131; gzip 179,236 |
 | 2026-07-26 | Track B Done: carry plate, door wait/leave ticks, interact adjacency hints, soft camera follow; fast suite 133 |
+| 2026-07-26 | Track C Done: mid-day review Continue, FLOOR_/OPEN_DAY autosave, summary mastery + Shop/Floor CTAs, tutorial close step; fast suite 144 |
 
 ---
 
 ## Cross-References
 
 - Implementation plan detail: [Plan.md](./Plan.md)
-- Overnight program: [design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [Track A plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md), [Track B plan](./superpowers/plans/2026-07-26-track-b-service-immersion.md)
+- Overnight program: [design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [Track A](./superpowers/plans/2026-07-26-track-a-visual-identity.md), [Track B](./superpowers/plans/2026-07-26-track-b-service-immersion.md), [Track C](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)
 - Immersive floor: [design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [vertical-slice plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)
 - Known risks: [Error-Tracker.md](./Error-Tracker.md)
 - Product requirements: [PRD.md](./PRD.md)

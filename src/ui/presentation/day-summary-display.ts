@@ -9,6 +9,8 @@ export interface DaySummaryDisplayInput {
   customersServed: number;
   unlockCount: number;
   totalIngredients: number;
+  /** Optional preformatted mastery / discovery lines from the store summary builder. */
+  masteryLines?: string[];
 }
 
 export interface DaySummaryDisplay {
@@ -18,6 +20,13 @@ export interface DaySummaryDisplay {
   ratingDeltaText: string;
   unlockProgressText: string;
   customersServedText: string;
+  /** Null when the store does not supply mastery/discovery info for the day. */
+  masteryLine: string | null;
+}
+
+export function formatMasterySummaryLine(masteryLines: string[] | undefined): string | null {
+  if (!masteryLines || masteryLines.length === 0) return null;
+  return `Recipe mastery: ${masteryLines.join(', ')}`;
 }
 
 export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummaryDisplay {
@@ -33,5 +42,6 @@ export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummar
     ratingDeltaText: `Rating change: ${formatRatingDelta(ratingDelta)} (${input.ratingStart.toFixed(1)} → ${input.ratingEnd.toFixed(1)})`,
     unlockProgressText: `Ingredients unlocked: ${input.unlockCount} / ${input.totalIngredients}`,
     customersServedText: `Customers served: ${input.customersServed}`,
+    masteryLine: formatMasterySummaryLine(input.masteryLines),
   };
 }

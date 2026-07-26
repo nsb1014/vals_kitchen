@@ -58,6 +58,7 @@ export interface GameStore extends GameState, StoreMeta {
   hydrate: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
   dismissModifier: () => void;
+  dismissPendingReview: () => void;
   dismissDaySummary: () => void;
   dismissCeremony: () => void;
   toggleEditLayout: () => void;
@@ -82,6 +83,7 @@ const META_KEYS = [
   'hydrate',
   'dispatch',
   'dismissModifier',
+  'dismissPendingReview',
   'dismissDaySummary',
   'dismissCeremony',
   'toggleEditLayout',
@@ -167,6 +169,18 @@ function applyReducerEvents(
   Object.assign(patch, mapReducerEventsToUi(events, before, existingReviews));
 }
 
+function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
+  return (
+    actionType === 'SET_COMPOSE_DRAFT' ||
+    actionType === 'SERVE_DISH' ||
+    actionType === 'CLOSE_DAY' ||
+    actionType === 'PURCHASE' ||
+    actionType === 'OPEN_DAY' ||
+    actionType === 'PLACE_ITEM' ||
+    actionType.startsWith('FLOOR_')
+  );
+}
+
 function buildDaySummary(
   before: GameState,
   after: GameState,
@@ -177,6 +191,14 @@ function buildDaySummary(
       ? activeDay.dayMatchSum / activeDay.customersServed
       : 0;
   const dayBonus = dayBonusEarnings(activeDay.dayEarnings, averageMatch);
+  const masteryLines: string[] = [];
+  for (const [recipeId, afterEntry] of Object.entries(after.recipeMastery)) {
+    const beforeEntry = before.recipeMastery[recipeId];
+    const beforeLevel = beforeEntry?.level ?? 0;
+    if (afterEntry.level > beforeLevel) {
+      masteryLines.push(`${recipeId} → Lv.${afterEntry.level}`);
+    }
+  }
   return buildDaySummaryDisplay({
     dayEarnings: activeDay.dayEarnings,
     dayBonus,
@@ -186,6 +208,7 @@ function buildDaySummary(
     customersServed: activeDay.customersServed,
     unlockCount: before.unlockedIngredientIds.length,
     totalIngredients: getDomainContext().ingredients.length,
+    masteryLines,
   });
 }
 
@@ -230,7 +253,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       pendingPlacementItemKey: null,
       audioEnabled: true,
       musicEnabled: false,
-      floorPlayerGrid: null,
+      floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
     });
   },
@@ -253,7 +276,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.ceremonyPrestige = null;
         patch.dayStartRating = before.rating;
         patch.editLayoutMode = false;
-        patch.floorPlayerGrid = null;
+        patch.floorPlayerGrid = result.state.activeDay?.floor?.playerPosition ?? null;
         patch.floorToast = null;
         break;
       case 'NEXT_CUSTOMER':
@@ -280,12 +303,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
     set(patch);
 
-    if (
-      action.type === 'SET_COMPOSE_DRAFT' ||
-      action.type === 'SERVE_DISH' ||
-      action.type === 'CLOSE_DAY' ||
-      action.type === 'PURCHASE'
-    ) {
+    if (shouldAutosaveAfterDispatch(action.type)) {
       void get().autosave();
     }
   },
@@ -403,6 +421,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   dismissModifier() {
     set({ modifierDismissed: true });
+  },
+
+  dismissPendingReview() {
+    set({ pendingReview: null });
   },
 
   dismissDaySummary() {

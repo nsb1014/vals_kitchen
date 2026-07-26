@@ -1,3 +1,4 @@
+import { isFloorDayComplete } from './sim.ts';
 import type { FloorDay } from './types.ts';
 
 export type TutorialStepId =
@@ -7,6 +8,7 @@ export type TutorialStepId =
   | 'cook'
   | 'deliver'
   | 'clear'
+  | 'close'
   | 'done';
 
 const ORDER: TutorialStepId[] = [
@@ -16,6 +18,7 @@ const ORDER: TutorialStepId[] = [
   'cook',
   'deliver',
   'clear',
+  'close',
   'done',
 ];
 
@@ -33,6 +36,8 @@ export function tutorialPrompt(step: TutorialStepId | null): string | null {
       return 'Deliver the plated dish to the matching guest.';
     case 'clear':
       return 'Clear dirty tables after guests leave.';
+    case 'close':
+      return 'When the floor is clear, close the day.';
     case 'done':
       return null;
     default:
@@ -63,6 +68,8 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
     if (anyWaiting) return 'wait_seat';
     return 'take_orders';
   }
+
+  if (isFloorDayComplete(day)) return 'close';
 
   return 'done';
 }

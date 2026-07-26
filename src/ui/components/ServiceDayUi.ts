@@ -151,6 +151,8 @@ export function mountServiceDayUi(
     const state = useGameStore.getState();
 
     if (state.daySummary) {
+      const masteryLine =
+        'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
@@ -162,14 +164,23 @@ export function mountServiceDayUi(
             <p class="review-detail">${state.daySummary.ratingDeltaText}</p>
             <p class="review-detail">${state.daySummary.unlockProgressText}</p>
             <p class="review-detail">${state.daySummary.customersServedText}</p>
+            ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
             <div class="service-actions">
-              <button type="button" class="service-btn primary" id="dismiss-summary" data-testid="dismiss-summary">Continue</button>
+              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Back to floor</button>
+              <button type="button" class="service-btn primary" id="summary-visit-shop" data-testid="summary-visit-shop">Visit shop</button>
             </div>
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#dismiss-summary')?.addEventListener('click', () => {
-        useGameStore.getState().dismissDaySummary();
+      serviceOverlay.querySelector('#summary-back-floor')?.addEventListener('click', () => {
+        const store = useGameStore.getState();
+        store.dismissDaySummary();
+        store.navigateTo('restaurant');
+      }, { once: true });
+      serviceOverlay.querySelector('#summary-visit-shop')?.addEventListener('click', () => {
+        const store = useGameStore.getState();
+        store.dismissDaySummary();
+        store.navigateTo('shop');
       }, { once: true });
       return;
     }
@@ -238,7 +249,9 @@ export function mountServiceDayUi(
                   ? '<button type="button" class="service-btn primary" id="close-day-btn" data-testid="close-day-btn">Close Day</button>'
                   : canAdvance
                     ? '<button type="button" class="service-btn primary" id="next-customer-btn" data-testid="next-customer-btn">Next Customer</button>'
-                    : ''
+                    : floorActive
+                      ? '<button type="button" class="service-btn primary" id="continue-service-btn" data-testid="continue-service-btn">Continue service</button>'
+                      : ''
               }
             </div>
           </div>
@@ -249,6 +262,16 @@ export function mountServiceDayUi(
       }, { once: true });
       serviceOverlay.querySelector('#close-day-btn')?.addEventListener('click', () => {
         useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+      }, { once: true });
+      serviceOverlay.querySelector('#continue-service-btn')?.addEventListener('click', () => {
+        const store = useGameStore.getState() as {
+          dismissPendingReview?: () => void;
+        };
+        if (typeof store.dismissPendingReview === 'function') {
+          store.dismissPendingReview();
+        } else {
+          useGameStore.setState({ pendingReview: null });
+        }
       }, { once: true });
       return;
     }
