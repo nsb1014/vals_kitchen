@@ -3,7 +3,7 @@ import { getCharacterTexture } from '../../assets/loader.ts';
 import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
-import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
+import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
@@ -13,15 +13,13 @@ export { carryPlateGeometry } from './carry-plate.ts';
 
 /**
  * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
- * Player draws at 2.5× that → 80px for a readable ¾ silhouette over 32px tiles.
- * Guests draw at 1.75× atlas → 56px.
+ * Player and guests share one draw scale so they match each other and the
+ * 32×48 furniture — earlier 2.5× / 1.75× made the cook a giant next to guests.
+ * 1.5× → 48px tall (~1.5 tiles), readable without dwarfing tables.
  */
-const PLAYER_SCALE = 2.5;
-/** Guests draw at 1.75× atlas (56px) for readable silhouettes beside 32px tiles. */
-const GUEST_SCALE = 1.75;
-/** Fallback when atlas still has legacy 16×16 frames. */
-const LEGACY_PLAYER_SCALE = (TILE_PX / ART_TILE_PX) * 2; // 4
-const LEGACY_GUEST_SCALE = TILE_PX / ART_TILE_PX; // 2
+const ACTOR_SCALE = 1.5;
+/** Fallback when atlas still has legacy 16×16 frames (16×3 = 48px). */
+const LEGACY_ACTOR_SCALE = 3;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   waiting: 0xffc857,
@@ -148,7 +146,7 @@ export class ActorLayer {
         getCharacterTexture('customer');
       if (texture) {
         this.playerSprite.texture = texture;
-        this.playerSprite.scale.set(scaleForTexture(texture, PLAYER_SCALE, LEGACY_PLAYER_SCALE));
+        this.playerSprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
@@ -215,7 +213,7 @@ export class ActorLayer {
           getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b');
         if (texture) {
           entry.sprite.texture = texture;
-          entry.sprite.scale.set(scaleForTexture(texture, GUEST_SCALE, LEGACY_GUEST_SCALE));
+          entry.sprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
           entry.sprite.visible = true;
         } else {
           entry.sprite.visible = false;

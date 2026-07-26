@@ -3,7 +3,7 @@ import { TILE_PX, gridToWorld } from '../coordinates.ts';
 
 /**
  * Center-to-center spacing along the wait line.
- * Guests draw ~56px wide; ≥1.75 tiles keeps silhouettes from stacking.
+ * Guests draw ~48px wide; ≥1.75 tiles keeps silhouettes from stacking.
  */
 export const WAIT_LINE_SPACING_PX = TILE_PX * 1.75;
 
