@@ -66,7 +66,9 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
 
 async function advanceFloorToCarryTicket(): Promise<{
   ticketId: string;
-  floorBeforeSave: NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor'];
+  floorBeforeSave: NonNullable<
+    NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor']
+  >;
 }> {
   await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
   useGameStore.getState().dismissModifier();
