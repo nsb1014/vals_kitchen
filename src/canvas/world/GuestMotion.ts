@@ -38,14 +38,11 @@ export class GuestMotion {
   sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
     const enteredGuestIds: string[] = [];
-    let waitingIndex = 0;
 
     for (const guest of floor.pool) {
       if (guest.stage === 'done' || guest.stage === 'queued') continue;
       seen.add(guest.id);
-      const waitIdx =
-        guest.stage === 'waiting' || guest.stage === 'entering' ? waitingIndex++ : 0;
-      const finished = this.syncGuest(guest, waitIdx, opts);
+      const finished = this.syncGuest(guest, opts);
       if (finished) enteredGuestIds.push(guest.id);
     }
 
@@ -86,7 +83,6 @@ export class GuestMotion {
 
   private syncGuest(
     guest: FloorGuest,
-    waitingIndex: number,
     opts: GuestMotionSyncOpts,
   ): boolean {
     let nav = this.navs.get(guest.id);
@@ -94,7 +90,7 @@ export class GuestMotion {
       const start =
         guest.stage === 'entering'
           ? { ...opts.door }
-          : this.defaultCell(guest, waitingIndex, opts.door);
+          : this.defaultCell(guest, opts.door);
       nav = new NavController(start, 2.4);
       this.navs.set(guest.id, nav);
     }
@@ -182,7 +178,7 @@ export class GuestMotion {
     return false;
   }
 
-  private defaultCell(guest: FloorGuest, waitingIndex: number, door: GridPoint): GridPoint {
+  private defaultCell(guest: FloorGuest, door: GridPoint): GridPoint {
     if (guest.seat) return { x: guest.seat.x, y: guest.seat.y };
     if (guest.stage === 'entering') return { ...door };
     return waitingAreaGridAnchor(door);
