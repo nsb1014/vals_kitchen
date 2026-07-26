@@ -57,6 +57,11 @@ export function perimeterWallEdge(
   return 'e';
 }
 
+/** Atlas frame for a perimeter wall edge (wainscot faces room interior). */
+export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterWallEdge}` {
+  return `wall_${edge}`;
+}
+
 /**
  * Dining / kitchen / door for any grid size.
  * Kitchen stays the eastmost STARTER_KITCHEN_WIDTH columns; dining is the rest.

@@ -5,8 +5,8 @@ import {
   isKitchenCell,
   isPerimeterWallCell,
   perimeterWallEdge,
+  wallTileNameForEdge,
 } from '../../domain/floor/starter-map.ts';
-import { wallTileNameForEdge } from '../../canvas/layers/GridLayer.ts';
 
 describe('createStarterMap', () => {
   it('provides a full room with two tables and prep in kitchen', () => {

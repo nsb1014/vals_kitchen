@@ -5,17 +5,11 @@ import {
   isPerimeterWallCell,
   mapZonesForGrid,
   perimeterWallEdge,
-  type PerimeterWallEdge,
 } from '../../domain/floor/starter-map.ts';
 import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
 const GRID_LINE_COLOR = 0x2a2a40;
-
-/** Atlas frame for a perimeter wall edge (wainscot faces room interior). */
-export function wallTileNameForEdge(edge: PerimeterWallEdge): `wall_${PerimeterWallEdge}` {
-  return `wall_${edge}`;
-}
 
 export class GridLayer {
   readonly view = new Container();

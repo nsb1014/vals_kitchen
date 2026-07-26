@@ -56,6 +56,12 @@ test.describe('layout editing', () => {
   test('dragging furniture from tile center moves it to the target tile center', async ({ page }) => {
     await gotoFreshGame(page);
 
+    await page.locator('[data-testid="edit-restaurant-btn"]').click();
+    await expect(page.locator('[data-testid="toggle-edit-layout"]')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
     const before = await page.evaluate(() => window.__E2E__!.getPlacements());
     const table = before.find((item) => item.id === 'table_1');
     expect(table).toBeDefined();
