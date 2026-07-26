@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-26T21:10:05.667Z",
+  "generatedAt": "2026-07-26T21:26:53.270Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -409,7 +409,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0023.png",
+      "sourceFile": "Tiles/tile_0104.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -419,9 +419,9 @@
       "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
       "license": "CC0",
       "usedIn": [
-        "canvas:ActorLayer (player)"
+        "canvas:ActorLayer (player / red-haired cook)"
       ],
-      "sourceFile": "Tiles/tile_0024.png",
+      "sourceFile": "Tiles/tile_0105.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -433,7 +433,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0025.png",
+      "sourceFile": "Tiles/tile_0106.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -445,7 +445,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0026.png",
+      "sourceFile": "Tiles/tile_0107.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -457,7 +457,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0050.png",
+      "sourceFile": "Tiles/tile_0131.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -469,7 +469,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0051.png",
+      "sourceFile": "Tiles/tile_0132.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -481,7 +481,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0052.png",
+      "sourceFile": "Tiles/tile_0133.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -493,7 +493,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0053.png",
+      "sourceFile": "Tiles/tile_0134.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -505,7 +505,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0077.png",
+      "sourceFile": "Tiles/tile_0158.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -517,7 +517,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0078.png",
+      "sourceFile": "Tiles/tile_0159.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -529,7 +529,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0079.png",
+      "sourceFile": "Tiles/tile_0160.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -541,7 +541,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0080.png",
+      "sourceFile": "Tiles/tile_0161.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -563,7 +563,7 @@
       "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
       "license": "CC0",
       "usedIn": [
-        "canvas:ActorLayer (guest A)"
+        "canvas:ActorLayer (guest A — messy brown hair)"
       ],
       "sourceFile": "Tiles/tile_0024.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
@@ -697,7 +697,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0104.png",
+      "sourceFile": "Tiles/tile_0185.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -707,9 +707,9 @@
       "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
       "license": "CC0",
       "usedIn": [
-        "canvas:ActorLayer (guest B)"
+        "canvas:ActorLayer (guest B — purple hair)"
       ],
-      "sourceFile": "Tiles/tile_0105.png",
+      "sourceFile": "Tiles/tile_0186.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -721,7 +721,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0106.png",
+      "sourceFile": "Tiles/tile_0187.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -733,7 +733,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0107.png",
+      "sourceFile": "Tiles/tile_0188.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -745,7 +745,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0131.png",
+      "sourceFile": "Tiles/tile_0212.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -757,7 +757,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0132.png",
+      "sourceFile": "Tiles/tile_0213.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -769,7 +769,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0133.png",
+      "sourceFile": "Tiles/tile_0214.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -781,7 +781,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0134.png",
+      "sourceFile": "Tiles/tile_0215.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -793,7 +793,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0158.png",
+      "sourceFile": "Tiles/tile_0239.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -805,7 +805,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0159.png",
+      "sourceFile": "Tiles/tile_0240.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -817,7 +817,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0160.png",
+      "sourceFile": "Tiles/tile_0241.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -829,7 +829,439 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0161.png",
+      "sourceFile": "Tiles/tile_0242.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_left_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0266.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_down_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (guest C — hard hat / dark skin)"
+      ],
+      "sourceFile": "Tiles/tile_0267.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_up_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0268.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_right_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0269.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_left_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0293.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_down_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0294.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_up_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0295.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_right_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0296.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_left_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0320.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_down_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0321.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_up_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0322.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_right_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0323.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_left_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0347.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_down_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (guest D — balding)"
+      ],
+      "sourceFile": "Tiles/tile_0348.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_up_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0349.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_right_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0350.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_left_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0374.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_down_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0375.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_up_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0376.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_right_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0377.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_left_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0401.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_down_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0402.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_up_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0403.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_right_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0404.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_left_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0428.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_down_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (guest E — black hair / headband)"
+      ],
+      "sourceFile": "Tiles/tile_0429.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_up_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0430.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_right_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0431.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_left_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0455.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_down_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0456.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_up_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0457.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_right_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0458.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_left_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0482.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_down_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0483.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_up_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0484.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_right_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0485.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -854,7 +1286,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0105.png",
+      "sourceFile": "Tiles/tile_0186.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -866,7 +1298,7 @@
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0024.png",
+      "sourceFile": "Tiles/tile_0105.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -878,7 +1310,7 @@
       "usedIn": [
         "canvas:ActorLayer (player walk)"
       ],
-      "sourceFile": "Tiles/tile_0051.png",
+      "sourceFile": "Tiles/tile_0132.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -975,6 +1407,150 @@
         "canvas:ActorLayer (seated guests)"
       ],
       "sourceFile": "guest_b_sit_right.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_left",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_c_sit_left.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_down",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_c_sit_down.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_up",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_c_sit_up.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_right",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_c_sit_right.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_left",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_d_sit_left.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_down",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_d_sit_down.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_up",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_d_sit_up.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_right",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_d_sit_right.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_left",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_e_sit_left.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_down",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_e_sit_down.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_up",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_e_sit_up.png",
+      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_right",
+      "pack": "Project-generated character sit poses (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/character-sit/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (seated guests)"
+      ],
+      "sourceFile": "guest_e_sit_right.png",
       "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
     },
     {

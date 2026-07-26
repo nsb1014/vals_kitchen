@@ -15,16 +15,34 @@ ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "vendor" / "kenney" / "sources" / "rpg-urban-pack" / "Tiles"
 OUT = ROOT / "vendor" / "generated" / "character-sit"
 
-# Idle frame 0 for each facing × variant (matches build-assets CHARACTER_SPRITES).
+# Idle frame 0 for each facing × guest variant (matches build-assets CHARACTER_SPRITES).
+# Player (red-haired girl) has no sit set — guests only.
 SOURCES: dict[str, str] = {
+    # A — messy orange-brown hair
     "guest_a_sit_left": "tile_0023.png",
     "guest_a_sit_down": "tile_0024.png",
     "guest_a_sit_up": "tile_0025.png",
     "guest_a_sit_right": "tile_0026.png",
-    "guest_b_sit_left": "tile_0104.png",
-    "guest_b_sit_down": "tile_0105.png",
-    "guest_b_sit_up": "tile_0106.png",
-    "guest_b_sit_right": "tile_0107.png",
+    # B — purple hair / beard
+    "guest_b_sit_left": "tile_0185.png",
+    "guest_b_sit_down": "tile_0186.png",
+    "guest_b_sit_up": "tile_0187.png",
+    "guest_b_sit_right": "tile_0188.png",
+    # C — hard hat, dark skin
+    "guest_c_sit_left": "tile_0266.png",
+    "guest_c_sit_down": "tile_0267.png",
+    "guest_c_sit_up": "tile_0268.png",
+    "guest_c_sit_right": "tile_0269.png",
+    # D — balding
+    "guest_d_sit_left": "tile_0347.png",
+    "guest_d_sit_down": "tile_0348.png",
+    "guest_d_sit_up": "tile_0349.png",
+    "guest_d_sit_right": "tile_0350.png",
+    # E — black hair + headband
+    "guest_e_sit_left": "tile_0428.png",
+    "guest_e_sit_down": "tile_0429.png",
+    "guest_e_sit_up": "tile_0430.png",
+    "guest_e_sit_right": "tile_0431.png",
 }
 
 
@@ -71,7 +89,6 @@ def make_sit(src: Image.Image, facing: str) -> Image.Image:
     # Seated lower body: short block under torso + feet tucked toward facing.
     seat_y0, seat_y1 = 13, 15
     if facing in ("left", "right"):
-        # Side sit: hips centered, legs extend slightly toward facing.
         hip_xs = range(5, 11)
         foot_xs = range(3, 8) if facing == "left" else range(8, 13)
         for y in range(seat_y0, seat_y1):
@@ -82,14 +99,12 @@ def make_sit(src: Image.Image, facing: str) -> Image.Image:
             if 0 <= x + (1 if facing == "right" else -1) < w:
                 out.putpixel((x, 14), pant)
     elif facing == "up":
-        # Back sit: compact rear silhouette, no face detail needed.
         for y in range(seat_y0, seat_y1):
             for x in range(5, 11):
                 out.putpixel((x, y), pant)
         for x in range(5, 11):
             out.putpixel((x, 15), shoe)
     else:
-        # Front sit: knees forward, feet as two short stubs.
         for y in range(seat_y0, seat_y1):
             for x in range(4, 12):
                 out.putpixel((x, y), pant)

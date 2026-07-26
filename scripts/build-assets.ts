@@ -123,21 +123,26 @@ const FURNITURE_SPRITES: Record<string, string> = {
   decor_plant: 'decor_plant.png',
 };
 
+/**
+ * Walk cycles from Kenney RPG Urban Pack (left, down, up, right × 3 frames).
+ * Player = red-haired girl sheet. Guests a–e = distinct hair/skin/style looks
+ * (player sheet is not reused for guests so the cook stays unique).
+ */
 const CHARACTER_SPRITES = {
-  // Green-shirt urban walk cycle (cols: left, down, up, right × 3 frames)
-  player_left_0: 'Tiles/tile_0023.png',
-  player_down_0: 'Tiles/tile_0024.png',
-  player_up_0: 'Tiles/tile_0025.png',
-  player_right_0: 'Tiles/tile_0026.png',
-  player_left_1: 'Tiles/tile_0050.png',
-  player_down_1: 'Tiles/tile_0051.png',
-  player_up_1: 'Tiles/tile_0052.png',
-  player_right_1: 'Tiles/tile_0053.png',
-  player_left_2: 'Tiles/tile_0077.png',
-  player_down_2: 'Tiles/tile_0078.png',
-  player_up_2: 'Tiles/tile_0079.png',
-  player_right_2: 'Tiles/tile_0080.png',
-  // Guest A = green sheet (same cook-adjacent outfit, distinct from red guests)
+  // Player: long red-haired girl (was guest_b)
+  player_left_0: 'Tiles/tile_0104.png',
+  player_down_0: 'Tiles/tile_0105.png',
+  player_up_0: 'Tiles/tile_0106.png',
+  player_right_0: 'Tiles/tile_0107.png',
+  player_left_1: 'Tiles/tile_0131.png',
+  player_down_1: 'Tiles/tile_0132.png',
+  player_up_1: 'Tiles/tile_0133.png',
+  player_right_1: 'Tiles/tile_0134.png',
+  player_left_2: 'Tiles/tile_0158.png',
+  player_down_2: 'Tiles/tile_0159.png',
+  player_up_2: 'Tiles/tile_0160.png',
+  player_right_2: 'Tiles/tile_0161.png',
+  // Guest A: messy orange-brown hair, light skin, green shirt
   guest_a_left_0: 'Tiles/tile_0023.png',
   guest_a_down_0: 'Tiles/tile_0024.png',
   guest_a_up_0: 'Tiles/tile_0025.png',
@@ -150,24 +155,63 @@ const CHARACTER_SPRITES = {
   guest_a_down_2: 'Tiles/tile_0078.png',
   guest_a_up_2: 'Tiles/tile_0079.png',
   guest_a_right_2: 'Tiles/tile_0080.png',
-  // Guest B = red-shirt walk cycle
-  guest_b_left_0: 'Tiles/tile_0104.png',
-  guest_b_down_0: 'Tiles/tile_0105.png',
-  guest_b_up_0: 'Tiles/tile_0106.png',
-  guest_b_right_0: 'Tiles/tile_0107.png',
-  guest_b_left_1: 'Tiles/tile_0131.png',
-  guest_b_down_1: 'Tiles/tile_0132.png',
-  guest_b_up_1: 'Tiles/tile_0133.png',
-  guest_b_right_1: 'Tiles/tile_0134.png',
-  guest_b_left_2: 'Tiles/tile_0158.png',
-  guest_b_down_2: 'Tiles/tile_0159.png',
-  guest_b_up_2: 'Tiles/tile_0160.png',
-  guest_b_right_2: 'Tiles/tile_0161.png',
+  // Guest B: purple hair + beard, light skin
+  guest_b_left_0: 'Tiles/tile_0185.png',
+  guest_b_down_0: 'Tiles/tile_0186.png',
+  guest_b_up_0: 'Tiles/tile_0187.png',
+  guest_b_right_0: 'Tiles/tile_0188.png',
+  guest_b_left_1: 'Tiles/tile_0212.png',
+  guest_b_down_1: 'Tiles/tile_0213.png',
+  guest_b_up_1: 'Tiles/tile_0214.png',
+  guest_b_right_1: 'Tiles/tile_0215.png',
+  guest_b_left_2: 'Tiles/tile_0239.png',
+  guest_b_down_2: 'Tiles/tile_0240.png',
+  guest_b_up_2: 'Tiles/tile_0241.png',
+  guest_b_right_2: 'Tiles/tile_0242.png',
+  // Guest C: hard hat, dark skin
+  guest_c_left_0: 'Tiles/tile_0266.png',
+  guest_c_down_0: 'Tiles/tile_0267.png',
+  guest_c_up_0: 'Tiles/tile_0268.png',
+  guest_c_right_0: 'Tiles/tile_0269.png',
+  guest_c_left_1: 'Tiles/tile_0293.png',
+  guest_c_down_1: 'Tiles/tile_0294.png',
+  guest_c_up_1: 'Tiles/tile_0295.png',
+  guest_c_right_1: 'Tiles/tile_0296.png',
+  guest_c_left_2: 'Tiles/tile_0320.png',
+  guest_c_down_2: 'Tiles/tile_0321.png',
+  guest_c_up_2: 'Tiles/tile_0322.png',
+  guest_c_right_2: 'Tiles/tile_0323.png',
+  // Guest D: balding / short hair, light skin
+  guest_d_left_0: 'Tiles/tile_0347.png',
+  guest_d_down_0: 'Tiles/tile_0348.png',
+  guest_d_up_0: 'Tiles/tile_0349.png',
+  guest_d_right_0: 'Tiles/tile_0350.png',
+  guest_d_left_1: 'Tiles/tile_0374.png',
+  guest_d_down_1: 'Tiles/tile_0375.png',
+  guest_d_up_1: 'Tiles/tile_0376.png',
+  guest_d_right_1: 'Tiles/tile_0377.png',
+  guest_d_left_2: 'Tiles/tile_0401.png',
+  guest_d_down_2: 'Tiles/tile_0402.png',
+  guest_d_up_2: 'Tiles/tile_0403.png',
+  guest_d_right_2: 'Tiles/tile_0404.png',
+  // Guest E: black hair + headband, tan skin
+  guest_e_left_0: 'Tiles/tile_0428.png',
+  guest_e_down_0: 'Tiles/tile_0429.png',
+  guest_e_up_0: 'Tiles/tile_0430.png',
+  guest_e_right_0: 'Tiles/tile_0431.png',
+  guest_e_left_1: 'Tiles/tile_0455.png',
+  guest_e_down_1: 'Tiles/tile_0456.png',
+  guest_e_up_1: 'Tiles/tile_0457.png',
+  guest_e_right_1: 'Tiles/tile_0458.png',
+  guest_e_left_2: 'Tiles/tile_0482.png',
+  guest_e_down_2: 'Tiles/tile_0483.png',
+  guest_e_up_2: 'Tiles/tile_0484.png',
+  guest_e_right_2: 'Tiles/tile_0485.png',
   // Legacy names kept for CustomerLayer / older callers
   customer: 'Tiles/tile_0024.png',
-  customer_b: 'Tiles/tile_0105.png',
-  player: 'Tiles/tile_0024.png',
-  player_walk: 'Tiles/tile_0051.png',
+  customer_b: 'Tiles/tile_0186.png',
+  player: 'Tiles/tile_0105.png',
+  player_walk: 'Tiles/tile_0132.png',
 } as const;
 
 /** Project-derived sit poses (generated under vendor/generated/character-sit/). */
@@ -180,6 +224,18 @@ const CHARACTER_SIT_SPRITES = {
   guest_b_sit_down: 'guest_b_sit_down.png',
   guest_b_sit_up: 'guest_b_sit_up.png',
   guest_b_sit_right: 'guest_b_sit_right.png',
+  guest_c_sit_left: 'guest_c_sit_left.png',
+  guest_c_sit_down: 'guest_c_sit_down.png',
+  guest_c_sit_up: 'guest_c_sit_up.png',
+  guest_c_sit_right: 'guest_c_sit_right.png',
+  guest_d_sit_left: 'guest_d_sit_left.png',
+  guest_d_sit_down: 'guest_d_sit_down.png',
+  guest_d_sit_up: 'guest_d_sit_up.png',
+  guest_d_sit_right: 'guest_d_sit_right.png',
+  guest_e_sit_left: 'guest_e_sit_left.png',
+  guest_e_sit_down: 'guest_e_sit_down.png',
+  guest_e_sit_up: 'guest_e_sit_up.png',
+  guest_e_sit_right: 'guest_e_sit_right.png',
 } as const;
 
 const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
@@ -311,10 +367,13 @@ function buildCredits(shippedFiles: string[]): void {
   }
 
   const characterUsedIn: Record<string, string[]> = {
-    player_down_0: ['canvas:ActorLayer (player)'],
+    player_down_0: ['canvas:ActorLayer (player / red-haired cook)'],
     player_walk: ['canvas:ActorLayer (player walk)'],
-    guest_a_down_0: ['canvas:ActorLayer (guest A)'],
-    guest_b_down_0: ['canvas:ActorLayer (guest B)'],
+    guest_a_down_0: ['canvas:ActorLayer (guest A — messy brown hair)'],
+    guest_b_down_0: ['canvas:ActorLayer (guest B — purple hair)'],
+    guest_c_down_0: ['canvas:ActorLayer (guest C — hard hat / dark skin)'],
+    guest_d_down_0: ['canvas:ActorLayer (guest D — balding)'],
+    guest_e_down_0: ['canvas:ActorLayer (guest E — black hair / headband)'],
     customer: ['canvas:CustomerLayer', 'canvas:ActorLayer'],
     customer_b: ['canvas:ActorLayer'],
     player: ['canvas:ActorLayer'],

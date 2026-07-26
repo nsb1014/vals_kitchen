@@ -18,7 +18,7 @@ import { PreviewLayer } from './layers/PreviewLayer.ts';
 import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
-import { blockedCellsFromPlacements } from './world/blocked-cells.ts';
+import { walkBlockedCells } from './world/blocked-cells.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
 import { doorForGrid } from '../domain/floor/starter-map.ts';
@@ -134,7 +134,7 @@ export class RestaurantApp {
 
     this.nav.update(this.app.ticker.deltaMS);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    const blocked = blockedCellsFromPlacements(state.placements);
+    const blocked = walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h);
     const door = doorForGrid(state.gridSize.w, state.gridSize.h);
     const enterResult = this.guestMotion.sync(floor, {
       door,
@@ -202,7 +202,7 @@ export class RestaurantApp {
       }
     }
 
-    const blocked = blockedCellsFromPlacements(store.placements);
+    const blocked = walkBlockedCells(store.placements, store.gridSize.w, store.gridSize.h);
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
@@ -250,7 +250,7 @@ export class RestaurantApp {
         grid: {
           w: state.gridSize.w,
           h: state.gridSize.h,
-          blocked: blockedCellsFromPlacements(state.placements),
+          blocked: walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h),
         },
         dtMs: 0,
       });

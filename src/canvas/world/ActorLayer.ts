@@ -5,6 +5,12 @@ import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
+import {
+  guestSitFrameKey,
+  guestVariant,
+  guestWalkFrameKey,
+  playerFrameKey,
+} from './character-frames.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
@@ -40,14 +46,6 @@ const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
   const { x, y } = gridToWorld(gx, gy);
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
-}
-
-function guestVariant(guestId: string): 'a' | 'b' {
-  let hash = 0;
-  for (let i = 0; i < guestId.length; i += 1) {
-    hash = (hash * 31 + guestId.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % 2 === 0 ? 'a' : 'b';
 }
 
 function scaleForTexture(texture: Texture, intended: number, legacy: number): number {
@@ -107,7 +105,7 @@ export class ActorLayer {
     this.drawDestination(nav.destination);
     this.syncGuests(floor, guestMotion ?? null);
     this.syncPlayer(nav);
-    this.syncCarryPlate(floor.carriedTicketId != null);
+    this.syncCarryPlate(floor.carriedTicketId != null, nav.facing);
     this.actorContainer.children.sort((a, b) => a.y - b.y);
   }
 
@@ -141,8 +139,8 @@ export class ActorLayer {
     if (frameKey !== this.lastPlayerFrameKey) {
       this.lastPlayerFrameKey = frameKey;
       const texture =
-        getCharacterTexture(`player_${facing}_${frame}`) ??
-        getCharacterTexture(`player_${facing}_0`) ??
+        getCharacterTexture(playerFrameKey(facing, frame)) ??
+        getCharacterTexture(playerFrameKey(facing, 0)) ??
         getCharacterTexture('player') ??
         getCharacterTexture('customer');
       if (texture) {
@@ -160,22 +158,37 @@ export class ActorLayer {
       this.playerSprite.zIndex = this.playerSprite.y;
     } else {
       this.playerFallback.clear();
-      this.playerFallback.circle(Math.round(nav.worldX), Math.round(feetY) - 16, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback.y = feetY;
+      this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
   }
 
-  private syncCarryPlate(carrying: boolean): void {
+  private syncCarryPlate(carrying: boolean, facing: 0 | 1 | 2 | 3): void {
     this.plateGraphics.clear();
-    if (!carrying) return;
-    const geo = carryPlateGeometry({ x: this.playerWorld.x, y: this.playerFeetY });
+    if (!carrying) {
+      this.plateGraphics.y = 0;
+      return;
+    }
+    const facingName = FACING_NAMES[facing];
+    const geo = carryPlateGeometry({ x: this.playerWorld.x, y: this.playerFeetY }, facingName);
+    if (!geo.visible) {
+      // Facing up: plate is behind the cook — omit rather than punch through the torso.
+      this.plateGraphics.y = 0;
+      return;
+    }
+    // Geometry is world-space; shift local Y so container.y participates in feet sort
+    // and the plate paints in front of the body (not under it at y=0).
+    this.plateGraphics.y = geo.sortY;
+    this.plateGraphics.zIndex = geo.sortY;
+    const plateLocalY = geo.plate.y - geo.sortY;
+    const foodLocalY = geo.food.y - geo.sortY;
     this.plateGraphics
-      .ellipse(Math.round(geo.plate.x), Math.round(geo.plate.y), geo.plate.rx, geo.plate.ry)
+      .ellipse(Math.round(geo.plate.x), Math.round(plateLocalY), geo.plate.rx, geo.plate.ry)
       .fill(geo.plate.color);
     this.plateGraphics
-      .circle(Math.round(geo.food.x), Math.round(geo.food.y), geo.food.r)
+      .circle(Math.round(geo.food.x), Math.round(foodLocalY), geo.food.r)
       .fill(geo.food.color);
-    this.plateGraphics.zIndex = this.playerFeetY + 1;
   }
 
   private syncGuests(floor: FloorDay, guestMotion: GuestMotion | null): void {
@@ -210,19 +223,19 @@ export class ActorLayer {
           !pose.isMoving);
       const frame = seated ? 0 : pose.isMoving ? pose.walkFrame : 0;
       const frameKey = seated
-        ? `sit_${variant}_${facingName}`
-        : `${variant}_${facingName}_${frame}`;
+        ? guestSitFrameKey(variant, facingName)
+        : guestWalkFrameKey(variant, facingName, frame);
       if (frameKey !== entry.lastFrameKey) {
         entry.lastFrameKey = frameKey;
         const texture = seated
-          ? (getCharacterTexture(`guest_${variant}_sit_${facingName}`) ??
-            getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
-            getCharacterTexture(`guest_${variant}_down_0`) ??
-            getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b'))
-          : (getCharacterTexture(`guest_${variant}_${facingName}_${frame}`) ??
-            getCharacterTexture(`guest_${variant}_${facingName}_0`) ??
-            getCharacterTexture(`guest_${variant}_down_0`) ??
-            getCharacterTexture(variant === 'a' ? 'customer' : 'customer_b'));
+          ? (getCharacterTexture(guestSitFrameKey(variant, facingName)) ??
+            getCharacterTexture(guestWalkFrameKey(variant, facingName, 0)) ??
+            getCharacterTexture(guestWalkFrameKey(variant, 'down', 0)) ??
+            getCharacterTexture('customer'))
+          : (getCharacterTexture(guestWalkFrameKey(variant, facingName, frame)) ??
+            getCharacterTexture(guestWalkFrameKey(variant, facingName, 0)) ??
+            getCharacterTexture(guestWalkFrameKey(variant, 'down', 0)) ??
+            getCharacterTexture('customer'));
         if (texture) {
           entry.sprite.texture = texture;
           entry.sprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
