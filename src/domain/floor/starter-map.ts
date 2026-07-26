@@ -1,5 +1,8 @@
 import type { Placement } from '../state/game-state.ts';
 
+/** South-edge door cell for the starter map (matches createStarterMap zones.door). */
+export const STARTER_DOOR = { x: 3, y: 7 } as const;
+
 export interface MapZones {
   dining: { x: number; y: number }[];
   kitchen: { x: number; y: number }[];
@@ -32,7 +35,7 @@ export function createStarterMap(): StarterMap {
     zones: {
       dining,
       kitchen,
-      door: { x: 3, y: 7 },
+      door: { ...STARTER_DOOR },
     },
     placements: [
       { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },

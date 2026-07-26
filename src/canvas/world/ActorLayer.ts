@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { getCharacterTexture } from '../../assets/loader.ts';
+import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
@@ -27,12 +28,30 @@ const GUEST_STAGE_CUE: Record<string, number> = {
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
+const PLATE_COLOR = 0xf5e6c8;
+const FOOD_ACCENT_COLOR = 0xc45c26;
+/** World Y offset from feet for carried plate (above head). */
+const PLATE_FEET_OFFSET_Y = -32;
+const WAITING_STACK_SPACING = 10;
+const LEAVING_DOOR_OFFSET_X = 4;
 
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
   const { x, y } = gridToWorld(gx, gy);
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
+}
+
+/** Pure geometry for the carry-plate overlay (feet-anchored). */
+export function carryPlateGeometry(feet: { x: number; y: number }): {
+  plate: { x: number; y: number; rx: number; ry: number; color: number };
+  food: { x: number; y: number; r: number; color: number };
+} {
+  const y = feet.y + PLATE_FEET_OFFSET_Y;
+  return {
+    plate: { x: feet.x, y, rx: 7, ry: 4, color: PLATE_COLOR },
+    food: { x: feet.x, y: y - 1, r: 3, color: FOOD_ACCENT_COLOR },
+  };
 }
 
 function guestVariant(guestId: string): 'a' | 'b' {
@@ -54,8 +73,10 @@ export class ActorLayer {
   private readonly actorContainer = new Container();
   private readonly playerSprite = new Sprite();
   private readonly playerFallback = new Graphics();
+  private readonly plateGraphics = new Graphics();
   private readonly guestSprites = new Map<string, { root: Container; sprite: Sprite; cue: Graphics }>();
   private playerWorld = { x: 0, y: 0 };
+  private playerFeetY = 0;
   private lastPlayerFrameKey = '';
 
   constructor() {
@@ -66,6 +87,7 @@ export class ActorLayer {
     this.playerSprite.visible = false;
     this.actorContainer.addChild(this.playerSprite);
     this.actorContainer.addChild(this.playerFallback);
+    this.actorContainer.addChild(this.plateGraphics);
     this.view.addChild(this.markerLayer);
     this.view.addChild(this.actorContainer);
   }
@@ -85,6 +107,7 @@ export class ActorLayer {
     if (!floor) {
       this.playerSprite.visible = false;
       this.playerFallback.clear();
+      this.plateGraphics.clear();
       this.clearGuests();
       return;
     }
@@ -92,6 +115,7 @@ export class ActorLayer {
     this.drawDestination(nav.destination);
     this.syncGuests(floor);
     this.syncPlayer(nav);
+    this.syncCarryPlate(floor.carriedTicketId != null);
     this.actorContainer.children.sort((a, b) => a.y - b.y);
   }
 
@@ -120,6 +144,7 @@ export class ActorLayer {
     const frame = nav.isMoving ? nav.walkFrame() : 0;
     const frameKey = `${facing}_${frame}`;
     const feetY = nav.worldY + TILE_PX / 2 - 2;
+    this.playerFeetY = feetY;
 
     if (frameKey !== this.lastPlayerFrameKey) {
       this.lastPlayerFrameKey = frameKey;
@@ -148,11 +173,26 @@ export class ActorLayer {
     }
   }
 
+  private syncCarryPlate(carrying: boolean): void {
+    this.plateGraphics.clear();
+    if (!carrying) return;
+    const geo = carryPlateGeometry({ x: this.playerWorld.x, y: this.playerFeetY });
+    this.plateGraphics
+      .ellipse(Math.round(geo.plate.x), Math.round(geo.plate.y), geo.plate.rx, geo.plate.ry)
+      .fill(geo.plate.color);
+    this.plateGraphics
+      .circle(Math.round(geo.food.x), Math.round(geo.food.y), geo.food.r)
+      .fill(geo.food.color);
+    this.plateGraphics.zIndex = this.playerFeetY + 1;
+  }
+
   private syncGuests(floor: FloorDay): void {
     const seen = new Set<string>();
+    let waitingIndex = 0;
     for (const guest of floor.pool) {
       if (guest.stage === 'done') continue;
-      const pos = guestPosition(guest);
+      const waitIdx = guest.stage === 'waiting' ? waitingIndex++ : undefined;
+      const pos = guestPosition(guest, waitIdx);
       if (!pos) continue;
       seen.add(guest.id);
       let entry = this.guestSprites.get(guest.id);
@@ -208,9 +248,20 @@ export class ActorLayer {
   }
 }
 
-function guestPosition(guest: FloorGuest): { x: number; y: number } | null {
-  if (guest.seat) return tileCenter(guest.seat.x, guest.seat.y);
-  if (guest.stage === 'waiting') return tileCenter(3, 7);
+function guestPosition(guest: FloorGuest, waitingIndex?: number): { x: number; y: number } | null {
+  if (guest.stage === 'seated' || guest.stage === 'ordered' || guest.stage === 'eating') {
+    if (!guest.seat) return null;
+    return tileCenter(guest.seat.x, guest.seat.y);
+  }
+  if (guest.stage === 'waiting') {
+    const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);
+    const index = waitingIndex ?? 0;
+    return { x: door.x + (index - 1) * WAITING_STACK_SPACING, y: door.y };
+  }
+  if (guest.stage === 'leaving') {
+    const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);
+    return { x: door.x + LEAVING_DOOR_OFFSET_X, y: door.y };
+  }
   return null;
 }
 

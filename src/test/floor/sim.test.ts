@@ -43,8 +43,19 @@ describe('floor sim', () => {
 
     day = beginEating(day, 'c1', 1);
     day = tickEating(day);
-    expect(day.pool[0]!.stage).toBe('done');
+    expect(day.pool[0]!.stage).toBe('leaving');
+    expect(day.pool[0]!.seat).toBeUndefined();
+    expect(day.pool[0]!.eatTicksRemaining).toBe(2);
     expect(day.tables.find((t) => t.placementId === 'table_1')!.state).toBe('dirty');
+    expect(isFloorDayComplete(day)).toBe(false);
+
+    day = tickEating(day);
+    expect(day.pool[0]!.stage).toBe('leaving');
+    expect(day.pool[0]!.eatTicksRemaining).toBe(1);
+
+    day = tickEating(day);
+    expect(day.pool[0]!.stage).toBe('done');
+    expect(day.pool[0]!.eatTicksRemaining).toBe(0);
 
     tables = day.tables.map((t) => (t.state === 'dirty' ? clearTable(t) : t));
     day = { ...day, tables, tickets: day.tickets.map((t) => ({ ...t, status: 'delivered' as const })) };

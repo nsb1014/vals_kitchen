@@ -3,6 +3,53 @@ import {
   type CameraState,
 } from '../coordinates.ts';
 
+export interface FollowTarget {
+  x: number;
+  y: number;
+  stageOffsetX: number;
+  stageOffsetY: number;
+}
+
+export function computeFollowTarget(
+  currentState: CameraState,
+  worldX: number,
+  worldY: number,
+  viewW: number,
+  viewH: number,
+  mapWpx: number,
+  mapHpx: number,
+): FollowTarget {
+  const scale = currentState.scale;
+  const scaledMapW = mapWpx * scale;
+  const scaledMapH = mapHpx * scale;
+  const stageOffsetX =
+    scaledMapW < viewW ? Math.max(0, Math.floor((viewW - scaledMapW) / 2)) : 0;
+  const stageOffsetY =
+    scaledMapH < viewH ? Math.max(0, Math.floor((viewH - scaledMapH) / 2)) : 0;
+  const visibleWorldW = (viewW - stageOffsetX * 2) / scale;
+  const visibleWorldH = (viewH - stageOffsetY * 2) / scale;
+
+  let x = worldX - visibleWorldW / 2;
+  let y = worldY - visibleWorldH / 2;
+  x = Math.max(0, Math.min(x, Math.max(0, mapWpx - visibleWorldW)));
+  y = Math.max(0, Math.min(y, Math.max(0, mapHpx - visibleWorldH)));
+
+  return { x, y, stageOffsetX, stageOffsetY };
+}
+
+export function lerpFollowPosition(
+  currentX: number,
+  currentY: number,
+  targetX: number,
+  targetY: number,
+  lerp: number,
+): { x: number; y: number } {
+  return {
+    x: currentX + (targetX - currentX) * lerp,
+    y: currentY + (targetY - currentY) * lerp,
+  };
+}
+
 export class Camera {
   state: CameraState = {
     x: 0,
@@ -25,27 +72,47 @@ export class Camera {
     mapWpx: number,
     mapHpx: number,
   ): void {
-    const scale = this.state.scale;
-    const scaledMapW = mapWpx * scale;
-    const scaledMapH = mapHpx * scale;
-    const stageOffsetX =
-      scaledMapW < viewW ? Math.max(0, Math.floor((viewW - scaledMapW) / 2)) : 0;
-    const stageOffsetY =
-      scaledMapH < viewH ? Math.max(0, Math.floor((viewH - scaledMapH) / 2)) : 0;
-    const visibleWorldW = (viewW - stageOffsetX * 2) / scale;
-    const visibleWorldH = (viewH - stageOffsetY * 2) / scale;
+    const target = computeFollowTarget(
+      this.state,
+      worldX,
+      worldY,
+      viewW,
+      viewH,
+      mapWpx,
+      mapHpx,
+    );
+    this.state = {
+      ...this.state,
+      ...target,
+    };
+  }
 
-    let x = worldX - visibleWorldW / 2;
-    let y = worldY - visibleWorldH / 2;
-    x = Math.max(0, Math.min(x, Math.max(0, mapWpx - visibleWorldW)));
-    y = Math.max(0, Math.min(y, Math.max(0, mapHpx - visibleWorldH)));
-
+  /** Lerp toward the clamped follow target; use onTick for smooth tracking. */
+  followWorldPointSmooth(
+    worldX: number,
+    worldY: number,
+    viewW: number,
+    viewH: number,
+    mapWpx: number,
+    mapHpx: number,
+    lerp = 0.18,
+  ): void {
+    const target = computeFollowTarget(
+      this.state,
+      worldX,
+      worldY,
+      viewW,
+      viewH,
+      mapWpx,
+      mapHpx,
+    );
+    const { x, y } = lerpFollowPosition(this.state.x, this.state.y, target.x, target.y, lerp);
     this.state = {
       ...this.state,
       x,
       y,
-      stageOffsetX,
-      stageOffsetY,
+      stageOffsetX: target.stageOffsetX,
+      stageOffsetY: target.stageOffsetY,
     };
   }
 }
