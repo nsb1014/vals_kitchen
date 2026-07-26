@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carryPlateGeometry } from '../../canvas/world/ActorLayer.ts';
+import { carryPlateGeometry } from '../../canvas/world/carry-plate.ts';
 
 describe('carryPlateGeometry', () => {
   it('places a cream plate + food accent above player feet', () => {

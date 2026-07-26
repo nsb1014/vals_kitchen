@@ -1,7 +1,11 @@
 import { computeCameraCenter, gridToWorld, worldToScreen } from '../canvas/coordinates.ts';
+import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
+import { isDayComplete } from '../domain/day/serve.ts';
+import type { GameAction } from '../domain/reducer.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import {
+  getDomainContext,
   isRecipesContentReady,
   isScoringContentReady,
 } from './content-loader.ts';
@@ -22,6 +26,11 @@ export interface E2eBridge {
   isRecipesReady: () => boolean;
   gridCellToScreen: (gx: number, gy: number) => { x: number; y: number };
   exportSaveCode: () => string;
+  /** Drive one step of the floor service loop (for e2e smoke). */
+  advanceFloorServiceOnce: () => Promise<'pending_review' | 'day_complete' | 'advanced' | 'idle'>;
+  dispatch: (action: GameAction) => Promise<void>;
+  setFloorNavPosition: (pos: { x: number; y: number }) => void;
+  dismissPendingReview: () => void;
 }
 
 declare global {
@@ -30,7 +39,7 @@ declare global {
   }
 }
 
-/** Read-only hooks for Playwright when `?e2e=1` is present. */
+/** Hooks for Playwright when `?e2e=1` is present. */
 export function installE2eBridge(): void {
   if (typeof window === 'undefined') return;
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
@@ -90,5 +99,84 @@ export function installE2eBridge(): void {
     },
 
     exportSaveCode: () => encodeSaveCode(getGameStateSnapshot()),
+
+    async dispatch(action) {
+      await useGameStore.getState().dispatch(action);
+    },
+
+    setFloorNavPosition(pos) {
+      useGameStore.getState().setFloorNavPosition(pos);
+    },
+
+    dismissPendingReview() {
+      useGameStore.getState().dismissPendingReview();
+    },
+
+    async advanceFloorServiceOnce() {
+      const store = useGameStore.getState();
+      if (store.pendingReview) return 'pending_review';
+      if (!store.activeDay?.floor) {
+        return isDayComplete(store) ? 'day_complete' : 'idle';
+      }
+      if (isDayComplete(store)) return 'day_complete';
+
+      const ctx = getDomainContext();
+      const dispatch = (action: GameAction) => useGameStore.getState().dispatch(action);
+
+      const floor = () => useGameStore.getState().activeDay!.floor!;
+
+      for (const table of [...floor().tables]) {
+        if (table.state === 'unset') {
+          await dispatch({ type: 'FLOOR_SET_TABLE', placementId: table.placementId });
+        }
+      }
+      for (const table of [...floor().tables]) {
+        if (table.state === 'dirty') {
+          await dispatch({ type: 'FLOOR_CLEAR_TABLE', placementId: table.placementId });
+        }
+      }
+
+      if (floor().pool.some((g) => g.stage === 'waiting')) {
+        await dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      }
+
+      const toOrder = floor()
+        .pool.filter((g) => g.stage === 'seated')
+        .map((g) => g.customer.id);
+      if (toOrder.length > 0) {
+        await dispatch({ type: 'FLOOR_TAKE_ORDERS', customerIds: toOrder });
+      }
+
+      if (useGameStore.getState().pendingReview) return 'pending_review';
+
+      const open = floor().tickets.find((t) => t.status === 'open');
+      if (open && !floor().carriedTicketId) {
+        const guest = floor().pool.find((g) => g.customer.id === open.customerId);
+        if (guest) {
+          const unlocked = useGameStore.getState().unlockedIngredientIds;
+          const combo = findBestMatchCombo(
+            unlocked,
+            guest.customer.preference,
+            ctx.ingredientsById,
+            ctx.compoundAffinity,
+          );
+          await dispatch({
+            type: 'FLOOR_PLATE',
+            ticketId: open.id,
+            ingredientIds: combo.ingredientIds,
+          });
+          await dispatch({ type: 'FLOOR_DELIVER', ticketId: open.id });
+        }
+      }
+
+      if (useGameStore.getState().pendingReview) return 'pending_review';
+
+      if (floor().pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
+        await dispatch({ type: 'FLOOR_TICK_EATING' });
+      }
+
+      if (isDayComplete(useGameStore.getState())) return 'day_complete';
+      return 'advanced';
+    },
   };
 }
