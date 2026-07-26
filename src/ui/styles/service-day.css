@@ -20,8 +20,8 @@
   min-height: 44px;
   padding: 0.35rem 0.65rem;
   border-radius: 8px;
-  background: rgba(26, 26, 46, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(42, 33, 28, 0.88);
+  border: 1px solid var(--vk-border);
   font-size: 14px;
   line-height: 1.3;
 }
@@ -53,7 +53,7 @@
   padding: 0.75rem 0.875rem;
   border-radius: 14px;
   background: #fff;
-  color: #1a1a2e;
+  color: var(--vk-bg-deep);
   font-size: 16px;
   line-height: 1.35;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
@@ -78,16 +78,16 @@
   overflow: auto;
   padding: 0.75rem;
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  background: rgba(20, 20, 34, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 23, 20, 0.96);
+  border-top: 1px solid var(--vk-border);
   contain: layout style;
 }
 
 .service-card {
   padding: 1rem;
   border-radius: 12px;
-  background: #2a2a42;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--vk-panel);
+  border: 1px solid var(--vk-border);
 }
 
 .service-card + .service-card {
@@ -102,7 +102,7 @@
 
 .service-subtitle {
   margin: 0 0 0.75rem;
-  color: rgba(245, 245, 245, 0.78);
+  color: var(--vk-text-dim);
   font-size: 15px;
 }
 
@@ -121,17 +121,18 @@
   min-width: 44px;
   padding: 0.5rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #3a3a55;
-  color: #f5f5f5;
+  border: 1px solid var(--vk-border);
+  background: var(--vk-panel-2);
+  color: var(--vk-text);
   font-size: 14px;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .ingredient-chip.selected {
-  background: #5a7a4a;
-  border-color: #8bc86a;
+  background: var(--vk-accent-2);
+  border-color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+  color: var(--vk-bg-deep);
 }
 
 .ingredient-chip:disabled {
@@ -154,7 +155,7 @@
 
 .compose-meta {
   font-size: 14px;
-  color: rgba(245, 245, 245, 0.75);
+  color: var(--vk-text-dim);
 }
 
 .service-actions {
@@ -170,17 +171,18 @@
   flex: 1 1 auto;
   padding: 0.625rem 1rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #3d5a80;
-  color: #fff;
+  border: 1px solid var(--vk-border);
+  background: var(--vk-panel-2);
+  color: var(--vk-text);
   font-size: 16px;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .service-btn.primary {
-  background: #6a994e;
-  border-color: #8bc86a;
+  background: var(--vk-accent-2);
+  border-color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+  color: var(--vk-bg-deep);
 }
 
 .service-btn:disabled {
@@ -191,7 +193,7 @@
 .review-stars {
   font-size: 20px;
   letter-spacing: 0.05em;
-  color: #ffd166;
+  color: var(--vk-accent);
 }
 
 .review-detail {
@@ -200,11 +202,11 @@
 }
 
 .review-positive {
-  color: #8bc86a;
+  color: var(--vk-accent-2);
 }
 
 .review-negative {
-  color: #ff8a80;
+  color: var(--vk-danger);
 }
 
 .modal-backdrop {
@@ -222,8 +224,8 @@
   width: min(100%, 22rem);
   padding: 1.25rem;
   border-radius: 14px;
-  background: #24243a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--vk-panel);
+  border: 1px solid var(--vk-border);
 }
 
 .modal-card h2 {
@@ -243,15 +245,15 @@
   bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 55;
   padding: 0.75rem;
-  background: rgba(20, 20, 34, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 23, 20, 0.96);
+  border-top: 1px solid var(--vk-border);
   pointer-events: auto;
 }
 
 .floor-tutorial {
   margin: 0 0 0.5rem;
   font-size: 14px;
-  color: #ffd166;
+  color: var(--vk-accent);
 }
 
 .floor-ticket-strip {
@@ -264,7 +266,7 @@
 .floor-ticket {
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
-  background: #3a3a55;
+  background: var(--vk-panel-2);
   font-size: 13px;
   border: 1px solid transparent;
   color: inherit;
@@ -273,13 +275,14 @@
 }
 
 .floor-ticket.selected {
-  background: #5a7a4a;
-  border-color: #8bc86a;
+  background: var(--vk-accent-2);
+  border-color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+  color: var(--vk-bg-deep);
 }
 
 .floor-ticket-empty {
   font-size: 13px;
-  color: rgba(245, 245, 245, 0.6);
+  color: var(--vk-text-dim);
 }
 
 .floor-actions {
@@ -290,7 +293,6 @@
 
 .recipe-mastery {
   font-size: 0.85em;
-  color: rgba(245, 245, 245, 0.65);
+  color: var(--vk-text-dim);
   font-weight: 500;
 }
-

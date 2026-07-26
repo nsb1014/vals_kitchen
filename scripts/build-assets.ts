@@ -122,13 +122,32 @@ const CHARACTER_SPRITES = {
   player_down_2: 'Tiles/tile_0078.png',
   player_up_2: 'Tiles/tile_0079.png',
   player_right_2: 'Tiles/tile_0080.png',
-  // Guest A = same green sheet aliases for idle down
+  // Guest A = green sheet (same cook-adjacent outfit, distinct from red guests)
+  guest_a_left_0: 'Tiles/tile_0023.png',
   guest_a_down_0: 'Tiles/tile_0024.png',
+  guest_a_up_0: 'Tiles/tile_0025.png',
+  guest_a_right_0: 'Tiles/tile_0026.png',
+  guest_a_left_1: 'Tiles/tile_0050.png',
+  guest_a_down_1: 'Tiles/tile_0051.png',
+  guest_a_up_1: 'Tiles/tile_0052.png',
+  guest_a_right_1: 'Tiles/tile_0053.png',
+  guest_a_left_2: 'Tiles/tile_0077.png',
+  guest_a_down_2: 'Tiles/tile_0078.png',
+  guest_a_up_2: 'Tiles/tile_0079.png',
+  guest_a_right_2: 'Tiles/tile_0080.png',
   // Guest B = red-shirt walk cycle
-  guest_b_down_0: 'Tiles/tile_0105.png',
   guest_b_left_0: 'Tiles/tile_0104.png',
+  guest_b_down_0: 'Tiles/tile_0105.png',
   guest_b_up_0: 'Tiles/tile_0106.png',
   guest_b_right_0: 'Tiles/tile_0107.png',
+  guest_b_left_1: 'Tiles/tile_0131.png',
+  guest_b_down_1: 'Tiles/tile_0132.png',
+  guest_b_up_1: 'Tiles/tile_0133.png',
+  guest_b_right_1: 'Tiles/tile_0134.png',
+  guest_b_left_2: 'Tiles/tile_0158.png',
+  guest_b_down_2: 'Tiles/tile_0159.png',
+  guest_b_up_2: 'Tiles/tile_0160.png',
+  guest_b_right_2: 'Tiles/tile_0161.png',
   // Legacy names kept for CustomerLayer / older callers
   customer: 'Tiles/tile_0024.png',
   customer_b: 'Tiles/tile_0105.png',
@@ -238,7 +257,8 @@ function buildCredits(shippedFiles: string[]): void {
       license: 'CC0',
       usedIn: ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
-      approximationNote: 'Generated 16×16 indoor restaurant tiles for the immersive floor slice.',
+      approximationNote:
+        'Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0.',
     });
   }
 
@@ -251,7 +271,8 @@ function buildCredits(shippedFiles: string[]): void {
       license: 'CC0',
       usedIn: [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
-      approximationNote: 'Generated furniture / station placeholders for the immersive floor slice.',
+      approximationNote:
+        'Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0.',
     });
   }
 
@@ -377,7 +398,8 @@ function main(): void {
     tileManifestPath,
     path.join(OUT, 'atlases', 'tiles.png'),
     path.join(OUT, 'atlases', 'tiles.json'),
-    16,
+    32,
+    1,
   );
 
   const furnitureManifest: Record<string, string> = {};
@@ -390,7 +412,7 @@ function main(): void {
     furnitureManifestPath,
     path.join(OUT, 'atlases', 'furniture.png'),
     path.join(OUT, 'atlases', 'furniture.json'),
-    16,
+    48,
   );
 
   const charManifest: Record<string, string> = {};
