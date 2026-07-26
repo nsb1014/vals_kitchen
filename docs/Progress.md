@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-25  
+**Last updated:** 2026-07-26  
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -23,6 +23,10 @@
 | Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (8 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
 | Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
+| Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
+| Overnight program Track B — service immersion | **Not started** |
+| Overnight program Track C — loop completeness | **Not started** |
+| Overnight program Track D — meta depth | **Not started** |
 
 ---
 
@@ -65,6 +69,10 @@
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
 | 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, path-lerp walk + Urban walk cycle, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast; gzip 173,070 |
+| A | Cozy visual identity | Done | Generated diner tiles/furniture, feet-align, character walk packs, `--vk-*` UI palette; fast suite 131; gzip 179,236 |
+| B | Service immersion | Not started | Carry plate, door in/out, interact feedback, camera feel |
+| C | Loop completeness | Not started | Tutorial → day → summary → shop airtight |
+| D | Meta depth | Not started | Mastery/pacing closer to GPGP |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -89,12 +97,14 @@
 | 2026-07-25 | Phase 11 vertical slice Done: adjacency set/clear + wrong-seat toast; distinct character frames; fast suite 126; measured initial JS gzip 173,070 (cap 280,000) |
 | 2026-07-25 | Floor locomotion: world-space path lerp + RPG Urban 4-dir×3-frame walk cycle; integer 2× character scale; nav no longer cancelled on every floor clone; fast suite 128 |
 | 2026-07-25 | Approach A: network-first PWA shell/JS; slower walk + dest marker; 32×32 NN character atlas + 64px player draw; reused actor sprites; fast suite green |
+| 2026-07-26 | Overnight program design (locked north star); Track A Done: cozy generated restaurant art + warm UI; fast suite 131; gzip 179,236 |
 
 ---
 
 ## Cross-References
 
 - Implementation plan detail: [Plan.md](./Plan.md)
+- Overnight program: [design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [Track A plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)
 - Immersive floor: [design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [vertical-slice plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)
 - Known risks: [Error-Tracker.md](./Error-Tracker.md)
 - Product requirements: [PRD.md](./PRD.md)

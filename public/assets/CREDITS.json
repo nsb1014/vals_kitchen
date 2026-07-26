@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-26T03:04:25.734Z",
+  "generatedAt": "2026-07-26T03:28:08.210Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -55,7 +55,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_wood_a.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_b",
@@ -67,7 +67,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_wood_b.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_kitchen_a",
@@ -79,7 +79,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_kitchen_a.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_kitchen_b",
@@ -91,7 +91,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_kitchen_b.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall",
@@ -103,7 +103,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#door",
@@ -115,7 +115,7 @@
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "door.png",
-      "approximationNote": "Generated 16×16 indoor restaurant tiles for the immersive floor slice."
+      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#prep_station",
@@ -127,7 +127,7 @@
         "canvas:FurnitureLayer (prep_station)"
       ],
       "sourceFile": "prep_station.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#grill",
@@ -139,7 +139,7 @@
         "canvas:FurnitureLayer (grill)"
       ],
       "sourceFile": "grill.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#oven",
@@ -151,7 +151,7 @@
         "canvas:FurnitureLayer (oven)"
       ],
       "sourceFile": "oven.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#fryer",
@@ -163,7 +163,7 @@
         "canvas:FurnitureLayer (fryer)"
       ],
       "sourceFile": "fryer.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#stockpot",
@@ -175,7 +175,7 @@
         "canvas:FurnitureLayer (stockpot)"
       ],
       "sourceFile": "stockpot.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#cold_station",
@@ -187,7 +187,7 @@
         "canvas:FurnitureLayer (cold_station)"
       ],
       "sourceFile": "cold_station.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#pastry_bench",
@@ -199,7 +199,7 @@
         "canvas:FurnitureLayer (pastry_bench)"
       ],
       "sourceFile": "pastry_bench.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#smoker",
@@ -211,7 +211,7 @@
         "canvas:FurnitureLayer (smoker)"
       ],
       "sourceFile": "smoker.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#wok",
@@ -223,7 +223,7 @@
         "canvas:FurnitureLayer (wok)"
       ],
       "sourceFile": "wok.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#fermentation_crock",
@@ -235,7 +235,7 @@
         "canvas:FurnitureLayer (fermentation_crock)"
       ],
       "sourceFile": "fermentation_crock.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#barista_station",
@@ -247,7 +247,7 @@
         "canvas:FurnitureLayer (barista_station)"
       ],
       "sourceFile": "barista_station.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#spice_rack",
@@ -259,7 +259,7 @@
         "canvas:FurnitureLayer (spice_rack)"
       ],
       "sourceFile": "spice_rack.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#table_2seat",
@@ -271,7 +271,7 @@
         "canvas:FurnitureLayer (table_2seat)"
       ],
       "sourceFile": "table_2seat.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#chair",
@@ -283,7 +283,7 @@
         "canvas:FurnitureLayer (chair)"
       ],
       "sourceFile": "chair.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_plant",
@@ -295,7 +295,7 @@
         "canvas:FurnitureLayer (decor_plant)"
       ],
       "sourceFile": "decor_plant.png",
-      "approximationNote": "Generated furniture / station placeholders for the immersive floor slice."
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_left_0",
@@ -442,6 +442,18 @@
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
+      "path": "atlases/characters.json#guest_a_left_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0023.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
       "path": "atlases/characters.json#guest_a_down_0",
       "pack": "Kenney RPG Urban Pack",
       "author": "Kenney Vleugels",
@@ -454,15 +466,123 @@
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
-      "path": "atlases/characters.json#guest_b_down_0",
+      "path": "atlases/characters.json#guest_a_up_0",
       "pack": "Kenney RPG Urban Pack",
       "author": "Kenney Vleugels",
       "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
       "license": "CC0",
       "usedIn": [
-        "canvas:ActorLayer (guest B)"
+        "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0105.png",
+      "sourceFile": "Tiles/tile_0025.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_right_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0026.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_left_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0050.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_down_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0051.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_up_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0052.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_right_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0053.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_left_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0077.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_down_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0078.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_up_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0079.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_right_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0080.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -475,6 +595,18 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0104.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_down_0",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (guest B)"
+      ],
+      "sourceFile": "Tiles/tile_0105.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {
@@ -499,6 +631,102 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "Tiles/tile_0107.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_left_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0131.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_down_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0132.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_up_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0133.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_right_1",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0134.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_left_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0158.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_down_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0159.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_up_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0160.png",
+      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_right_2",
+      "pack": "Kenney RPG Urban Pack",
+      "author": "Kenney Vleugels",
+      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "Tiles/tile_0161.png",
       "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
     },
     {

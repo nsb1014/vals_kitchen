@@ -7,10 +7,11 @@ import { ART_TILE_PX, TILE_PX, gridToWorld } from '../coordinates.ts';
 /**
  * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
  * Player draws at 2× that → 64px (taller than a floor tile) for a readable ¾ silhouette.
- * Guests stay 1× atlas size → 32px.
+ * Guests draw at 1.5× atlas → 48px.
  */
 const PLAYER_SCALE = 2;
-const GUEST_SCALE = 1;
+/** Guests draw at 1.5× atlas (48px) for readable silhouettes beside 32px tiles. */
+const GUEST_SCALE = 1.5;
 /** Fallback when atlas still has legacy 16×16 frames. */
 const LEGACY_PLAYER_SCALE = (TILE_PX / ART_TILE_PX) * 2; // 4
 const LEGACY_GUEST_SCALE = TILE_PX / ART_TILE_PX; // 2

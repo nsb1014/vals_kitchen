@@ -3,6 +3,7 @@ import type { Placement } from '../../domain/state/game-state.ts';
 import type { SeatSlot } from '../../domain/floor/types.ts';
 import { getFurnitureTexture } from '../../assets/loader.ts';
 import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
+import { furnitureDrawOffset, furnitureDrawSize } from '../furniture-fit.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
 
 const MIN_HIT_PX = 44;
@@ -117,11 +118,7 @@ export class FurnitureLayer {
     sprite.body.clear();
     const texture = getFurnitureTexture('chair');
     if (texture) {
-      sprite.sprite!.texture = texture;
-      sprite.sprite!.visible = true;
-      sprite.sprite!.width = TILE_PX;
-      sprite.sprite!.height = TILE_PX;
-      sprite.sprite!.position.set(0, 0);
+      this.applyFurnitureTexture(sprite.sprite!, texture);
     } else {
       sprite.sprite!.visible = false;
       sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill(0x7a5230);
@@ -140,11 +137,7 @@ export class FurnitureLayer {
     sprite.body.clear();
 
     if (texture) {
-      sprite.sprite!.texture = texture;
-      sprite.sprite!.visible = true;
-      sprite.sprite!.width = TILE_PX;
-      sprite.sprite!.height = TILE_PX;
-      sprite.sprite!.position.set(0, 0);
+      this.applyFurnitureTexture(sprite.sprite!, texture);
     } else {
       sprite.sprite!.visible = false;
       const color = fallbackTintForItemKey(placement.itemKey);
@@ -163,5 +156,15 @@ export class FurnitureLayer {
       TILE_PX + HIT_PADDING * 2,
       TILE_PX + HIT_PADDING * 2,
     );
+  }
+
+  private applyFurnitureTexture(sprite: Sprite, texture: Texture): void {
+    const { w, h } = furnitureDrawSize(texture);
+    const { x, y } = furnitureDrawOffset(w, h);
+    sprite.texture = texture;
+    sprite.visible = true;
+    sprite.width = w;
+    sprite.height = h;
+    sprite.position.set(x, y);
   }
 }

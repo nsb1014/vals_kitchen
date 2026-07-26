@@ -1,3 +1,17 @@
+:root {
+  --vk-bg: #2a211c;
+  --vk-bg-deep: #1e1714;
+  --vk-panel: #3a2f28;
+  --vk-panel-2: #4a3c32;
+  --vk-border: rgba(246, 239, 228, 0.14);
+  --vk-text: #f6efe4;
+  --vk-text-dim: rgba(246, 239, 228, 0.72);
+  --vk-accent: #c4a35a;
+  --vk-accent-2: #7a9e7e;
+  --vk-danger: #d9897a;
+  --vk-font: 'Segoe UI', 'Trebuchet MS', 'Nunito Sans', system-ui, sans-serif;
+}
+
 *,
 *::before,
 *::after {
@@ -10,9 +24,9 @@ body {
   padding: 0;
   overscroll-behavior: none;
   touch-action: manipulation;
-  background: #1a1a2e;
-  color: #f5f5f5;
-  font-family: system-ui, sans-serif;
+  background: var(--vk-bg);
+  color: var(--vk-text);
+  font-family: var(--vk-font);
 }
 
 .game-shell {
@@ -79,8 +93,8 @@ body {
 .layout-hud {
   flex: 0 0 auto;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  background: rgba(26, 26, 46, 0.92);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(42, 33, 28, 0.92);
+  border-top: 1px solid var(--vk-border);
   contain: layout style;
 }
 
@@ -95,10 +109,10 @@ body {
   min-height: 44px;
   min-width: 44px;
   padding: 0.625rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--vk-border);
   border-radius: 8px;
-  background: #2d2d44;
-  color: #f5f5f5;
+  background: var(--vk-panel);
+  color: var(--vk-text);
   font-size: 16px;
   cursor: pointer;
 }
@@ -107,12 +121,12 @@ body {
   display: flex;
   gap: 0.75rem;
   font-size: 14px;
-  color: rgba(245, 245, 245, 0.85);
+  color: var(--vk-text-dim);
 }
 
 .boot-error {
   padding: 1rem;
-  color: #ffb4b4;
+  color: var(--vk-danger);
 }
 
 canvas {
