@@ -7,6 +7,11 @@ import type { RecipeMasteryMap } from '../floor/mastery.ts';
 import { createStarterMap, isPerimeterWallCell } from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
+import {
+  createEmptyDecorPurchasedCounts,
+  normalizeDecorPurchasedCounts,
+  type DecorPurchasedCounts,
+} from '../economy/decor.ts';
 
 export const STARTING_GRID = { w: 4, h: 4 } as const;
 export const STARTING_CASH = 500;
@@ -16,8 +21,8 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-/** Save v3: back kitchen is a separate same-size room (replaces +2 width annex). */
-export const CURRENT_SAVE_VERSION = 3 as const;
+/** Save v4: decoration ownership counts are persisted. */
+export const CURRENT_SAVE_VERSION = 4 as const;
 
 export interface Placement {
   id: string;
@@ -51,6 +56,8 @@ export interface GameState {
   backKitchenPlacements: Placement[];
   seatingCapacity: number;
   tableCount: number;
+  /** Lifetime-per-run ownership used for placement availability and achievements. */
+  decorPurchasedCounts: DecorPurchasedCounts;
   gridExpansionCount: number;
   /** One-time unlock: separate back-kitchen room + connecting door. */
   kitchenAnnexOwned: boolean;
@@ -187,6 +194,7 @@ export function createNewGameState(seed?: number): GameState {
     backKitchenPlacements: [],
     seatingCapacity: seatingFromPlacements(placements),
     tableCount,
+    decorPurchasedCounts: createEmptyDecorPurchasedCounts(),
     gridExpansionCount: 0,
     kitchenAnnexOwned: false,
     ingredientUnlockIndex: 0,
@@ -221,6 +229,10 @@ export function normalizeGameState(raw: GameState): GameState {
     backKitchenPlacements: migrated.backKitchenPlacements,
     seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),
     tableCount,
+    decorPurchasedCounts: normalizeDecorPurchasedCounts(
+      raw.decorPurchasedCounts,
+      placements,
+    ),
     gridExpansionCount: raw.gridExpansionCount ?? 0,
     kitchenAnnexOwned: raw.kitchenAnnexOwned ?? false,
     ingredientUnlockIndex: raw.ingredientUnlockIndex ?? 0,

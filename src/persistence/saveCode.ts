@@ -1,9 +1,11 @@
 import LZString from 'lz-string';
+import { decorPurchasedCountsFromPlacements } from '../domain/economy/decor.ts';
 import type { GameState } from '../domain/state/game-state.ts';
 import { CURRENT_SAVE_VERSION, normalizeGameState } from '../domain/state/game-state.ts';
 import {
   SAVE_CODE_PREFIX,
   type SaveEnvelope,
+  computeChecksum,
   createEnvelope,
   validateEnvelope,
 } from './serialize.ts';
@@ -85,6 +87,7 @@ export function migrateSave(raw: unknown): SaveEnvelope {
 
   const record = raw as Record<string, unknown>;
   let version = typeof record.saveVersion === 'number' ? record.saveVersion : 0;
+  const originalVersion = version;
 
   if (version > CURRENT_SAVE_VERSION) {
     throw new Error(`Save version ${version} is newer than supported version ${CURRENT_SAVE_VERSION}`);
@@ -92,6 +95,15 @@ export function migrateSave(raw: unknown): SaveEnvelope {
 
   if (version === 0) {
     throw new Error('Invalid save: missing saveVersion');
+  }
+  const originalChecksum =
+    typeof record.checksum === 'string' ? record.checksum : '';
+  if (
+    originalChecksum &&
+    record.gameState &&
+    originalChecksum !== computeChecksum(record.gameState as GameState)
+  ) {
+    throw new Error('Save checksum mismatch');
   }
 
   type MigratingEnvelope = {
@@ -125,13 +137,40 @@ export function migrateSave(raw: unknown): SaveEnvelope {
       saveVersion: 3,
       gameState: nextState,
     };
+    version = 3;
   }
 
+  if (version === 3) {
+    const placements = Array.isArray(envelope.gameState.placements)
+      ? envelope.gameState.placements.filter(
+          (placement): placement is GameState['placements'][number] =>
+            Boolean(
+              placement &&
+                typeof placement === 'object' &&
+                typeof (placement as { itemKey?: unknown }).itemKey === 'string',
+            ),
+        )
+      : [];
+    envelope = {
+      ...envelope,
+      saveVersion: 4,
+      gameState: {
+        ...envelope.gameState,
+        decorPurchasedCounts: decorPurchasedCountsFromPlacements(placements),
+      },
+    };
+    version = 4;
+  }
+
+  const gameState = envelope.gameState as GameState;
   return {
     ...envelope,
     saveVersion: CURRENT_SAVE_VERSION,
-    checksum: String(envelope.checksum ?? ''),
+    checksum:
+      originalVersion === version
+        ? String(envelope.checksum ?? '')
+        : computeChecksum(gameState),
     createdAt: String(envelope.createdAt ?? ''),
-    gameState: envelope.gameState as GameState,
+    gameState,
   };
 }

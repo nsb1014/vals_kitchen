@@ -5,6 +5,12 @@ import {
   kitchenAnnexBaseCost,
   tableCost,
 } from './costs.ts';
+import {
+  DECOR_COSTS,
+  MAX_DECOR_PLACEMENTS,
+  decorPurchasedTotal,
+  isDecorItemKey,
+} from './decor.ts';
 import type { DomainContext } from '../context.ts';
 import type { GameState, Placement } from '../state/game-state.ts';
 import {
@@ -55,6 +61,7 @@ export type PurchaseKind =
   | { type: 'ingredient'; ingredientId: string }
   | { type: 'equipment'; equipmentId: string }
   | { type: 'table' }
+  | { type: 'decor'; itemKey: string }
   | { type: 'grid_expansion' }
   | { type: 'kitchen_annex' };
 
@@ -76,6 +83,11 @@ export function purchaseCost(state: GameState, item: PurchaseKind): number {
     }
     case 'table':
       return tableCost(state.tableCount);
+    case 'decor':
+      if (!isDecorItemKey(item.itemKey)) {
+        throw new Error(`Unknown decoration: ${item.itemKey}`);
+      }
+      return DECOR_COSTS[item.itemKey];
     case 'grid_expansion':
       return gridExpansionCost(state.gridExpansionCount);
     case 'kitchen_annex':
@@ -85,6 +97,14 @@ export function purchaseCost(state: GameState, item: PurchaseKind): number {
 
 function countPlacedTables(placements: Placement[]): number {
   return placements.filter((item) => item.itemKey.startsWith('table')).length;
+}
+
+function countPlacedDecor(placements: Placement[]): number {
+  return placements.filter((item) => isDecorItemKey(item.itemKey)).length;
+}
+
+function countPlacedDecorType(placements: Placement[], itemKey: string): number {
+  return placements.filter((item) => item.itemKey === itemKey).length;
 }
 
 function equipmentGateOwned(state: GameState, equipmentId: string): boolean {
@@ -111,6 +131,12 @@ export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainCon
       return state.cash >= purchaseCost(state, item);
     }
     case 'table':
+      return state.cash >= purchaseCost(state, item);
+    case 'decor':
+      if (!isDecorItemKey(item.itemKey)) return false;
+      if (decorPurchasedTotal(state.decorPurchasedCounts) >= MAX_DECOR_PLACEMENTS) {
+        return false;
+      }
       return state.cash >= purchaseCost(state, item);
     case 'grid_expansion': {
       const canGrowW = state.gridSize.w < MAX_GRID_SIZE;
@@ -153,6 +179,13 @@ export function applyPurchase(
       next.tableCount += 1;
       break;
     }
+    case 'decor': {
+      if (!isDecorItemKey(item.itemKey)) {
+        throw new Error(`Unknown decoration: ${item.itemKey}`);
+      }
+      next.decorPurchasedCounts[item.itemKey] += 1;
+      break;
+    }
     case 'grid_expansion': {
       next.gridExpansionCount += 1;
       next.gridSize = {
@@ -190,9 +223,25 @@ export function validatePlacement(
   }
 
   const zones = mapZonesForGrid(w, h, { room });
+  const isDecor = isDecorItemKey(placement.itemKey);
+  if (placement.itemKey.startsWith('decor') && !isDecor) {
+    return false;
+  }
   if (isTableItem(placement.itemKey)) {
     if (room !== 'main') return false;
     if (!isDiningCell(zones, placement.x, placement.y)) return false;
+  }
+  if (isDecor) {
+    if (room !== 'main') return false;
+    if (!isDiningCell(zones, placement.x, placement.y)) return false;
+    const movingExistingDecor =
+      existingId !== undefined &&
+      state.placements.some(
+        (item) => item.id === existingId && isDecorItemKey(item.itemKey),
+      );
+    if (!movingExistingDecor && countPlacedDecor(state.placements) >= MAX_DECOR_PLACEMENTS) {
+      return false;
+    }
   }
   if (isStationItem(placement.itemKey) && !isKitchenCell(zones, placement.x, placement.y)) {
     return false;
@@ -241,6 +290,12 @@ export function applyPlaceItem(
     const placedTables = countPlacedTables(state.placements);
     if (placedTables >= state.tableCount) {
       throw new Error('No unplaced tables available');
+    }
+  }
+  if (isDecorItemKey(placement.itemKey)) {
+    const placedOfType = countPlacedDecorType(state.placements, placement.itemKey);
+    if (placedOfType >= state.decorPurchasedCounts[placement.itemKey]) {
+      throw new Error('No unplaced decorations of this type available');
     }
   }
 
@@ -406,4 +461,10 @@ export function isStartingEquipment(id: string): boolean {
   return (STARTING_EQUIPMENT_IDS as readonly string[]).includes(id);
 }
 
+export {
+  DECOR_COSTS,
+  DECOR_ITEM_KEYS,
+  MAX_DECOR_PLACEMENTS,
+  type DecorItemKey,
+} from './decor.ts';
 export { isStationItem, otherFloorRoom, placementsForRoom };
