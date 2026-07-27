@@ -213,7 +213,8 @@ function measureTextScoringCoupling(
 }
 
 describe('score compression diagnostic (new-game starters)', () => {
-  it('reports bad vs good score distributions', () => {
+  // 200× findBestMatchCombo is heavy on CI runners; keep assertions, raise wall clock.
+  it('reports bad vs good score distributions', { timeout: 30_000 }, () => {
     const rng = createRng(42_001);
     const sampleCount = 200;
     const badScores: number[] = [];
