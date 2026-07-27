@@ -21,4 +21,6 @@ export {
   selectDayOpen,
   selectIsAwaitingServe,
   selectQueueProgress,
+  selectShowOpenForService,
+  selectShowServiceDayOverlay,
 } from './selectors/service-day.ts';

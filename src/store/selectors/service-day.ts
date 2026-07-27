@@ -51,6 +51,21 @@ export function selectDayOpen(state: GameState): boolean {
   return state.activeDay !== null;
 }
 
+/** Service overlays (open day, reviews, compose, summary) belong on Floor only. */
+export function selectShowServiceDayOverlay(state: Pick<GameStore, 'screen'>): boolean {
+  return state.screen === 'restaurant';
+}
+
+/** Between-day "Open for service?" card — restaurant floor only. */
+export function selectShowOpenForService(state: GameStore): boolean {
+  return (
+    selectShowServiceDayOverlay(state) &&
+    !state.activeDay &&
+    !state.daySummary &&
+    !state.editLayoutMode
+  );
+}
+
 export function selectFloorActive(state: GameState): boolean {
   return Boolean(state.activeDay?.floor);
 }

@@ -15,6 +15,8 @@ import {
   selectActiveModifier,
   selectQueueProgress,
   selectShowFloorCompose,
+  selectShowOpenForService,
+  selectShowServiceDayOverlay,
 } from '../../store/selectors/service-day.ts';
 import { formatCustomerRequestText } from '../presentation/customer-request.ts';
 import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
@@ -163,6 +165,12 @@ export function mountServiceDayUi(
   const renderServiceOverlay = () => {
     const state = useGameStore.getState();
 
+    if (!selectShowServiceDayOverlay(state)) {
+      serviceOverlay.hidden = true;
+      serviceOverlay.innerHTML = '';
+      return;
+    }
+
     if (state.daySummary) {
       const masteryLine =
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
@@ -199,12 +207,7 @@ export function mountServiceDayUi(
       return;
     }
 
-    if (!state.activeDay) {
-      if (state.editLayoutMode) {
-        serviceOverlay.hidden = true;
-        serviceOverlay.innerHTML = '';
-        return;
-      }
+    if (selectShowOpenForService(state)) {
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
@@ -225,6 +228,12 @@ export function mountServiceDayUi(
         const store = useGameStore.getState();
         if (!store.editLayoutMode) store.toggleEditLayout();
       }, { once: true });
+      return;
+    }
+
+    if (!state.activeDay) {
+      serviceOverlay.hidden = true;
+      serviceOverlay.innerHTML = '';
       return;
     }
 
@@ -511,6 +520,7 @@ export function mountServiceDayUi(
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
     const domainChanged =
+      state.screen !== prev.screen ||
       state.activeDay !== prev.activeDay ||
       state.modifierDismissed !== prev.modifierDismissed ||
       state.pendingReview !== prev.pendingReview ||

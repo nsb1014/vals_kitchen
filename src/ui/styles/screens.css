@@ -152,6 +152,14 @@
   pointer-events: none;
 }
 
+/* Defense in depth: floor service chrome must not cover Shop/Flavors/etc. */
+.game-surface:not([data-screen='restaurant']) .service-overlay,
+.game-surface:not([data-screen='restaurant']) .chrome-mount,
+.game-surface:not([data-screen='restaurant']) .floor-tickets-dock {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .game-surface:not([data-screen='restaurant']) .screen-panel:not([hidden]) {
   pointer-events: auto;
   visibility: visible;
