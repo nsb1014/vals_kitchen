@@ -256,7 +256,8 @@ The customer request generator **must not emit preferences outside the flavor en
 | Table / seating slot (#n) | `floor(200 × 1.12^n)` | n = 0…20 |
 | Kitchen equipment (#n of 12) | `floor(500 × 1.18^n)` | n = 0…11 |
 | Grid expansion tile (#n) | `floor(300 × 1.15^n)` | n = 0…15 |
-| Kitchen annex (one-time) | `floor(800 × prestige_economy_mult)` | Separate same-size back-kitchen room + connecting door |
+| Kitchen annex (one-time) | `800` | Separate same-size back-kitchen room + connecting door |
+| Decor (per type, flat) | plant 50 / flowers 75 / rug 120 / lamp 150 / sign 200 | Cosmetic only; soft cap 6 placed |
 
 **Bulk-buy closed form** (for UI "buy N" previews):
 
@@ -498,7 +499,7 @@ Restaurant rating reaches **0.0** (from sustained poor matches).
 
 ### 10.1.1 Escalating Prestige Cycles (Ruling 2026-07-24)
 
-The flat “first prestige at 25–40 days” target is **replaced**. Early prestiges stay fast; later cycles lengthen via per-prestige **rating resistance** and **economy cost scaling** (see [Backend-Guidelines.md §5](./Backend-Guidelines.md)).
+The flat “first prestige at 25–40 days” target is **replaced**. Early prestiges stay fast; later cycles lengthen via per-prestige **rating resistance** (see [Backend-Guidelines.md §5](./Backend-Guidelines.md)). **Purchase costs do not scale with prestige** — prestige rewards come from higher tip/payout income (`1.18^P`), not more expensive shops.
 
 **Hour projection assumption:** **10 minutes per service day** (midpoint of §2’s 5–20 minute session band). Cumulative real-time hours = `(cumulative_in_game_days × 10) / 60`. This converts in-game days to a human-readable metric only — **CI does not assert a playtime band.**
 

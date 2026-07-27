@@ -27,6 +27,7 @@
 | Overnight program Track B — service immersion | **Done** — carry plate, door wait/leave, interact hints, soft camera; fast suite 133 ([plan](./superpowers/plans/2026-07-26-track-b-service-immersion.md)) |
 | Overnight program Track C — loop completeness | **Done** — mid-day review Continue, floor autosave/hydrate, summary→shop/floor, tutorial close step; fast suite 144 ([plan](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)) |
 | Overnight program Track D — meta depth | **Done** — mastery on reviews + recipe-book progress + pacing HUD; fast suite 147 ([plan](./superpowers/plans/2026-07-26-track-d-meta-depth.md)) |
+| Edit catalog + achievements | **Done** — prestige-flat shop costs, edit + decor catalog, celebration banners, Recipe Book achievements; fast suite 280 ([design](./superpowers/specs/2026-07-27-edit-catalog-achievements-design.md), [plan](./superpowers/plans/2026-07-27-edit-catalog-achievements.md)) |
 
 ---
 
