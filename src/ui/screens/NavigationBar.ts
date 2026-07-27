@@ -4,7 +4,7 @@ import {
   NAV_SCREENS,
   navigationLockReason,
   selectCanNavigateTo,
-  selectNavigationLocked,
+  shouldShowNavigationLockHint,
 } from '../../store/selectors/navigation.ts';
 
 const NAV_LABELS: Record<ScreenId, string> = {
@@ -34,7 +34,11 @@ export function mountNavigationBar(container: HTMLElement): () => void {
     button.addEventListener('click', () => {
       const target = button.dataset.screen as ScreenId;
       const state = useGameStore.getState();
-      if (!selectCanNavigateTo(state, target)) return;
+      if (!selectCanNavigateTo(state, target)) {
+        const reason = navigationLockReason(state);
+        if (reason) state.setFloorToast(reason);
+        return;
+      }
       state.navigateTo(target);
       showScreen(target);
     });
@@ -42,16 +46,19 @@ export function mountNavigationBar(container: HTMLElement): () => void {
 
   const sync = () => {
     const state = useGameStore.getState();
-    const locked = selectNavigationLocked(state);
-    hint.hidden = !locked;
-    hint.textContent = navigationLockReason(state) ?? '';
+    const showHint = shouldShowNavigationLockHint(state);
+    hint.hidden = !showHint;
+    hint.textContent = showHint ? (navigationLockReason(state) ?? '') : '';
 
     nav.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((button) => {
       const target = button.dataset.screen as ScreenId;
       const active = state.screen === target;
-      const disabled = !selectCanNavigateTo(state, target);
+      const locked = !selectCanNavigateTo(state, target) && !active;
       button.classList.toggle('active', active);
-      button.disabled = disabled && !active;
+      // Keep clickable so a blocked tap can show a transient floor toast (not a pinned banner).
+      button.disabled = false;
+      button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+      button.classList.toggle('nav-btn-locked', locked);
       button.setAttribute('aria-current', active ? 'page' : 'false');
     });
 

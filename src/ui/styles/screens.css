@@ -117,7 +117,8 @@
   color: var(--vk-text);
 }
 
-.nav-btn:disabled {
+.nav-btn:disabled,
+.nav-btn-locked {
   opacity: 0.45;
 }
 

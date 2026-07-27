@@ -332,9 +332,15 @@ interface SaveEnvelope {
 
 ### Cache headers (`public/_headers`)
 
-Hashed assets are immutable; shell, service worker, and content JSON must stay fresh so players are not stranded on stale builds (critical for a save-game PWA).
+Hashed Vite bundles are immutable. Unhashed atlases/audio, shell, service worker, and content JSON must revalidate so players are not stranded on stale builds. Progress lives in **IndexedDB** (not Cache Storage) — SW cache rotation never wipes saves.
 
 ```
+/assets/atlases/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/audio/*
+  Cache-Control: public, max-age=0, must-revalidate
+
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
@@ -354,10 +360,11 @@ Hashed assets are immutable; shell, service worker, and content JSON must stay f
 
 | Path | Rationale |
 |------|-----------|
-| `/assets/*` | Content-hashed filenames — long cache safe |
+| `/assets/atlases/*`, `/assets/audio/*` | Paths not hashed; must revalidate or sprites/audio stick on old builds |
+| `/assets/*` | Content-hashed Vite filenames — long cache safe |
 | `/index.html` | Must reference latest hashed bundles after deploy |
-| `/sw.js` | Stale SW serves old app code; can desync from IndexedDB saves |
-| `/data/*.json` | Paths not hashed; `must-revalidate` picks up content rebuilds; SW precache enables offline |
+| `/sw.js` | Stale SW serves old app code; soft-reload on `controllerchange` (IndexedDB saves kept) |
+| `/data/*.json` | Paths not hashed; `must-revalidate` picks up content rebuilds |
 
 ### Build / Deploy Pipeline
 

@@ -38,6 +38,19 @@ describe('kitchen annex unlock (separate back-kitchen room)', () => {
     expect(after.door).toEqual(before.door);
   });
 
+  it('keeps the east kitchen wall solid until the annex is purchased', () => {
+    const state = createNewGameState(11);
+    const { w, h } = state.gridSize;
+    const mainDoor = connectingDoorForMain(w, h);
+    const zones = mapZonesForGrid(w, h, { room: 'main' });
+
+    expect(state.kitchenAnnexOwned).toBe(false);
+    expect(mainDoor).toEqual({ x: w - 1, y: Math.floor(h / 2) });
+    expect(isKitchenCell(zones, mainDoor.x, mainDoor.y)).toBe(true);
+    expect(openDoorCellsForRoom('main', w, h, false)).not.toContainEqual(mainDoor);
+    expect(isConnectingDoorCell(state, 'main', mainDoor.x, mainDoor.y)).toBe(false);
+  });
+
   it('purchase unlocks connecting door without growing grid size', () => {
     let state = createNewGameState(1);
     state = { ...state, cash: 50_000 };
@@ -51,6 +64,13 @@ describe('kitchen annex unlock (separate back-kitchen room)', () => {
 
     const mainDoor = connectingDoorForMain(state.gridSize.w, state.gridSize.h);
     const backDoor = connectingDoorForBackKitchen(state.gridSize.w, state.gridSize.h);
+    const zones = mapZonesForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' });
+    // Center of the kitchen's east perimeter wall (right side of the kitchen zone).
+    expect(mainDoor).toEqual({
+      x: state.gridSize.w - 1,
+      y: Math.floor(state.gridSize.h / 2),
+    });
+    expect(isKitchenCell(zones, mainDoor.x, mainDoor.y)).toBe(true);
     expect(isPerimeterWallCell(mainDoor.x, mainDoor.y, state.gridSize.w, state.gridSize.h)).toBe(
       true,
     );

@@ -5,6 +5,7 @@ import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
+import { nextBoundFrameKey } from './actor-texture-bind.ts';
 import {
   guestSitFrameKey,
   guestVariant,
@@ -143,19 +144,27 @@ export class ActorLayer {
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
 
-    if (frameKey !== this.lastPlayerFrameKey) {
-      this.lastPlayerFrameKey = frameKey;
+    if (
+      nextBoundFrameKey({
+        frameKey,
+        lastFrameKey: this.lastPlayerFrameKey,
+        hadTexture: this.playerSprite.visible,
+      })
+    ) {
       const texture =
         getCharacterTexture(playerFrameKey(facing, frame)) ??
         getCharacterTexture(playerFrameKey(facing, 0)) ??
         getCharacterTexture('player') ??
         getCharacterTexture('customer');
       if (texture) {
+        this.lastPlayerFrameKey = frameKey;
         this.playerSprite.texture = texture;
         this.playerSprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
+        // Leave lastPlayerFrameKey stale/empty so the next sync retries after atlas load.
+        this.lastPlayerFrameKey = '';
         this.playerSprite.visible = false;
       }
     }
@@ -232,8 +241,13 @@ export class ActorLayer {
       const frameKey = seated
         ? guestSitFrameKey(variant, facingName)
         : guestWalkFrameKey(variant, facingName, frame);
-      if (frameKey !== entry.lastFrameKey) {
-        entry.lastFrameKey = frameKey;
+      if (
+        nextBoundFrameKey({
+          frameKey,
+          lastFrameKey: entry.lastFrameKey,
+          hadTexture: entry.sprite.visible,
+        })
+      ) {
         const texture = seated
           ? (getCharacterTexture(guestSitFrameKey(variant, facingName)) ??
             getCharacterTexture(guestWalkFrameKey(variant, facingName, 0)) ??
@@ -244,10 +258,12 @@ export class ActorLayer {
             getCharacterTexture(guestWalkFrameKey(variant, 'down', 0)) ??
             getCharacterTexture('customer'));
         if (texture) {
+          entry.lastFrameKey = frameKey;
           entry.sprite.texture = texture;
           entry.sprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
           entry.sprite.visible = true;
         } else {
+          entry.lastFrameKey = '';
           entry.sprite.visible = false;
         }
       }

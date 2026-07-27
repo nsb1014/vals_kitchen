@@ -125,7 +125,6 @@ export function migrateSave(raw: unknown): SaveEnvelope {
       saveVersion: 3,
       gameState: nextState,
     };
-    version = 3;
   }
 
   return {
