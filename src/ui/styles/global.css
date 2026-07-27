@@ -102,6 +102,107 @@ body {
   pointer-events: auto;
 }
 
+.celebration-banner-host {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  pointer-events: none !important;
+}
+
+.celebration-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(100%, 34rem);
+  min-height: 4.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 72%, var(--vk-text));
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(196, 163, 90, 0.2), transparent 55%),
+    var(--vk-panel-2);
+  color: var(--vk-text);
+  box-shadow: 0 8px 24px rgba(30, 23, 20, 0.5);
+  pointer-events: auto;
+  animation: celebration-banner-cycle 4s ease both;
+}
+
+.celebration-banner-mastery {
+  border-color: color-mix(in srgb, var(--vk-accent-2) 72%, var(--vk-text));
+  background:
+    linear-gradient(135deg, rgba(122, 158, 126, 0.25), transparent 55%),
+    var(--vk-panel-2);
+}
+
+.celebration-banner-icons {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.15rem;
+}
+
+.celebration-banner-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.celebration-banner-title,
+.celebration-banner-body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.celebration-banner-title {
+  font-size: 1rem;
+}
+
+.celebration-banner-body {
+  color: var(--vk-text-dim);
+  font-size: 0.88rem;
+}
+
+.celebration-banner-dismiss {
+  flex: 0 0 auto;
+  min-width: 36px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(30, 23, 20, 0.45);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+@keyframes celebration-banner-cycle {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+  10%,
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-banner {
+    animation: none;
+  }
+}
+
 .restaurant-canvas {
   display: block;
   width: 100%;

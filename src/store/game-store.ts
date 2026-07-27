@@ -44,6 +44,17 @@ export interface ServeReview {
 
 export type CeremonyKind = 'prestige' | 'soft_reset';
 
+export type CelebrationKind = 'recipe' | 'mastery' | 'achievement';
+
+export interface Celebration {
+  kind: CelebrationKind;
+  title: string;
+  body: string;
+  ingredientIds?: string[];
+  achievementId?: string;
+  level?: number;
+}
+
 interface StoreMeta {
   screen: ScreenId;
   editLayoutMode: boolean;
@@ -64,6 +75,7 @@ interface StoreMeta {
   musicEnabled: boolean;
   floorPlayerGrid: { x: number; y: number } | null;
   floorToast: string | null;
+  celebrationQueue: Celebration[];
 }
 
 export interface GameStore extends GameState, StoreMeta {
@@ -86,6 +98,9 @@ export interface GameStore extends GameState, StoreMeta {
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
   setFloorToast: (message: string | null) => void;
+  enqueueCelebration: (celebration: Celebration) => void;
+  dismissCelebration: () => void;
+  clearCelebrations: () => void;
   setActiveFloorRoom: (room: FloorRoomId) => void;
   enterConnectingDoor: () => boolean;
   movePlacement: (placementId: string, x: number, y: number) => boolean;
@@ -122,8 +137,12 @@ const META_KEYS = [
   'setFloorNavPosition',
   'setFloorSelectedTicket',
   'setFloorToast',
+  'enqueueCelebration',
+  'dismissCelebration',
+  'clearCelebrations',
   'floorPlayerGrid',
   'floorToast',
+  'celebrationQueue',
   'screen',
   'editLayoutMode',
   'activeFloorRoom',
@@ -144,6 +163,33 @@ const META_KEYS = [
 
 const FLOOR_TOAST_MS = 2000;
 let floorToastClearTimer: ReturnType<typeof setTimeout> | null = null;
+export const CELEBRATION_DURATION_MS = 4000;
+let celebrationTimer: ReturnType<typeof setTimeout> | null = null;
+let timedCelebration: Celebration | null = null;
+
+function syncCelebrationTimer(): void {
+  const head = useGameStore.getState().celebrationQueue[0] ?? null;
+  if (celebrationTimer && timedCelebration === head) return;
+
+  if (celebrationTimer) {
+    clearTimeout(celebrationTimer);
+    celebrationTimer = null;
+  }
+  timedCelebration = head;
+  if (!head) return;
+
+  celebrationTimer = setTimeout(() => {
+    celebrationTimer = null;
+    timedCelebration = null;
+    const current = useGameStore.getState();
+    if (current.celebrationQueue[0] === head) {
+      useGameStore.setState({
+        celebrationQueue: current.celebrationQueue.slice(1),
+      });
+    }
+    syncCelebrationTimer();
+  }, CELEBRATION_DURATION_MS);
+}
 
 function pickGameState(store: GameStore): GameState {
   const copy = { ...store } as Record<string, unknown>;
@@ -179,6 +225,7 @@ function mergeReducerState(
     musicEnabled: current.musicEnabled,
     floorPlayerGrid: current.floorPlayerGrid,
     floorToast: current.floorToast,
+    celebrationQueue: current.celebrationQueue,
   };
 }
 
@@ -187,8 +234,12 @@ function applyReducerEvents(
   patch: Partial<GameStore>,
   before: GameState,
   existingReviews: RecentReviewEntry[],
+  existingCelebrations: Celebration[],
 ): void {
-  Object.assign(patch, mapReducerEventsToUi(events, before, existingReviews));
+  Object.assign(
+    patch,
+    mapReducerEventsToUi(events, before, existingReviews, existingCelebrations),
+  );
 }
 
 function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
@@ -264,6 +315,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   musicEnabled: false,
   floorPlayerGrid: null,
   floorToast: null,
+  celebrationQueue: [],
 
   async hydrate() {
     const persist = await requestPersistentStorage();
@@ -289,7 +341,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       musicEnabled: false,
       floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
+      celebrationQueue: [],
     });
+    syncCelebrationTimer();
   },
 
   async dispatch(action) {
@@ -299,7 +353,13 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
-    applyReducerEvents(result.events, patch, before, current.recentReviews);
+    applyReducerEvents(
+      result.events,
+      patch,
+      before,
+      current.recentReviews,
+      current.celebrationQueue,
+    );
 
     switch (action.type) {
       case 'OPEN_DAY':
@@ -338,6 +398,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
 
     set(patch);
+    syncCelebrationTimer();
 
     if (shouldAutosaveAfterDispatch(action.type)) {
       void get().autosave();
@@ -388,7 +449,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         pendingPlacementItemKey: null,
         floorPlayerGrid: null,
         floorToast: null,
+        celebrationQueue: [],
       });
+      syncCelebrationTimer();
       await get().autosave();
       return { ok: true as const };
     } catch (error) {
@@ -454,6 +517,25 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         floorToastClearTimer = null;
       }, FLOOR_TOAST_MS);
     }
+  },
+
+  enqueueCelebration(celebration) {
+    set((state) => ({
+      celebrationQueue: [...state.celebrationQueue, celebration],
+    }));
+    syncCelebrationTimer();
+  },
+
+  dismissCelebration() {
+    set((state) => ({
+      celebrationQueue: state.celebrationQueue.slice(1),
+    }));
+    syncCelebrationTimer();
+  },
+
+  clearCelebrations() {
+    set({ celebrationQueue: [] });
+    syncCelebrationTimer();
   },
 
   dismissModifier() {

@@ -65,12 +65,20 @@ export interface ReducerResult {
 export type ReducerEvent =
   | { type: 'PRESTIGE_TRIGGERED'; prestige: number }
   | { type: 'SOFT_RESET_TRIGGERED' }
-  | { type: 'RECIPE_DISCOVERED'; recipeId: string; recipeName: string }
+  | {
+      type: 'RECIPE_DISCOVERED';
+      recipeId: string;
+      recipeName: string;
+      ingredientIds: string[];
+    }
   | {
       type: 'CUSTOMER_SERVED';
       matchStars: number;
       tip: number;
       ratingDelta: number;
+      recipeId?: string;
+      recipeName?: string;
+      ingredientIds?: string[];
       masteryLevel?: number;
       masteryLeveledUp?: boolean;
       masteryBonus?: number;
@@ -93,12 +101,17 @@ function serveEvents(
   beforeRecipes: Set<string>,
   result: ReturnType<typeof serveCustomer>,
   events: ReducerEvent[],
+  ctx: DomainContext,
 ): ReducerResult {
+  const recipe = result.recipeId
+    ? ctx.recipes.find((item) => item.id === result.recipeId)
+    : undefined;
   if (result.recipeId && !beforeRecipes.has(result.recipeId)) {
     events.push({
       type: 'RECIPE_DISCOVERED',
       recipeId: result.recipeId,
       recipeName: result.recipeName ?? result.recipeId,
+      ingredientIds: recipe?.ingredientIds ?? [],
     });
   }
   events.push({
@@ -106,6 +119,13 @@ function serveEvents(
     matchStars: result.matchStars,
     tip: result.tip,
     ratingDelta: result.ratingDelta,
+    ...(result.recipeId
+      ? {
+          recipeId: result.recipeId,
+          recipeName: result.recipeName ?? result.recipeId,
+          ingredientIds: recipe?.ingredientIds ?? [],
+        }
+      : {}),
     ...(result.masteryLevel !== undefined
       ? {
           masteryLevel: result.masteryLevel,
@@ -176,7 +196,7 @@ export function gameReducer(
     case 'SERVE_DISH': {
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = serveCustomer(state, action.ingredientIds, ctx);
-      return serveEvents(beforeRecipes, result, events);
+      return serveEvents(beforeRecipes, result, events, ctx);
     }
 
     case 'NEXT_CUSTOMER': {
@@ -293,7 +313,7 @@ export function gameReducer(
     case 'FLOOR_DELIVER': {
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = deliverAndScore(state, action.ticketId, ctx);
-      return serveEvents(beforeRecipes, result, events);
+      return serveEvents(beforeRecipes, result, events, ctx);
     }
 
     case 'FLOOR_TICK_EATING': {

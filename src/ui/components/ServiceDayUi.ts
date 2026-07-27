@@ -27,6 +27,7 @@ import {
 import { buildReviewDisplay, renderStarGlyphs } from '../presentation/review-display.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
+import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 
 const SERVE_LOCK_MS = 300;
@@ -60,6 +61,7 @@ export function mountServiceDayUi(
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
 
+  const cleanupCelebrationBanner = mountCelebrationBanner(overlayMount);
   // Tickets dock must live under overlay-mount so it stacks above the cooking panel.
   const cleanupFloorHud = mountFloorServiceHud(chromeMount, overlayMount);
 
@@ -548,6 +550,7 @@ export function mountServiceDayUi(
 
   return () => {
     unsubscribe();
+    cleanupCelebrationBanner();
     cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
