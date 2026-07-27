@@ -72,4 +72,28 @@ describe('shop item presentation', () => {
 
     expect(costsAt(prestigeFive)).toEqual(costsAt(prestigeZero));
   });
+
+  it('keeps decorations in Layout and marks the six-item limit', () => {
+    const state = createNewGameState(4);
+    state.cash = 100_000;
+
+    const available = buildUtilityShopRows(state, testContext).filter(
+      (row) => row.kind === 'decor',
+    );
+    expect(available.map((row) => [row.id, row.cost, row.availability])).toEqual([
+      ['decor:decor_plant', 50, 'available'],
+      ['decor:decor_flowers', 75, 'available'],
+      ['decor:decor_rug', 120, 'available'],
+      ['decor:decor_lamp', 150, 'available'],
+      ['decor:decor_sign', 200, 'available'],
+    ]);
+
+    state.decorPurchasedCounts.decor_plant = 6;
+    expect(
+      buildUtilityShopRows(state, testContext)
+        .filter((row) => row.kind === 'decor')
+        .every((row) => row.availability === 'limit_reached'),
+    ).toBe(true);
+    expect(shopAvailabilityLabel('limit_reached')).toBe('Limit reached');
+  });
 });

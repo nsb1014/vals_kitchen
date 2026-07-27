@@ -1,11 +1,13 @@
+import { DECOR_ITEM_KEYS } from '../../domain/economy/decor.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { nextPlacementId } from '../../domain/state/game-state.ts';
 import type { GameStore } from '../game-store.ts';
+import { DECOR_DISPLAY_NAMES } from './layout.ts';
 
 export interface UnplacedItem {
   itemKey: string;
   label: string;
-  kind: 'table' | 'equipment';
+  kind: 'table' | 'equipment' | 'decor';
 }
 
 function countPlacedTables(placements: GameState['placements']): number {
@@ -20,6 +22,10 @@ function placedEquipmentIds(placements: GameState['placements']): Set<string> {
     }
   }
   return ids;
+}
+
+function countPlacedItem(placements: GameState['placements'], itemKey: string): number {
+  return placements.filter((placement) => placement.itemKey === itemKey).length;
 }
 
 export function selectUnplacedItems(
@@ -48,6 +54,18 @@ export function selectUnplacedItems(
       label: equipmentNameById.get(equipmentId) ?? equipmentId,
       kind: 'equipment',
     });
+  }
+
+  for (const itemKey of DECOR_ITEM_KEYS) {
+    const unplaced =
+      state.decorPurchasedCounts[itemKey] - countPlacedItem(state.placements, itemKey);
+    for (let index = 0; index < unplaced; index += 1) {
+      items.push({
+        itemKey,
+        label: DECOR_DISPLAY_NAMES[itemKey],
+        kind: 'decor',
+      });
+    }
   }
 
   return items;

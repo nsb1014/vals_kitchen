@@ -88,6 +88,14 @@ export function mountShopScreen(container: HTMLElement): () => void {
           .join('') || '<p class="screen-empty">All equipment owned.</p>'}
       </section>
       <section class="shop-section">
+        <h2 class="shop-section-title">Layout</h2>
+        ${utilityRows
+          .map((row) =>
+            renderRow(row.name, row.description, row.cost, row.availability, row.id),
+          )
+          .join('')}
+      </section>
+      <section class="shop-section">
         <h2 class="shop-section-title">Ingredients</h2>
         ${ingredientRows
           .slice(0, 80)
@@ -105,14 +113,6 @@ export function mountShopScreen(container: HTMLElement): () => void {
             ),
           )
           .join('') || '<p class="screen-empty">All eligible ingredients owned.</p>'}
-      </section>
-      <section class="shop-section">
-        <h2 class="shop-section-title">Layout</h2>
-        ${utilityRows
-          .map((row) =>
-            renderRow(row.name, row.description, row.cost, row.availability, row.id),
-          )
-          .join('')}
       </section>
     `;
 
@@ -142,6 +142,15 @@ export function mountShopScreen(container: HTMLElement): () => void {
           store.startPlacement('table_2seat');
           return;
         }
+        if (id.startsWith('decor:')) {
+          const itemKey = id.slice('decor:'.length);
+          await store.dispatch({
+            type: 'PURCHASE',
+            purchase: { type: 'decor', itemKey },
+          });
+          store.startPlacement(itemKey);
+          return;
+        }
         if (id === 'grid_expansion') {
           await store.dispatch({ type: 'PURCHASE', purchase: { type: 'grid_expansion' } });
           return;
@@ -164,6 +173,7 @@ export function mountShopScreen(container: HTMLElement): () => void {
       state.unlockedIngredientIds !== prev.unlockedIngredientIds ||
       state.purchasedEquipmentIds !== prev.purchasedEquipmentIds ||
       state.tableCount !== prev.tableCount ||
+      state.decorPurchasedCounts !== prev.decorPurchasedCounts ||
       state.gridSize !== prev.gridSize ||
       state.kitchenAnnexOwned !== prev.kitchenAnnexOwned
     ) {

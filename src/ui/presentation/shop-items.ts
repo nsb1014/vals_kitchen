@@ -1,15 +1,20 @@
 import {
   canPurchase,
+  DECOR_ITEM_KEYS,
+  MAX_DECOR_PLACEMENTS,
   purchaseCost,
+  type DecorItemKey,
   type PurchaseKind,
 } from '../../domain/economy/purchases.ts';
+import { decorPurchasedTotal } from '../../domain/economy/decor.ts';
 import type { DomainContext } from '../../domain/context.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { MAX_GRID_SIZE } from '../../domain/state/game-state.ts';
 import type { Ingredient } from '../../domain/types.ts';
 import { formatCurrency } from './review-display.ts';
 
-export type ShopItemAvailability = 'owned' | 'gate_locked' | 'unaffordable' | 'available';
+export type ShopItemAvailability =
+  'owned' | 'gate_locked' | 'unaffordable' | 'limit_reached' | 'available';
 
 export interface ShopEquipmentRow {
   kind: 'equipment';
@@ -33,7 +38,7 @@ export interface ShopIngredientRow {
 }
 
 export interface ShopUtilityRow {
-  kind: 'table' | 'grid_expansion' | 'kitchen_annex';
+  kind: 'table' | 'decor' | 'grid_expansion' | 'kitchen_annex';
   id: string;
   name: string;
   description: string;
@@ -43,6 +48,14 @@ export interface ShopUtilityRow {
 }
 
 export type ShopRow = ShopEquipmentRow | ShopIngredientRow | ShopUtilityRow;
+
+const DECOR_NAMES: Readonly<Record<DecorItemKey, string>> = {
+  decor_plant: 'Plant',
+  decor_flowers: 'Flowers',
+  decor_rug: 'Rug',
+  decor_lamp: 'Lamp',
+  decor_sign: 'Wall Sign',
+};
 
 function deriveAvailability(
   state: GameState,
@@ -125,6 +138,20 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
   const gridPurchase: PurchaseKind = { type: 'grid_expansion' };
   const annexPurchase: PurchaseKind = { type: 'kitchen_annex' };
 
+  const decorAtCap = decorPurchasedTotal(state.decorPurchasedCounts) >= MAX_DECOR_PLACEMENTS;
+  const decorRows: ShopUtilityRow[] = DECOR_ITEM_KEYS.map((itemKey) => {
+    const purchase: PurchaseKind = { type: 'decor', itemKey };
+    return {
+      kind: 'decor',
+      id: `decor:${itemKey}`,
+      name: DECOR_NAMES[itemKey],
+      description: 'A cosmetic decoration for the dining room.',
+      cost: purchaseCost(state, purchase),
+      availability: decorAtCap ? 'limit_reached' : deriveAvailability(state, purchase, ctx, false),
+      purchase,
+    };
+  });
+
   return [
     {
       kind: 'table',
@@ -135,6 +162,7 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       availability: deriveAvailability(state, tablePurchase, ctx, false),
       purchase: tablePurchase,
     },
+    ...decorRows,
     {
       kind: 'grid_expansion',
       id: 'grid_expansion',
@@ -169,6 +197,8 @@ export function shopAvailabilityLabel(availability: ShopItemAvailability): strin
       return 'Needs equipment';
     case 'unaffordable':
       return 'Not enough cash';
+    case 'limit_reached':
+      return 'Limit reached';
     case 'available':
       return 'Buy';
   }
