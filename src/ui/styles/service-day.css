@@ -314,8 +314,14 @@
   position: absolute;
   top: 0.45rem;
   left: 0.45rem;
-  z-index: 40;
+  /* Above .service-overlay (60) so a long Orders list paints over the cooking panel. */
+  z-index: 70;
   max-width: min(20rem, calc(100% - 0.9rem));
+  /* Beat .overlay-mount > * { pointer-events: auto } so empty dock space clicks pass through. */
+  pointer-events: none;
+}
+
+.overlay-mount > .floor-tickets-dock {
   pointer-events: none;
 }
 

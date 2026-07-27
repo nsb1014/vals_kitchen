@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatFloorTicketLabel,
   formatTicketStatusLabel,
+  visibleFloorTickets,
 } from '../../ui/presentation/floor-ticket.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
 import type { Customer } from '../../domain/day/types.ts';
@@ -60,6 +61,18 @@ describe('floor ticket labels', () => {
     expect(fallback.buttonText).toContain('Party 2');
     expect(fallback.buttonText).toContain('Ready');
     expect(fallback.buttonText).not.toMatch(/ticket_customer/);
+  });
+
+  it('drops delivered tickets from the visible orders list', () => {
+    const tickets: FloorTicket[] = [
+      ticket('open'),
+      { ...ticket('plated'), id: 'ticket_2', customerId: 'c2' },
+      { ...ticket('delivered'), id: 'ticket_3', customerId: 'c3' },
+    ];
+    expect(visibleFloorTickets(tickets).map((t) => t.id)).toEqual([
+      'ticket_customer_1_0',
+      'ticket_2',
+    ]);
   });
 
   it('keeps the full preference copy without truncation', () => {

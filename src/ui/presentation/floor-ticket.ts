@@ -12,6 +12,11 @@ export function formatTicketStatusLabel(
   return 'Open';
 }
 
+/** Tickets still in play for the HUD strip / Orders dropdown (hide served/left). */
+export function visibleFloorTickets(tickets: readonly FloorTicket[]): FloorTicket[] {
+  return tickets.filter((t) => t.status !== 'delivered');
+}
+
 export function formatFloorTicketLabel(input: {
   ticket: FloorTicket;
   customer?: Customer;

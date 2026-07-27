@@ -44,7 +44,7 @@ export function mountServiceDayUi(
   getRestaurantApp: () => RestaurantApp | null,
   chromeMount: HTMLElement,
   statusMount: HTMLElement,
-  canvasMount: HTMLElement,
+  _canvasMount: HTMLElement,
 ): () => void {
   statusMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
@@ -58,7 +58,8 @@ export function mountServiceDayUi(
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
 
-  const cleanupFloorHud = mountFloorServiceHud(chromeMount, canvasMount);
+  // Tickets dock must live under overlay-mount so it stacks above the cooking panel.
+  const cleanupFloorHud = mountFloorServiceHud(chromeMount, overlayMount);
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;

@@ -6,10 +6,14 @@ import {
   selectAdjacentSeatedCustomerIds,
   selectAdjacentUnsetTablePlacementIds,
   selectCanClearFloorTable,
+  selectCanCloseDay,
   selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
-import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
+import {
+  formatFloorTicketLabel,
+  visibleFloorTickets,
+} from '../presentation/floor-ticket.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -21,7 +25,8 @@ function escapeHtml(text: string): string {
 
 export function mountFloorServiceHud(
   chromeMount: HTMLElement,
-  canvasMount: HTMLElement,
+  /** Host above the cooking overlay stacking context (typically overlay-mount). */
+  ticketsHost: HTMLElement,
 ): () => void {
   let ticketsMenuOpen = false;
 
@@ -29,7 +34,7 @@ export function mountFloorServiceHud(
   dock.className = 'floor-tickets-dock';
   dock.dataset.testid = 'floor-tickets-dock';
   dock.hidden = true;
-  canvasMount.appendChild(dock);
+  ticketsHost.appendChild(dock);
 
   const onDocumentPointer = (event: PointerEvent) => {
     if (!ticketsMenuOpen) return;
@@ -71,6 +76,7 @@ export function mountFloorServiceHud(
     dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
+    const canCloseDay = selectCanCloseDay(state);
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
@@ -90,7 +96,7 @@ export function mountFloorServiceHud(
       partyIndexByCustomerId.set(g.customer.id, partyCounter);
     }
 
-    const ticketMeta = floor.tickets.map((t) => {
+    const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
       const isOpen = t.status === 'open';
       const selected = isOpen && selectedTicketId === t.id;
       const guest = floor.pool.find((g) => g.customer.id === t.customerId);
@@ -135,6 +141,11 @@ export function mountFloorServiceHud(
           ${
             canClearTable
               ? `<button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table">Clear table</button>`
+              : ''
+          }
+          ${
+            canCloseDay
+              ? `<button type="button" class="service-btn primary" id="floor-close-day" data-testid="close-day-btn">Close Day</button>`
               : ''
           }
         </div>
@@ -225,6 +236,10 @@ export function mountFloorServiceHud(
           placementId,
         });
       }
+    });
+
+    chromeMount.querySelector('#floor-close-day')?.addEventListener('click', () => {
+      void useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
     });
 
     const selectOpenTicket = (ticketId: string) => {

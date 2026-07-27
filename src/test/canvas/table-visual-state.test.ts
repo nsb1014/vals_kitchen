@@ -21,6 +21,11 @@ describe('table visual state mapping', () => {
     expect(spriteNameForItemKey('table_4seat', 'dirty')).toBe('table_2seat_dirty');
   });
 
+  it('maps cleared/unset to bare table art with no plates', () => {
+    expect(spriteNameForTableState('unset')).toBe('table_2seat_unset');
+    expect(spriteNameForItemKey('table_2seat', 'unset')).toBe('table_2seat_unset');
+  });
+
   it('defaults missing/unknown service state to unset (bare)', () => {
     expect(spriteNameForTableState(null)).toBe('table_2seat_unset');
     expect(spriteNameForTableState(undefined)).toBe('table_2seat_unset');
