@@ -21,6 +21,9 @@ export function formatFloorTicketLabel(input: {
 }): {
   guestLabel: string;
   statusLabel: string;
+  /** Full untruncated preference copy, prefixed with "Wants:". Empty when unknown. */
+  preferenceFull: string;
+  /** @deprecated Prefer preferenceFull — same full text (no truncation). */
   preferenceSummary: string;
   buttonText: string;
 } {
@@ -28,21 +31,18 @@ export function formatFloorTicketLabel(input: {
     input.archetypeName?.trim() ||
     `Party ${Math.max(1, input.partyNumber)}`;
   const statusLabel = formatTicketStatusLabel(input.ticket.status, input.selected);
-  const preferenceSummary = input.customer
-    ? shortenPreference(formatCustomerRequestText(input.customer.preference))
+  const preferenceBody = input.customer
+    ? formatCustomerRequestText(input.customer.preference)
     : '';
-  const preferenceChip = preferenceSummary ? `Wants: ${preferenceSummary}` : '';
-  const buttonText = preferenceChip
-    ? `${guestLabel} · ${statusLabel} — ${preferenceChip}`
+  const preferenceFull = preferenceBody ? `Wants: ${preferenceBody}` : '';
+  const buttonText = preferenceFull
+    ? `${guestLabel} · ${statusLabel} — ${preferenceFull}`
     : `${guestLabel} · ${statusLabel}`;
-  return { guestLabel, statusLabel, preferenceSummary: preferenceChip, buttonText };
-}
-
-function shortenPreference(text: string, maxLen = 42): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim();
-  if (oneLine.length <= maxLen) return oneLine.replace(/\.$/, '');
-  const cut = oneLine.slice(0, maxLen - 1);
-  const lastSpace = cut.lastIndexOf(' ');
-  const base = lastSpace > 20 ? cut.slice(0, lastSpace) : cut;
-  return `${base}…`;
+  return {
+    guestLabel,
+    statusLabel,
+    preferenceFull,
+    preferenceSummary: preferenceFull,
+    buttonText,
+  };
 }

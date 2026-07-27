@@ -19,7 +19,35 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function mountFloorServiceHud(mount: HTMLElement): () => void {
+export function mountFloorServiceHud(
+  chromeMount: HTMLElement,
+  canvasMount: HTMLElement,
+): () => void {
+  let ticketsMenuOpen = false;
+
+  const dock = document.createElement('div');
+  dock.className = 'floor-tickets-dock';
+  dock.dataset.testid = 'floor-tickets-dock';
+  dock.hidden = true;
+  canvasMount.appendChild(dock);
+
+  const onDocumentPointer = (event: PointerEvent) => {
+    if (!ticketsMenuOpen) return;
+    const target = event.target as Node | null;
+    if (target && dock.contains(target)) return;
+    ticketsMenuOpen = false;
+    render();
+  };
+
+  const onDocumentKeydown = (event: KeyboardEvent) => {
+    if (!ticketsMenuOpen || event.key !== 'Escape') return;
+    ticketsMenuOpen = false;
+    render();
+  };
+
+  document.addEventListener('pointerdown', onDocumentPointer, true);
+  document.addEventListener('keydown', onDocumentKeydown);
+
   const render = () => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
@@ -31,12 +59,16 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       !state.ceremony;
 
     if (!show || !floor) {
-      mount.hidden = true;
-      mount.innerHTML = '';
+      chromeMount.hidden = true;
+      chromeMount.innerHTML = '';
+      dock.hidden = true;
+      dock.innerHTML = '';
+      ticketsMenuOpen = false;
       return;
     }
 
-    mount.hidden = false;
+    chromeMount.hidden = false;
+    dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
@@ -58,26 +90,30 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       partyIndexByCustomerId.set(g.customer.id, partyCounter);
     }
 
-    const ticketStrip = floor.tickets
-      .map((t) => {
-        const isOpen = t.status === 'open';
-        const selected = isOpen && selectedTicketId === t.id;
-        const guest = floor.pool.find((g) => g.customer.id === t.customerId);
-        const archetypeName = guest
-          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)?.name
-          : undefined;
-        const label = formatFloorTicketLabel({
-          ticket: t,
-          customer: guest?.customer,
-          archetypeName,
-          partyNumber: partyIndexByCustomerId.get(t.customerId) ?? 1,
-          selected,
-        });
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.preferenceSummary || label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span>${label.preferenceSummary ? `<span class="floor-ticket-pref">${escapeHtml(label.preferenceSummary)}</span>` : ''}</button>`;
+    const ticketMeta = floor.tickets.map((t) => {
+      const isOpen = t.status === 'open';
+      const selected = isOpen && selectedTicketId === t.id;
+      const guest = floor.pool.find((g) => g.customer.id === t.customerId);
+      const archetypeName = guest
+        ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)?.name
+        : undefined;
+      const label = formatFloorTicketLabel({
+        ticket: t,
+        customer: guest?.customer,
+        archetypeName,
+        partyNumber: partyIndexByCustomerId.get(t.customerId) ?? 1,
+        selected,
+      });
+      return { ticket: t, isOpen, selected, label };
+    });
+
+    const ticketStrip = ticketMeta
+      .map(({ ticket: t, isOpen, selected, label }) => {
+        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></button>`;
       })
       .join('');
 
-    mount.innerHTML = `
+    chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
         ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
         ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
@@ -110,7 +146,55 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       </div>
     `;
 
-    mount.querySelector('#floor-set-table')?.addEventListener('click', () => {
+    const count = ticketMeta.length;
+    const countLabel = count === 0 ? 'Tickets' : `Tickets (${count})`;
+    const menuItems =
+      ticketMeta.length === 0
+        ? `<li class="floor-tickets-empty" data-testid="floor-tickets-empty">No active tickets</li>`
+        : ticketMeta
+            .map(({ ticket: t, isOpen, selected, label }) => {
+              const wants = label.preferenceFull
+                ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
+                : '';
+              return `<li class="floor-tickets-item${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-tickets-item">
+                <button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} aria-label="${escapeHtml(`${label.guestLabel}, ${label.statusLabel}`)}">
+                  <span class="floor-tickets-item-head">
+                    <span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span>
+                    <span class="floor-tickets-item-status">${escapeHtml(label.statusLabel)}</span>
+                  </span>
+                  ${wants}
+                </button>
+              </li>`;
+            })
+            .join('');
+
+    dock.innerHTML = `
+      <button
+        type="button"
+        class="floor-tickets-toggle"
+        id="floor-tickets-toggle"
+        data-testid="floor-tickets-toggle"
+        aria-expanded="${ticketsMenuOpen ? 'true' : 'false'}"
+        aria-controls="floor-tickets-menu"
+        aria-haspopup="true"
+      >${escapeHtml(countLabel)}</button>
+      <div
+        class="floor-tickets-menu"
+        id="floor-tickets-menu"
+        data-testid="floor-tickets-menu"
+        role="region"
+        aria-label="Active tickets"
+        ${ticketsMenuOpen ? '' : 'hidden'}
+      >
+        <div class="floor-tickets-menu-header">
+          <h2 class="floor-tickets-menu-title">Orders</h2>
+          <button type="button" class="floor-tickets-close" data-testid="floor-tickets-close" aria-label="Close tickets menu">Close</button>
+        </div>
+        <ul class="floor-tickets-list" data-testid="floor-tickets-list">${menuItems}</ul>
+      </div>
+    `;
+
+    chromeMount.querySelector('#floor-set-table')?.addEventListener('click', () => {
       const placementIds = selectAdjacentUnsetTablePlacementIds(useGameStore.getState());
       for (const placementId of placementIds) {
         void useGameStore.getState().dispatch({
@@ -120,11 +204,11 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       }
     });
 
-    mount.querySelector('#floor-seat-next')?.addEventListener('click', () => {
+    chromeMount.querySelector('#floor-seat-next')?.addEventListener('click', () => {
       void useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
     });
 
-    mount.querySelector('#floor-take-orders')?.addEventListener('click', () => {
+    chromeMount.querySelector('#floor-take-orders')?.addEventListener('click', () => {
       const customerIds = selectAdjacentSeatedCustomerIds(useGameStore.getState());
       if (customerIds.length === 0) return;
       void useGameStore.getState().dispatch({
@@ -133,7 +217,7 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       });
     });
 
-    mount.querySelector('#floor-clear-table')?.addEventListener('click', () => {
+    chromeMount.querySelector('#floor-clear-table')?.addEventListener('click', () => {
       const placementIds = selectAdjacentDirtyTablePlacementIds(useGameStore.getState());
       for (const placementId of placementIds) {
         void useGameStore.getState().dispatch({
@@ -143,16 +227,40 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
       }
     });
 
-    mount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
+    const selectOpenTicket = (ticketId: string) => {
+      const ticket = useGameStore.getState().activeDay?.floor?.tickets.find((t) => t.id === ticketId);
+      if (ticket?.status === 'open') {
+        useGameStore.getState().setFloorSelectedTicket(ticketId);
+      } else {
+        useGameStore.getState().setFloorSelectedTicket(null);
+      }
+    };
+
+    chromeMount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
       button.addEventListener('click', () => {
         const ticketId = button.dataset.ticketId;
         if (!ticketId) return;
-        const ticket = useGameStore.getState().activeDay?.floor?.tickets.find((t) => t.id === ticketId);
-        if (ticket?.status === 'open') {
-          useGameStore.getState().setFloorSelectedTicket(ticketId);
-        } else {
-          useGameStore.getState().setFloorSelectedTicket(null);
-        }
+        selectOpenTicket(ticketId);
+      });
+    });
+
+    dock.querySelector('#floor-tickets-toggle')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      ticketsMenuOpen = !ticketsMenuOpen;
+      render();
+    });
+
+    dock.querySelector('[data-testid="floor-tickets-close"]')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      ticketsMenuOpen = false;
+      render();
+    });
+
+    dock.querySelectorAll<HTMLButtonElement>('[data-menu-ticket-id]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const ticketId = button.dataset.menuTicketId;
+        if (!ticketId) return;
+        selectOpenTicket(ticketId);
       });
     });
   };
@@ -177,6 +285,9 @@ export function mountFloorServiceHud(mount: HTMLElement): () => void {
 
   return () => {
     unsubscribe();
-    mount.innerHTML = '';
+    document.removeEventListener('pointerdown', onDocumentPointer, true);
+    document.removeEventListener('keydown', onDocumentKeydown);
+    chromeMount.innerHTML = '';
+    dock.remove();
   };
 }

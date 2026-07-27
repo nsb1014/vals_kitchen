@@ -273,7 +273,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.1rem;
-  max-width: 14rem;
+  max-width: 10rem;
   padding: 0.35rem 0.55rem;
   border-radius: 6px;
   background: var(--vk-panel-2);
@@ -299,15 +299,6 @@
   text-transform: uppercase;
 }
 
-.floor-ticket-pref {
-  font-size: 11px;
-  color: var(--vk-text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 .floor-ticket.selected {
   background: var(--vk-accent-2);
   border-color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
@@ -315,9 +306,177 @@
 }
 
 .floor-ticket.selected .floor-ticket-guest,
-.floor-ticket.selected .floor-ticket-status,
-.floor-ticket.selected .floor-ticket-pref {
+.floor-ticket.selected .floor-ticket-status {
   color: inherit;
+}
+
+.floor-tickets-dock {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.45rem;
+  z-index: 40;
+  max-width: min(20rem, calc(100% - 0.9rem));
+  pointer-events: none;
+}
+
+.floor-tickets-dock > * {
+  pointer-events: auto;
+}
+
+.floor-tickets-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--vk-border);
+  background: rgba(30, 23, 20, 0.92);
+  color: var(--vk-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.floor-tickets-toggle[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--vk-accent) 55%, var(--vk-border));
+  color: var(--vk-accent);
+}
+
+.floor-tickets-menu {
+  margin-top: 0.35rem;
+  max-height: min(52vh, 22rem);
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  border: 1px solid var(--vk-border);
+  background: rgba(30, 23, 20, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.floor-tickets-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid var(--vk-border);
+}
+
+.floor-tickets-menu-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vk-accent);
+}
+
+.floor-tickets-close {
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--vk-border);
+  background: transparent;
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.floor-tickets-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.floor-tickets-empty {
+  margin: 0;
+  padding: 0.65rem 0.5rem;
+  color: var(--vk-text-dim);
+  font-size: 13px;
+}
+
+.floor-tickets-item {
+  margin: 0;
+}
+
+.floor-tickets-item + .floor-tickets-item {
+  margin-top: 0.3rem;
+}
+
+.floor-tickets-item-btn {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--vk-panel-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.floor-tickets-item-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.floor-tickets-item.selected .floor-tickets-item-btn {
+  background: var(--vk-accent-2);
+  border-color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+  color: var(--vk-bg-deep);
+}
+
+.floor-tickets-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.floor-tickets-item-guest {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.floor-tickets-item-status {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vk-accent);
+}
+
+.floor-tickets-item.selected .floor-tickets-item-status,
+.floor-tickets-item.selected .floor-tickets-item-wants {
+  color: inherit;
+}
+
+.floor-tickets-item.ready .floor-tickets-item-status {
+  color: var(--vk-sage, #6a994e);
+}
+
+.floor-tickets-item-wants {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--vk-text-dim);
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .floor-ticket.ready .floor-ticket-status {

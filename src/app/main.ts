@@ -66,6 +66,7 @@ async function bootstrap(): Promise<void> {
     () => restaurantApp,
     chromeMount,
     statusMount,
+    canvasMount,
   );
 
   const unsubscribeScreen = subscribeScreenFromStore(

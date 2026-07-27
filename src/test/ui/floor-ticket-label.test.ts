@@ -19,7 +19,10 @@ const customer: Customer = {
   preference: {
     primary: { UM: 'high' },
     avoid: {},
-    phrases: ['something really savory', 'not too sweet'],
+    phrases: [
+      'something really savory',
+      'a touch of warmth without getting too sweet or sharp on the finish',
+    ],
   },
 };
 
@@ -42,7 +45,10 @@ describe('floor ticket labels', () => {
     expect(withName.buttonText).not.toMatch(/ticket_/);
     expect(withName.buttonText).toContain('Comfort Seeker');
     expect(withName.buttonText).toContain('Open');
-    expect(withName.preferenceSummary).toMatch(/^Wants:.*savory/i);
+    expect(withName.preferenceFull).toMatch(/^Wants:.*savory/i);
+    expect(withName.preferenceFull).toContain('without getting too sweet');
+    expect(withName.preferenceFull).not.toMatch(/…/);
+    expect(withName.preferenceSummary).toBe(withName.preferenceFull);
 
     const fallback = formatFloorTicketLabel({
       ticket: ticket('plated'),
@@ -54,5 +60,25 @@ describe('floor ticket labels', () => {
     expect(fallback.buttonText).toContain('Party 2');
     expect(fallback.buttonText).toContain('Ready');
     expect(fallback.buttonText).not.toMatch(/ticket_customer/);
+  });
+
+  it('keeps the full preference copy without truncation', () => {
+    const longPhrases = Array.from({ length: 6 }, (_, i) =>
+      `phrase number ${i + 1} with plenty of descriptive wording about taste`,
+    );
+    const label = formatFloorTicketLabel({
+      ticket: ticket('open'),
+      customer: {
+        ...customer,
+        preference: { ...customer.preference, phrases: longPhrases },
+      },
+      archetypeName: 'Comfort Seeker',
+      partyNumber: 1,
+      selected: false,
+    });
+    for (const phrase of longPhrases) {
+      expect(label.preferenceFull.toLowerCase()).toContain(phrase);
+    }
+    expect(label.preferenceFull).not.toMatch(/…|\.\.\.$/);
   });
 });

@@ -236,6 +236,11 @@ test.describe('mobile viewport', () => {
     await page.locator('[data-testid="open-day-btn"]').click();
     await page.locator('[data-testid="start-service-btn"]').click();
     await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+    await expect(page.locator('[data-testid="floor-tickets-toggle"]')).toBeVisible();
+    await page.locator('[data-testid="floor-tickets-toggle"]').click();
+    await expect(page.locator('[data-testid="floor-tickets-menu"]')).toBeVisible();
+    await page.locator('[data-testid="floor-tickets-close"]').click();
+    await expect(page.locator('[data-testid="floor-tickets-menu"]')).toBeHidden();
     await assertStatusHudAboveCanvas(page);
     await assertFloorChromeBelowCanvas(page);
     await assertFloorChromeAboveSafeBottom(page);
