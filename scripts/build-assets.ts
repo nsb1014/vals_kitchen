@@ -121,6 +121,10 @@ const FURNITURE_SPRITES: Record<string, string> = {
   chair: 'chair.png',
   chair_side: 'chair_side.png',
   decor_plant: 'decor_plant.png',
+  decor_flowers: 'decor_flowers.png',
+  decor_rug: 'decor_rug.png',
+  decor_lamp: 'decor_lamp.png',
+  decor_sign: 'decor_sign.png',
 };
 
 /**

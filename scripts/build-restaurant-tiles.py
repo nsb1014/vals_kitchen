@@ -696,6 +696,124 @@ def decor_plant() -> Image.Image:
     return im
 
 
+def decor_flowers() -> Image.Image:
+    """Cheerful diner bouquet in a glazed ceramic floor vase."""
+    im = blank(FURN_W, FURN_H)
+    d = ImageDraw.Draw(im)
+    # Soft ground shadow and tapered sage vase.
+    d.ellipse([8, 43, 23, 47], fill=rgba(CHAR, 70))
+    d.polygon(
+        [(11, 29), (20, 29), (23, 43), (20, 46), (11, 46), (8, 43)],
+        fill=rgba(SAGE),
+        outline=rgba(SAGE_D),
+    )
+    fill_rect(im, 10, 29, 21, 32, SAGE_HI)
+    hline(im, 11, 20, 33, CREAM_D)
+    vline(im, 11, 34, 42, SAGE_HI)
+    hline(im, 12, 19, 44, SAGE_D)
+    # Stems remain visible between the vase and flower heads.
+    for x, y0 in [(12, 17), (15, 13), (18, 16), (20, 11)]:
+        vline(im, x, y0, 29, LEAF_D)
+        put(im, x - 1, y0 + 8, LEAF)
+        put(im, x + 1, y0 + 9, LEAF_HI)
+    # Chunky pixel blossoms with cream highlights.
+    blossoms = [
+        (8, 13, CLOTH),
+        (14, 8, CREAM),
+        (20, 12, COPPER_HI),
+        (23, 7, CLOTH),
+        (17, 17, CREAM),
+    ]
+    for cx, cy, color in blossoms:
+        d.rectangle([cx - 2, cy - 1, cx + 2, cy + 1], fill=rgba(color))
+        d.rectangle([cx - 1, cy - 2, cx + 1, cy + 2], fill=rgba(color))
+        put(im, cx, cy, BRASS)
+        put(im, cx - 1, cy - 1, shade(color, 18, 14, 10))
+    return im
+
+
+def decor_rug() -> Image.Image:
+    """Low woven diner rug, foreshortened to sit naturally on the floor."""
+    im = blank(FURN_W, FURN_H)
+    d = ImageDraw.Draw(im)
+    # Dark underlay gives the floor piece a readable edge on both tile sets.
+    d.polygon(
+        [(5, 24), (26, 24), (30, 42), (27, 45), (4, 45), (1, 42)],
+        fill=rgba(WALNUT_D),
+    )
+    d.polygon(
+        [(6, 25), (25, 25), (28, 41), (25, 43), (6, 43), (3, 41)],
+        fill=rgba(CLOTH),
+        outline=rgba(CLOTH_D),
+    )
+    # Cream border and a simple sage diamond motif.
+    d.line([(7, 27), (24, 27), (26, 40), (24, 41), (7, 41), (5, 40), (7, 27)], fill=rgba(CREAM))
+    d.polygon([(16, 29), (23, 34), (16, 40), (8, 34)], fill=rgba(SAGE_D))
+    d.polygon([(16, 31), (20, 34), (16, 37), (12, 34)], fill=rgba(SAGE_HI))
+    fill_rect(im, 14, 33, 17, 35, BRASS)
+    # Short woven fringe at the near edge.
+    for x in range(6, 27, 3):
+        put(im, x, 44, CREAM_D)
+        put(im, x + 1, 45, CREAM)
+        put(im, x + 1, 46, CREAM_D)
+    return im
+
+
+def decor_lamp() -> Image.Image:
+    """Warm brass standing lamp with a cream fabric shade."""
+    im = blank(FURN_W, FURN_H)
+    d = ImageDraw.Draw(im)
+    # Restrained translucent glow behind the shade.
+    d.ellipse([3, 1, 28, 25], fill=rgba(COPPER_HI, 35))
+    # Tapered fabric shade with walnut piping.
+    d.polygon(
+        [(11, 5), (20, 5), (25, 20), (6, 20)],
+        fill=rgba(CREAM),
+        outline=rgba(WALNUT_D),
+    )
+    hline(im, 12, 19, 6, (255, 246, 214))
+    hline(im, 7, 24, 18, CREAM_D)
+    hline(im, 6, 25, 20, WALNUT_D)
+    vline(im, 10, 9, 17, (255, 244, 204))
+    # Brass stem and weighted base.
+    fill_rect(im, 15, 21, 17, 42, BRASS)
+    vline(im, 15, 22, 41, COPPER_HI)
+    vline(im, 17, 22, 41, COPPER_D)
+    fill_rect(im, 13, 39, 19, 43, WALNUT)
+    d.ellipse([8, 41, 23, 46], fill=rgba(BRASS), outline=rgba(COPPER_D))
+    hline(im, 11, 20, 42, COPPER_HI)
+    hline(im, 10, 21, 45, COPPER_D)
+    return im
+
+
+def decor_sign() -> Image.Image:
+    """Premium freestanding chalkboard sign with a cozy cafe mark."""
+    im = blank(FURN_W, FURN_H)
+    # Splayed wood legs and ground shadow.
+    fill_rect(im, 7, 37, 10, 45, WALNUT_D)
+    fill_rect(im, 22, 37, 25, 45, WALNUT_D)
+    hline(im, 6, 26, 46, CHAR)
+    # Walnut frame and inset charcoal board.
+    outline_rect(im, 4, 5, 27, 39, WALNUT, WALNUT_D)
+    fill_rect(im, 6, 7, 25, 37, CHAR)
+    hline(im, 6, 25, 7, WALNUT_HI)
+    vline(im, 6, 8, 36, WALNUT_HI)
+    hline(im, 6, 25, 37, WALNUT_D)
+    # Cream header strokes and tiny cup/steam cafe emblem.
+    hline(im, 10, 21, 12, CREAM)
+    hline(im, 12, 19, 15, CREAM_D)
+    vline(im, 14, 20, 22, CREAM_D)
+    vline(im, 17, 19, 21, CREAM_D)
+    fill_rect(im, 10, 24, 20, 30, CREAM)
+    fill_rect(im, 11, 25, 19, 29, COPPER)
+    fill_rect(im, 20, 25, 23, 28, CREAM)
+    fill_rect(im, 21, 26, 22, 27, CHAR)
+    hline(im, 9, 22, 32, CREAM_D)
+    put(im, 8, 10, SAGE_HI)
+    put(im, 23, 34, SAGE_HI)
+    return im
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     assets: dict[str, Image.Image] = {
@@ -728,6 +846,10 @@ def main() -> None:
         "barista_station": barista_station(),
         "spice_rack": spice_rack(),
         "decor_plant": decor_plant(),
+        "decor_flowers": decor_flowers(),
+        "decor_rug": decor_rug(),
+        "decor_lamp": decor_lamp(),
+        "decor_sign": decor_sign(),
     }
 
     tile_names = {

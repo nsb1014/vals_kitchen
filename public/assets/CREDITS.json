@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-26T21:26:53.270Z",
+  "generatedAt": "2026-07-27T22:06:25.485Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -398,6 +398,54 @@
         "canvas:FurnitureLayer (decor_plant)"
       ],
       "sourceFile": "decor_plant.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#decor_flowers",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (decor_flowers)"
+      ],
+      "sourceFile": "decor_flowers.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#decor_rug",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (decor_rug)"
+      ],
+      "sourceFile": "decor_rug.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#decor_lamp",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (decor_lamp)"
+      ],
+      "sourceFile": "decor_lamp.png",
+      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#decor_sign",
+      "pack": "Project-generated restaurant tiles (CC0)",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (decor_sign)"
+      ],
+      "sourceFile": "decor_sign.png",
       "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
     },
     {
