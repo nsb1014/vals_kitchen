@@ -344,14 +344,16 @@ Constants live in `src/domain/balance/prestige-pacing.ts`:
 // Rating delta multiplier at prestige P (applied in serveCustomer):
 prestigeRatingDeltaMultiplier(P) = max(0.06, 1 / (1 + P × 0.6))
 
-// Purchase cost multiplier at prestige P (capped):
-prestigeEconomyCostMultiplier(P) = min(10, 1.085^P)   // P=0 → 1.0
+// Purchase costs do NOT use a prestige multiplier (2026-07-27). Prestige
+// rewards come from tip/payout income (1.18^P) and rating resistance only.
+// prestigeEconomyCostMultiplier remains in prestige-pacing.ts for legacy
+// reference / pacing analytics but is not applied to shop purchases.
 
 // Calibrated analytic cycle-length proxy (competent play, seed 424242; PRD §10.1.1):
 projectedCycleDays(P) = round(min(68, 6 + 2.0×P + 0.03×P²))
 ```
 
-`applyReview` receives `deltaMultiplier × prestigeRatingDeltaMultiplier(P) × modifierMultiplier`. Payout prestige multiplier (`1.18^P`) is unchanged. Purchase costs use `scaledUpgradeCost(base, rate, n, prestige)`.
+`applyReview` receives `deltaMultiplier × prestigeRatingDeltaMultiplier(P) × modifierMultiplier`. Payout prestige multiplier (`1.18^P`) is unchanged. Purchase costs use quantity curves only (`upgradeCost(base, rate, n)`), not prestige.
 
 **Competent dish selection** (`findBestMatchCombo`): preference-ranked shortlist (20 ingredients), optimal search on the top 12 unlocked ingredients, multi-seed greedy builds, then capped combo enumeration (`COMPETENT_MATCH_EVAL_CAP = 512`). Exhaustive `findOptimalMatchCombo` is for unit tests / unlock sets ≤12 only.
 

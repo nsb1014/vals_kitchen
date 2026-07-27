@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-26  
+**Last updated:** 2026-07-27  
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -103,6 +103,7 @@
 | 2026-07-26 | Track B Done: carry plate, door wait/leave ticks, interact adjacency hints, soft camera follow; fast suite 133 |
 | 2026-07-26 | Track C Done: mid-day review Continue, FLOOR_/OPEN_DAY autosave, summary mastery + Shop/Floor CTAs, tutorial close step; fast suite 144 |
 | 2026-07-26 | Track D Done: mastery on serve reviews + recipe-book progress labels + pacing HUD; fast suite 147 |
+| 2026-07-27 | Edit catalog + achievements Done: prestige-flat purchase costs, decor buy/place (+ catalog), celebration banners, Recipe Book Achievements tab + badges; fast suite 280 |
 
 ---
 
