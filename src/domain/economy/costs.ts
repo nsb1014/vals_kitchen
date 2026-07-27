@@ -1,16 +1,5 @@
-import { prestigeEconomyCostMultiplier } from '../balance/prestige-pacing.ts';
-
 export function upgradeCost(base: number, rate: number, n: number): number {
   return Math.floor(base * Math.pow(rate, n));
-}
-
-export function scaledUpgradeCost(
-  base: number,
-  rate: number,
-  n: number,
-  prestige: number,
-): number {
-  return Math.floor(upgradeCost(base, rate, n) * prestigeEconomyCostMultiplier(prestige));
 }
 
 export function ingredientUnlockCost(unlockCount: number): number {
@@ -29,7 +18,7 @@ export function gridExpansionCost(expansionCount: number): number {
   return upgradeCost(300, 1.15, expansionCount);
 }
 
-/** One-time kitchen annex unlock (base before prestige scaling). */
+/** One-time kitchen annex unlock. */
 export function kitchenAnnexBaseCost(): number {
   return 800;
 }

@@ -1,5 +1,8 @@
-import { canPurchase, kitchenAnnexCost, type PurchaseKind } from '../../domain/economy/purchases.ts';
-import { scaledUpgradeCost } from '../../domain/economy/costs.ts';
+import {
+  canPurchase,
+  purchaseCost,
+  type PurchaseKind,
+} from '../../domain/economy/purchases.ts';
 import type { DomainContext } from '../../domain/context.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { MAX_GRID_SIZE } from '../../domain/state/game-state.ts';
@@ -41,10 +44,6 @@ export interface ShopUtilityRow {
 
 export type ShopRow = ShopEquipmentRow | ShopIngredientRow | ShopUtilityRow;
 
-function purchasedGateCount(state: GameState): number {
-  return state.purchasedEquipmentIds.filter((id) => id !== 'prep_station').length;
-}
-
 function deriveAvailability(
   state: GameState,
   purchase: PurchaseKind,
@@ -75,12 +74,11 @@ export function buildEquipmentShopRows(
   equipmentCatalog: Array<{ id: string; name: string; ingredientGroupName: string; purchaseIndex: number | null }>,
   ctx: DomainContext,
 ): ShopEquipmentRow[] {
-  const gateCount = purchasedGateCount(state);
   return equipmentCatalog
     .filter((item) => item.purchaseIndex !== null)
     .map((item) => {
       const purchase: PurchaseKind = { type: 'equipment', equipmentId: item.id };
-      const cost = scaledUpgradeCost(500, 1.18, gateCount, state.prestige);
+      const cost = purchaseCost(state, purchase);
       const owned = state.purchasedEquipmentIds.includes(item.id);
       return {
         kind: 'equipment' as const,
@@ -100,7 +98,6 @@ export function buildIngredientShopRows(
   equipmentNameById: Map<string, string>,
   ctx: DomainContext,
 ): ShopIngredientRow[] {
-  const cost = scaledUpgradeCost(150, 1.14, state.ingredientUnlockIndex, state.prestige);
   return ingredients
     .filter((item) => !state.unlockedIngredientIds.includes(item.id))
     .map((item) => {
@@ -112,7 +109,7 @@ export function buildIngredientShopRows(
         name: item.name,
         category: item.category,
         equipmentGateName: equipmentNameById.get(item.equipmentId) ?? item.equipmentId,
-        cost,
+        cost: purchaseCost(state, purchase),
         availability: deriveAvailability(state, purchase, ctx, !gateOwned),
         purchase,
       };
@@ -120,9 +117,6 @@ export function buildIngredientShopRows(
 }
 
 export function buildUtilityShopRows(state: GameState, ctx: DomainContext): ShopUtilityRow[] {
-  const tableCost = scaledUpgradeCost(200, 1.12, state.tableCount, state.prestige);
-  const gridCost = scaledUpgradeCost(300, 1.15, state.gridExpansionCount, state.prestige);
-  const annexCost = kitchenAnnexCost(state.prestige);
   const gridMaxed = state.gridSize.w >= MAX_GRID_SIZE && state.gridSize.h >= MAX_GRID_SIZE;
   const nextW = Math.min(MAX_GRID_SIZE, state.gridSize.w + 1);
   const nextH = Math.min(MAX_GRID_SIZE, state.gridSize.h + 1);
@@ -137,7 +131,7 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       id: 'table',
       name: 'Table (2 seats)',
       description: 'Adds a placeable table for more customers per day.',
-      cost: tableCost,
+      cost: purchaseCost(state, tablePurchase),
       availability: deriveAvailability(state, tablePurchase, ctx, false),
       purchase: tablePurchase,
     },
@@ -146,7 +140,7 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       id: 'grid_expansion',
       name: 'Expand Grid',
       description: `Grow floor to ${nextW}×${nextH} (max ${MAX_GRID_SIZE}×${MAX_GRID_SIZE}).`,
-      cost: gridCost,
+      cost: purchaseCost(state, gridPurchase),
       availability: gridMaxed
         ? 'owned'
         : deriveAvailability(state, gridPurchase, ctx, false),
@@ -158,7 +152,7 @@ export function buildUtilityShopRows(state: GameState, ctx: DomainContext): Shop
       name: 'Back Kitchen Annex',
       description:
         'Unlock a same-size back kitchen through a connecting door — more station space without widening the map.',
-      cost: annexCost,
+      cost: purchaseCost(state, annexPurchase),
       availability: state.kitchenAnnexOwned
         ? 'owned'
         : deriveAvailability(state, annexPurchase, ctx, false),

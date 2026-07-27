@@ -1,4 +1,10 @@
-import { scaledUpgradeCost } from './costs.ts';
+import {
+  equipmentCost,
+  gridExpansionCost,
+  ingredientUnlockCost,
+  kitchenAnnexBaseCost,
+  tableCost,
+} from './costs.ts';
 import type { DomainContext } from '../context.ts';
 import type { GameState, Placement } from '../state/game-state.ts';
 import {
@@ -52,9 +58,29 @@ export type PurchaseKind =
   | { type: 'grid_expansion' }
   | { type: 'kitchen_annex' };
 
-/** One-time back-kitchen annex cost (prestige-scaled). Tunable default — PRD §6.2. */
-export function kitchenAnnexCost(prestige: number): number {
-  return scaledUpgradeCost(800, 1, 0, prestige);
+/** One-time back-kitchen annex cost. Tunable default — PRD §6.2. */
+export function kitchenAnnexCost(): number {
+  return kitchenAnnexBaseCost();
+}
+
+/** Current cost for a purchase; prestige affects income, never shop prices. */
+export function purchaseCost(state: GameState, item: PurchaseKind): number {
+  switch (item.type) {
+    case 'ingredient':
+      return ingredientUnlockCost(state.ingredientUnlockIndex);
+    case 'equipment': {
+      const purchasedGates = state.purchasedEquipmentIds.filter(
+        (id) => id !== 'prep_station',
+      ).length;
+      return equipmentCost(purchasedGates);
+    }
+    case 'table':
+      return tableCost(state.tableCount);
+    case 'grid_expansion':
+      return gridExpansionCost(state.gridExpansionCount);
+    case 'kitchen_annex':
+      return kitchenAnnexCost();
+  }
 }
 
 function countPlacedTables(placements: Placement[]): number {
@@ -76,35 +102,27 @@ export function canPurchase(state: GameState, item: PurchaseKind, ctx: DomainCon
       if (!ingredient) return false;
       if (state.unlockedIngredientIds.includes(item.ingredientId)) return false;
       if (!equipmentGateOwned(state, ingredient.equipmentId)) return false;
-      const cost = scaledUpgradeCost(150, 1.14, state.ingredientUnlockIndex, state.prestige);
-      return state.cash >= cost;
+      return state.cash >= purchaseCost(state, item);
     }
     case 'equipment': {
       if (state.purchasedEquipmentIds.includes(item.equipmentId)) return false;
       const def = ctx.equipmentById.get(item.equipmentId);
       if (!def || def.purchaseIndex === null) return false;
-      const purchasedGates = state.purchasedEquipmentIds.filter(
-        (id) => id !== 'prep_station',
-      ).length;
-      const cost = scaledUpgradeCost(500, 1.18, purchasedGates, state.prestige);
-      return state.cash >= cost;
+      return state.cash >= purchaseCost(state, item);
     }
-    case 'table': {
-      const cost = scaledUpgradeCost(200, 1.12, state.tableCount, state.prestige);
-      return state.cash >= cost;
-    }
+    case 'table':
+      return state.cash >= purchaseCost(state, item);
     case 'grid_expansion': {
       const canGrowW = state.gridSize.w < MAX_GRID_SIZE;
       const canGrowH = state.gridSize.h < MAX_GRID_SIZE;
       if (!canGrowW && !canGrowH) {
         return false;
       }
-      const cost = scaledUpgradeCost(300, 1.15, state.gridExpansionCount, state.prestige);
-      return state.cash >= cost;
+      return state.cash >= purchaseCost(state, item);
     }
     case 'kitchen_annex': {
       if (state.kitchenAnnexOwned) return false;
-      return state.cash >= kitchenAnnexCost(state.prestige);
+      return state.cash >= purchaseCost(state, item);
     }
   }
 }
@@ -119,33 +137,23 @@ export function applyPurchase(
   }
 
   const next = cloneGameState(state);
+  next.cash -= purchaseCost(state, item);
 
   switch (item.type) {
     case 'ingredient': {
-      const cost = scaledUpgradeCost(150, 1.14, state.ingredientUnlockIndex, state.prestige);
-      next.cash -= cost;
       next.unlockedIngredientIds = [...next.unlockedIngredientIds, item.ingredientId];
       next.ingredientUnlockIndex += 1;
       break;
     }
     case 'equipment': {
-      const purchasedGates = state.purchasedEquipmentIds.filter(
-        (id) => id !== 'prep_station',
-      ).length;
-      const cost = scaledUpgradeCost(500, 1.18, purchasedGates, state.prestige);
-      next.cash -= cost;
       next.purchasedEquipmentIds = [...next.purchasedEquipmentIds, item.equipmentId];
       break;
     }
     case 'table': {
-      const cost = scaledUpgradeCost(200, 1.12, state.tableCount, state.prestige);
-      next.cash -= cost;
       next.tableCount += 1;
       break;
     }
     case 'grid_expansion': {
-      const cost = scaledUpgradeCost(300, 1.15, state.gridExpansionCount, state.prestige);
-      next.cash -= cost;
       next.gridExpansionCount += 1;
       next.gridSize = {
         w: next.gridSize.w < MAX_GRID_SIZE ? next.gridSize.w + 1 : next.gridSize.w,
@@ -154,7 +162,6 @@ export function applyPurchase(
       break;
     }
     case 'kitchen_annex': {
-      next.cash -= kitchenAnnexCost(state.prestige);
       next.kitchenAnnexOwned = true;
       // Unlocks the separate back-kitchen room + connecting door; map size unchanged.
       break;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGameState } from '../domain/state/game-state.ts';
-import { scaledUpgradeCost } from '../domain/economy/costs.ts';
+import { ingredientUnlockCost } from '../domain/economy/costs.ts';
 import { useGameStore, getGameStateSnapshot } from '../store/game-store.ts';
 import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
 import { testContext } from './test-helpers.ts';
@@ -34,7 +34,7 @@ describe('phase 6 store integrations', () => {
 
   it('purchase updates cash and unlocks ingredient via PURCHASE', async () => {
     const beforeCash = useGameStore.getState().cash;
-    const cost = scaledUpgradeCost(150, 1.14, 0, 0);
+    const cost = ingredientUnlockCost(0);
     const target = testContext.ingredients.find(
       (item) =>
         item.equipmentId === 'prep_station' &&

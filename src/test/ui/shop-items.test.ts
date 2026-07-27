@@ -3,6 +3,7 @@ import { createNewGameState } from '../../domain/state/game-state.ts';
 import {
   buildEquipmentShopRows,
   buildIngredientShopRows,
+  buildUtilityShopRows,
   shopAvailabilityLabel,
 } from '../../ui/presentation/shop-items.ts';
 import { testContext } from '../test-helpers.ts';
@@ -49,5 +50,26 @@ describe('shop item presentation', () => {
     const grill = rows.find((row) => row.id === 'grill');
     expect(grill?.availability).toBe('available');
     expect(grill?.cost).toBeGreaterThan(0);
+  });
+
+  it('shows identical shop prices regardless of prestige', () => {
+    const prestigeZero = createNewGameState(3);
+    prestigeZero.prestige = 0;
+    prestigeZero.cash = 100_000;
+    const prestigeFive = { ...prestigeZero, prestige: 5 };
+    const equipmentNames = new Map(equipment.map((item) => [item.id, item.name]));
+
+    const costsAt = (state: typeof prestigeZero) => ({
+      equipment: buildEquipmentShopRows(state, equipment, testContext).map((row) => row.cost),
+      ingredients: buildIngredientShopRows(
+        state,
+        testContext.ingredients,
+        equipmentNames,
+        testContext,
+      ).map((row) => row.cost),
+      utilities: buildUtilityShopRows(state, testContext).map((row) => row.cost),
+    });
+
+    expect(costsAt(prestigeFive)).toEqual(costsAt(prestigeZero));
   });
 });
