@@ -83,6 +83,14 @@ export function mapReducerEventsToUi(
         patch.ceremony = 'soft_reset';
         patch.ceremonyPrestige = null;
         break;
+      case 'ACHIEVEMENT_UNLOCKED':
+        celebrations.push({
+          kind: 'achievement',
+          title: event.title,
+          body: event.body,
+          achievementId: event.achievementId,
+        });
+        break;
       default:
         break;
     }

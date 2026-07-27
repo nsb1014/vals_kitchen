@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-27T22:06:25.485Z",
+  "generatedAt": "2026-07-27T22:22:17.377Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
   "packs": [
@@ -24,6 +24,13 @@
       "sourceUrl": "vendor/generated/character-sit/",
       "license": "CC0",
       "note": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+    },
+    {
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "note": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
     },
     {
       "pack": "Kenney Tiny Dungeon",
@@ -447,6 +454,331 @@
       ],
       "sourceFile": "decor_sign.png",
       "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-5.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-5.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-10.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-10.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-25.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-25.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-50.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-50.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-unlocks-100.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-unlocks-100.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-5-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-5-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-5-5.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-5-5.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-5-10.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-5-10.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-10-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-10-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-10-3.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-10-3.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/recipe-mastery-10-5.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "recipe-mastery-10-5.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/decor-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "decor-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/decor-3.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "decor-3.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/decor-6.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "decor-6.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/tables-3.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "tables-3.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/tables-5.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "tables-5.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/tables-8.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "tables-8.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/days-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "days-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/days-7.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "days-7.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/days-14.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "days-14.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/days-30.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "days-30.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/prestiges-1.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "prestiges-1.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/prestiges-3.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "prestiges-3.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "achievements/prestiges-5.png",
+      "pack": "Val's Kitchen Achievement Badges",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/achievement-badges/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:recipe-book achievements",
+        "ui:achievement celebration"
+      ],
+      "sourceFile": "prestiges-5.png",
+      "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_left_0",
@@ -3142,6 +3474,31 @@
   ],
   "shippedFiles": [
     "CREDITS.json",
+    "achievements/days-1.png",
+    "achievements/days-14.png",
+    "achievements/days-30.png",
+    "achievements/days-7.png",
+    "achievements/decor-1.png",
+    "achievements/decor-3.png",
+    "achievements/decor-6.png",
+    "achievements/prestiges-1.png",
+    "achievements/prestiges-3.png",
+    "achievements/prestiges-5.png",
+    "achievements/recipe-mastery-10-1.png",
+    "achievements/recipe-mastery-10-3.png",
+    "achievements/recipe-mastery-10-5.png",
+    "achievements/recipe-mastery-5-1.png",
+    "achievements/recipe-mastery-5-10.png",
+    "achievements/recipe-mastery-5-5.png",
+    "achievements/recipe-unlocks-1.png",
+    "achievements/recipe-unlocks-10.png",
+    "achievements/recipe-unlocks-100.png",
+    "achievements/recipe-unlocks-25.png",
+    "achievements/recipe-unlocks-5.png",
+    "achievements/recipe-unlocks-50.png",
+    "achievements/tables-3.png",
+    "achievements/tables-5.png",
+    "achievements/tables-8.png",
     "atlases/characters.json",
     "atlases/characters.png",
     "atlases/food.json",

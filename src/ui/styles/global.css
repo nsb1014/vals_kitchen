@@ -138,6 +138,15 @@ body {
     var(--vk-panel-2);
 }
 
+.celebration-banner-achievement {
+  border-color: color-mix(in srgb, var(--vk-accent-2) 72%, var(--vk-text));
+}
+
+.celebration-achievement-badge {
+  flex: 0 0 48px;
+  image-rendering: pixelated;
+}
+
 .celebration-banner-icons {
   flex: 0 0 auto;
   display: flex;

@@ -12,6 +12,7 @@ import {
   normalizeDecorPurchasedCounts,
   type DecorPurchasedCounts,
 } from '../economy/decor.ts';
+import type { AchievementId } from '../achievements/catalog.ts';
 
 export const STARTING_GRID = { w: 4, h: 4 } as const;
 export const STARTING_CASH = 500;
@@ -21,8 +22,8 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-/** Save v4: decoration ownership counts are persisted. */
-export const CURRENT_SAVE_VERSION = 4 as const;
+/** Save v5: unlocked achievement ids are persisted. */
+export const CURRENT_SAVE_VERSION = 5 as const;
 
 export interface Placement {
   id: string;
@@ -49,6 +50,7 @@ export interface GameState {
   purchasedEquipmentIds: string[];
   discoveredRecipeIds: string[];
   recipeMastery: RecipeMasteryMap;
+  unlockedAchievementIds: AchievementId[];
   gridSize: { w: number; h: number };
   /** Furniture on the main dining + kitchen floor. */
   placements: Placement[];
@@ -189,6 +191,7 @@ export function createNewGameState(seed?: number): GameState {
     purchasedEquipmentIds: [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: [],
     recipeMastery: {},
+    unlockedAchievementIds: [],
     gridSize: { ...starter.gridSize },
     placements,
     backKitchenPlacements: [],
@@ -224,6 +227,7 @@ export function normalizeGameState(raw: GameState): GameState {
     purchasedEquipmentIds: raw.purchasedEquipmentIds ?? [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: raw.discoveredRecipeIds ?? [],
     recipeMastery: raw.recipeMastery ?? {},
+    unlockedAchievementIds: raw.unlockedAchievementIds ?? [],
     gridSize: migrated.gridSize,
     placements,
     backKitchenPlacements: migrated.backKitchenPlacements,

@@ -400,6 +400,29 @@
 }
 
 /* Recipe book */
+.recipe-book-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.65rem 1rem 0;
+}
+
+.recipe-book-tab {
+  min-height: 44px;
+  border: 1px solid var(--vk-border);
+  border-radius: 10px 10px 4px 4px;
+  background: var(--vk-panel);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-weight: 700;
+}
+
+.recipe-book-tab.active {
+  border-color: var(--vk-accent);
+  background: color-mix(in srgb, var(--vk-accent) 18%, var(--vk-panel));
+  color: var(--vk-text);
+}
+
 .recipe-virtual-scroll {
   flex: 1;
   min-height: 0;
@@ -439,6 +462,74 @@
   margin: 0.25rem 0 0;
   font-size: 13px;
   line-height: 1.35;
+}
+
+.achievement-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.25rem 0 1rem;
+}
+
+.achievement-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 72px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 12px;
+  background: var(--vk-panel);
+}
+
+.achievement-badge {
+  flex: 0 0 48px;
+  image-rendering: pixelated;
+}
+
+.achievement-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.achievement-copy h3,
+.achievement-copy p {
+  margin: 0;
+}
+
+.achievement-copy h3 {
+  font-size: 15px;
+}
+
+.achievement-copy p,
+.achievement-status {
+  color: var(--vk-text-dim);
+  font-size: 12px;
+}
+
+.achievement-copy p {
+  margin-top: 0.2rem;
+}
+
+.achievement-status {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-weight: 700;
+}
+
+.achievement-locked {
+  opacity: 0.6;
+}
+
+.achievement-locked .achievement-badge {
+  filter: grayscale(0.8);
+}
+
+.achievement-unlocked {
+  border-color: color-mix(in srgb, var(--vk-accent-2) 60%, var(--vk-border));
+}
+
+.achievement-unlocked .achievement-status {
+  color: var(--vk-accent-2);
 }
 
 .recipe-pager {

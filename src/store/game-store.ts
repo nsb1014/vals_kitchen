@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 import { ensureContentForAction, getDomainContext } from '../app/content-loader.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
+import type { AchievementId } from '../domain/achievements/catalog.ts';
 import { dayBonusEarnings, volumeBonusEarnings } from '../domain/economy/tips.ts';
 import {
   findTransferDropCell,
@@ -51,7 +52,7 @@ export interface Celebration {
   title: string;
   body: string;
   ingredientIds?: string[];
-  achievementId?: string;
+  achievementId?: AchievementId;
   level?: number;
 }
 

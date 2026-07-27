@@ -162,6 +162,18 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     version = 4;
   }
 
+  if (version === 4) {
+    envelope = {
+      ...envelope,
+      saveVersion: 5,
+      gameState: {
+        ...envelope.gameState,
+        unlockedAchievementIds: envelope.gameState.unlockedAchievementIds ?? [],
+      },
+    };
+    version = 5;
+  }
+
   const gameState = envelope.gameState as GameState;
   return {
     ...envelope,

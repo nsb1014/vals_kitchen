@@ -9,8 +9,14 @@ import {
   virtualWindowRange,
 } from '../presentation/recipe-book.ts';
 import { renderFoodIconHtml } from '../components/food-icon.ts';
+import {
+  ACHIEVEMENT_CATALOG,
+  achievementBadgeUrl,
+} from '../../domain/achievements/catalog.ts';
+import { achievementProgress } from '../../domain/achievements/evaluate.ts';
 
 const ROW_HEIGHT = 88;
+type RecipeBookTab = 'recipes' | 'achievements';
 
 export function mountRecipeBookScreen(container: HTMLElement): () => void {
   const root = document.createElement('div');
@@ -22,7 +28,11 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
         <h1 class="screen-title">Recipe Book</h1>
         <p class="screen-subtitle" id="recipe-progress">Loading…</p>
       </header>
-      <div class="screen-toolbar">
+      <div class="recipe-book-tabs" role="tablist" aria-label="Recipe Book sections">
+        <button type="button" class="recipe-book-tab active" id="recipe-tab" role="tab" aria-selected="true">Recipes</button>
+        <button type="button" class="recipe-book-tab" id="achievements-tab" role="tab" aria-selected="false">Achievements</button>
+      </div>
+      <div class="screen-toolbar" id="recipe-toolbar">
         <label class="screen-field screen-field-grow">
           <span>Search</span>
           <input type="search" id="recipe-search" class="screen-input" placeholder="Search discovered recipes" enterkeyhint="search" />
@@ -37,6 +47,11 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
 
   const panel = root.querySelector('#recipes-screen') as HTMLElement;
   const progressEl = root.querySelector('#recipe-progress') as HTMLElement;
+  const recipesTabEl = root.querySelector('#recipe-tab') as HTMLButtonElement;
+  const achievementsTabEl = root.querySelector(
+    '#achievements-tab',
+  ) as HTMLButtonElement;
+  const toolbarEl = root.querySelector('#recipe-toolbar') as HTMLElement;
   const searchEl = root.querySelector('#recipe-search') as HTMLInputElement;
   const scrollEl = root.querySelector('#recipe-scroll') as HTMLElement;
   const innerEl = root.querySelector('#recipe-inner') as HTMLElement;
@@ -45,6 +60,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   let query = '';
   let pageIndex = 0;
   let recipesLoaded = isRecipesContentReady();
+  let activeTab: RecipeBookTab = 'recipes';
 
   const getEntries = () => {
     const ctx = getDomainContext();
@@ -77,6 +93,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   };
 
   const renderVirtualRows = (entries: ReturnType<typeof getEntries>) => {
+    innerEl.className = 'recipe-virtual-inner';
     const page = paginateRecipeEntries(entries, pageIndex, RECIPE_PAGE_SIZE);
     const { start, end, offsetY, totalHeight } = virtualWindowRange(
       scrollEl.scrollTop,
@@ -104,7 +121,32 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     renderPager(page.totalPages);
   };
 
-  const render = () => {
+  const renderAchievements = () => {
+    const state = useGameStore.getState();
+    const unlocked = new Set(state.unlockedAchievementIds);
+    progressEl.textContent = `${unlocked.size} / ${ACHIEVEMENT_CATALOG.length} unlocked`;
+    innerEl.className = 'recipe-virtual-inner achievement-list';
+    innerEl.style.height = 'auto';
+    innerEl.innerHTML = ACHIEVEMENT_CATALOG.map((achievement) => {
+      const isUnlocked = unlocked.has(achievement.id);
+      const progress = Math.min(
+        achievementProgress(state, achievement),
+        achievement.threshold,
+      );
+      return `
+        <article class="achievement-row ${isUnlocked ? 'achievement-unlocked' : 'achievement-locked'}" data-achievement-id="${achievement.id}">
+          <img class="achievement-badge" src="${achievementBadgeUrl(achievement.id)}" alt="" width="48" height="48" />
+          <div class="achievement-copy">
+            <h3><span aria-hidden="true">${isUnlocked ? '✓' : '🔒'}</span> ${achievement.title}</h3>
+            <p>${achievement.description}</p>
+            <span class="achievement-status">${isUnlocked ? 'Unlocked' : `${progress} / ${achievement.threshold}`}</span>
+          </div>
+        </article>`;
+    }).join('');
+    pagerEl.innerHTML = '';
+  };
+
+  const renderRecipes = () => {
     const ctx = getDomainContext();
     const state = useGameStore.getState();
     const progress = buildRecipeBookProgress(
@@ -131,8 +173,23 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     renderVirtualRows(entries);
   };
 
+  const render = () => {
+    const showingRecipes = activeTab === 'recipes';
+    recipesTabEl.classList.toggle('active', showingRecipes);
+    recipesTabEl.setAttribute('aria-selected', String(showingRecipes));
+    achievementsTabEl.classList.toggle('active', !showingRecipes);
+    achievementsTabEl.setAttribute('aria-selected', String(!showingRecipes));
+    toolbarEl.hidden = !showingRecipes;
+    pagerEl.hidden = !showingRecipes;
+    if (showingRecipes) {
+      renderRecipes();
+    } else {
+      renderAchievements();
+    }
+  };
+
   const onScroll = () => {
-    if (!recipesLoaded) return;
+    if (activeTab !== 'recipes' || !recipesLoaded) return;
     renderVirtualRows(getEntries());
   };
 
@@ -140,6 +197,16 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   searchEl.addEventListener('input', () => {
     query = searchEl.value;
     pageIndex = 0;
+    scrollEl.scrollTop = 0;
+    render();
+  });
+  recipesTabEl.addEventListener('click', () => {
+    activeTab = 'recipes';
+    scrollEl.scrollTop = 0;
+    render();
+  });
+  achievementsTabEl.addEventListener('click', () => {
+    activeTab = 'achievements';
     scrollEl.scrollTop = 0;
     render();
   });
@@ -159,7 +226,18 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
     if (state.screen !== prev.screen) syncVisibility();
-    if (state.discoveredRecipeIds !== prev.discoveredRecipeIds) render();
+    if (
+      state.discoveredRecipeIds !== prev.discoveredRecipeIds ||
+      state.recipeMastery !== prev.recipeMastery ||
+      state.unlockedAchievementIds !== prev.unlockedAchievementIds ||
+      state.decorPurchasedCounts !== prev.decorPurchasedCounts ||
+      state.tableCount !== prev.tableCount ||
+      state.day !== prev.day ||
+      state.prestige !== prev.prestige ||
+      state.stats !== prev.stats
+    ) {
+      render();
+    }
   });
 
   syncVisibility();

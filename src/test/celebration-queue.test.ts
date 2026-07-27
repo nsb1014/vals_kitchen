@@ -90,8 +90,8 @@ describe('celebration queue timing', () => {
     useGameStore.getState().enqueueCelebration({
       kind: 'achievement',
       title: 'Regular',
-      body: 'Serve ten guests',
-      achievementId: 'serve_10',
+      body: 'Complete seven service days',
+      achievementId: 'days-7',
     });
 
     const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;

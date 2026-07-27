@@ -29,6 +29,8 @@ import {
 import type { FloorRoomId } from './floor/starter-map.ts';
 import type { GameState, Placement } from './state/game-state.ts';
 import { cloneGameState } from './state/game-state.ts';
+import { applyAchievementUnlocks } from './achievements/evaluate.ts';
+import type { AchievementId } from './achievements/catalog.ts';
 
 export type GameAction =
   | { type: 'OPEN_DAY' }
@@ -65,6 +67,12 @@ export interface ReducerResult {
 export type ReducerEvent =
   | { type: 'PRESTIGE_TRIGGERED'; prestige: number }
   | { type: 'SOFT_RESET_TRIGGERED' }
+  | {
+      type: 'ACHIEVEMENT_UNLOCKED';
+      achievementId: AchievementId;
+      title: string;
+      body: string;
+    }
   | {
       type: 'RECIPE_DISCOVERED';
       recipeId: string;
@@ -143,6 +151,25 @@ function serveEvents(
   return { state: result.state, events };
 }
 
+function withAchievementEvents(result: ReducerResult): ReducerResult {
+  const achievementResult = applyAchievementUnlocks(result.state);
+  if (achievementResult.unlocked.length === 0) return result;
+  return {
+    state: achievementResult.state,
+    events: [
+      ...result.events,
+      ...achievementResult.unlocked.map(
+        (achievement): ReducerEvent => ({
+          type: 'ACHIEVEMENT_UNLOCKED',
+          achievementId: achievement.id,
+          title: achievement.title,
+          body: achievement.description,
+        }),
+      ),
+    ],
+  };
+}
+
 export function gameReducer(
   state: GameState,
   action: GameAction,
@@ -196,7 +223,9 @@ export function gameReducer(
     case 'SERVE_DISH': {
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = serveCustomer(state, action.ingredientIds, ctx);
-      return serveEvents(beforeRecipes, result, events, ctx);
+      return withAchievementEvents(
+        serveEvents(beforeRecipes, result, events, ctx),
+      );
     }
 
     case 'NEXT_CUSTOMER': {
@@ -208,11 +237,14 @@ export function gameReducer(
     }
 
     case 'CLOSE_DAY': {
-      return { state: closeDay(state), events };
+      return withAchievementEvents({ state: closeDay(state), events });
     }
 
     case 'PURCHASE': {
-      return { state: applyPurchase(state, action.purchase, ctx), events };
+      return withAchievementEvents({
+        state: applyPurchase(state, action.purchase, ctx),
+        events,
+      });
     }
 
     case 'PLACE_ITEM': {
@@ -313,7 +345,9 @@ export function gameReducer(
     case 'FLOOR_DELIVER': {
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = deliverAndScore(state, action.ticketId, ctx);
-      return serveEvents(beforeRecipes, result, events, ctx);
+      return withAchievementEvents(
+        serveEvents(beforeRecipes, result, events, ctx),
+      );
     }
 
     case 'FLOOR_TICK_EATING': {

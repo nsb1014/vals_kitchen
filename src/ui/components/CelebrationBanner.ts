@@ -1,4 +1,8 @@
 import { useGameStore } from '../../store/game-store.ts';
+import {
+  achievementBadgeUrl,
+  getAchievement,
+} from '../../domain/achievements/catalog.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 
 function escapeHtml(text: string): string {
@@ -28,8 +32,15 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     const icons = (celebration.ingredientIds ?? [])
       .map((ingredientId) => renderFoodIconHtml(ingredientId, 30))
       .join('');
+    const achievement = celebration.achievementId
+      ? getAchievement(celebration.achievementId)
+      : undefined;
+    const achievementIcon = achievement
+      ? `<img class="celebration-achievement-badge" src="${achievementBadgeUrl(achievement.id)}" alt="" width="48" height="48" />`
+      : '';
     host.innerHTML = `
       <aside class="celebration-banner celebration-banner-${celebration.kind}" data-testid="celebration-banner">
+        ${achievementIcon}
         ${icons ? `<div class="celebration-banner-icons">${icons}</div>` : ''}
         <div class="celebration-banner-copy">
           <strong class="celebration-banner-title">${escapeHtml(celebration.title)}</strong>

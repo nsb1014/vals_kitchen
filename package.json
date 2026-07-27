@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "npm run sync:data && tsc && vite build",
     "build:ingredient-icons": "python3 scripts/build-ingredient-icons.py",
+    "build:achievement-badges": "python3 scripts/build-achievement-badges.py",
     "build:assets": "tsx scripts/build-assets.ts",
     "audit:assets": "tsx scripts/audit-assets.ts",
     "sync:data": "mkdir -p public/data && cp src/data/*.json public/data/",

@@ -59,6 +59,13 @@ const PACKS: Record<string, PackMeta> = {
     license: 'CC0',
     note: 'Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project.',
   },
+  generatedBadges: {
+    pack: "Val's Kitchen Achievement Badges",
+    author: "Val's Kitchen project",
+    sourceUrl: 'vendor/generated/achievement-badges/',
+    license: 'CC0',
+    note: 'Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0.',
+  },
   tinyDungeon: {
     pack: 'Kenney Tiny Dungeon',
     author: 'Kenney Vleugels',
@@ -87,6 +94,35 @@ const PACKS: Record<string, PackMeta> = {
 };
 
 const GENERATED_RESTAURANT = path.join(ROOT, 'vendor', 'generated', 'restaurant-tiles');
+const GENERATED_BADGES = path.join(ROOT, 'vendor', 'generated', 'achievement-badges');
+
+const ACHIEVEMENT_BADGE_IDS = [
+  'recipe-unlocks-1',
+  'recipe-unlocks-5',
+  'recipe-unlocks-10',
+  'recipe-unlocks-25',
+  'recipe-unlocks-50',
+  'recipe-unlocks-100',
+  'recipe-mastery-5-1',
+  'recipe-mastery-5-5',
+  'recipe-mastery-5-10',
+  'recipe-mastery-10-1',
+  'recipe-mastery-10-3',
+  'recipe-mastery-10-5',
+  'decor-1',
+  'decor-3',
+  'decor-6',
+  'tables-3',
+  'tables-5',
+  'tables-8',
+  'days-1',
+  'days-7',
+  'days-14',
+  'days-30',
+  'prestiges-1',
+  'prestiges-3',
+  'prestiges-5',
+] as const;
 
 const TILE_SPRITES: Record<string, string> = {
   floor_a: 'floor_wood_a.png',
@@ -288,10 +324,30 @@ function runRestaurantTileBuilder(): void {
   });
 }
 
+function runAchievementBadgeBuilder(): void {
+  execFileSync(
+    'python3',
+    [path.join(__dirname, 'build-achievement-badges.py'), GENERATED_BADGES],
+    { stdio: 'inherit' },
+  );
+}
+
 function runCharacterSitBuilder(): void {
   execFileSync('python3', [path.join(__dirname, 'build-character-sit-frames.py')], {
     stdio: 'inherit',
   });
+}
+
+function copyAchievementBadges(): void {
+  const destination = path.join(OUT, 'achievements');
+  mkdirSync(destination, { recursive: true });
+  for (const id of ACHIEVEMENT_BADGE_IDS) {
+    const source = path.join(GENERATED_BADGES, `${id}.png`);
+    if (!existsSync(source)) {
+      throw new Error(`Missing generated achievement badge: ${source}`);
+    }
+    copyFileSync(source, path.join(destination, `${id}.png`));
+  }
 }
 
 function writeManifest(entries: Record<string, string>, file: string): void {
@@ -367,6 +423,19 @@ function buildCredits(shippedFiles: string[]): void {
       sourceFile: file,
       approximationNote:
         'Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0.',
+    });
+  }
+
+  for (const id of ACHIEVEMENT_BADGE_IDS) {
+    add({
+      path: `achievements/${id}.png`,
+      pack: PACKS.generatedBadges.pack,
+      author: PACKS.generatedBadges.author,
+      sourceUrl: PACKS.generatedBadges.sourceUrl,
+      license: 'CC0',
+      usedIn: ['ui:recipe-book achievements', 'ui:achievement celebration'],
+      sourceFile: `${id}.png`,
+      approximationNote: PACKS.generatedBadges.note,
     });
   }
 
@@ -493,6 +562,7 @@ function listShippedFiles(dir: string, prefix = ''): string[] {
 function main(): void {
   assertVendor();
   runRestaurantTileBuilder();
+  runAchievementBadgeBuilder();
   runCharacterSitBuilder();
 
   const tmp = path.join(ROOT, 'scripts', '.asset-build');
@@ -585,6 +655,7 @@ function main(): void {
   );
 
   copyAudio();
+  copyAchievementBadges();
 
   const shippedFiles = listShippedFiles(OUT);
   buildCredits(shippedFiles);
