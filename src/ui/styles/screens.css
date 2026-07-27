@@ -353,24 +353,31 @@
 .shop-item-actions {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
+  flex: 0 0 9.75rem;
+  width: 9.75rem;
   gap: 0.35rem;
 }
 
 .shop-item-cost {
   font-size: 14px;
   font-weight: 600;
+  text-align: right;
 }
 
 .shop-buy-btn {
+  box-sizing: border-box;
+  width: 100%;
   min-height: 44px;
-  min-width: 5.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.6rem;
   border-radius: 8px;
   border: 1px solid var(--vk-border);
   background: var(--vk-panel-2);
   color: var(--vk-text);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
 }
 
 .shop-item-available .shop-buy-btn {

@@ -87,4 +87,21 @@ describe('day summary display', () => {
     );
     expect(display.volumeBonusLine).toBe('Volume bonus (2/4 seats): +$1');
   });
+
+  it('reports a non-zero rating change when start and end differ', () => {
+    const display = buildDaySummaryDisplay({
+      dayEarnings: 100,
+      dayBonus: 0,
+      volumeBonus: 0,
+      averageMatch: 8,
+      ratingStart: 3.0,
+      ratingEnd: 3.45,
+      customersServed: 4,
+      seatingCapacity: 4,
+      unlockCount: 5,
+      totalIngredients: 40,
+    });
+    expect(display.ratingDeltaText).toMatch(/\+0\.45★/);
+    expect(display.ratingDeltaText).toContain('3.0 → 3.5');
+  });
 });

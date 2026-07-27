@@ -81,6 +81,12 @@ describe('service day store flow', () => {
     expect(state.day).toBe(before.day + 1);
     expect(state.cash).toBeGreaterThanOrEqual(cashBeforeClose);
     expect(state.daySummary!.customersServedText).toMatch(/Customers served: \d+/);
+    // Rating moves during serves; summary must compare day-start → close, not close → close.
+    expect(state.daySummary!.ratingDeltaText).not.toMatch(/Rating change: \+?0(?:\.0+)?★ \(3\.0 → 3\.0\)/);
+    expect(state.rating).not.toBe(before.rating);
+    expect(state.daySummary!.ratingDeltaText).toContain(
+      `${before.rating.toFixed(1)} → ${state.rating.toFixed(1)}`,
+    );
   });
 
   it('maps prestige and soft-reset reducer events to ceremony state', () => {

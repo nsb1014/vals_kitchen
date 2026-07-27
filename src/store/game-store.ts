@@ -261,6 +261,7 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
 function buildDaySummary(
   before: GameState,
   after: GameState,
+  ratingStart: number,
 ): DaySummaryDisplay {
   const activeDay = before.activeDay!;
   const averageMatch =
@@ -286,7 +287,7 @@ function buildDaySummary(
     dayBonus,
     volumeBonus,
     averageMatch,
-    ratingStart: before.rating,
+    ratingStart,
     ratingEnd: after.rating,
     customersServed: activeDay.customersServed,
     seatingCapacity: before.seatingCapacity,
@@ -379,7 +380,11 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.pendingReview = null;
         break;
       case 'CLOSE_DAY':
-        patch.daySummary = buildDaySummary(before, result.state);
+        patch.daySummary = buildDaySummary(
+          before,
+          result.state,
+          current.dayStartRating ?? before.rating,
+        );
         patch.modifierDismissed = false;
         patch.pendingReview = null;
         patch.dayStartRating = null;
