@@ -194,7 +194,9 @@ export function installE2eBridge(
       });
       useGameStore.getState().setFloorSelectedTicket(openTicket.id);
       const cookPosition = { x: station.x - 1, y: station.y };
-      getRestaurantApp()?.nav.snapTo(cookPosition);
+      const restaurantApp = getRestaurantApp();
+      restaurantApp?.app.stop();
+      restaurantApp?.nav.snapTo(cookPosition);
       useGameStore.getState().setFloorNavPosition(cookPosition);
     },
 
