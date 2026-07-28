@@ -333,7 +333,8 @@
 
 .floor-tickets-dock {
   position: absolute;
-  top: 0.45rem;
+  /* Overlay covers the full surface (including Cash HUD). Offset below status strip. */
+  top: calc(var(--vk-status-hud-height, 2.75rem) + 0.45rem);
   left: 0.45rem;
   /* Above .service-overlay (60) so a long Orders list paints over the cooking panel. */
   z-index: 70;

@@ -309,6 +309,15 @@ export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
   expect(hud!.y + hud!.height).toBeLessThanOrEqual(canvas!.y + 1);
 }
 
+/** Tickets toggle sits below Cash/status HUD (not overlapping it on the overlay). */
+export async function assertTicketsBelowStatusHud(page: Page): Promise<void> {
+  const hud = await page.locator('[data-testid="game-hud"]').boundingBox();
+  const tickets = await page.locator('[data-testid="floor-tickets-toggle"]').boundingBox();
+  expect(hud).not.toBeNull();
+  expect(tickets).not.toBeNull();
+  expect(tickets!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height - 1);
+}
+
 /** Floor actions stay clear of the shell bottom safe inset (Android nav clearance). */
 export async function assertFloorChromeAboveSafeBottom(page: Page): Promise<void> {
   const clearance = await page.evaluate(() => {
