@@ -270,6 +270,10 @@
   margin-bottom: 0.35rem;
 }
 
+.flavor-bar-row.no-value {
+  grid-template-columns: 4.5rem 1fr;
+}
+
 .flavor-bar-label,
 .flavor-bar-value {
   font-size: 12px;

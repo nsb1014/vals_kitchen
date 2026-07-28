@@ -11,6 +11,11 @@ import {
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
 import {
+  buildFlavorBarsViewModel,
+  renderFlavorBarsHtml,
+} from '../presentation/flavor-profile.ts';
+import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
+import {
   formatFloorTicketLabel,
   visibleFloorTickets,
 } from '../presentation/floor-ticket.ts';
@@ -23,12 +28,15 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+type TicketsPanelView = 'order' | 'ideal';
+
 export function mountFloorServiceHud(
   chromeMount: HTMLElement,
   /** Host above the cooking overlay stacking context (typically overlay-mount). */
   ticketsHost: HTMLElement,
 ): () => void {
   let ticketsMenuOpen = false;
+  let ticketsPanelView: TicketsPanelView = 'order';
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -110,7 +118,7 @@ export function mountFloorServiceHud(
         partyNumber: partyIndexByCustomerId.get(t.customerId) ?? 1,
         selected,
       });
-      return { ticket: t, isOpen, selected, label };
+      return { ticket: t, isOpen, selected, label, customer: guest?.customer };
     });
 
     const ticketStrip = ticketMeta
@@ -159,7 +167,7 @@ export function mountFloorServiceHud(
 
     const count = ticketMeta.length;
     const countLabel = count === 0 ? 'Tickets' : `Tickets (${count})`;
-    const menuItems =
+    const orderItems =
       ticketMeta.length === 0
         ? `<li class="floor-tickets-empty" data-testid="floor-tickets-empty">No active tickets</li>`
         : ticketMeta
@@ -178,6 +186,30 @@ export function mountFloorServiceHud(
               </li>`;
             })
             .join('');
+
+    const idealTicket =
+      ticketMeta.find((row) => row.selected) ??
+      ticketMeta.find((row) => row.isOpen) ??
+      ticketMeta[0];
+    let idealBody: string;
+    if (!idealTicket?.customer) {
+      idealBody = `<p class="floor-tickets-empty" data-testid="floor-tickets-ideal-empty">No active order</p>`;
+    } else {
+      const ideal = resolveIdealFlavorProfile(idealTicket.customer.preference);
+      const bars = renderFlavorBarsHtml(
+        buildFlavorBarsViewModel(ideal, {
+          title: idealTicket.label.guestLabel,
+          subtitle: 'Ideal flavor profile',
+        }),
+        { showValues: true },
+      );
+      idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
+    }
+
+    const panelBody =
+      ticketsPanelView === 'order'
+        ? `<ul class="floor-tickets-list" data-testid="floor-tickets-list">${orderItems}</ul>`
+        : idealBody;
 
     dock.innerHTML = `
       <button
@@ -198,10 +230,13 @@ export function mountFloorServiceHud(
         ${ticketsMenuOpen ? '' : 'hidden'}
       >
         <div class="floor-tickets-menu-header">
-          <h2 class="floor-tickets-menu-title">Orders</h2>
+          <div class="floor-tickets-view-tabs" role="tablist" aria-label="Ticket views">
+            <button type="button" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'order' ? ' active' : ''}" data-testid="tickets-view-order" data-tickets-view="order" aria-selected="${ticketsPanelView === 'order' ? 'true' : 'false'}">Order</button>
+            <button type="button" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'ideal' ? ' active' : ''}" data-testid="tickets-view-ideal" data-tickets-view="ideal" aria-selected="${ticketsPanelView === 'ideal' ? 'true' : 'false'}">Ideal</button>
+          </div>
           <button type="button" class="floor-tickets-close" data-testid="floor-tickets-close" aria-label="Close tickets menu">Close</button>
         </div>
-        <ul class="floor-tickets-list" data-testid="floor-tickets-list">${menuItems}</ul>
+        <div class="floor-tickets-panel-body" data-testid="floor-tickets-panel">${panelBody}</div>
       </div>
     `;
 
@@ -269,6 +304,17 @@ export function mountFloorServiceHud(
       event.stopPropagation();
       ticketsMenuOpen = false;
       render();
+    });
+
+    dock.querySelectorAll<HTMLButtonElement>('[data-tickets-view]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const view = button.dataset.ticketsView;
+        if (view === 'order' || view === 'ideal') {
+          ticketsPanelView = view;
+          render();
+        }
+      });
     });
 
     dock.querySelectorAll<HTMLButtonElement>('[data-menu-ticket-id]').forEach((button) => {

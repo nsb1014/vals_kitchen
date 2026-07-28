@@ -1,4 +1,5 @@
 import { getDomainContext, getEquipmentNameMap } from '../../app/content-loader.ts';
+import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
 import {
   buildFlavorProfileViewModel,
   filterIngredientsByAxis,
@@ -54,7 +55,7 @@ export function buildInspectorIngredientList(
 export function inspectorFilterOptions(): string {
   const options = ['<option value="none">All unlocked</option>'];
   for (const axis of AXIS_KEYS) {
-    options.push(`<option value="${axis}">High ${axis}</option>`);
+    options.push(`<option value="${axis}">High ${AXIS_LABELS[axis]}</option>`);
   }
   return options.join('');
 }

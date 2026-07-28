@@ -18,12 +18,14 @@ const customer: Customer = {
   id: 'customer_1_0',
   archetypeId: 'comfort_seeker',
   preference: {
-    primary: { UM: 'high' },
+    primary: { UM: 'high', RI: 'mid' },
     avoid: {},
-    phrases: [
-      'something really savory',
-      'a touch of warmth without getting too sweet or sharp on the finish',
-    ],
+    phrases: ['high Umami', 'moderate Rich'],
+    idealProfile: {
+      SW: 1, SA: 4, SO: 1, BI: 0, UM: 8,
+      HE: 0, FR: 0, EA: 2, SM: 1, PU: 2, NU: 1,
+      RI: 5, LI: 2, HT: 0, CR: 1, TE: 1,
+    },
   },
 };
 
@@ -46,8 +48,8 @@ describe('floor ticket labels', () => {
     expect(withName.buttonText).not.toMatch(/ticket_/);
     expect(withName.buttonText).toContain('Comfort Seeker');
     expect(withName.buttonText).toContain('Open');
-    expect(withName.preferenceFull).toMatch(/^Wants:.*savory/i);
-    expect(withName.preferenceFull).toContain('without getting too sweet');
+    expect(withName.preferenceFull).toMatch(/^Wants:.*Umami/i);
+    expect(withName.preferenceFull).toContain('Rich');
     expect(withName.preferenceFull).not.toMatch(/…/);
     expect(withName.preferenceSummary).toBe(withName.preferenceFull);
 

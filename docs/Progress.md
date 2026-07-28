@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-27  
+**Last updated:** 2026-07-28  
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -84,7 +84,7 @@
 
 | Date | Change |
 |------|--------|
-| 2026-07-24 | RESEARCH.md completed |
+| 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |

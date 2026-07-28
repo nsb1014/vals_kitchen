@@ -3,6 +3,7 @@ export * from './state/game-state.ts';
 export * from './context.ts';
 export * from './rng/index.ts';
 export * from './flavor/aggregate.ts';
+export * from './flavor/axis-labels.ts';
 export * from './flavor/scoring.ts';
 export * from './flavor/recipe-match.ts';
 export * from './economy/costs.ts';
