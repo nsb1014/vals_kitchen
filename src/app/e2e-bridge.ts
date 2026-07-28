@@ -13,6 +13,7 @@ import {
   isRecipesContentReady,
   isScoringContentReady,
 } from './content-loader.ts';
+import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
 
 export interface E2eBridge {
   getPlacements: () => Array<{
@@ -56,7 +57,9 @@ declare global {
 }
 
 /** Hooks for Playwright when `?e2e=1` is present. */
-export function installE2eBridge(): void {
+export function installE2eBridge(
+  getRestaurantApp: () => RestaurantApp | null,
+): void {
   if (typeof window === 'undefined') return;
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
 
@@ -122,6 +125,7 @@ export function installE2eBridge(): void {
     },
 
     setFloorNavPosition(pos) {
+      getRestaurantApp()?.nav.snapTo(pos);
       useGameStore.getState().setFloorNavPosition(pos);
     },
 
@@ -187,21 +191,11 @@ export function installE2eBridge(): void {
         unlockedIngredientIds: getDomainContext().ingredients.map(
           (ingredient) => ingredient.id,
         ),
-        placements: current.placements.map((placement) =>
-          placement.id === station.id
-            ? {
-                ...placement,
-                x:
-                  current.floorPlayerGrid?.x ??
-                  current.activeDay!.floor!.playerPosition.x,
-                y:
-                  current.floorPlayerGrid?.y ??
-                  current.activeDay!.floor!.playerPosition.y,
-              }
-            : placement,
-        ),
       });
       useGameStore.getState().setFloorSelectedTicket(openTicket.id);
+      const cookPosition = { x: station.x - 1, y: station.y };
+      getRestaurantApp()?.nav.snapTo(cookPosition);
+      useGameStore.getState().setFloorNavPosition(cookPosition);
     },
 
     openComposeSheet() {

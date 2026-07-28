@@ -98,7 +98,8 @@ test.describe('screen navigation', () => {
 
     await navigateToScreen(page, 'inspector');
     await assertScreenOpen(page, 'inspector-screen');
-    await expect(page.locator('[data-testid="flavor-axis-row"]')).toHaveCount(15);
+    // Flavor profiles intentionally omit axes whose displayed value is zero.
+    await expect(page.locator('[data-testid="flavor-axis-row"]')).toHaveCount(5);
     await expect(page.locator('.flavor-temp-badge')).toBeVisible();
 
     await navigateToScreen(page, 'shop');
