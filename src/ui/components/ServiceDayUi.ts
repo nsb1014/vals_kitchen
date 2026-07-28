@@ -6,6 +6,7 @@ import {
 } from '../../domain/state/game-state.ts';
 import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
 import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
+import { computeWeightedSatisfaction } from '../../domain/flavor/scoring.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   selectCanAdvanceCustomer,
@@ -32,8 +33,10 @@ import {
 } from '../presentation/flavor-profile.ts';
 import {
   buildReviewDisplay,
+  formatReviewModifierLine,
   renderStarGlyphs,
 } from '../presentation/review-display.ts';
+import { prestigeRatingDeltaMultiplier } from '../../domain/balance/prestige-pacing.ts';
 import {
   clearComposeAxes,
   clearComposeNameQuery,
@@ -375,6 +378,11 @@ export function mountServiceDayUi(
 
     if (state.pendingReview) {
       const review = buildReviewDisplay(state.pendingReview);
+      const ratingModifierLine = formatReviewModifierLine(
+        selectActiveModifier(state),
+        state.pendingReview.matchStars,
+        prestigeRatingDeltaMultiplier(state.prestige),
+      );
       const progress = selectQueueProgress(state);
       const canClose = selectCanCloseDay(state);
       const canAdvance =
@@ -393,6 +401,7 @@ export function mountServiceDayUi(
             <p class="review-detail" data-testid="review-score">${review.starsText}</p>
             <p class="review-detail">Tip: ${review.tipText}</p>
             <p class="review-detail ${review.ratingDeltaPositive ? 'review-positive' : 'review-negative'}">Rating ${review.ratingDeltaText}</p>
+            ${ratingModifierLine ? `<p class="review-detail review-negative">${escapeHtml(ratingModifierLine)}</p>` : ''}
             ${review.recipeLine ? `<p class="review-detail review-positive">${review.recipeLine}</p>` : ''}
             ${review.masteryLine ? `<p class="review-detail review-positive" data-testid="review-mastery">${review.masteryLine}</p>` : ''}
             </div>
@@ -446,6 +455,19 @@ export function mountServiceDayUi(
       const ctx = getDomainContext();
       const preview = computeDishPreview(draftIds, ctx.ingredientsById);
       const ticket = selectFloorComposeTicket(state);
+      const ticketGuest = ticket
+        ? state.activeDay?.floor?.pool.find(
+            (guest) => guest.customer.id === ticket.customerId,
+          )
+        : undefined;
+      const requestMatch =
+        preview.profile && ticketGuest
+          ? 10 *
+            computeWeightedSatisfaction(
+              preview.profile,
+              ticketGuest.customer.preference,
+            )
+          : null;
       const canPlate =
         preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
       const unlocked = state.unlockedIngredientIds.flatMap((id) => {
@@ -506,16 +528,13 @@ export function mountServiceDayUi(
 
       let ticketBadge = '';
       if (ticket) {
-        const guest = state.activeDay?.floor?.pool.find(
-          (g) => g.customer.id === ticket.customerId,
-        );
-        const archetypeName = guest
-          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)
+        const archetypeName = ticketGuest
+          ? ctx.archetypes.find((a) => a.id === ticketGuest.customer.archetypeId)
               ?.name
           : undefined;
         const label = formatFloorTicketLabel({
           ticket,
-          customer: guest?.customer,
+          customer: ticketGuest?.customer,
           archetypeName,
           partyNumber: 1,
           selected: true,
@@ -561,7 +580,7 @@ export function mountServiceDayUi(
             <footer class="sheet-footer compose-sheet-footer">
               <div class="compose-footer-copy">
                 <span>Dish flavor</span>
-                <span>Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients</span>
+                <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
               </div>
               <div class="compose-flavor-strip" aria-label="Dish flavor preview">${flavorPreview || '<span class="compose-flavor-empty">Select ingredients to preview flavor</span>'}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>

@@ -1,54 +1,55 @@
-import type { AxisKey, Band, CustomerPreference, FlavorVector } from '../types.ts';
+import type { Band, CustomerPreference, FlavorVector } from '../types.ts';
 import { AXIS_KEYS } from '../types.ts';
 
-function axisSatisfaction(
-  dish: FlavorVector,
-  axis: AxisKey,
-  band: Band | undefined,
-  avoid: boolean,
-): number {
-  if (avoid && dish[axis] > 4) return 0;
-  if (!band) return 0.7;
-  if (band === 'high') return Math.min(1, Math.max(0, dish[axis] / 10));
-  if (band === 'mid') return 1 - Math.abs(dish[axis] - 5) / 3;
-  return 1 - Math.min(1, Math.max(0, dish[axis] / 4));
+function clampUnit(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * Satisfaction for the same bands used by request generation:
+ * low <= 3, moderate 3–6, high >= 6. Values just outside a band taper
+ * smoothly, but a satisfaction component can never become negative.
+ */
+export function bandSatisfaction(value: number, band: Band): number {
+  const clamped = Math.min(10, Math.max(0, value));
+  if (band === 'low') {
+    return clamped <= 3 ? 1 : clampUnit((7 - clamped) / 4);
+  }
+  if (band === 'mid') {
+    if (clamped >= 3 && clamped <= 7) return 1;
+    return clamped < 3
+      ? clampUnit(clamped / 3)
+      : clampUnit((10 - clamped) / 3);
+  }
+  return clamped >= 6 ? 1 : clampUnit((clamped - 3) / 3);
 }
 
 export function computeWeightedSatisfaction(
   dish: FlavorVector,
   preference: CustomerPreference,
 ): number {
-  const primaryAxes = Object.keys(preference.primary) as AxisKey[];
-  const avoidOnlyAxes = AXIS_KEYS.filter(
-    (axis) => preference.avoid[axis] && !preference.primary[axis],
+  const scoredAxes = AXIS_KEYS.filter(
+    (axis) => Boolean(preference.primary[axis]) || Boolean(preference.avoid[axis]),
   );
 
-  if (primaryAxes.length === 0 && avoidOnlyAxes.length === 0) {
+  if (scoredAxes.length === 0) {
     return 0.5;
   }
 
-  let primarySum = 0;
-  for (const axis of primaryAxes) {
-    primarySum += axisSatisfaction(
-      dish,
-      axis,
-      preference.primary[axis],
-      Boolean(preference.avoid[axis]),
-    );
+  let satisfactionSum = 0;
+  for (const axis of scoredAxes) {
+    const band = preference.primary[axis];
+    let satisfaction = band ? bandSatisfaction(dish[axis], band) : 1;
+    if (preference.avoid[axis]) {
+      satisfaction = Math.min(
+        satisfaction,
+        bandSatisfaction(dish[axis], 'low'),
+      );
+    }
+    satisfactionSum += satisfaction;
   }
 
-  const avoidViolations = AXIS_KEYS.filter(
-    (axis) => preference.avoid[axis] && dish[axis] > 4,
-  ).length;
-
-  if (primaryAxes.length === 0) {
-    const penalty = 5 * avoidViolations;
-    return Math.max(0, 0.5 - penalty / Math.max(1, avoidOnlyAxes.length));
-  }
-
-  const numerator = 2 * primarySum - 5 * avoidViolations;
-  const denominator = 2 * primaryAxes.length;
-  return numerator / denominator;
+  return satisfactionSum / scoredAxes.length;
 }
 
 export function meanPairAffinity(
@@ -76,6 +77,7 @@ export function computeMatchStars(
 ): number {
   const weightedSat = computeWeightedSatisfaction(dish, preference);
   const affinityBonus = meanPairAffinity(ingredientIds, compoundAffinity);
-  const raw = 10 * (0.85 * weightedSat + 0.15 * affinityBonus) + recipeBonus;
+  // The order match is the result; ingredient affinity is a smaller bonus.
+  const raw = 10 * (0.9 * weightedSat + 0.1 * affinityBonus) + recipeBonus;
   return Math.min(10, Math.max(0, raw));
 }

@@ -199,9 +199,9 @@ export function mountFloorServiceHud(
       const bars = renderFlavorBarsHtml(
         buildFlavorBarsViewModel(ideal, {
           title: idealTicket.label.guestLabel,
-          subtitle: 'Ideal flavor profile',
+          subtitle: 'Scored flavor targets',
         }),
-        { showValues: true },
+        { showValues: true, showTemp: false },
       );
       idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
     }

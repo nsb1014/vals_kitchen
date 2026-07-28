@@ -3,6 +3,7 @@ import {
   buildReviewDisplay,
   formatCurrency,
   formatRatingDelta,
+  formatReviewModifierLine,
   formatStars,
   renderStarGlyphs,
 } from '../../ui/presentation/review-display.ts';
@@ -45,5 +46,30 @@ describe('review display presentation', () => {
       masteryLine: 'Mastery Lv.2 (+0.10★)',
     });
     expect(display.masteryLine).toBe('Mastery Lv.2 (+0.10★)');
+  });
+
+  it('explains rating modifiers that change the review result', () => {
+    expect(
+      formatReviewModifierLine(
+        {
+          id: 'critic_visit',
+          name: 'Food Critic',
+          description: '',
+          effect: { type: 'critic', threshold: 8, penalty: 0.2 },
+        },
+        4.2,
+      ),
+    ).toBe('Food Critic penalty: -0.20★');
+    expect(
+      formatReviewModifierLine(
+        {
+          id: 'local_hero',
+          name: 'Local Hero',
+          description: '',
+          effect: { type: 'rating_multiplier', multiplier: 1.15 },
+        },
+        8,
+      ),
+    ).toBe('Local Hero: rating change ×1.15');
   });
 });

@@ -7,8 +7,9 @@ import {
 } from '../../domain/day/customer-request-generator.ts';
 import { aggregateDish } from '../../domain/flavor/aggregate.ts';
 import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
+import { computeWeightedSatisfaction } from '../../domain/flavor/scoring.ts';
 import { createRng } from '../../domain/rng/index.ts';
-import { NEW_GAME_STARTER_IDS } from '../../domain/types.ts';
+import { AXIS_KEYS, NEW_GAME_STARTER_IDS } from '../../domain/types.ts';
 import { resolveIdealFlavorProfile } from '../../ui/presentation/ideal-flavor.ts';
 import {
   buildFlavorBarsViewModel,
@@ -44,6 +45,16 @@ describe('ideal flavor profile on customer requests', () => {
         request.witnessIngredientIds.map((id) => testContext.ingredientsById.get(id)!.flavor),
       );
       expect(request.preference.idealProfile).toEqual(witnessDish);
+      expect(computeWeightedSatisfaction(witnessDish, request.preference)).toBe(1);
+
+      const displayedIdeal = resolveIdealFlavorProfile(request.preference);
+      for (const axis of AXIS_KEYS) {
+        if (request.preference.primary[axis] || request.preference.avoid[axis]) {
+          expect(displayedIdeal[axis]).toBe(witnessDish[axis]);
+        } else {
+          expect(displayedIdeal[axis]).toBe(0);
+        }
+      }
 
       for (const phrase of request.preference.phrases) {
         const usesAxisLabel = Object.values(AXIS_LABELS).some((label) =>
@@ -53,6 +64,25 @@ describe('ideal flavor profile on customer requests', () => {
         expect(phrase.toLowerCase()).not.toMatch(/savory|garlicky|spicy kick|tangy|indulgent/);
       }
     }
+  });
+
+  it('backfills old saves with full-credit targets on scored axes only', () => {
+    const preference = {
+      primary: {
+        UM: 'mid' as const,
+        PU: 'low' as const,
+        RI: 'high' as const,
+      },
+      avoid: {},
+      phrases: ['moderate Umami', 'low Pungent', 'high Rich'],
+    };
+    const ideal = resolveIdealFlavorProfile(preference);
+
+    expect(ideal.UM).toBe(5);
+    expect(ideal.PU).toBe(2);
+    expect(ideal.RI).toBe(8);
+    expect(ideal.SW).toBe(0);
+    expect(computeWeightedSatisfaction(ideal, preference)).toBe(1);
   });
 
   it('renders ideal bars with numeric values and cooking bars without', () => {
