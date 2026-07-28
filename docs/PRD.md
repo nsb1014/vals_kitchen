@@ -137,9 +137,9 @@ Where `seating_capacity` = count of **chair slots** on placed tables (not abstra
 | Screen | Purpose |
 |--------|---------|
 | Restaurant floor (PixiJS) | Walkable world, layout edit, open/close day |
-| Ticket strip / HUD | Active tickets, carry, cash/rating/day |
-| Station compose sheet | Ingredient picker when at a station |
-| Ingredient Inspector | 16-axis flavor bars per unlocked ingredient |
+| Ticket strip / HUD | Active tickets; Orders panel with **Order** text + **Ideal** flavor bars |
+| Station compose sheet | Ingredient picker; dish flavor bars (no numeric values) |
+| Ingredient Inspector | 16-axis flavor bars **with** numeric values per unlocked ingredient |
 | Shop | Ingredients, tables, stations, expansions |
 | Rating | Current stars, recent reviews, prestige count |
 | Recipe Book | Discovered recipes **with mastery level** |
@@ -169,27 +169,20 @@ Full schema, aggregation, and scoring algorithms: [Backend-Guidelines.md](./Back
 
 ### 5.3 Customer Request Text
 
-Generated from **overlapping descriptor schemas** — phrases map to axis bands (low / mid / high):
+Generated from **overlapping descriptor schemas** — phrases map to axis bands (low / mid / high) using the **same axis labels as the Flavor Inspector** (Sweet, Salty, Umami, Pungent, Heat, …):
 
-| Axis | High (7–10) | Mid (4–6) | Low (0–3) |
-|------|-------------|-----------|-----------|
-| UM | "something really savory" | "a little umami depth" | — |
-| SO | "bright and tangy" | "a touch of acid" | "nothing too sharp" |
-| SW | "a hint of sweetness" | — | "not sweet at all" |
-| RI | "rich and indulgent" | "moderately hearty" | "light and clean" |
-| LI | "fresh and refreshing" | — | — |
-| SM | "smoky depth" | "a whisper of char" | — |
-| HT | "spicy kick" | "gentle warmth" | "mild, no heat" |
-| HE | "herbal and fresh" | — | — |
-| FR | "fruity notes" | — | — |
-| EA | "earthy flavors" | — | — |
-| PU | "bold and garlicky" | — | "nothing too pungent" |
-| CR | "some crunch" | — | "soft textures only" |
+| Band | Phrase form |
+|------|-------------|
+| High (7–10) | `high Umami`, `high Rich`, `high Heat`, … |
+| Mid (4–6) | `moderate Umami`, `moderate Salty`, … |
+| Low / avoid (0–3) | `low Sweet`, `low Heat`, … |
 
-**Generation (Ruling 12):** Roll 1 of 20 archetypes → pick a witness 3–6 ingredient combo from the unlocked set → derive **2–3 primary bands on actionable axes only** — axes that (a) appear strongly on unlocked ingredients (variance + peak value in the current pantry) and (b) change achievable dish scores across 3–6 combos. Optional avoid cue when a high-variance axis has strong carriers in the pantry (e.g. garlic for pungency) but the witness dish stays low. Compose **2–3 bubble phrases** using the same axis labels as the flavor inspector (`UM` → “savory/umami”, `PU` → “garlicky/pungent”, etc.). Pick randomly among satisfiable witness combos for day-to-day diversity. **Every like/dislike must be reachable and punishable with the current unlock set** so competent matches score high and clear mismatches score low. Examples:
+**Ideal flavor profile:** Every generated request stores `idealProfile` — the aggregate flavor vector of a **witness** 3–6 ingredient combo from the player's unlocked pantry. The Tickets panel Ideal view shows that profile with the same 0–10 bars (and numeric values) as the Flavors tab. The cooking compose screen shows the player's current dish with the same bars **without** numeric values.
 
-- "I'm craving something **really savory** with a **bright, tangy** finish. Nothing too sweet."
-- "Give me **rich and indulgent** with a **whisper of char**. Keep it **mild, no heat**."
+**Generation (Ruling 12):** Roll 1 of 20 archetypes → pick a witness 3–6 ingredient combo from the unlocked set → derive **2–3 primary bands on actionable axes only** — axes that (a) appear strongly on unlocked ingredients (variance + peak value in the current pantry) and (b) change achievable dish scores across 3–6 combos. Optional avoid cue when a high-variance axis has strong carriers in the pantry but the witness dish stays low. Compose **2–3 bubble phrases** with Flavors-tab labels (`high Umami`, `moderate Rich`, `low Heat`). Pick randomly among satisfiable witness combos for day-to-day diversity. **Every like/dislike must be reachable and punishable with the current unlock set** so competent matches score high and clear mismatches score low. Examples:
+
+- "I'm craving **high Umami** with **high Sour**. **Low Sweet**."
+- "Give me **high Rich** with **moderate Smoky**. Keep **low Heat**."
 
 ### 5.4 Ingredient Inspector (UX)
 

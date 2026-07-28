@@ -51,6 +51,12 @@ export interface CustomerPreference {
   primary: Partial<Record<AxisKey, Band>>;
   avoid: Partial<Record<AxisKey, boolean>>;
   phrases: string[];
+  /**
+   * Optimal dish flavor vector for this request — the aggregate of a witness
+   * 3–6 combo from the player's unlocked pantry (always achievable).
+   * Optional only for older mid-day saves; new generation always sets it.
+   */
+  idealProfile?: FlavorVector;
 }
 
 export interface Archetype {

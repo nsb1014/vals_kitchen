@@ -24,6 +24,10 @@ import {
   canToggleIngredient,
   computeDishPreview,
 } from '../presentation/dish-preview.ts';
+import {
+  buildFlavorBarsViewModel,
+  renderFlavorBarsHtml,
+} from '../presentation/flavor-profile.ts';
 import { buildReviewDisplay, renderStarGlyphs } from '../presentation/review-display.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
@@ -329,12 +333,13 @@ export function mountServiceDayUi(
         })
         .join('');
 
-      const flavorRows = preview.topAxes
-        .map(
-          (row) =>
-            `<div class="flavor-preview-row"><span>${row.label}</span><span>${row.value.toFixed(1)}</span></div>`,
-        )
-        .join('');
+      const flavorPreview =
+        preview.profile
+          ? `<div class="flavor-preview flavor-preview-bars" aria-label="Dish flavor preview">${renderFlavorBarsHtml(
+              buildFlavorBarsViewModel(preview.profile),
+              { showValues: false },
+            )}</div>`
+          : '';
 
       let ticketBadge = '';
       if (ticket) {
@@ -360,11 +365,7 @@ export function mountServiceDayUi(
             ${ticketBadge}
             <p class="compose-meta">Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients (${preview.ingredientCount} selected)</p>
             <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${ingredientButtons}</div>
-            ${
-              preview.profile
-                ? `<div class="flavor-preview" aria-label="Dish flavor preview">${flavorRows}<div class="flavor-preview-row"><span>Temp</span><span>${preview.temperatureLabel}</span></div></div>`
-                : ''
-            }
+            ${flavorPreview}
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </div>
@@ -439,12 +440,13 @@ export function mountServiceDayUi(
         })
         .join('');
 
-      const flavorRows = preview.topAxes
-        .map(
-          (row) =>
-            `<div class="flavor-preview-row"><span>${row.label}</span><span>${row.value.toFixed(1)}</span></div>`,
-        )
-        .join('');
+      const flavorPreview =
+        preview.profile
+          ? `<div class="flavor-preview flavor-preview-bars" aria-label="Dish flavor preview">${renderFlavorBarsHtml(
+              buildFlavorBarsViewModel(preview.profile),
+              { showValues: false },
+            )}</div>`
+          : '';
 
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
@@ -454,11 +456,7 @@ export function mountServiceDayUi(
             ${progress ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="compose-meta">Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients (${preview.ingredientCount} selected)</p>
             <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${ingredientButtons}</div>
-            ${
-              preview.profile
-                ? `<div class="flavor-preview" aria-label="Dish flavor preview">${flavorRows}<div class="flavor-preview-row"><span>Temp</span><span>${preview.temperatureLabel}</span></div></div>`
-                : ''
-            }
+            ${flavorPreview}
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="serve-btn" data-testid="serve-btn" ${canServe ? '' : 'disabled'}>Serve</button>
             </div>

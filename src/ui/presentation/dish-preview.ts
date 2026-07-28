@@ -1,28 +1,11 @@
 import { aggregateDish } from '../../domain/flavor/aggregate.ts';
+import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
 import type { AxisKey, FlavorVector, Ingredient } from '../../domain/types.ts';
 import { AXIS_KEYS } from '../../domain/types.ts';
 import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
-
-const AXIS_LABELS: Record<AxisKey, string> = {
-  SW: 'Sweet',
-  SA: 'Salty',
-  SO: 'Sour',
-  BI: 'Bitter',
-  UM: 'Umami',
-  HE: 'Herbal',
-  FR: 'Fruity',
-  EA: 'Earthy',
-  SM: 'Smoky',
-  PU: 'Pungent',
-  NU: 'Nutty',
-  RI: 'Rich',
-  LI: 'Light',
-  HT: 'Heat',
-  CR: 'Crunch',
-};
 
 export interface DishPreview {
   ingredientCount: number;

@@ -1,6 +1,11 @@
 import type { Archetype, AxisKey, Band, CustomerPreference, FlavorVector, Ingredient } from '../types.ts';
 import { AXIS_KEYS } from '../types.ts';
 import { aggregateDish } from '../flavor/aggregate.ts';
+import {
+  emptyFlavorProfile,
+  phraseForAvoidAxis,
+  phraseForAxisBand,
+} from '../flavor/axis-labels.ts';
 import { computeMatchStars } from '../flavor/scoring.ts';
 import { createRng, type Rng } from '../rng/index.ts';
 
@@ -157,23 +162,28 @@ function preferenceUsesActionableAxes(
   return true;
 }
 
-const PHRASES: Record<AxisKey, Partial<Record<Band, string>>> = {
-  SW: { high: 'a hint of sweetness', low: 'not sweet at all' },
-  SA: { high: 'properly seasoned', mid: 'a touch of salt' },
-  SO: { high: 'bright and tangy', mid: 'a touch of acid', low: 'nothing too sharp' },
-  BI: { high: 'pleasantly bitter', low: 'nothing too bitter' },
-  UM: { high: 'something really savory', mid: 'a little umami depth' },
-  HE: { high: 'herbal and fresh' },
-  FR: { high: 'fruity notes' },
-  EA: { high: 'earthy flavors' },
-  SM: { high: 'smoky depth', mid: 'a whisper of char' },
-  PU: { high: 'bold and garlicky', low: 'nothing too pungent' },
-  NU: { high: 'toasty nutty notes' },
-  RI: { high: 'rich and indulgent', mid: 'moderately hearty', low: 'light and clean' },
-  LI: { high: 'fresh and refreshing' },
-  HT: { high: 'spicy kick', mid: 'gentle warmth', low: 'mild, no heat' },
-  CR: { high: 'some crunch', low: 'soft textures only' },
+/** Which bands have a Flavors-tab phrase for each axis (all bands use AXIS_LABELS wording). */
+const PHRASE_BANDS: Record<AxisKey, Band[]> = {
+  SW: ['high', 'mid', 'low'],
+  SA: ['high', 'mid', 'low'],
+  SO: ['high', 'mid', 'low'],
+  BI: ['high', 'mid', 'low'],
+  UM: ['high', 'mid', 'low'],
+  HE: ['high', 'mid', 'low'],
+  FR: ['high', 'mid', 'low'],
+  EA: ['high', 'mid', 'low'],
+  SM: ['high', 'mid', 'low'],
+  PU: ['high', 'mid', 'low'],
+  NU: ['high', 'mid', 'low'],
+  RI: ['high', 'mid', 'low'],
+  LI: ['high', 'mid', 'low'],
+  HT: ['high', 'mid', 'low'],
+  CR: ['high', 'mid', 'low'],
 };
+
+function hasPhrase(axis: AxisKey, band: Band): boolean {
+  return PHRASE_BANDS[axis].includes(band);
+}
 
 function archetypeWeight(archetype: Archetype, axis: AxisKey): number {
   return archetype.primaryAxisWeights[axis] ?? 0;
@@ -278,7 +288,7 @@ function bandForNamedAxis(
   if (weight < 2) return natural;
   if (dishValue < 4) return null;
   if (dishValue >= 7 || weight >= 3) return 'high';
-  if (PHRASES[axis].mid) return 'mid';
+  if (hasPhrase(axis, 'mid')) return 'mid';
   // No mid phrase — only keep if strong enough to claim high.
   return dishValue >= 5 ? 'high' : null;
 }
@@ -337,15 +347,13 @@ function buildPhrases(
   for (const axis of Object.keys(primary) as AxisKey[]) {
     const band = primary[axis];
     if (!band) continue;
-    const phrase = PHRASES[axis][band];
-    if (phrase) phrases.push(phrase);
+    if (hasPhrase(axis, band)) phrases.push(phraseForAxisBand(axis, band));
   }
   for (const axis of Object.keys(avoid) as AxisKey[]) {
     if (!avoid[axis] || primary[axis]) continue;
-    const phrase = PHRASES[axis].low;
-    if (phrase) phrases.push(phrase);
+    phrases.push(phraseForAvoidAxis(axis));
   }
-  return phrases.length > 0 ? phrases : ['something balanced and satisfying'];
+  return phrases.length > 0 ? phrases : ['moderate Umami'];
 }
 
 function primaryCueCount(preference: CustomerPreference): number {
@@ -363,7 +371,7 @@ function buildAvoidOptions(
     if (primary[axis]) continue;
     if (!profile.actionableAxes.includes(axis)) continue;
     const canViolate = (profile.ingredientMax[axis] ?? 0) >= 5;
-    if (canViolate && dish[axis] <= 3 && PHRASES[axis].low) {
+    if (canViolate && dish[axis] <= 3 && hasPhrase(axis, 'low')) {
       options.push({ [axis]: true });
     }
   }
@@ -416,7 +424,7 @@ function preferenceFromCombo(
       let rejected = false;
       for (const axis of axes) {
         const band = bandForNamedAxis(archetype, axis, dish[axis], signatureSet.has(axis));
-        if (!band || !PHRASES[axis][band]) {
+        if (!band || !hasPhrase(axis, band)) {
           rejected = true;
           break;
         }
@@ -429,6 +437,7 @@ function preferenceFromCombo(
           primary,
           avoid,
           phrases: buildPhrases(primary, avoid),
+          idealProfile: { ...dish },
         };
         if (
           primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
@@ -464,7 +473,12 @@ export function generateCustomerRequest(
 
   if (unlocked.length === 0) {
     return {
-      preference: { primary: { UM: 'mid' }, avoid: {}, phrases: ['something balanced and satisfying'] },
+      preference: {
+        primary: { UM: 'mid' },
+        avoid: {},
+        phrases: ['moderate Umami'],
+        idealProfile: emptyFlavorProfile(),
+      },
       witnessIngredientIds: [],
     };
   }

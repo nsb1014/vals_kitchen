@@ -149,6 +149,27 @@
   font-size: 13px;
 }
 
+.flavor-preview-bars {
+  max-height: min(36vh, 16rem);
+  overflow: auto;
+  padding: 0.35rem 0.15rem;
+  border-radius: 8px;
+  border: 1px solid var(--vk-border);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.flavor-preview-bars .flavor-profile-header {
+  margin-bottom: 0.35rem;
+}
+
+.flavor-preview-bars .flavor-group-title {
+  font-size: 11px;
+}
+
+.flavor-preview-bars .flavor-bar-label {
+  font-size: 11px;
+}
+
 .flavor-preview-row {
   display: flex;
   justify-content: space-between;
@@ -373,6 +394,33 @@
   border-bottom: 1px solid var(--vk-border);
 }
 
+.floor-tickets-view-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.floor-tickets-view-tab {
+  padding: 0.3rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vk-text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.floor-tickets-view-tab.active {
+  background: color-mix(in srgb, var(--vk-accent) 28%, transparent);
+  color: var(--vk-accent);
+}
+
 .floor-tickets-menu-title {
   margin: 0;
   font-size: 13px;
@@ -380,6 +428,24 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--vk-accent);
+}
+
+.floor-tickets-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.floor-tickets-ideal {
+  padding: 0.55rem 0.65rem 0.75rem;
+}
+
+.floor-tickets-ideal .flavor-profile-name {
+  font-size: 15px;
+}
+
+.floor-tickets-ideal .flavor-profile-meta {
+  font-size: 12px;
 }
 
 .floor-tickets-close {
