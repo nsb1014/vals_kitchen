@@ -64,6 +64,20 @@ export function mountServiceDayUi(
   const hud = statusMount.querySelector('#game-hud') as HTMLElement;
   const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
   const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
+  const surface = statusMount.closest('.game-surface') as HTMLElement | null;
+
+  const syncStatusHudHeight = () => {
+    if (!surface) return;
+    surface.style.setProperty('--vk-status-hud-height', `${statusMount.offsetHeight}px`);
+  };
+
+  const statusHudResizeObserver =
+    typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          syncStatusHudHeight();
+        })
+      : null;
+  statusHudResizeObserver?.observe(statusMount);
 
   const cleanupCelebrationBanner = mountCelebrationBanner(overlayMount);
   // Tickets dock must live under overlay-mount so it stacks above the cooking panel.
@@ -92,6 +106,7 @@ export function mountServiceDayUi(
         <strong>${state.day}</strong>
       </div>
     `;
+    syncStatusHudHeight();
   };
 
   const positionChatBubble = () => {
@@ -548,6 +563,8 @@ export function mountServiceDayUi(
 
   return () => {
     unsubscribe();
+    statusHudResizeObserver?.disconnect();
+    surface?.style.removeProperty('--vk-status-hud-height');
     cleanupCelebrationBanner();
     cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
