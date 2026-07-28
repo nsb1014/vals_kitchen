@@ -111,6 +111,11 @@ export function flavorBarWidthPercent(value: number, max: number): number {
   return Math.min(100, Math.max(0, (value / max) * 100));
 }
 
+/** Visible nonzero on the 0–10 bars (hides values that would display as 0.0). */
+export function isVisibleFlavorAxisValue(value: number): boolean {
+  return Math.abs(value) >= 0.05;
+}
+
 export function renderFlavorBarsHtml(
   model: Pick<FlavorBarsViewModel, 'axes' | 'temperature'> & {
     title?: string;
@@ -128,7 +133,7 @@ export function renderFlavorBarsHtml(
   const groupHtml = groups
     .map((group) => {
       const rows = model.axes
-        .filter((row) => row.group === group.id)
+        .filter((row) => row.group === group.id && isVisibleFlavorAxisValue(row.value))
         .map((row) => {
           const valueCell = options.showValues
             ? `<span class="flavor-bar-value">${row.displayValue}</span>`
@@ -143,6 +148,7 @@ export function renderFlavorBarsHtml(
           </div>`;
         })
         .join('');
+      if (!rows) return '';
       return `<section class="flavor-group"><h3 class="flavor-group-title">${group.title}</h3>${rows}</section>`;
     })
     .join('');
@@ -160,7 +166,11 @@ export function renderFlavorBarsHtml(
         </header>`
       : '';
 
-  return `${header}${groupHtml}`;
+  const body =
+    groupHtml ||
+    `<p class="flavor-bars-empty" data-testid="flavor-bars-empty">No notable flavors</p>`;
+
+  return `${header}${body}`;
 }
 
 export function renderFlavorProfileHtml(model: FlavorProfileViewModel): string {
