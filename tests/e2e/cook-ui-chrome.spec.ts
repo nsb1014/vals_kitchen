@@ -112,7 +112,7 @@ test.describe('service sheet tiers', () => {
   test('pins day-summary actions in a near-full sheet', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 720 });
     await gotoFreshGame(page);
-    await completeServiceDay(page);
+    await completeServiceDay(page, false);
     await expectFooterInsideSheet(
       page,
       'day-summary-sheet',

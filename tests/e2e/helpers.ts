@@ -192,7 +192,10 @@ export async function serveCurrentCustomer(page: Page): Promise<void> {
   expect(scoreText).toMatch(/\d+\.\d+ \/ 10/);
 }
 
-export async function completeServiceDay(page: Page): Promise<void> {
+export async function completeServiceDay(
+  page: Page,
+  dismissSummary = true,
+): Promise<void> {
   await page.locator('[data-testid="open-day-btn"]').click();
   await page.locator('[data-testid="start-service-btn"]').click();
   await expect(
@@ -204,8 +207,10 @@ export async function completeServiceDay(page: Page): Promise<void> {
   });
 
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();
-  await page.locator('[data-testid="summary-back-floor"]').click();
-  await expect(page.locator('[data-testid="open-day-btn"]')).toBeVisible();
+  if (dismissSummary) {
+    await page.locator('[data-testid="summary-back-floor"]').click();
+    await expect(page.locator('[data-testid="open-day-btn"]')).toBeVisible();
+  }
 }
 
 export async function dragGridCell(

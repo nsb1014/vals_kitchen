@@ -187,11 +187,21 @@ export function installE2eBridge(): void {
         unlockedIngredientIds: getDomainContext().ingredients.map(
           (ingredient) => ingredient.id,
         ),
+        placements: current.placements.map((placement) =>
+          placement.id === station.id
+            ? {
+                ...placement,
+                x:
+                  current.floorPlayerGrid?.x ??
+                  current.activeDay!.floor!.playerPosition.x,
+                y:
+                  current.floorPlayerGrid?.y ??
+                  current.activeDay!.floor!.playerPosition.y,
+              }
+            : placement,
+        ),
       });
       useGameStore.getState().setFloorSelectedTicket(openTicket.id);
-      useGameStore
-        .getState()
-        .setFloorNavPosition({ x: station.x - 1, y: station.y });
     },
 
     openComposeSheet() {
