@@ -9,6 +9,5 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
-    exclude: ['src/**/*.sim.test.ts'],
   },
 });

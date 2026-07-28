@@ -375,12 +375,9 @@ Hashed Vite bundles are immutable. Unhashed atlases/audio, shell, service worker
 - npm run validate:content
 - npm run typecheck
 - npm run lint
-- npm run test              # fast suite only (*.sim.test.ts excluded)
+- npm run test              # fast suite
 - npm run build
 - npm run size:check        # fail if initial JS gzip > Tech-Stack hard cap (280k; measured 173,070 post-slice 2026-07-25)
-
-# .github/workflows/sim-tests.yml — workflow_dispatch + nightly schedule only
-- npm run test:sim
 
 # Cloudflare Workers Static Assets — Git-connected deploy (`wrangler deploy`) on push to main
 # GitHub Pages backup — manual workflow with --base /REPO/
@@ -399,7 +396,7 @@ Hashed Vite bundles are immutable. Unhashed atlases/audio, shell, service worker
 | `tsc --noEmit` | TS 5.9.3 | Strict typecheck |
 | ESLint + `@typescript-eslint` 8.65 | | Lint |
 | Prettier 3.9.6 | | Format (config in repo) |
-| Vitest 4.1.10 | | Fast unit suite (`npm run test`); deep balance sim via `npm run test:sim` |
+| Vitest 4.1.10 | | Fast unit suite (`npm run test`) |
 | Playwright (optional) | | Smoke E2E on mobile viewport emulation |
 | `scripts/check-bundle-size.ts` | | Gzip gate on initial app JS (`npm run size:check`) |
 
@@ -414,7 +411,6 @@ Hashed Vite bundles are immutable. Unhashed atlases/audio, shell, service worker
   "typecheck": "tsc --noEmit",
   "lint": "eslint src scripts",
   "test": "vitest run",
-  "test:sim": "vitest run --config vitest.sim.config.ts",
   "validate:content": "tsx scripts/validate-content-cli.ts",
   "size:check": "tsx scripts/check-bundle-size.ts",
   "preview": "vite preview"
@@ -426,10 +422,9 @@ Hashed Vite bundles are immutable. Unhashed atlases/audio, shell, service worker
 | Workflow | Trigger | Gates |
 |----------|---------|-------|
 | `ci.yml` | Push/PR to `main` | `sync:data`, `validate:content`, `typecheck`, `lint`, `test` (fast), `build`, `size:check` (gzip cap per Tech-Stack §3) |
-| `sim-tests.yml` | `workflow_dispatch` + nightly `0 6 * * *` | `sync:data`, `validate:content`, `test:sim` only — **not** on ordinary pushes |
 | `deploy-github-pages.yml` | Manual only | GitHub Pages backup build with configurable `--base` |
 
-Every push/PR runs the fast test suite (target well under one minute). Run `npm run test:sim` manually or via the nightly/manual workflow for multi-cycle prestige balance cross-checks (~2.5 min).
+Every push/PR runs the fast test suite (target well under one minute).
 
 **Node version:** 20 LTS (`.github/workflows/*` and Cloudflare `NODE_VERSION=20`).
 

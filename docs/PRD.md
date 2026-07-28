@@ -503,7 +503,7 @@ The flat “first prestige at 25–40 days” target is **replaced**. Early pres
 
 **Hour projection assumption:** **10 minutes per service day** (midpoint of §2’s 5–20 minute session band). Cumulative real-time hours = `(cumulative_in_game_days × 10) / 60`. This converts in-game days to a human-readable metric only — **CI does not assert a playtime band.**
 
-**Simulation horizon vs content cap:** `SIMULATION_PRESTIGE_CYCLE_CAP = 30` in `prestige-pacing.ts` is the **deep-sim verification horizon** (how many prestige cycles the opt-in `npm run test:sim` harness runs). It is **not** a designed content end state — prestige has no hard product cap; players may continue past 30 cycles indefinitely.
+**Analytic prestige curve:** `SIMULATION_PRESTIGE_CYCLE_CAP = 30` in `prestige-pacing.ts` is the **analytic projection length** used by the fast suite (how many prestige cycles the closed-form curve is evaluated over). It is **not** a designed content end state — prestige has no hard product cap; players may continue past 30 cycles indefinitely. The former long-horizon deep sim (`npm run test:sim`) that chased a 200–400 h playtime band was **retired 2026-07-28** — it was a flawed gate; the escalating prestige complexity it drove remains.
 
 **Analytic pacing proxy:** The fast suite uses a calibrated closed-form curve fit to competent-play simulation (seed 424242):
 
@@ -511,17 +511,17 @@ The flat “first prestige at 25–40 days” target is **replaced**. Early pres
 projectedCycleDays(P) = round(min(68, 4 + 2.0×P + 0.03×P²))
 ```
 
-The opt-in deep sim re-runs the full competent-play harness and **asserts the analytic proxy tracks simulated per-cycle days within 15% and cumulative days within 10%**. That relative agreement is what keeps the cheap proxy honest when resistance/economy constants change. Absolute cumulative hours are **reported** (console + sanity guard 20–2000 h) but not pass/fail gated.
+Fast-suite smoke covers first-prestige timing (3–10 days) and soft-reset recovery. Absolute cumulative hours are a design aspiration (§2), not a CI gate.
 
-**Observed competent-play curve (seed 424242, simulation harness):**
+**Illustrative analytic curve (closed-form proxy):**
 
 | Cycle | Prestige P at start | Days in cycle | Cumulative hours |
 |-------|---------------------|---------------|------------------|
-| 1 | 0 | 3 | 0.5 |
-| 5 | 4 | 15 | 8.3 |
-| 10 | 9 | 29 | 27.3 |
-| 20 | 19 | 53 | 95.2 |
-| 30 | 29 | 69 | **205.8** |
+| 1 | 0 | 4 | 0.7 |
+| 5 | 4 | 12 | 6.7 |
+| 10 | 9 | 24 | 22.8 |
+| 20 | 19 | 53 | 89.0 |
+| 30 | 29 | 68 | **197.7** |
 
 **Monotonicity:** Expected minimum cycle length increases with prestige index; RNG may wobble individual cycles ±1 day.
 

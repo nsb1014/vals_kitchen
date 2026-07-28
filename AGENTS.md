@@ -36,8 +36,6 @@ contents here.
   asset packs (Tiny Town, RPG Base, Pixel Platformer Food Expansion, Pixel UI Pack) are
   not obtainable from this environment. Check `docs/PRD.md` §13 for ratified decisions
   before acting on anything RESEARCH recommends.
-- The deep simulation suite (`npm run test:sim`) takes minutes by design and is opt-in.
-  Never add simulation tests to the fast suite; CI runs the fast suite only.
 
 ## Working agreements
 

@@ -9,7 +9,6 @@ import { canPurchase } from '../../domain/economy/purchases.ts';
 import { findBestMatchCombo } from '../../domain/day/customer-request-generator.ts';
 import { isDayComplete } from '../../domain/day/serve.ts';
 import { gameReducer } from '../../domain/reducer.ts';
-import { gameDaysToRealHours } from '../../domain/balance/prestige-pacing.ts';
 import { createNewGameState, type GameState } from '../../domain/state/game-state.ts';
 import type { DailyModifier } from '../../domain/day/modifiers.ts';
 import type { ContentBundle, Ingredient } from '../../domain/types.ts';
@@ -100,65 +99,4 @@ export function simulateCompetentRun(
   }
 
   return { daysPlayed: maxDays, prestigeReached: false, finalState: state };
-}
-
-export interface PrestigeCycleResult {
-  cycle: number;
-  prestigeFrom: number;
-  daysInCycle: number;
-  cumulativeDays: number;
-  cumulativeHours: number;
-  reached: boolean;
-}
-
-export function simulatePrestigeCurve(
-  seed: number,
-  maxCycles: number,
-  maxDaysPerCycle: number,
-  context: DomainContext = simContext,
-): PrestigeCycleResult[] {
-  let state = createNewGameState(seed);
-  const results: PrestigeCycleResult[] = [];
-  let cumulativeDays = 0;
-
-  for (let cycle = 1; cycle <= maxCycles; cycle++) {
-    const prestigeFrom = state.prestige;
-    state.globalRunSeed = seed ^ (prestigeFrom * 2_654_435_761);
-    const run = simulateCompetentRun(seed, maxDaysPerCycle, context, state);
-    cumulativeDays += run.daysPlayed;
-    results.push({
-      cycle,
-      prestigeFrom,
-      daysInCycle: run.daysPlayed,
-      cumulativeDays,
-      cumulativeHours: gameDaysToRealHours(cumulativeDays),
-      reached: run.prestigeReached,
-    });
-    if (!run.prestigeReached) break;
-    state = run.finalState;
-  }
-
-  return results;
-}
-
-export function formatPrestigeCurveReport(
-  label: string,
-  curve: PrestigeCycleResult[],
-  minutesPerDay: number,
-): string {
-  const lines = [
-    `=== ${label} ===`,
-    `minutes_per_day=${minutesPerDay}`,
-    'cycle | P_start | days | cum_days | cum_hours',
-  ];
-  for (const row of curve) {
-    lines.push(
-      `${String(row.cycle).padStart(5)} | ${String(row.prestigeFrom).padStart(7)} | ${String(row.daysInCycle).padStart(4)} | ${String(row.cumulativeDays).padStart(8)} | ${row.cumulativeHours.toFixed(1)}`,
-    );
-  }
-  const last = curve[curve.length - 1];
-  if (last) {
-    lines.push(`total_cycles=${curve.length} cumulative_hours=${last.cumulativeHours.toFixed(1)}`);
-  }
-  return lines.join('\n');
 }
