@@ -1,7 +1,8 @@
 # Cooking UI & Shared Chrome System — Design
 
 **Date:** 2026-07-28  
-**Status:** Revised after PR #11 review — awaiting confirmation  
+**Status:** Approved  
+**Implementation plan:** [../plans/2026-07-28-cooking-ui-system.md](../plans/2026-07-28-cooking-ui-system.md)  
 **Product:** Restaurant Simulator (`vals_kitchen`)  
 **Scope:** UI / player experience only — no gameplay or economy mechanic changes
 
