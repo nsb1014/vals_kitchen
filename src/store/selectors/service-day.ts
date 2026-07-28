@@ -37,10 +37,14 @@ export function selectCanCloseDay(state: GameState): boolean {
 
 export function selectActiveModifier(state: GameState) {
   if (!state.activeDay) return null;
-  return getDomainContext().modifiersById.get(state.activeDay.modifierId) ?? null;
+  return (
+    getDomainContext().modifiersById.get(state.activeDay.modifierId) ?? null
+  );
 }
 
-export function selectQueueProgress(state: GameState): { current: number; total: number } | null {
+export function selectQueueProgress(
+  state: GameState,
+): { current: number; total: number } | null {
   if (!state.activeDay) return null;
   const total = state.activeDay.customers.length;
   const current = Math.min(state.activeDay.queueIndex + 1, total);
@@ -52,7 +56,9 @@ export function selectDayOpen(state: GameState): boolean {
 }
 
 /** Service overlays (open day, reviews, compose, summary) belong on Floor only. */
-export function selectShowServiceDayOverlay(state: Pick<GameStore, 'screen'>): boolean {
+export function selectShowServiceDayOverlay(
+  state: Pick<GameStore, 'screen'>,
+): boolean {
   return state.screen === 'restaurant';
 }
 
@@ -70,7 +76,9 @@ export function selectFloorActive(state: GameState): boolean {
   return Boolean(state.activeDay?.floor);
 }
 
-export function selectFloorPlayerGrid(state: GameStore): { x: number; y: number } | null {
+export function selectFloorPlayerGrid(
+  state: GameStore,
+): { x: number; y: number } | null {
   if (state.floorPlayerGrid) return state.floorPlayerGrid;
   return state.activeDay?.floor?.playerPosition ?? null;
 }
@@ -92,14 +100,18 @@ export function selectCanTakeFloorOrders(state: GameStore): boolean {
   return selectAdjacentSeatedCustomerIds(state).length > 0;
 }
 
-export function selectAdjacentUnsetTablePlacementIds(state: GameStore): string[] {
+export function selectAdjacentUnsetTablePlacementIds(
+  state: GameStore,
+): string[] {
   const floor = state.activeDay?.floor;
   const player = selectFloorPlayerGrid(state);
   if (!floor || !player || state.activeFloorRoom !== 'main') return [];
   return adjacentUnsetTablePlacementIds(floor, player, state.placements);
 }
 
-export function selectAdjacentDirtyTablePlacementIds(state: GameStore): string[] {
+export function selectAdjacentDirtyTablePlacementIds(
+  state: GameStore,
+): string[] {
   const floor = state.activeDay?.floor;
   const player = selectFloorPlayerGrid(state);
   if (!floor || !player || state.activeFloorRoom !== 'main') return [];
@@ -126,10 +138,15 @@ export function selectFloorComposeTicket(state: GameState): FloorTicket | null {
   return floor.tickets.find((t) => t.status === 'open') ?? null;
 }
 
-export function selectShowFloorCompose(state: GameStore): boolean {
-  if (!state.activeDay?.floor || state.pendingReview || !state.modifierDismissed) {
+export function selectCanOpenFloorCompose(state: GameStore): boolean {
+  if (
+    !state.activeDay?.floor ||
+    state.pendingReview ||
+    !state.modifierDismissed
+  ) {
     return false;
   }
+  if (state.daySummary || state.ceremony) return false;
   const player = selectFloorPlayerGrid(state);
   const roomPlacements =
     state.activeFloorRoom === 'back_kitchen'
@@ -137,4 +154,8 @@ export function selectShowFloorCompose(state: GameStore): boolean {
       : state.placements;
   if (!player || !playerNearStation(player, roomPlacements)) return false;
   return selectFloorComposeTicket(state) !== null;
+}
+
+export function selectShowFloorCompose(state: GameStore): boolean {
+  return state.composeSheetOpen && selectCanOpenFloorCompose(state);
 }

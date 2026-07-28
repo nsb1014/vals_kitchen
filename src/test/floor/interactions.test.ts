@@ -3,13 +3,17 @@ import {
   adjacentDirtyTablePlacementIds,
   adjacentSeatedCustomerIds,
   adjacentUnsetTablePlacementIds,
+  findCookStationPlacementAtCell,
   isAdjacent,
   playerNearGuestSeat,
   playerNearPlacement,
   playerNearStation,
   seatedUnorderedCustomerIds,
 } from '../../domain/floor/interact.ts';
-import { createFloorDayFromCustomers, tablesFromPlacements } from '../../domain/floor/sim.ts';
+import {
+  createFloorDayFromCustomers,
+  tablesFromPlacements,
+} from '../../domain/floor/sim.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import { setTable } from '../../domain/floor/tables.ts';
 import type { Customer } from '../../domain/day/types.ts';
@@ -38,7 +42,13 @@ describe('floor interact helpers', () => {
 
   describe('playerNearPlacement', () => {
     it('is true when player touches placement origin cell', () => {
-      const placement = { id: 'prep', itemKey: 'prep_station', x: 7, y: 2, rotation: 0 };
+      const placement = {
+        id: 'prep',
+        itemKey: 'prep_station',
+        x: 7,
+        y: 2,
+        rotation: 0,
+      };
       expect(playerNearPlacement({ x: 6, y: 2 }, placement)).toBe(true);
       expect(playerNearPlacement({ x: 8, y: 2 }, placement)).toBe(true);
       expect(playerNearPlacement({ x: 1, y: 1 }, placement)).toBe(false);
@@ -49,10 +59,34 @@ describe('floor interact helpers', () => {
     it('is true near prep station, false near tables only', () => {
       const placements = [
         { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },
-        { id: 'station_prep', itemKey: 'prep_station', x: 7, y: 2, rotation: 0 },
+        {
+          id: 'station_prep',
+          itemKey: 'prep_station',
+          x: 7,
+          y: 2,
+          rotation: 0,
+        },
       ];
       expect(playerNearStation({ x: 6, y: 2 }, placements)).toBe(true);
       expect(playerNearStation({ x: 0, y: 2 }, placements)).toBe(false);
+    });
+  });
+
+  describe('findCookStationPlacementAtCell', () => {
+    it('resolves only a prep station at the tapped cell', () => {
+      const placements = [
+        { id: 'station', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
+        { id: 'table', itemKey: 'table_2seat', x: 3, y: 3, rotation: 0 },
+      ];
+      expect(
+        findCookStationPlacementAtCell(placements, { x: 8, y: 2 })?.id,
+      ).toBe('station');
+      expect(
+        findCookStationPlacementAtCell(placements, { x: 3, y: 3 }),
+      ).toBeNull();
+      expect(
+        findCookStationPlacementAtCell(placements, { x: 0, y: 0 }),
+      ).toBeNull();
     });
   });
 
@@ -82,7 +116,9 @@ describe('floor interact helpers', () => {
 
   describe('seatedUnorderedCustomerIds', () => {
     it('returns ids for seated guests only', () => {
-      const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
+      const placements = [
+        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+      ];
       const tables = tablesFromPlacements(placements).map(setTable);
       const seats = seatsFromPlacements(placements);
       const day = createFloorDayFromCustomers(
@@ -123,7 +159,9 @@ describe('floor interact helpers', () => {
     });
 
     it('ignores ready or dirty tables', () => {
-      const placements = [{ id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 }];
+      const placements = [
+        { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+      ];
       const tables = tablesFromPlacements(placements).map((t) =>
         t.placementId === 'table_1' ? setTable(t) : t,
       );
@@ -185,13 +223,15 @@ describe('floor interact helpers', () => {
       };
 
       // 2-top seats sit west/east of their table; adjacency is per seat cell.
-      expect(adjacentSeatedCustomerIds(withSeated, { x: seat1.x - 1, y: seat1.y })).toEqual([
-        'c1',
-      ]);
-      expect(adjacentSeatedCustomerIds(withSeated, { x: seat2.x + 1, y: seat2.y })).toEqual([
-        'c2',
-      ]);
-      expect(adjacentSeatedCustomerIds(withSeated, { x: 10, y: 10 })).toEqual([]);
+      expect(
+        adjacentSeatedCustomerIds(withSeated, { x: seat1.x - 1, y: seat1.y }),
+      ).toEqual(['c1']);
+      expect(
+        adjacentSeatedCustomerIds(withSeated, { x: seat2.x + 1, y: seat2.y }),
+      ).toEqual(['c2']);
+      expect(adjacentSeatedCustomerIds(withSeated, { x: 10, y: 10 })).toEqual(
+        [],
+      );
     });
   });
 });

@@ -10,7 +10,7 @@ export function mountRatingScreen(container: HTMLElement): () => void {
   root.className = 'screen-root';
   container.appendChild(root);
   root.innerHTML = `
-    <section class="screen-panel" id="rating-screen" data-testid="rating-screen" hidden>
+    <section class="screen-panel sheet-tier-meta-full meta-screen" id="rating-screen" data-testid="rating-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Rating & Status</h1>
       </header>

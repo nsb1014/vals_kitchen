@@ -1,14 +1,24 @@
 import { createStore } from 'zustand/vanilla';
-import { ensureContentForAction, getDomainContext } from '../app/content-loader.ts';
+import {
+  ensureContentForAction,
+  getDomainContext,
+} from '../app/content-loader.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
 import type { AchievementId } from '../domain/achievements/catalog.ts';
-import { dayBonusEarnings, volumeBonusEarnings } from '../domain/economy/tips.ts';
+import {
+  dayBonusEarnings,
+  volumeBonusEarnings,
+} from '../domain/economy/tips.ts';
 import {
   findTransferDropCell,
   isConnectingDoorCell,
   validatePlacement,
 } from '../domain/economy/purchases.ts';
-import { gameReducer, type GameAction, type ReducerEvent } from '../domain/reducer.ts';
+import {
+  gameReducer,
+  type GameAction,
+  type ReducerEvent,
+} from '../domain/reducer.ts';
 import {
   connectingDoorInterior,
   otherFloorRoom,
@@ -20,20 +30,22 @@ import {
   type Placement,
 } from '../domain/state/game-state.ts';
 import { exportSaveCode, parseSaveCode } from '../persistence/index.ts';
-import { defaultSaveRepository, requestPersistentStorage } from '../persistence/index.ts';
+import {
+  defaultSaveRepository,
+  requestPersistentStorage,
+} from '../persistence/index.ts';
 import type { RecentReviewEntry } from '../ui/presentation/rating-display.ts';
-import { buildDaySummaryDisplay, type DaySummaryDisplay } from '../ui/presentation/day-summary-display.ts';
+import {
+  buildDaySummaryDisplay,
+  type DaySummaryDisplay,
+} from '../ui/presentation/day-summary-display.ts';
 import { selectCanNavigateTo } from './selectors/navigation.ts';
+import { selectCanOpenFloorCompose } from './selectors/service-day.ts';
 
 import { mapReducerEventsToUi } from './service-events.ts';
 
 export type ScreenId =
-  | 'restaurant'
-  | 'shop'
-  | 'inspector'
-  | 'recipes'
-  | 'rating'
-  | 'settings';
+  'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings';
 
 export interface ServeReview {
   matchStars: number;
@@ -77,6 +89,8 @@ interface StoreMeta {
   floorPlayerGrid: { x: number; y: number } | null;
   floorToast: string | null;
   celebrationQueue: Celebration[];
+  /** Ephemeral UI state. Never included in GameState persistence. */
+  composeSheetOpen: boolean;
 }
 
 export interface GameStore extends GameState, StoreMeta {
@@ -92,12 +106,18 @@ export interface GameStore extends GameState, StoreMeta {
   closeFlavorInspector: () => void;
   startPlacement: (itemKey: string) => void;
   cancelPlacement: () => void;
-  importSaveCode: (code: string) => Promise<{ ok: true } | { ok: false; error: string }>;
-  exportSaveCodeToClipboard: () => Promise<{ ok: true; code: string } | { ok: false; error: string }>;
+  importSaveCode: (
+    code: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  exportSaveCodeToClipboard: () => Promise<
+    { ok: true; code: string } | { ok: false; error: string }
+  >;
   setAudioEnabled: (enabled: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
+  openComposeSheet: () => void;
+  closeComposeSheet: () => void;
   setFloorToast: (message: string | null) => void;
   enqueueCelebration: (celebration: Celebration) => void;
   dismissCelebration: () => void;
@@ -137,6 +157,8 @@ const META_KEYS = [
   'setMusicEnabled',
   'setFloorNavPosition',
   'setFloorSelectedTicket',
+  'openComposeSheet',
+  'closeComposeSheet',
   'setFloorToast',
   'enqueueCelebration',
   'dismissCelebration',
@@ -144,6 +166,7 @@ const META_KEYS = [
   'floorPlayerGrid',
   'floorToast',
   'celebrationQueue',
+  'composeSheetOpen',
   'screen',
   'editLayoutMode',
   'activeFloorRoom',
@@ -227,6 +250,7 @@ function mergeReducerState(
     floorPlayerGrid: current.floorPlayerGrid,
     floorToast: current.floorToast,
     celebrationQueue: current.celebrationQueue,
+    composeSheetOpen: current.composeSheetOpen,
   };
 }
 
@@ -318,6 +342,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   floorPlayerGrid: null,
   floorToast: null,
   celebrationQueue: [],
+  composeSheetOpen: false,
 
   async hydrate() {
     const persist = await requestPersistentStorage();
@@ -344,6 +369,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
       celebrationQueue: [],
+      composeSheetOpen: false,
     });
     syncCelebrationTimer();
   },
@@ -373,8 +399,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.dayStartRating = before.rating;
         patch.editLayoutMode = false;
         patch.activeFloorRoom = 'main';
-        patch.floorPlayerGrid = result.state.activeDay?.floor?.playerPosition ?? null;
+        patch.floorPlayerGrid =
+          result.state.activeDay?.floor?.playerPosition ?? null;
         patch.floorToast = null;
+        patch.composeSheetOpen = false;
         break;
       case 'NEXT_CUSTOMER':
         patch.pendingReview = null;
@@ -392,15 +420,26 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = null;
         patch.floorToast = null;
+        patch.composeSheetOpen = false;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
         break;
       case 'FLOOR_PLATE':
         patch.composeDraftIngredientIds = undefined;
+        patch.composeSheetOpen = false;
         break;
       default:
         break;
+    }
+
+    if (
+      patch.pendingReview ||
+      patch.daySummary ||
+      patch.ceremony ||
+      result.state.activeDay === null
+    ) {
+      patch.composeSheetOpen = false;
     }
 
     set(patch);
@@ -414,7 +453,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   navigateTo(screen) {
     const current = get();
     if (!selectCanNavigateTo(current, screen)) return;
-    set({ screen, flavorInspectorIngredientId: null });
+    set({ screen, flavorInspectorIngredientId: null, composeSheetOpen: false });
   },
 
   openFlavorInspector(ingredientId) {
@@ -428,7 +467,11 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   startPlacement(itemKey) {
     const current = get();
     if (current.activeDay) return;
-    set({ pendingPlacementItemKey: itemKey, screen: 'restaurant', editLayoutMode: true });
+    set({
+      pendingPlacementItemKey: itemKey,
+      screen: 'restaurant',
+      editLayoutMode: true,
+    });
   },
 
   cancelPlacement() {
@@ -456,6 +499,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         floorPlayerGrid: null,
         floorToast: null,
         celebrationQueue: [],
+        composeSheetOpen: false,
       });
       syncCelebrationTimer();
       await get().autosave();
@@ -470,7 +514,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     try {
       const code = exportSaveCode(pickGameState(get()));
       try {
-        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        if (
+          typeof navigator !== 'undefined' &&
+          navigator.clipboard?.writeText
+        ) {
           await navigator.clipboard.writeText(code);
         }
       } catch {
@@ -495,6 +542,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const prev = get().floorPlayerGrid;
     if (prev?.x === pos.x && prev?.y === pos.y) return;
     set({ floorPlayerGrid: { x: pos.x, y: pos.y } });
+    const current = get();
+    if (current.composeSheetOpen && !selectCanOpenFloorCompose(current)) {
+      set({ composeSheetOpen: false });
+    }
   },
 
   setFloorSelectedTicket(ticketId) {
@@ -507,6 +558,20 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         floor: { ...floor, selectedTicketId: ticketId },
       },
     });
+    const next = get();
+    if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
+      set({ composeSheetOpen: false });
+    }
+  },
+
+  openComposeSheet() {
+    const current = get();
+    if (!selectCanOpenFloorCompose(current)) return;
+    set({ composeSheetOpen: true });
+  },
+
+  closeComposeSheet() {
+    set({ composeSheetOpen: false });
   },
 
   setFloorToast(message) {
@@ -596,6 +661,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     set({
       activeFloorRoom: nextRoom,
       floorPlayerGrid: spawn,
+      composeSheetOpen: false,
     });
     return true;
   },
@@ -614,7 +680,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const current = get();
     if (current.activeDay) return false;
     const room = current.activeFloorRoom;
-    const existing = current.activeRoomPlacements().find((item) => item.id === placementId);
+    const existing = current
+      .activeRoomPlacements()
+      .find((item) => item.id === placementId);
     if (!existing) return false;
 
     if (isConnectingDoorCell(pickGameState(current), room, x, y)) {

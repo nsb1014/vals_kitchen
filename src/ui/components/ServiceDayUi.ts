@@ -4,6 +4,8 @@ import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
+import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
+import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   selectCanAdvanceCustomer,
@@ -28,7 +30,19 @@ import {
   buildFlavorBarsViewModel,
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
-import { buildReviewDisplay, renderStarGlyphs } from '../presentation/review-display.ts';
+import {
+  buildReviewDisplay,
+  renderStarGlyphs,
+} from '../presentation/review-display.ts';
+import {
+  clearComposeAxes,
+  clearComposeNameQuery,
+  composePantrySummary,
+  emptyComposePantryFilters,
+  filterComposePantry,
+  setComposeNameQuery,
+  toggleComposeAxis,
+} from '../presentation/compose-pantry.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
@@ -62,13 +76,20 @@ export function mountServiceDayUi(
   `;
 
   const hud = statusMount.querySelector('#game-hud') as HTMLElement;
-  const serviceOverlay = overlayMount.querySelector('#service-overlay') as HTMLElement;
-  const ceremonyModal = overlayMount.querySelector('#ceremony-modal') as HTMLElement;
+  const serviceOverlay = overlayMount.querySelector(
+    '#service-overlay',
+  ) as HTMLElement;
+  const ceremonyModal = overlayMount.querySelector(
+    '#ceremony-modal',
+  ) as HTMLElement;
   const surface = statusMount.closest('.game-surface') as HTMLElement | null;
 
   const syncStatusHudHeight = () => {
     if (!surface) return;
-    surface.style.setProperty('--vk-status-hud-height', `${statusMount.offsetHeight}px`);
+    surface.style.setProperty(
+      '--vk-status-hud-height',
+      `${statusMount.offsetHeight}px`,
+    );
   };
 
   const statusHudResizeObserver =
@@ -85,6 +106,26 @@ export function mountServiceDayUi(
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
+  let composeFilters = emptyComposePantryFilters();
+  let composeWasVisible = false;
+  let composeTicketId: string | null = null;
+  let composeFocusReturn: HTMLElement | null = null;
+
+  const resetComposeFilters = () => {
+    composeFilters = emptyComposePantryFilters();
+  };
+
+  const focusFloorAfterCompose = () => {
+    const target =
+      composeFocusReturn?.isConnected &&
+      !serviceOverlay.contains(composeFocusReturn)
+        ? composeFocusReturn
+        : (document.querySelector(
+            '[data-testid="restaurant-canvas"]',
+          ) as HTMLElement | null);
+    target?.focus({ preventScroll: true });
+    composeFocusReturn = null;
+  };
 
   const renderHud = () => {
     const state = useGameStore.getState();
@@ -178,13 +219,41 @@ export function mountServiceDayUi(
       `;
     }
 
-    ceremonyModal.querySelector('#dismiss-ceremony')?.addEventListener('click', () => {
-      useGameStore.getState().dismissCeremony();
-    }, { once: true });
+    ceremonyModal.querySelector('#dismiss-ceremony')?.addEventListener(
+      'click',
+      () => {
+        useGameStore.getState().dismissCeremony();
+      },
+      { once: true },
+    );
   };
 
   const renderServiceOverlay = () => {
     const state = useGameStore.getState();
+    const composeVisible = selectShowFloorCompose(state);
+    const composeOpenedNow = composeVisible && !composeWasVisible;
+    const nextComposeTicketId = composeVisible
+      ? (selectFloorComposeTicket(state)?.id ?? null)
+      : null;
+
+    if (composeOpenedNow) {
+      composeFocusReturn =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      resetComposeFilters();
+    } else if (!composeVisible && composeWasVisible) {
+      resetComposeFilters();
+      queueMicrotask(focusFloorAfterCompose);
+    } else if (
+      composeVisible &&
+      composeTicketId !== null &&
+      nextComposeTicketId !== composeTicketId
+    ) {
+      resetComposeFilters();
+    }
+    composeWasVisible = composeVisible;
+    composeTicketId = nextComposeTicketId;
 
     if (!selectShowServiceDayOverlay(state)) {
       serviceOverlay.hidden = true;
@@ -197,9 +266,12 @@ export function mountServiceDayUi(
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel">
-          <div class="service-card">
-            <h2 class="service-title" data-testid="day-summary-title">Day Summary</h2>
+        <div class="service-panel sheet-tier-near-full" data-testid="day-summary-sheet">
+          <div class="service-card sheet-card-layout">
+            <header class="sheet-header">
+              <h2 class="service-title" data-testid="day-summary-title">Day Summary</h2>
+            </header>
+            <div class="sheet-body-scroll">
             <p class="review-detail">${state.daySummary.earningsLine}</p>
             ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${state.daySummary.bonusLine}</p>` : ''}
             ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${state.daySummary.volumeBonusLine}</p>` : ''}
@@ -208,30 +280,39 @@ export function mountServiceDayUi(
             <p class="review-detail">${state.daySummary.unlockProgressText}</p>
             <p class="review-detail">${state.daySummary.customersServedText}</p>
             ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
-            <div class="service-actions">
+            </div>
+            <footer class="sheet-footer service-actions">
               <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Back to floor</button>
               <button type="button" class="service-btn primary" id="summary-visit-shop" data-testid="summary-visit-shop">Visit shop</button>
-            </div>
+            </footer>
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#summary-back-floor')?.addEventListener('click', () => {
-        const store = useGameStore.getState();
-        store.dismissDaySummary();
-        store.navigateTo('restaurant');
-      }, { once: true });
-      serviceOverlay.querySelector('#summary-visit-shop')?.addEventListener('click', () => {
-        const store = useGameStore.getState();
-        store.dismissDaySummary();
-        store.navigateTo('shop');
-      }, { once: true });
+      serviceOverlay.querySelector('#summary-back-floor')?.addEventListener(
+        'click',
+        () => {
+          const store = useGameStore.getState();
+          store.dismissDaySummary();
+          store.navigateTo('restaurant');
+        },
+        { once: true },
+      );
+      serviceOverlay.querySelector('#summary-visit-shop')?.addEventListener(
+        'click',
+        () => {
+          const store = useGameStore.getState();
+          store.dismissDaySummary();
+          store.navigateTo('shop');
+        },
+        { once: true },
+      );
       return;
     }
 
     if (selectShowOpenForService(state)) {
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel">
+        <div class="service-panel sheet-tier-compact" data-testid="open-service-sheet">
           <div class="service-card">
             <h2 class="service-title">Open for service?</h2>
             <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>
@@ -242,13 +323,21 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#open-day-btn')?.addEventListener('click', () => {
-        useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
-      }, { once: true });
-      serviceOverlay.querySelector('#edit-restaurant-btn')?.addEventListener('click', () => {
-        const store = useGameStore.getState();
-        if (!store.editLayoutMode) store.toggleEditLayout();
-      }, { once: true });
+      serviceOverlay.querySelector('#open-day-btn')?.addEventListener(
+        'click',
+        () => {
+          useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+        },
+        { once: true },
+      );
+      serviceOverlay.querySelector('#edit-restaurant-btn')?.addEventListener(
+        'click',
+        () => {
+          const store = useGameStore.getState();
+          if (!store.editLayoutMode) store.toggleEditLayout();
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -262,7 +351,7 @@ export function mountServiceDayUi(
       const modifier = selectActiveModifier(state);
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel">
+        <div class="service-panel sheet-tier-mid" data-testid="modifier-sheet">
           <div class="service-card">
             <h2 class="service-title">Today's Modifier</h2>
             <p class="service-subtitle"><strong>${modifier?.name ?? 'Normal Day'}</strong></p>
@@ -274,9 +363,13 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#start-service-btn')?.addEventListener('click', () => {
-        useGameStore.getState().dismissModifier();
-      }, { once: true });
+      serviceOverlay.querySelector('#start-service-btn')?.addEventListener(
+        'click',
+        () => {
+          useGameStore.getState().dismissModifier();
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -284,13 +377,17 @@ export function mountServiceDayUi(
       const review = buildReviewDisplay(state.pendingReview);
       const progress = selectQueueProgress(state);
       const canClose = selectCanCloseDay(state);
-      const canAdvance = selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
+      const canAdvance =
+        selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel">
-          <div class="service-card">
-            <h2 class="service-title">Customer Review</h2>
+        <div class="service-panel sheet-tier-mid" data-testid="review-sheet">
+          <div class="service-card sheet-card-layout">
+            <header class="sheet-header">
+              <h2 class="service-title">Customer Review</h2>
+            </header>
+            <div class="sheet-body-scroll">
             ${progress && !floorActive ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="review-stars" data-testid="review-stars" aria-label="${review.starsText}">${renderStarGlyphs(review.starsFilled)}</p>
             <p class="review-detail" data-testid="review-score">${review.starsText}</p>
@@ -298,7 +395,8 @@ export function mountServiceDayUi(
             <p class="review-detail ${review.ratingDeltaPositive ? 'review-positive' : 'review-negative'}">Rating ${review.ratingDeltaText}</p>
             ${review.recipeLine ? `<p class="review-detail review-positive">${review.recipeLine}</p>` : ''}
             ${review.masteryLine ? `<p class="review-detail review-positive" data-testid="review-mastery">${review.masteryLine}</p>` : ''}
-            <div class="service-actions">
+            </div>
+            <footer class="sheet-footer service-actions">
               ${
                 canClose
                   ? '<button type="button" class="service-btn primary" id="close-day-btn" data-testid="close-day-btn">Close Day</button>'
@@ -308,26 +406,38 @@ export function mountServiceDayUi(
                       ? '<button type="button" class="service-btn primary" id="continue-service-btn" data-testid="continue-service-btn">Continue service</button>'
                       : ''
               }
-            </div>
+            </footer>
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#next-customer-btn')?.addEventListener('click', () => {
-        useGameStore.getState().dispatch({ type: 'NEXT_CUSTOMER' });
-      }, { once: true });
-      serviceOverlay.querySelector('#close-day-btn')?.addEventListener('click', () => {
-        useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
-      }, { once: true });
-      serviceOverlay.querySelector('#continue-service-btn')?.addEventListener('click', () => {
-        const store = useGameStore.getState() as {
-          dismissPendingReview?: () => void;
-        };
-        if (typeof store.dismissPendingReview === 'function') {
-          store.dismissPendingReview();
-        } else {
-          useGameStore.setState({ pendingReview: null });
-        }
-      }, { once: true });
+      serviceOverlay.querySelector('#next-customer-btn')?.addEventListener(
+        'click',
+        () => {
+          useGameStore.getState().dispatch({ type: 'NEXT_CUSTOMER' });
+        },
+        { once: true },
+      );
+      serviceOverlay.querySelector('#close-day-btn')?.addEventListener(
+        'click',
+        () => {
+          useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+        },
+        { once: true },
+      );
+      serviceOverlay.querySelector('#continue-service-btn')?.addEventListener(
+        'click',
+        () => {
+          const store = useGameStore.getState() as {
+            dismissPendingReview?: () => void;
+          };
+          if (typeof store.dismissPendingReview === 'function') {
+            store.dismissPendingReview();
+          } else {
+            useGameStore.setState({ pendingReview: null });
+          }
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -336,31 +446,72 @@ export function mountServiceDayUi(
       const ctx = getDomainContext();
       const preview = computeDishPreview(draftIds, ctx.ingredientsById);
       const ticket = selectFloorComposeTicket(state);
-      const canPlate = preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
+      const canPlate =
+        preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
+      const unlocked = state.unlockedIngredientIds.flatMap((id) => {
+        const ingredient = ctx.ingredientsById.get(id);
+        return ingredient ? [ingredient] : [];
+      });
 
-      const ingredientButtons = state.unlockedIngredientIds
-        .map((id) => {
-          const item = ctx.ingredientsById.get(id);
-          const selected = draftIds.includes(id);
-          const toggle = canToggleIngredient(id, draftIds);
-          const disabled = !selected && !toggle.allowed;
-          return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-ingredient-id="${id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${renderFoodIconHtml(id, 24)}<span>${item?.name ?? id}</span></button>`;
-        })
-        .join('');
+      const renderIngredientButtons = (): string => {
+        const currentDraft = selectComposeDraftIds(useGameStore.getState());
+        const matches = filterComposePantry(unlocked, composeFilters);
+        if (matches.length === 0) {
+          return '<p class="compose-empty" data-testid="compose-empty">No ingredients match. Clear a filter to see more.</p>';
+        }
+        return matches
+          .map((item) => {
+            const selected = currentDraft.includes(item.id);
+            const toggle = canToggleIngredient(item.id, currentDraft);
+            const disabled = !selected && !toggle.allowed;
+            const name = escapeHtml(item.name);
+            return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 24)}<span>${name}</span></button>`;
+          })
+          .join('');
+      };
 
-      const flavorPreview =
-        preview.profile
-          ? `<div class="flavor-preview flavor-preview-bars" aria-label="Dish flavor preview">${renderFlavorBarsHtml(
-              buildFlavorBarsViewModel(preview.profile),
-              { showValues: false },
-            )}</div>`
-          : '';
+      const selectedStrip =
+        draftIds.length === 0
+          ? '<span class="compose-selected-empty">Nothing selected yet</span>'
+          : draftIds
+              .map((id) => {
+                const item = ctx.ingredientsById.get(id);
+                const name = escapeHtml(item?.name ?? id);
+                return `<button type="button" class="compose-selected-chip" data-compose-ingredient-id="${id}" aria-label="Remove ${name}" title="${name}">${renderFoodIconHtml(id, 20)}<span>${name}</span><span aria-hidden="true">×</span></button>`;
+              })
+              .join('');
+
+      const axisChips = AXIS_KEYS.map((axis) => {
+        const selected = composeFilters.selectedAxes.includes(axis);
+        return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}">${escapeHtml(AXIS_LABELS[axis])}</button>`;
+      }).join('');
+
+      const matchingCount = filterComposePantry(
+        unlocked,
+        composeFilters,
+      ).length;
+      const flavorPreview = preview.profile
+        ? buildFlavorBarsViewModel(preview.profile)
+            .axes.filter((axis) => Math.abs(axis.value) >= 0.05)
+            .map(
+              (axis) => `<div class="compose-flavor-mini">
+                <span>${escapeHtml(axis.label)}</span>
+                <span class="compose-flavor-mini-track" role="meter" aria-label="${escapeHtml(axis.label)}" aria-valuemin="0" aria-valuemax="${axis.max}" aria-valuenow="${axis.value}">
+                  <span class="compose-flavor-mini-fill" style="width:${Math.min(100, Math.max(0, (axis.value / axis.max) * 100)).toFixed(1)}%"></span>
+                </span>
+              </div>`,
+            )
+            .join('')
+        : '';
 
       let ticketBadge = '';
       if (ticket) {
-        const guest = state.activeDay?.floor?.pool.find((g) => g.customer.id === ticket.customerId);
+        const guest = state.activeDay?.floor?.pool.find(
+          (g) => g.customer.id === ticket.customerId,
+        );
         const archetypeName = guest
-          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)?.name
+          ? ctx.archetypes.find((a) => a.id === guest.customer.archetypeId)
+              ?.name
           : undefined;
         const label = formatFloorTicketLabel({
           ticket,
@@ -374,67 +525,228 @@ export function mountServiceDayUi(
 
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel">
-          <div class="service-card">
-            <h2 class="service-title">Plate Dish</h2>
-            ${ticketBadge}
-            <p class="compose-meta">Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients (${preview.ingredientCount} selected)</p>
-            <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${ingredientButtons}</div>
-            ${flavorPreview}
-            <div class="service-actions">
-              <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
+        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-labelledby="compose-title">
+          <div class="service-card sheet-card-layout compose-sheet-card">
+            <header class="sheet-header compose-sheet-header">
+              <div>
+                <h2 id="compose-title" class="service-title">Plate Dish</h2>
+                ${ticketBadge}
+              </div>
+              <button type="button" class="icon-btn" data-testid="compose-close" aria-label="Close cooking sheet">✕</button>
+            </header>
+            <section class="compose-selection" aria-label="Selected ingredients">
+              <div class="compose-section-heading">
+                <strong>Selected</strong>
+                <span>${preview.ingredientCount} / ${MAX_DISH_INGREDIENTS}</span>
+              </div>
+              <div class="compose-selected-strip">${selectedStrip}</div>
+            </section>
+            <section class="compose-filters" aria-label="Pantry filters">
+              <div class="compose-axis-row">
+                <button type="button" class="filter-axis-chip${composeFilters.selectedAxes.length === 0 ? ' selected' : ''}" data-compose-all aria-pressed="${composeFilters.selectedAxes.length === 0}">All</button>
+                ${axisChips}
+              </div>
+              <div class="compose-search-row">
+                <label class="compose-search-field">
+                  <span class="sr-only">Search ingredients by name</span>
+                  <input type="search" class="compose-search-input" data-testid="compose-search" placeholder="Search ingredients" autocomplete="off" value="${escapeHtml(composeFilters.nameQuery)}" />
+                </label>
+                <button type="button" class="compose-search-clear" data-testid="compose-search-clear" ${composeFilters.nameQuery ? '' : 'hidden'}>Clear</button>
+              </div>
+              <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount))}</p>
+            </section>
+            <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
+              <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${renderIngredientButtons()}</div>
             </div>
+            <footer class="sheet-footer compose-sheet-footer">
+              <div class="compose-footer-copy">
+                <span>Dish flavor</span>
+                <span>Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients</span>
+              </div>
+              <div class="compose-flavor-strip" aria-label="Dish flavor preview">${flavorPreview || '<span class="compose-flavor-empty">Select ingredients to preview flavor</span>'}</div>
+              <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
+            </footer>
           </div>
         </div>
       `;
 
-      serviceOverlay.querySelectorAll<HTMLButtonElement>('[data-ingredient-id]').forEach((button) => {
-        let pressTimer: ReturnType<typeof setTimeout> | null = null;
+      let cancelActiveLongPress: (() => void) | null = null;
+      const bindIngredientButtons = (root: HTMLElement) => {
+        root
+          .querySelectorAll<HTMLButtonElement>('[data-compose-ingredient-id]')
+          .forEach((button) => {
+            let pressTimer: ReturnType<typeof setTimeout> | null = null;
+            let startX = 0;
+            let startY = 0;
+            let longPressed = false;
 
-        const clearPress = () => {
-          if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-          }
-        };
+            const clearPress = () => {
+              if (pressTimer) clearTimeout(pressTimer);
+              pressTimer = null;
+              if (cancelActiveLongPress === clearPress) {
+                cancelActiveLongPress = null;
+              }
+            };
 
-        button.addEventListener('pointerdown', () => {
-          clearPress();
-          pressTimer = setTimeout(() => {
-            const id = button.dataset.ingredientId;
-            if (id) useGameStore.getState().openFlavorInspector(id);
-          }, LONG_PRESS_MS);
+            button.addEventListener('pointerdown', (event) => {
+              clearPress();
+              startX = event.clientX;
+              startY = event.clientY;
+              longPressed = false;
+              cancelActiveLongPress = clearPress;
+              pressTimer = setTimeout(() => {
+                longPressed = true;
+                const id = button.dataset.composeIngredientId;
+                if (id) useGameStore.getState().openFlavorInspector(id);
+              }, LONG_PRESS_MS);
+            });
+            button.addEventListener('pointermove', (event) => {
+              if (
+                Math.hypot(event.clientX - startX, event.clientY - startY) > 8
+              ) {
+                clearPress();
+              }
+            });
+            button.addEventListener('pointerup', clearPress);
+            button.addEventListener('pointercancel', clearPress);
+            button.addEventListener('pointerleave', clearPress);
+            button.addEventListener('click', (event) => {
+              if (longPressed) {
+                event.preventDefault();
+                longPressed = false;
+                return;
+              }
+              const id = button.dataset.composeIngredientId;
+              if (!id) return;
+              const currentDraft = selectComposeDraftIds(
+                useGameStore.getState(),
+              );
+              const toggle = canToggleIngredient(id, currentDraft);
+              if (!toggle.allowed) return;
+              void useGameStore.getState().dispatch({
+                type: 'SET_COMPOSE_DRAFT',
+                ingredientIds: toggle.nextIds,
+              });
+            });
+          });
+      };
+
+      const updateFilterUi = () => {
+        const pantry = serviceOverlay.querySelector<HTMLElement>(
+          '[data-testid="compose-pantry"] .ingredient-grid',
+        );
+        const summary = serviceOverlay.querySelector(
+          '[data-testid="compose-filter-summary"]',
+        );
+        const clear = serviceOverlay.querySelector<HTMLButtonElement>(
+          '[data-testid="compose-search-clear"]',
+        );
+        if (pantry) {
+          pantry.innerHTML = renderIngredientButtons();
+          bindIngredientButtons(pantry);
+        }
+        const count = filterComposePantry(unlocked, composeFilters).length;
+        if (summary) {
+          summary.textContent = composePantrySummary(composeFilters, count);
+        }
+        if (clear) clear.hidden = composeFilters.nameQuery.length === 0;
+        serviceOverlay
+          .querySelector<HTMLButtonElement>('[data-compose-all]')
+          ?.setAttribute(
+            'aria-pressed',
+            String(composeFilters.selectedAxes.length === 0),
+          );
+        serviceOverlay
+          .querySelector<HTMLButtonElement>('[data-compose-all]')
+          ?.classList.toggle(
+            'selected',
+            composeFilters.selectedAxes.length === 0,
+          );
+        serviceOverlay
+          .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
+          .forEach((button) => {
+            const selected = composeFilters.selectedAxes.includes(
+              button.dataset.composeAxis as AxisKey,
+            );
+            button.classList.toggle('selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+          });
+      };
+
+      bindIngredientButtons(serviceOverlay);
+      serviceOverlay
+        .querySelector('[data-testid="compose-pantry"]')
+        ?.addEventListener('scroll', () => cancelActiveLongPress?.(), {
+          passive: true,
         });
-        button.addEventListener('pointerup', clearPress);
-        button.addEventListener('pointercancel', clearPress);
-        button.addEventListener('pointerleave', clearPress);
 
-        button.addEventListener('click', () => {
-          const id = button.dataset.ingredientId;
-          if (!id) return;
-          const currentDraft = selectComposeDraftIds(useGameStore.getState());
-          const toggle = canToggleIngredient(id, currentDraft);
-          if (!toggle.allowed) return;
-          useGameStore.getState().dispatch({
-            type: 'SET_COMPOSE_DRAFT',
-            ingredientIds: toggle.nextIds,
+      serviceOverlay
+        .querySelector('[data-testid="compose-close"]')
+        ?.addEventListener(
+          'click',
+          () => useGameStore.getState().closeComposeSheet(),
+          { once: true },
+        );
+
+      serviceOverlay
+        .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            composeFilters = toggleComposeAxis(
+              composeFilters,
+              button.dataset.composeAxis as AxisKey,
+            );
+            updateFilterUi();
           });
         });
-      });
 
-      serviceOverlay.querySelector('#plate-btn')?.addEventListener('click', () => {
-        if (Date.now() < serveLockedUntil) return;
-        const current = useGameStore.getState();
-        const activeTicket = selectFloorComposeTicket(current);
-        if (!activeTicket) return;
-        serveLockedUntil = Date.now() + SERVE_LOCK_MS;
-        const ids = selectComposeDraftIds(current);
-        void current.dispatch({
-          type: 'FLOOR_PLATE',
-          ticketId: activeTicket.id,
-          ingredientIds: ids,
+      serviceOverlay
+        .querySelector('[data-compose-all]')
+        ?.addEventListener('click', () => {
+          composeFilters = clearComposeAxes(composeFilters);
+          updateFilterUi();
         });
-      }, { once: true });
+
+      const searchInput = serviceOverlay.querySelector<HTMLInputElement>(
+        '[data-testid="compose-search"]',
+      );
+      searchInput?.addEventListener('input', () => {
+        composeFilters = setComposeNameQuery(composeFilters, searchInput.value);
+        updateFilterUi();
+      });
+      serviceOverlay
+        .querySelector('[data-testid="compose-search-clear"]')
+        ?.addEventListener('click', () => {
+          composeFilters = clearComposeNameQuery(composeFilters);
+          if (searchInput) searchInput.value = '';
+          updateFilterUi();
+          searchInput?.focus({ preventScroll: true });
+        });
+
+      serviceOverlay.querySelector('#plate-btn')?.addEventListener(
+        'click',
+        () => {
+          if (Date.now() < serveLockedUntil) return;
+          const current = useGameStore.getState();
+          const activeTicket = selectFloorComposeTicket(current);
+          if (!activeTicket) return;
+          serveLockedUntil = Date.now() + SERVE_LOCK_MS;
+          const ids = selectComposeDraftIds(current);
+          void current.dispatch({
+            type: 'FLOOR_PLATE',
+            ticketId: activeTicket.id,
+            ingredientIds: ids,
+          });
+        },
+        { once: true },
+      );
+      if (composeOpenedNow) {
+        queueMicrotask(() => {
+          serviceOverlay
+            .querySelector<HTMLElement>('[data-testid="compose-search"]')
+            ?.focus({ preventScroll: true });
+        });
+      }
       return;
     }
 
@@ -455,13 +767,12 @@ export function mountServiceDayUi(
         })
         .join('');
 
-      const flavorPreview =
-        preview.profile
-          ? `<div class="flavor-preview flavor-preview-bars" aria-label="Dish flavor preview">${renderFlavorBarsHtml(
-              buildFlavorBarsViewModel(preview.profile),
-              { showValues: false },
-            )}</div>`
-          : '';
+      const flavorPreview = preview.profile
+        ? `<div class="flavor-preview flavor-preview-bars" aria-label="Dish flavor preview">${renderFlavorBarsHtml(
+            buildFlavorBarsViewModel(preview.profile),
+            { showValues: false },
+          )}</div>`
+        : '';
 
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
@@ -479,46 +790,54 @@ export function mountServiceDayUi(
         </div>
       `;
 
-      serviceOverlay.querySelectorAll<HTMLButtonElement>('[data-ingredient-id]').forEach((button) => {
-        let pressTimer: ReturnType<typeof setTimeout> | null = null;
+      serviceOverlay
+        .querySelectorAll<HTMLButtonElement>('[data-ingredient-id]')
+        .forEach((button) => {
+          let pressTimer: ReturnType<typeof setTimeout> | null = null;
 
-        const clearPress = () => {
-          if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-          }
-        };
+          const clearPress = () => {
+            if (pressTimer) {
+              clearTimeout(pressTimer);
+              pressTimer = null;
+            }
+          };
 
-        button.addEventListener('pointerdown', () => {
-          clearPress();
-          pressTimer = setTimeout(() => {
+          button.addEventListener('pointerdown', () => {
+            clearPress();
+            pressTimer = setTimeout(() => {
+              const id = button.dataset.ingredientId;
+              if (id) useGameStore.getState().openFlavorInspector(id);
+            }, LONG_PRESS_MS);
+          });
+          button.addEventListener('pointerup', clearPress);
+          button.addEventListener('pointercancel', clearPress);
+          button.addEventListener('pointerleave', clearPress);
+
+          button.addEventListener('click', () => {
             const id = button.dataset.ingredientId;
-            if (id) useGameStore.getState().openFlavorInspector(id);
-          }, LONG_PRESS_MS);
-        });
-        button.addEventListener('pointerup', clearPress);
-        button.addEventListener('pointercancel', clearPress);
-        button.addEventListener('pointerleave', clearPress);
-
-        button.addEventListener('click', () => {
-          const id = button.dataset.ingredientId;
-          if (!id) return;
-          const currentDraft = selectComposeDraftIds(useGameStore.getState());
-          const toggle = canToggleIngredient(id, currentDraft);
-          if (!toggle.allowed) return;
-          useGameStore.getState().dispatch({
-            type: 'SET_COMPOSE_DRAFT',
-            ingredientIds: toggle.nextIds,
+            if (!id) return;
+            const currentDraft = selectComposeDraftIds(useGameStore.getState());
+            const toggle = canToggleIngredient(id, currentDraft);
+            if (!toggle.allowed) return;
+            useGameStore.getState().dispatch({
+              type: 'SET_COMPOSE_DRAFT',
+              ingredientIds: toggle.nextIds,
+            });
           });
         });
-      });
 
-      serviceOverlay.querySelector('#serve-btn')?.addEventListener('click', () => {
-        if (Date.now() < serveLockedUntil) return;
-        serveLockedUntil = Date.now() + SERVE_LOCK_MS;
-        const ids = selectComposeDraftIds(useGameStore.getState());
-        useGameStore.getState().dispatch({ type: 'SERVE_DISH', ingredientIds: ids });
-      }, { once: true });
+      serviceOverlay.querySelector('#serve-btn')?.addEventListener(
+        'click',
+        () => {
+          if (Date.now() < serveLockedUntil) return;
+          serveLockedUntil = Date.now() + SERVE_LOCK_MS;
+          const ids = selectComposeDraftIds(useGameStore.getState());
+          useGameStore
+            .getState()
+            .dispatch({ type: 'SERVE_DISH', ingredientIds: ids });
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -531,6 +850,16 @@ export function mountServiceDayUi(
     renderCeremony();
     renderServiceOverlay();
     renderChatBubble();
+  };
+
+  const onComposeKeydown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape') return;
+    const state = useGameStore.getState();
+    if (state.flavorInspectorIngredientId || !selectShowFloorCompose(state)) {
+      return;
+    }
+    event.preventDefault();
+    state.closeComposeSheet();
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -546,6 +875,7 @@ export function mountServiceDayUi(
       state.rating !== prev.rating ||
       state.prestige !== prev.prestige ||
       state.day !== prev.day ||
+      state.composeSheetOpen !== prev.composeSheetOpen ||
       state.composeDraftIngredientIds !== prev.composeDraftIngredientIds ||
       state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
       state.activeDay?.floor !== prev.activeDay?.floor ||
@@ -557,6 +887,7 @@ export function mountServiceDayUi(
   });
 
   window.addEventListener('resize', positionChatBubble);
+  document.addEventListener('keydown', onComposeKeydown);
   const onFoodAtlas = () => sync();
   window.addEventListener('food-atlas-ready', onFoodAtlas);
   sync();
@@ -568,6 +899,7 @@ export function mountServiceDayUi(
     cleanupCelebrationBanner();
     cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
+    document.removeEventListener('keydown', onComposeKeydown);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     bubbleEl?.remove();
     statusMount.innerHTML = '';
@@ -578,7 +910,13 @@ export function mountServiceDayUi(
 export function computeBubbleAnchorFromWorld(
   worldX: number,
   worldY: number,
-  camera: { x: number; y: number; scale: number; stageOffsetX: number; stageOffsetY: number },
+  camera: {
+    x: number;
+    y: number;
+    scale: number;
+    stageOffsetX: number;
+    stageOffsetY: number;
+  },
   canvasRect: DOMRect,
 ): { x: number; y: number } {
   const screen = worldToScreen(worldX, worldY, camera);

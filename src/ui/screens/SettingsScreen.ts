@@ -1,5 +1,8 @@
 import { useGameStore } from '../../store/game-store.ts';
-import { loadCreditsManifest, renderCreditsHtml } from '../../assets/credits.ts';
+import {
+  loadCreditsManifest,
+  renderCreditsHtml,
+} from '../../assets/credits.ts';
 import {
   buildExportSuccessFeedback,
   buildImportErrorFeedback,
@@ -15,7 +18,7 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   root.className = 'screen-root';
   container.appendChild(root);
   root.innerHTML = `
-    <section class="screen-panel" id="settings-screen" data-testid="settings-screen" hidden>
+    <section class="screen-panel sheet-tier-meta-full meta-screen" id="settings-screen" data-testid="settings-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Settings</h1>
       </header>
@@ -54,7 +57,9 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
 
   const panel = root.querySelector('#settings-screen') as HTMLElement;
   const feedbackEl = root.querySelector('#save-feedback') as HTMLElement;
-  const importInput = root.querySelector('#import-save-input') as HTMLTextAreaElement;
+  const importInput = root.querySelector(
+    '#import-save-input',
+  ) as HTMLTextAreaElement;
   const audioToggle = root.querySelector('#audio-toggle') as HTMLInputElement;
   const musicToggle = root.querySelector('#music-toggle') as HTMLInputElement;
   const creditsEl = root.querySelector('#credits-content') as HTMLElement;
@@ -72,32 +77,38 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     feedbackEl.className = `save-feedback ${saveCodeFeedbackClass(feedback.status)}`;
   };
 
-  root.querySelector('#export-save-btn')?.addEventListener('click', async () => {
-    const result = await useGameStore.getState().exportSaveCodeToClipboard();
-    if (result.ok) {
-      showFeedback(buildExportSuccessFeedback(result.code.length));
-    } else {
-      showFeedback(buildImportErrorFeedback(new Error(result.error)));
-    }
-  });
+  root
+    .querySelector('#export-save-btn')
+    ?.addEventListener('click', async () => {
+      const result = await useGameStore.getState().exportSaveCodeToClipboard();
+      if (result.ok) {
+        showFeedback(buildExportSuccessFeedback(result.code.length));
+      } else {
+        showFeedback(buildImportErrorFeedback(new Error(result.error)));
+      }
+    });
 
-  root.querySelector('#import-save-btn')?.addEventListener('click', async () => {
-    const code = importInput.value.trim();
-    if (!code) {
-      showFeedback(buildImportErrorFeedback(new Error('Paste a Save Code first.')));
-      return;
-    }
-    const result = await useGameStore.getState().importSaveCode(code);
-    if (result.ok) {
-      const state = useGameStore.getState();
-      showFeedback(buildImportSuccessFeedback(state.day, state.prestige));
-      importInput.value = '';
-      audioToggle.checked = state.audioEnabled;
-      musicToggle.checked = state.musicEnabled;
-    } else {
-      showFeedback(buildImportErrorFeedback(new Error(result.error)));
-    }
-  });
+  root
+    .querySelector('#import-save-btn')
+    ?.addEventListener('click', async () => {
+      const code = importInput.value.trim();
+      if (!code) {
+        showFeedback(
+          buildImportErrorFeedback(new Error('Paste a Save Code first.')),
+        );
+        return;
+      }
+      const result = await useGameStore.getState().importSaveCode(code);
+      if (result.ok) {
+        const state = useGameStore.getState();
+        showFeedback(buildImportSuccessFeedback(state.day, state.prestige));
+        importInput.value = '';
+        audioToggle.checked = state.audioEnabled;
+        musicToggle.checked = state.musicEnabled;
+      } else {
+        showFeedback(buildImportErrorFeedback(new Error(result.error)));
+      }
+    });
 
   audioToggle.addEventListener('change', () => {
     useGameStore.getState().setAudioEnabled(audioToggle.checked);

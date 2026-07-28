@@ -31,7 +31,9 @@ export {
 export { waitingAreaOccupied, entryPipelineGuest } from './entry.ts';
 export {
   adjacentSeatedCustomerIds,
+  findCookStationPlacementAtCell,
   isAdjacent,
+  isCookStationItemKey,
   playerNearGuestSeat,
   playerNearPlacement,
   playerNearStation,
