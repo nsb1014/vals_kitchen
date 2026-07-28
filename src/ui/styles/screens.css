@@ -262,6 +262,12 @@
   color: var(--vk-text-dim);
 }
 
+.flavor-bars-empty {
+  margin: 0.35rem 0 0;
+  color: var(--vk-text-dim);
+  font-size: 13px;
+}
+
 .flavor-bar-row {
   display: grid;
   grid-template-columns: 4.5rem 1fr 2rem;
