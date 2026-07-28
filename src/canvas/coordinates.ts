@@ -88,7 +88,10 @@ export function screenToGrid(sx: number, sy: number, camera: CameraState): {
   gy: number;
 } {
   const world = screenToWorld(sx, sy, camera);
-  return snapWorldToGrid(world.x, world.y);
+  // Pointer input selects the cell underneath the pointer. Rounding here made
+  // the right/bottom half of every tile target its neighbor, so movement and
+  // station taps consistently landed one cell away from the visual target.
+  return worldToGrid(world.x, world.y);
 }
 
 /** Fit the grid in the viewport. Prefer integer scale for pixel-crisp tiles; when

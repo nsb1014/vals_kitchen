@@ -22,6 +22,10 @@ export function attachAudioBridge(): () => void {
   let prevActiveDay = useGameStore.getState().activeDay;
   let prevCash = useGameStore.getState().cash;
   let prevPlacementsLen = useGameStore.getState().placements.length;
+  let knownTicketIds = new Set(
+    useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
+      [],
+  );
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
     if (state.audioEnabled !== prev.audioEnabled || state.musicEnabled !== prev.musicEnabled) {
@@ -50,6 +54,14 @@ export function attachAudioBridge(): () => void {
       playSfx('placement', 0.65);
     }
     prevPlacementsLen = state.placements.length;
+
+    const nextTicketIds = new Set(
+      state.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
+    );
+    if ([...nextTicketIds].some((ticketId) => !knownTicketIds.has(ticketId))) {
+      playSfx('uiClick', 0.7);
+    }
+    knownTicketIds = nextTicketIds;
   });
 
   const originalDispatch = useGameStore.getState().dispatch.bind(useGameStore.getState());

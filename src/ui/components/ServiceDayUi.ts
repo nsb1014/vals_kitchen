@@ -5,7 +5,10 @@ import {
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
 import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
-import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
+import {
+  AXIS_LABELS,
+  emptyFlavorProfile,
+} from '../../domain/flavor/axis-labels.ts';
 import { computeWeightedSatisfaction } from '../../domain/flavor/scoring.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
@@ -38,14 +41,17 @@ import {
 } from '../presentation/review-display.ts';
 import { prestigeRatingDeltaMultiplier } from '../../domain/balance/prestige-pacing.ts';
 import {
+  bandLabel,
   clearComposeAxes,
   clearComposeNameQuery,
   composePantrySummary,
+  type ComposeAxisBands,
   emptyComposePantryFilters,
   filterComposePantry,
   setComposeNameQuery,
   toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
+import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
@@ -474,10 +480,27 @@ export function mountServiceDayUi(
         const ingredient = ctx.ingredientsById.get(id);
         return ingredient ? [ingredient] : [];
       });
+      const requestedBands: ComposeAxisBands = {};
+      if (ticketGuest) {
+        for (const axis of AXIS_KEYS) {
+          const primaryBand = ticketGuest.customer.preference.primary[axis];
+          if (primaryBand) requestedBands[axis] = primaryBand;
+          if (ticketGuest.customer.preference.avoid[axis]) {
+            requestedBands[axis] = 'low';
+          }
+        }
+      }
+      const requestedAxes = AXIS_KEYS.filter(
+        (axis) => requestedBands[axis] !== undefined,
+      );
 
       const renderIngredientButtons = (): string => {
         const currentDraft = selectComposeDraftIds(useGameStore.getState());
-        const matches = filterComposePantry(unlocked, composeFilters);
+        const matches = filterComposePantry(
+          unlocked,
+          composeFilters,
+          requestedBands,
+        );
         if (matches.length === 0) {
           return '<p class="compose-empty" data-testid="compose-empty">No ingredients match. Clear a filter to see more.</p>';
         }
@@ -503,30 +526,40 @@ export function mountServiceDayUi(
               })
               .join('');
 
-      const axisChips = AXIS_KEYS.map((axis) => {
+      const orderedFilterAxes = [
+        ...requestedAxes,
+        ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
+      ];
+      const axisChips = orderedFilterAxes.map((axis) => {
         const selected = composeFilters.selectedAxes.includes(axis);
-        return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}">${escapeHtml(AXIS_LABELS[axis])}</button>`;
+        const band = requestedBands[axis];
+        const label = band
+          ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
+          : AXIS_LABELS[axis];
+        return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
       }).join('');
 
       const matchingCount = filterComposePantry(
         unlocked,
         composeFilters,
+        requestedBands,
       ).length;
-      const flavorPreview = preview.profile
-        ? buildFlavorBarsViewModel(preview.profile)
-            .axes.filter((axis) => Math.abs(axis.value) >= 0.05)
-            .map(
-              (axis) => `<div class="compose-flavor-mini">
+      const flavorPreview = buildFlavorBarsViewModel(
+        preview.profile ?? emptyFlavorProfile(),
+      ).axes
+        .map(
+          (axis) => `<div class="compose-flavor-mini">
                 <span>${escapeHtml(axis.label)}</span>
                 <span class="compose-flavor-mini-track" role="meter" aria-label="${escapeHtml(axis.label)}" aria-valuemin="0" aria-valuemax="${axis.max}" aria-valuenow="${axis.value}">
                   <span class="compose-flavor-mini-fill" style="width:${Math.min(100, Math.max(0, (axis.value / axis.max) * 100)).toFixed(1)}%"></span>
                 </span>
+                <span class="compose-flavor-mini-value">${axis.displayValue}</span>
               </div>`,
-            )
-            .join('')
-        : '';
+        )
+        .join('');
 
       let ticketBadge = '';
+      let orderPanel = '';
       if (ticket) {
         const archetypeName = ticketGuest
           ? ctx.archetypes.find((a) => a.id === ticketGuest.customer.archetypeId)
@@ -536,10 +569,50 @@ export function mountServiceDayUi(
           ticket,
           customer: ticketGuest?.customer,
           archetypeName,
-          partyNumber: 1,
+          partyNumber:
+            (state.activeDay?.floor?.pool.findIndex(
+              (guest) => guest.customer.id === ticket.customerId,
+            ) ?? 0) + 1,
           selected: true,
         });
-        ticketBadge = `<p class="queue-badge">${escapeHtml(`${label.guestLabel} · ${label.statusLabel}`)}</p>`;
+        ticketBadge = `<p class="queue-badge">${escapeHtml(label.guestLabel)}</p>`;
+
+        if (ticketGuest) {
+          const preference = ticketGuest.customer.preference;
+          const ideal = resolveIdealFlavorProfile(preference);
+          const requestText = formatCustomerRequestText(preference);
+          const requestRows = requestedAxes
+            .map((axis) => {
+              const band = requestedBands[axis]!;
+              const targetValue = ideal[axis];
+              const currentValue = preview.profile?.[axis] ?? 0;
+              return `<div class="compose-request-axis" data-testid="compose-request-axis">
+                <div class="compose-request-axis-head">
+                  <strong>${escapeHtml(`${bandLabel(band)} ${AXIS_LABELS[axis]}`)}</strong>
+                  <span>${currentValue.toFixed(1)} dish · ${targetValue.toFixed(1)} target</span>
+                </div>
+                <div class="compose-request-bars">
+                  <span class="compose-request-bar target" title="Achievable target ${targetValue.toFixed(1)}">
+                    <span style="width:${Math.min(100, Math.max(0, targetValue * 10)).toFixed(1)}%"></span>
+                  </span>
+                  <span class="compose-request-bar current" title="Current dish ${currentValue.toFixed(1)}">
+                    <span style="width:${Math.min(100, Math.max(0, currentValue * 10)).toFixed(1)}%"></span>
+                  </span>
+                </div>
+              </div>`;
+            })
+            .join('');
+          orderPanel = `<aside class="compose-order-panel" data-testid="compose-order-panel" aria-label="Pinned order target">
+            <div class="compose-order-panel-head">
+              <div>
+                <strong>${escapeHtml(label.guestLabel)}</strong>
+                <p>${escapeHtml(requestText)}</p>
+              </div>
+              <span class="compose-order-legend"><i></i> target <i></i> dish</span>
+            </div>
+            <div class="compose-request-axis-list">${requestRows}</div>
+          </aside>`;
+        }
       }
 
       serviceOverlay.hidden = false;
@@ -572,17 +645,20 @@ export function mountServiceDayUi(
                 </label>
                 <button type="button" class="compose-search-clear" data-testid="compose-search-clear" ${composeFilters.nameQuery ? '' : 'hidden'}>Clear</button>
               </div>
-              <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount))}</p>
+              <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount, requestedBands))}</p>
             </section>
-            <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
-              <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${renderIngredientButtons()}</div>
+            <div class="compose-workspace">
+              <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
+                <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${renderIngredientButtons()}</div>
+              </div>
+              ${orderPanel}
             </div>
             <footer class="sheet-footer compose-sheet-footer">
               <div class="compose-footer-copy">
                 <span>Dish flavor</span>
                 <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
               </div>
-              <div class="compose-flavor-strip" aria-label="Dish flavor preview">${flavorPreview || '<span class="compose-flavor-empty">Select ingredients to preview flavor</span>'}</div>
+              <div class="compose-flavor-strip" aria-label="Dish flavor preview">${flavorPreview}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </footer>
           </div>
@@ -664,9 +740,17 @@ export function mountServiceDayUi(
           pantry.innerHTML = renderIngredientButtons();
           bindIngredientButtons(pantry);
         }
-        const count = filterComposePantry(unlocked, composeFilters).length;
+        const count = filterComposePantry(
+          unlocked,
+          composeFilters,
+          requestedBands,
+        ).length;
         if (summary) {
-          summary.textContent = composePantrySummary(composeFilters, count);
+          summary.textContent = composePantrySummary(
+            composeFilters,
+            count,
+            requestedBands,
+          );
         }
         if (clear) clear.hidden = composeFilters.nameQuery.length === 0;
         serviceOverlay

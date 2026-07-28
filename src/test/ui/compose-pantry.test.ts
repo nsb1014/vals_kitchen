@@ -62,4 +62,22 @@ describe('compose pantry filters', () => {
     const filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
     expect(composePantrySummary(filters, 2)).toBe('2 matching · Umami');
   });
+
+  it('uses the requested band when an order flavor pill is selected', () => {
+    const umami = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
+    expect(
+      filterComposePantry(pantry, umami, { UM: 'high' }).map((item) => item.id),
+    ).toEqual(['stock', 'oil']);
+    expect(
+      filterComposePantry(pantry, umami, { UM: 'low' }).map((item) => item.id),
+    ).toEqual(['chili']);
+
+    const heat = toggleComposeAxis(emptyComposePantryFilters(), 'HT');
+    expect(
+      filterComposePantry(pantry, heat, { HT: 'mid' }).map((item) => item.id),
+    ).toEqual(['stock']);
+    expect(composePantrySummary(heat, 1, { HT: 'mid' })).toBe(
+      '1 matching · Moderate Heat',
+    );
+  });
 });

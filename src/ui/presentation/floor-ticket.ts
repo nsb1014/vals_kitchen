@@ -8,7 +8,7 @@ export function formatTicketStatusLabel(
 ): string {
   if (status === 'plated') return 'Ready';
   if (status === 'delivered') return 'Done';
-  if (selected) return 'Cooking';
+  if (selected) return 'Selected';
   return 'Open';
 }
 
@@ -32,9 +32,11 @@ export function formatFloorTicketLabel(input: {
   preferenceSummary: string;
   buttonText: string;
 } {
-  const guestLabel =
-    input.archetypeName?.trim() ||
-    `Party ${Math.max(1, input.partyNumber)}`;
+  const partyNumber = Math.max(1, input.partyNumber);
+  const archetypeName = input.archetypeName?.trim();
+  const guestLabel = archetypeName
+    ? `#${partyNumber} · ${archetypeName}`
+    : `Guest #${partyNumber}`;
   const statusLabel = formatTicketStatusLabel(input.ticket.status, input.selected);
   const preferenceBody = input.customer
     ? formatCustomerRequestText(input.customer.preference)

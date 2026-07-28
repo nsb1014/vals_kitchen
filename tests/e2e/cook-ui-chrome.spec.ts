@@ -43,6 +43,8 @@ test.describe('cook sheet responsive chrome', () => {
       await page.setViewportSize({ width, height: 720 });
       await openCookFixture(page);
       await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
+      await expect(page.getByTestId('compose-order-panel')).toBeVisible();
+      await expect(page.getByTestId('compose-request-axis')).not.toHaveCount(0);
       await expectFooterInsideSheet(page);
       await page.screenshot({
         path: `test-results/cook-sheet-${width}.png`,
@@ -64,6 +66,30 @@ test.describe('cook sheet responsive chrome', () => {
       'matching',
     );
     await expect(page.getByTestId('ingredient-chip')).toHaveCount(2);
+  });
+
+  test('order flavor pills visibly filter with request-band semantics', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await openCookFixture(page);
+    const requestedFilter = page.locator('.filter-axis-chip.requested').first();
+    await expect(requestedFilter).toBeVisible();
+    const label = (await requestedFilter.textContent())?.trim();
+    expect(label).toMatch(/^(High|Moderate|Low) /);
+    await requestedFilter.click();
+    await expect(requestedFilter).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('compose-filter-summary')).toContainText(label!);
+    await expect(page.getByTestId('ingredient-chip')).not.toHaveCount(100);
+  });
+
+  test('shows all dish flavor axes while choosing ingredients', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await openCookFixture(page);
+    await expect(page.locator('.compose-flavor-mini')).toHaveCount(15);
+    await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(15);
   });
 
   test('keeps Plate in view in a short landscape viewport', async ({
