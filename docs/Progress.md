@@ -28,6 +28,7 @@
 | Overnight program Track C — loop completeness | **Done** — mid-day review Continue, floor autosave/hydrate, summary→shop/floor, tutorial close step; fast suite 144 ([plan](./superpowers/plans/2026-07-26-track-c-loop-completeness.md)) |
 | Overnight program Track D — meta depth | **Done** — mastery on reviews + recipe-book progress + pacing HUD; fast suite 147 ([plan](./superpowers/plans/2026-07-26-track-d-meta-depth.md)) |
 | Edit catalog + achievements | **Done** — prestige-flat shop costs, edit + decor catalog, celebration banners, Recipe Book achievements; fast suite 280 ([design](./superpowers/specs/2026-07-27-edit-catalog-achievements-design.md), [plan](./superpowers/plans/2026-07-27-edit-catalog-achievements.md)) |
+| Cooking UI + shared chrome | **Done** — tap-to-open cook lifecycle, 100-item flavor/search pantry, locked sheet tiers, shared meta shell; fast suite 297 ([design](./superpowers/specs/2026-07-28-cooking-ui-system-design.md), [plan](./superpowers/plans/2026-07-28-cooking-ui-system.md)) |
 
 ---
 
@@ -75,6 +76,7 @@
 | C | Loop completeness | Done | Review Continue, floor autosave, summary Shop/Floor, tutorial close; fast suite 144 |
 | D | Meta depth | Done | Mastery review line, recipe book progress, day pacing HUD; fast suite 147 |
 | — | Kitchen annex redesign | Done | Separate same-size back-kitchen room + door transfer (replaces +2 width); save v3; fast suite 206 |
+| — | Cooking UI + shared chrome | Done | Explicit station-tap compose lifecycle; AND flavor filters + search; compact/mid/near-full/meta-full shells; fast suite 297 |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -85,6 +87,7 @@
 | Date | Change |
 |------|--------|
 | 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
+| 2026-07-28 | Cooking UI + shared chrome Done: explicit station-tap compose, 100-item flavor/search pantry, fixed responsive sheet regions, shared meta panels; fast suite 297 |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |

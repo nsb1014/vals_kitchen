@@ -42,7 +42,9 @@ export async function clearBrowserStorage(page: Page): Promise<void> {
   await page.evaluate(async () => {
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
+      await Promise.all(
+        registrations.map((registration) => registration.unregister()),
+      );
     }
     if (typeof indexedDB.databases === 'function') {
       const databases = await indexedDB.databases();
@@ -90,17 +92,26 @@ export async function waitForGameReady(page: Page): Promise<void> {
     ) as HTMLCanvasElement | null;
     return Boolean(canvas && canvas.clientWidth > 0 && canvas.clientHeight > 0);
   });
-  await page.waitForFunction(() => window.__E2E__?.getState()?.hydrated === true);
-  await page.waitForSelector('[data-testid="inspector-screen"]', { state: 'attached' });
+  await page.waitForFunction(
+    () => window.__E2E__?.getState()?.hydrated === true,
+  );
+  await page.waitForSelector('[data-testid="inspector-screen"]', {
+    state: 'attached',
+  });
 }
 
-export async function assertScreenOpen(page: Page, testId: string): Promise<void> {
+export async function assertScreenOpen(
+  page: Page,
+  testId: string,
+): Promise<void> {
   const panel = page.locator(`[data-testid="${testId}"]`);
   await expect(panel).toBeAttached();
   await expect(panel).not.toHaveAttribute('hidden', '');
 }
 
-export async function readSaveFromIndexedDb(page: Page): Promise<unknown | null> {
+export async function readSaveFromIndexedDb(
+  page: Page,
+): Promise<unknown | null> {
   return page.evaluate(async () => {
     return new Promise<unknown | null>((resolve, reject) => {
       const request = indexedDB.open('keyval-store');
@@ -116,7 +127,9 @@ export async function readSaveFromIndexedDb(page: Page): Promise<unknown | null>
   });
 }
 
-export async function assertCanvasHasRenderedContent(page: Page): Promise<void> {
+export async function assertCanvasHasRenderedContent(
+  page: Page,
+): Promise<void> {
   await expect
     .poll(
       async () =>
@@ -124,7 +137,11 @@ export async function assertCanvasHasRenderedContent(page: Page): Promise<void> 
           const canvas = document.querySelector(
             '[data-testid="restaurant-canvas"]',
           ) as HTMLCanvasElement | null;
-          if (!canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+          if (
+            !canvas ||
+            canvas.clientWidth === 0 ||
+            canvas.clientHeight === 0
+          ) {
             return false;
           }
           const placements = window.__E2E__?.getPlacements().length ?? 0;
@@ -137,7 +154,10 @@ export async function assertCanvasHasRenderedContent(page: Page): Promise<void> 
     .toBe(true);
 }
 
-export async function selectIngredientCount(page: Page, count: number): Promise<void> {
+export async function selectIngredientCount(
+  page: Page,
+  count: number,
+): Promise<void> {
   const chips = page.locator('[data-testid="ingredient-chip"]:not([disabled])');
   await expect(chips.first()).toBeVisible();
   const available = await chips.count();
@@ -151,33 +171,46 @@ export async function selectIngredientCount(page: Page, count: number): Promise<
 
 /** Serve one floor guest via bridge (set → seat → order → plate → deliver). */
 export async function serveCurrentCustomer(page: Page): Promise<void> {
-  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="floor-service-panel"]'),
+  ).toBeVisible();
 
   for (let guard = 0; guard < 40; guard += 1) {
     if (await page.locator('[data-testid="review-score"]').isVisible()) {
       break;
     }
-    const step = await page.evaluate(async () => window.__E2E__!.advanceFloorServiceOnce());
+    const step = await page.evaluate(async () =>
+      window.__E2E__!.advanceFloorServiceOnce(),
+    );
     if (step === 'pending_review' || step === 'day_complete') break;
   }
 
   await expect(page.locator('[data-testid="review-score"]')).toBeVisible();
-  const scoreText = await page.locator('[data-testid="review-score"]').innerText();
+  const scoreText = await page
+    .locator('[data-testid="review-score"]')
+    .innerText();
   expect(scoreText).toMatch(/\d+\.\d+ \/ 10/);
 }
 
-export async function completeServiceDay(page: Page): Promise<void> {
+export async function completeServiceDay(
+  page: Page,
+  dismissSummary = true,
+): Promise<void> {
   await page.locator('[data-testid="open-day-btn"]').click();
   await page.locator('[data-testid="start-service-btn"]').click();
-  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="floor-service-panel"]'),
+  ).toBeVisible();
 
   await page.evaluate(async () => {
     await window.__E2E__!.completeFloorServiceDay();
   });
 
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();
-  await page.locator('[data-testid="summary-back-floor"]').click();
-  await expect(page.locator('[data-testid="open-day-btn"]')).toBeVisible();
+  if (dismissSummary) {
+    await page.locator('[data-testid="summary-back-floor"]').click();
+    await expect(page.locator('[data-testid="open-day-btn"]')).toBeVisible();
+  }
 }
 
 export async function dragGridCell(
@@ -194,38 +227,38 @@ export async function dragGridCell(
       const fromInset = bridge.gridCellToScreen(fromGx, fromGy);
       const toInset = bridge.gridCellToScreen(toGx, toGy);
       return {
-        start: { x: fromInset.x + insetToCenterPx, y: fromInset.y + insetToCenterPx },
+        start: {
+          x: fromInset.x + insetToCenterPx,
+          y: fromInset.y + insetToCenterPx,
+        },
         end: { x: toInset.x + insetToCenterPx, y: toInset.y + insetToCenterPx },
       };
     },
     { fromGx, fromGy, toGx, toGy },
   );
 
-  await page.evaluate(
-    ({ start, end }) => {
-      const canvas = document.querySelector(
-        '[data-testid="restaurant-canvas"]',
-      ) as HTMLCanvasElement | null;
-      if (!canvas) throw new Error('canvas missing for drag');
+  await page.evaluate(({ start, end }) => {
+    const canvas = document.querySelector(
+      '[data-testid="restaurant-canvas"]',
+    ) as HTMLCanvasElement | null;
+    if (!canvas) throw new Error('canvas missing for drag');
 
-      const pe = (type: string, x: number, y: number, buttons: number) =>
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          clientX: x,
-          clientY: y,
-          pointerId: 1,
-          pointerType: 'touch',
-          isPrimary: true,
-          buttons,
-        });
+    const pe = (type: string, x: number, y: number, buttons: number) =>
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+        pointerId: 1,
+        pointerType: 'touch',
+        isPrimary: true,
+        buttons,
+      });
 
-      canvas.dispatchEvent(pe('pointerdown', start.x, start.y, 1));
-      canvas.dispatchEvent(pe('pointermove', end.x, end.y, 1));
-      canvas.dispatchEvent(pe('pointerup', end.x, end.y, 0));
-    },
-    coords,
-  );
+    canvas.dispatchEvent(pe('pointerdown', start.x, start.y, 1));
+    canvas.dispatchEvent(pe('pointermove', end.x, end.y, 1));
+    canvas.dispatchEvent(pe('pointerup', end.x, end.y, 0));
+  }, coords);
 }
 
 export async function trackContentRequests(page: Page): Promise<{
@@ -245,7 +278,10 @@ export async function trackContentRequests(page: Page): Promise<{
     if ((BOOT_CONTENT as readonly string[]).includes(file) && response.ok()) {
       boot.add(file);
     }
-    if ((DEFERRED_CONTENT as readonly string[]).includes(file) && response.ok()) {
+    if (
+      (DEFERRED_CONTENT as readonly string[]).includes(file) &&
+      response.ok()
+    ) {
       deferred.add(file);
     }
   });
@@ -254,20 +290,28 @@ export async function trackContentRequests(page: Page): Promise<{
     boot,
     deferred,
     async waitForBoot() {
-      await expect.poll(() => boot.size, { timeout: 15_000 }).toBe(BOOT_CONTENT.length);
+      await expect
+        .poll(() => boot.size, { timeout: 15_000 })
+        .toBe(BOOT_CONTENT.length);
     },
     async waitForDeferred() {
-      await expect.poll(() => deferred.size, { timeout: 20_000 }).toBe(DEFERRED_CONTENT.length);
+      await expect
+        .poll(() => deferred.size, { timeout: 20_000 })
+        .toBe(DEFERRED_CONTENT.length);
     },
   };
 }
 
 export async function navigateToScreen(
   page: Page,
-  screen: 'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings',
+  screen:
+    'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings',
 ): Promise<void> {
   await page.locator(`[data-testid="nav-${screen}"]`).click();
-  await expect(page.locator('#game-root')).toHaveAttribute('data-screen', screen);
+  await expect(page.locator('#game-root')).toHaveAttribute(
+    'data-screen',
+    screen,
+  );
 }
 
 export async function assertNoHorizontalOverflow(page: Page): Promise<void> {
@@ -278,7 +322,9 @@ export async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   expect(overflow).toBe(false);
 }
 
-export async function assertPrimaryControlsInViewport(page: Page): Promise<void> {
+export async function assertPrimaryControlsInViewport(
+  page: Page,
+): Promise<void> {
   for (const testId of ['nav-restaurant', 'nav-shop', 'open-day-btn']) {
     const box = await page.locator(`[data-testid="${testId}"]`).boundingBox();
     expect(box).not.toBeNull();
@@ -294,7 +340,9 @@ export async function assertPrimaryControlsInViewport(page: Page): Promise<void>
 /** Floor chrome is a dedicated strip below the canvas, not an overlay on the playfield. */
 export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
   const canvas = await page.locator('#canvas-mount').boundingBox();
-  const panel = await page.locator('[data-testid="floor-service-panel"]').boundingBox();
+  const panel = await page
+    .locator('[data-testid="floor-service-panel"]')
+    .boundingBox();
   expect(canvas).not.toBeNull();
   expect(panel).not.toBeNull();
   expect(panel!.y).toBeGreaterThanOrEqual(canvas!.y + canvas!.height - 1);
@@ -312,14 +360,18 @@ export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
 /** Tickets toggle sits below Cash/status HUD (not overlapping it on the overlay). */
 export async function assertTicketsBelowStatusHud(page: Page): Promise<void> {
   const hud = await page.locator('[data-testid="game-hud"]').boundingBox();
-  const tickets = await page.locator('[data-testid="floor-tickets-toggle"]').boundingBox();
+  const tickets = await page
+    .locator('[data-testid="floor-tickets-toggle"]')
+    .boundingBox();
   expect(hud).not.toBeNull();
   expect(tickets).not.toBeNull();
   expect(tickets!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height - 1);
 }
 
 /** Floor actions stay clear of the shell bottom safe inset (Android nav clearance). */
-export async function assertFloorChromeAboveSafeBottom(page: Page): Promise<void> {
+export async function assertFloorChromeAboveSafeBottom(
+  page: Page,
+): Promise<void> {
   const clearance = await page.evaluate(() => {
     const panel = document.querySelector('[data-testid="floor-service-panel"]');
     const shell = document.querySelector('.game-shell');
@@ -336,7 +388,9 @@ export async function assertFloorChromeAboveSafeBottom(page: Page): Promise<void
   });
   expect(clearance).not.toBeNull();
   expect(clearance!.padBottom).toBeGreaterThanOrEqual(15);
-  expect(clearance!.panelBottom).toBeLessThanOrEqual(clearance!.contentBottom + 1);
+  expect(clearance!.panelBottom).toBeLessThanOrEqual(
+    clearance!.contentBottom + 1,
+  );
 }
 
 declare global {
@@ -364,9 +418,14 @@ declare global {
         'pending_review' | 'day_complete' | 'advanced' | 'idle'
       >;
       completeFloorServiceDay: () => Promise<void>;
-      dispatch: (action: { type: string; [key: string]: unknown }) => Promise<void>;
+      dispatch: (action: {
+        type: string;
+        [key: string]: unknown;
+      }) => Promise<void>;
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;
+      prepareCookUiFixture: () => Promise<void>;
+      openComposeSheet: () => void;
     };
   }
 }

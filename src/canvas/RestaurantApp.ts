@@ -3,7 +3,9 @@ import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import {
+  findCookStationPlacementAtCell,
   isAdjacent,
+  isCookStationItemKey,
   playerNearGuestSeat,
   playerNearPlacement,
 } from '../domain/floor/interact.ts';
@@ -27,6 +29,7 @@ import {
   type FloorRoomId,
 } from '../domain/floor/starter-map.ts';
 import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
+import { selectCanOpenFloorCompose } from '../store/selectors/service-day.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -99,6 +102,7 @@ export class RestaurantApp {
     mount.appendChild(app.canvas);
     app.canvas.classList.add('restaurant-canvas');
     app.canvas.dataset.testid = 'restaurant-canvas';
+    app.canvas.tabIndex = -1;
     app.canvas.style.touchAction = 'none';
 
     const instance = new RestaurantApp(app);
@@ -162,7 +166,12 @@ export class RestaurantApp {
 
     // Room transition when the cook steps onto the connecting door.
     if (
-      isConnectingDoorCell(state, state.activeFloorRoom, this.nav.position.x, this.nav.position.y)
+      isConnectingDoorCell(
+        state,
+        state.activeFloorRoom,
+        this.nav.position.x,
+        this.nav.position.y,
+      )
     ) {
       const entered = useGameStore.getState().enterConnectingDoor();
       if (entered) {
@@ -186,25 +195,33 @@ export class RestaurantApp {
       state.gridSize.h,
       { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
     );
-    const door = doorForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' });
+    const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
+      room: 'main',
+    });
     const enterResult = this.guestMotion.sync(floor, {
       door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
       dtMs: this.app.ticker.deltaMS,
     });
     if (enterResult.enteredGuestIds.length > 0) {
-      void useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+      void useGameStore
+        .getState()
+        .dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     }
 
     if (state.activeFloorRoom === 'main') {
       this.actorLayer.sync(floor, this.nav, this.guestMotion);
     } else {
-      this.actorLayer.sync(null, this.nav, null, { showPlayerWithoutFloor: true });
+      this.actorLayer.sync(null, this.nav, null, {
+        showPlayerWithoutFloor: true,
+      });
     }
 
     if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
       this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
-      while (this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS) {
+      while (
+        this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS
+      ) {
         this.eatingTickAccumulatorMs -= RestaurantApp.EATING_TICK_INTERVAL_MS;
         void useGameStore.getState().dispatch({ type: 'FLOOR_TICK_EATING' });
       }
@@ -217,10 +234,18 @@ export class RestaurantApp {
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
     const player = this.actorLayer.getPlayerWorldPosition();
-    this.camera.followWorldPointSmooth(player.x, player.y, width, height, mapWpx, mapHpx);
+    this.camera.followWorldPointSmooth(
+      player.x,
+      player.y,
+      width,
+      height,
+      mapWpx,
+      mapHpx,
+    );
     this.applyCamera();
     const doorOpen =
-      state.activeFloorRoom === 'main' && this.guestMotion.isDoorBusy(floor, door);
+      state.activeFloorRoom === 'main' &&
+      this.guestMotion.isDoorBusy(floor, door);
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       doorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
@@ -228,8 +253,17 @@ export class RestaurantApp {
     });
     this.interactHintLayer.sync(
       state.activeFloorRoom === 'main'
-        ? this.computeInteractHints(floor, roomPlacements, this.nav.position)
-        : this.computeStationHints(roomPlacements, this.nav.position, floor),
+        ? this.computeInteractHints(
+            floor,
+            roomPlacements,
+            this.nav.position,
+            selectCanOpenFloorCompose(useGameStore.getState()),
+          )
+        : this.computeStationHints(
+            roomPlacements,
+            this.nav.position,
+            selectCanOpenFloorCompose(useGameStore.getState()),
+          ),
     );
   };
 
@@ -262,7 +296,9 @@ export class RestaurantApp {
     if (store.activeFloorRoom === 'main' && floor.carriedTicketId) {
       const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
       if (ticket) {
-        const guest = floor.pool.find((g) => g.customer.id === ticket.customerId);
+        const guest = floor.pool.find(
+          (g) => g.customer.id === ticket.customerId,
+        );
         if (guest?.seat && isAdjacent(tapCell, guest.seat)) {
           void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
           return;
@@ -280,8 +316,32 @@ export class RestaurantApp {
       }
     }
 
+    const roomPlacements = this.roomPlacements(store);
+    const station = findCookStationPlacementAtCell(roomPlacements, tapCell);
+    if (station) {
+      if (store.composeSheetOpen) {
+        store.closeComposeSheet();
+        return;
+      }
+      if (selectCanOpenFloorCompose(store)) {
+        store.openComposeSheet();
+        return;
+      }
+      const player = store.floorPlayerGrid ?? floor.playerPosition;
+      if (!playerNearPlacement(player, station)) {
+        store.setFloorToast('Move next to the station to cook');
+        return;
+      }
+      store.setFloorToast('No open ticket to cook');
+      return;
+    }
+
+    if (store.composeSheetOpen) {
+      store.closeComposeSheet();
+    }
+
     const blocked = walkBlockedCells(
-      this.roomPlacements(store),
+      roomPlacements,
       store.gridSize.w,
       store.gridSize.h,
       this.walkOpts(store),
@@ -304,9 +364,21 @@ export class RestaurantApp {
       const mapWpx = state.gridSize.w * TILE_PX;
       const mapHpx = state.gridSize.h * TILE_PX;
       const player = this.actorLayer.getPlayerWorldPosition();
-      this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+      this.camera.followWorldPoint(
+        player.x,
+        player.y,
+        width,
+        height,
+        mapWpx,
+        mapHpx,
+      );
     } else {
-      this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+      this.camera.centerOnGrid(
+        state.gridSize.w,
+        state.gridSize.h,
+        width,
+        height,
+      );
     }
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
@@ -340,10 +412,15 @@ export class RestaurantApp {
         this.lastRoom = state.activeFloorRoom;
       }
 
-      const mainBlocked = walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h, {
-        kitchenAnnexOwned: state.kitchenAnnexOwned,
-        room: 'main',
-      });
+      const mainBlocked = walkBlockedCells(
+        state.placements,
+        state.gridSize.w,
+        state.gridSize.h,
+        {
+          kitchenAnnexOwned: state.kitchenAnnexOwned,
+          room: 'main',
+        },
+      );
       this.guestMotion.sync(floor, {
         door: doorForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' }),
         grid: {
@@ -356,19 +433,38 @@ export class RestaurantApp {
       if (state.activeFloorRoom === 'main') {
         this.actorLayer.sync(floor, this.nav, this.guestMotion);
       } else {
-        this.actorLayer.sync(null, this.nav, null, { showPlayerWithoutFloor: true });
+        this.actorLayer.sync(null, this.nav, null, {
+          showPlayerWithoutFloor: true,
+        });
       }
       if (!state.editLayoutMode) {
         const player = this.actorLayer.getPlayerWorldPosition();
-        this.camera.followWorldPoint(player.x, player.y, width, height, mapWpx, mapHpx);
+        this.camera.followWorldPoint(
+          player.x,
+          player.y,
+          width,
+          height,
+          mapWpx,
+          mapHpx,
+        );
       } else {
-        this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+        this.camera.centerOnGrid(
+          state.gridSize.w,
+          state.gridSize.h,
+          width,
+          height,
+        );
       }
     } else {
       this.lastFloorSeed = null;
       this.lastRoom = state.activeFloorRoom;
       this.actorLayer.sync(null, this.nav);
-      this.camera.centerOnGrid(state.gridSize.w, state.gridSize.h, width, height);
+      this.camera.centerOnGrid(
+        state.gridSize.w,
+        state.gridSize.h,
+        width,
+        height,
+      );
     }
 
     this.applyCamera();
@@ -377,13 +473,16 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
     });
     const tableStates = new Map(
-      (state.activeDay?.floor?.tables ?? []).map((t) => [t.placementId, t.state] as const),
+      (state.activeDay?.floor?.tables ?? []).map(
+        (t) => [t.placementId, t.state] as const,
+      ),
     );
     this.furnitureLayer.sync(
       roomPlacements,
       state.editLayoutMode,
       state.activeFloorRoom === 'main'
-        ? (state.activeDay?.floor?.seats ?? seatsFromPlacements(state.placements))
+        ? (state.activeDay?.floor?.seats ??
+            seatsFromPlacements(state.placements))
         : [],
       state.activeFloorRoom === 'main' ? tableStates : new Map(),
     );
@@ -392,7 +491,11 @@ export class RestaurantApp {
       this.customerLayer.sync(-1, roomPlacements, false);
     } else {
       const queueIndex = state.activeDay?.queueIndex ?? -1;
-      this.customerLayer.sync(queueIndex, state.placements, Boolean(state.activeDay));
+      this.customerLayer.sync(
+        queueIndex,
+        state.placements,
+        Boolean(state.activeDay),
+      );
     }
 
     if (!state.editLayoutMode) {
@@ -407,12 +510,12 @@ export class RestaurantApp {
   private computeStationHints(
     placements: Placement[],
     player: { x: number; y: number },
-    floor: FloorDay,
+    canCook: boolean,
   ): { x: number; y: number }[] {
-    if (!floor.selectedTicketId || floor.carriedTicketId) return [];
+    if (!canCook) return [];
     const hints: { x: number; y: number }[] = [];
     for (const placement of placements) {
-      if (placement.itemKey.startsWith('table')) continue;
+      if (!isCookStationItemKey(placement.itemKey)) continue;
       if (playerNearPlacement(player, placement)) {
         hints.push({ x: placement.x, y: placement.y });
       }
@@ -424,6 +527,7 @@ export class RestaurantApp {
     floor: FloorDay,
     placements: Placement[],
     player: { x: number; y: number },
+    canCook: boolean,
   ): { x: number; y: number }[] {
     const hints: { x: number; y: number }[] = [];
     const seen = new Set<string>();
@@ -455,21 +559,17 @@ export class RestaurantApp {
     if (floor.carriedTicketId) {
       const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
       if (ticket) {
-        const guest = floor.pool.find((g) => g.customer.id === ticket.customerId);
+        const guest = floor.pool.find(
+          (g) => g.customer.id === ticket.customerId,
+        );
         if (guest?.seat && isAdjacent(player, guest.seat)) {
           add(guest.seat.x, guest.seat.y);
         }
       }
     } else {
-      if (floor.selectedTicketId) {
+      if (canCook) {
         for (const placement of placements) {
-          if (
-            placement.itemKey.startsWith('table') ||
-            placement.itemKey.startsWith('chair') ||
-            placement.itemKey.startsWith('decor')
-          ) {
-            continue;
-          }
+          if (!isCookStationItemKey(placement.itemKey)) continue;
           if (playerNearPlacement(player, placement)) {
             add(placement.x, placement.y);
           }

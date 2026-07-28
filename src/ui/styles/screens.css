@@ -9,6 +9,31 @@
   overflow: hidden;
 }
 
+.sheet-tier-meta-full {
+  top: 0;
+  bottom: var(--vk-nav-height);
+  min-height: 0;
+}
+
+.meta-screen .screen-header {
+  min-height: var(--vk-sheet-header-h);
+}
+
+.meta-screen .inspector-layout,
+.meta-screen .shop-sections,
+.meta-screen .rating-body,
+.meta-screen .settings-body {
+  padding-bottom: 0.75rem;
+}
+
+.meta-screen .recipe-virtual-scroll {
+  padding-bottom: 0.75rem;
+}
+
+.meta-screen .recipe-pager {
+  padding-bottom: 0.5rem;
+}
+
 .screen-header {
   flex: 0 0 auto;
   padding: 0.875rem 1rem 0.5rem;
@@ -136,31 +161,31 @@
   text-align: center;
 }
 
-.game-surface[data-screen='restaurant'] .screen-panel {
+.game-surface[data-screen="restaurant"] .screen-panel {
   pointer-events: none;
   visibility: hidden;
 }
 
-.game-surface[data-screen='restaurant'] .screen-panel[hidden] {
+.game-surface[data-screen="restaurant"] .screen-panel[hidden] {
   display: none !important;
 }
 
-.game-surface:not([data-screen='restaurant']) .status-mount,
-.game-surface:not([data-screen='restaurant']) .canvas-mount,
-.game-surface:not([data-screen='restaurant']) .layout-hud {
+.game-surface:not([data-screen="restaurant"]) .status-mount,
+.game-surface:not([data-screen="restaurant"]) .canvas-mount,
+.game-surface:not([data-screen="restaurant"]) .layout-hud {
   visibility: hidden;
   pointer-events: none;
 }
 
 /* Defense in depth: floor service chrome must not cover Shop/Flavors/etc. */
-.game-surface:not([data-screen='restaurant']) .service-overlay,
-.game-surface:not([data-screen='restaurant']) .chrome-mount,
-.game-surface:not([data-screen='restaurant']) .floor-tickets-dock {
+.game-surface:not([data-screen="restaurant"]) .service-overlay,
+.game-surface:not([data-screen="restaurant"]) .chrome-mount,
+.game-surface:not([data-screen="restaurant"]) .floor-tickets-dock {
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-.game-surface:not([data-screen='restaurant']) .screen-panel:not([hidden]) {
+.game-surface:not([data-screen="restaurant"]) .screen-panel:not([hidden]) {
   pointer-events: auto;
   visibility: visible;
 }
@@ -198,7 +223,9 @@
 }
 
 .inspector-list-item {
-  min-height: 44px;
+  height: var(--vk-row-h);
+  min-height: var(--vk-row-h);
+  max-height: var(--vk-row-h);
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
@@ -209,6 +236,13 @@
   background: var(--vk-panel);
   color: inherit;
   text-align: left;
+}
+
+.inspector-list-item > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inspector-list-item.selected {
@@ -341,11 +375,35 @@
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
-  padding: 0.75rem;
+  height: var(--vk-shop-row-h);
+  min-height: var(--vk-shop-row-h);
+  max-height: var(--vk-shop-row-h);
+  padding: 0.65rem 0.75rem;
   margin-bottom: 0.5rem;
   border-radius: 10px;
   border: 1px solid var(--vk-border);
   background: var(--vk-panel);
+}
+
+.shop-item-body {
+  min-width: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.shop-item-title-row,
+.shop-item-title-row h3,
+.shop-item-sub,
+.shop-item-meta {
+  min-width: 0;
+}
+
+.shop-item-title-row h3,
+.shop-item-sub,
+.shop-item-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shop-item h3 {
@@ -460,6 +518,10 @@
 }
 
 .recipe-row {
+  height: var(--vk-recipe-row-h);
+  min-height: var(--vk-recipe-row-h);
+  max-height: var(--vk-recipe-row-h);
+  overflow: hidden;
   padding: 0.625rem 0.75rem;
   border-bottom: 1px solid var(--vk-border);
 }
@@ -467,6 +529,13 @@
 .recipe-row h3 {
   margin: 0;
   font-size: 16px;
+}
+
+.recipe-row h3,
+.recipe-row .recipe-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recipe-meta {
@@ -479,6 +548,11 @@
   margin: 0.25rem 0 0;
   font-size: 13px;
   line-height: 1.35;
+}
+
+.recipe-row .recipe-ingredients {
+  max-height: 1.35em;
+  overflow: hidden;
 }
 
 .achievement-list {

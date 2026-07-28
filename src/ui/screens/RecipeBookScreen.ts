@@ -1,4 +1,8 @@
-import { ensureRecipesLoaded, getDomainContext, isRecipesContentReady } from '../../app/content-loader.ts';
+import {
+  ensureRecipesLoaded,
+  getDomainContext,
+  isRecipesContentReady,
+} from '../../app/content-loader.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   buildRecipeBookProgress,
@@ -23,7 +27,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   root.className = 'screen-root';
   container.appendChild(root);
   root.innerHTML = `
-    <section class="screen-panel" id="recipes-screen" data-testid="recipes-screen" hidden>
+    <section class="screen-panel sheet-tier-meta-full meta-screen" id="recipes-screen" data-testid="recipes-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Recipe Book</h1>
         <p class="screen-subtitle" id="recipe-progress">Loading…</p>
@@ -65,8 +69,14 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   const getEntries = () => {
     const ctx = getDomainContext();
     const state = useGameStore.getState();
-    const nameMap = new Map(ctx.ingredients.map((item) => [item.id, item.name]));
-    const filtered = filterDiscoveredRecipes(ctx.recipes, state.discoveredRecipeIds, query);
+    const nameMap = new Map(
+      ctx.ingredients.map((item) => [item.id, item.name]),
+    );
+    const filtered = filterDiscoveredRecipes(
+      ctx.recipes,
+      state.discoveredRecipeIds,
+      query,
+    );
     return filtered.map((recipe) =>
       mapRecipeToEntry(
         recipe,

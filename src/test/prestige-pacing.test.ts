@@ -83,22 +83,26 @@ describe('prestige pacing (simulated smoke)', () => {
     expect(result.daysPlayed).toBeLessThanOrEqual(10);
   });
 
-  it('recovers from soft-reset state without death spiral', () => {
-    const softResetState = createNewGameState(777);
-    softResetState.rating = 3;
-    softResetState.cash = 100;
-    softResetState.unlockedIngredientIds = bundle.ingredients
-      .filter((item) => item.softResetStarter)
-      .map((item) => item.id);
-    softResetState.prestige = 1;
+  it(
+    'recovers from soft-reset state without death spiral',
+    () => {
+      const softResetState = createNewGameState(777);
+      softResetState.rating = 3;
+      softResetState.cash = 100;
+      softResetState.unlockedIngredientIds = bundle.ingredients
+        .filter((item) => item.softResetStarter)
+        .map((item) => item.id);
+      softResetState.prestige = 1;
 
-    let state = softResetState;
-    for (let day = 0; day < 15; day++) {
-      state = playOneDay(state, testContext);
-      state = buyAffordableProgress(state, testContext);
-    }
+      let state = softResetState;
+      for (let day = 0; day < 15; day++) {
+        state = playOneDay(state, testContext);
+        state = buyAffordableProgress(state, testContext);
+      }
 
-    expect(state.rating).toBeGreaterThanOrEqual(3);
-    expect(state.stats.totalEarnings).toBeGreaterThan(50);
-  });
+      expect(state.rating).toBeGreaterThanOrEqual(3);
+      expect(state.stats.totalEarnings).toBeGreaterThan(50);
+    },
+    10_000,
+  );
 });

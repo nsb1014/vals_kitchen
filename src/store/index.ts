@@ -16,11 +16,13 @@ export {
   selectActiveModifier,
   selectCanAdvanceCustomer,
   selectCanCloseDay,
+  selectCanOpenFloorCompose,
   selectComposeDraftIds,
   selectCurrentCustomer,
   selectDayOpen,
   selectIsAwaitingServe,
   selectQueueProgress,
   selectShowOpenForService,
+  selectShowFloorCompose,
   selectShowServiceDayOverlay,
 } from './selectors/service-day.ts';

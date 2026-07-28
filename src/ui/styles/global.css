@@ -13,10 +13,19 @@
   --vk-wood: #b08554;
   --vk-wood-deep: #946c3e;
   --vk-wood-grain: #cc9e70;
-  --vk-font: 'Segoe UI', 'Trebuchet MS', 'Nunito Sans', system-ui, sans-serif;
+  --vk-font: "Segoe UI", "Trebuchet MS", "Nunito Sans", system-ui, sans-serif;
   /* OS home indicator / 3-button nav: never flush; at least 1rem when env is 0. */
   --vk-safe-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   --vk-nav-height: 3.5rem;
+  --vk-sheet-compact-h: 38%;
+  --vk-sheet-mid-h: 52%;
+  --vk-sheet-near-h: 88%;
+  --vk-chip-h: 44px;
+  --vk-row-h: 56px;
+  --vk-shop-row-h: 92px;
+  --vk-recipe-row-h: 72px;
+  --vk-cta-h: 48px;
+  --vk-sheet-header-h: 3.25rem;
 }
 
 /* Make scroll affordance obvious on dark panels (Android/desktop); wood thumb from floor tiles. */
@@ -36,7 +45,11 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--vk-wood-grain), var(--vk-wood-deep));
+  background: linear-gradient(
+    180deg,
+    var(--vk-wood-grain),
+    var(--vk-wood-deep)
+  );
   border-radius: 8px;
   border: 2px solid rgba(30, 23, 20, 0.55);
   background-clip: padding-box;
@@ -72,11 +85,8 @@ body {
   /* inset defines height; keep svh/dvh as a floor for odd containing blocks */
   min-height: 100svh;
   min-height: 100dvh;
-  padding:
-    env(safe-area-inset-top, 0px)
-    env(safe-area-inset-right, 0px)
-    var(--vk-safe-bottom)
-    env(safe-area-inset-left, 0px);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    var(--vk-safe-bottom) env(safe-area-inset-left, 0px);
   overscroll-behavior: none;
 }
 

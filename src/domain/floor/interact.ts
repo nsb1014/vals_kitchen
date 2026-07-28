@@ -64,26 +64,59 @@ export function adjacentDirtyTablePlacementIds(
 
 const STATION_ITEM_KEYS = new Set(['prep_station']);
 
-function isStationPlacement(placement: Placement): boolean {
-  return STATION_ITEM_KEYS.has(placement.itemKey);
+export function isCookStationItemKey(itemKey: string): boolean {
+  return STATION_ITEM_KEYS.has(itemKey);
 }
 
-export function playerNearStation(player: GridPoint, placements: Placement[]): boolean {
+function isStationPlacement(placement: Placement): boolean {
+  return isCookStationItemKey(placement.itemKey);
+}
+
+export function findCookStationPlacementAtCell(
+  placements: Placement[],
+  cell: GridPoint,
+  footprint = 1,
+): Placement | null {
+  for (const placement of placements) {
+    if (!isStationPlacement(placement)) continue;
+    for (let dy = 0; dy < footprint; dy += 1) {
+      for (let dx = 0; dx < footprint; dx += 1) {
+        if (placement.x + dx === cell.x && placement.y + dy === cell.y) {
+          return placement;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export function playerNearStation(
+  player: GridPoint,
+  placements: Placement[],
+): boolean {
   return placements.some(
     (p) => isStationPlacement(p) && playerNearPlacement(player, p),
   );
 }
 
-export function playerNearGuestSeat(player: GridPoint, guest: FloorGuest): boolean {
+export function playerNearGuestSeat(
+  player: GridPoint,
+  guest: FloorGuest,
+): boolean {
   if (!guest.seat) return false;
   return isAdjacent(player, guest.seat);
 }
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {
-  return floor.pool.filter((g) => g.stage === 'seated').map((g) => g.customer.id);
+  return floor.pool
+    .filter((g) => g.stage === 'seated')
+    .map((g) => g.customer.id);
 }
 
-export function adjacentSeatedCustomerIds(floor: FloorDay, player: GridPoint): string[] {
+export function adjacentSeatedCustomerIds(
+  floor: FloorDay,
+  player: GridPoint,
+): string[] {
   return floor.pool
     .filter((g) => g.stage === 'seated' && playerNearGuestSeat(player, g))
     .map((g) => g.customer.id);

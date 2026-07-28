@@ -14,3 +14,4 @@ playwright-report/
 vendor/kenney/downloads/
 vendor/kenney/extracted/
 vendor/kenney/food-tile-*.png
+.superpowers/

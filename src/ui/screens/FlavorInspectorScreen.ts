@@ -11,7 +11,7 @@ export function mountFlavorInspectorScreen(container: HTMLElement): () => void {
   root.className = 'screen-root';
   container.appendChild(root);
   root.innerHTML = `
-    <section class="screen-panel" id="inspector-screen" data-testid="inspector-screen" hidden>
+    <section class="screen-panel sheet-tier-meta-full meta-screen" id="inspector-screen" data-testid="inspector-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Flavor Inspector</h1>
         <p class="screen-subtitle">16-axis profiles for unlocked ingredients</p>
@@ -39,24 +39,30 @@ export function mountFlavorInspectorScreen(container: HTMLElement): () => void {
 
   const renderList = () => {
     const state = useGameStore.getState();
-    listEl.innerHTML = buildInspectorIngredientList(state.unlockedIngredientIds, filterAxis);
+    listEl.innerHTML = buildInspectorIngredientList(
+      state.unlockedIngredientIds,
+      filterAxis,
+    );
     if (!selectedId || !state.unlockedIngredientIds.includes(selectedId)) {
       selectedId = state.unlockedIngredientIds[0] ?? null;
     }
-    listEl.querySelectorAll<HTMLButtonElement>('[data-ingredient-id]').forEach((button) => {
-      const id = button.dataset.ingredientId!;
-      button.classList.toggle('selected', id === selectedId);
-      button.addEventListener('click', () => {
-        selectedId = id;
-        renderList();
-        renderDetail();
+    listEl
+      .querySelectorAll<HTMLButtonElement>('[data-ingredient-id]')
+      .forEach((button) => {
+        const id = button.dataset.ingredientId!;
+        button.classList.toggle('selected', id === selectedId);
+        button.addEventListener('click', () => {
+          selectedId = id;
+          renderList();
+          renderDetail();
+        });
       });
-    });
   };
 
   const renderDetail = () => {
     if (!selectedId) {
-      detailEl.innerHTML = '<p class="screen-empty">Unlock ingredients to inspect flavors.</p>';
+      detailEl.innerHTML =
+        '<p class="screen-empty">Unlock ingredients to inspect flavors.</p>';
       return;
     }
     detailEl.innerHTML = renderFlavorInspectorContent(selectedId);
@@ -98,12 +104,15 @@ export function mountFlavorInspectorScreen(container: HTMLElement): () => void {
   };
 }
 
-export function mountFlavorInspectorModal(overlayMount: HTMLElement): () => void {
+export function mountFlavorInspectorModal(
+  overlayMount: HTMLElement,
+): () => void {
   const modal = document.createElement('div');
   modal.id = 'flavor-inspector-modal';
   modal.className = 'modal-backdrop';
   modal.hidden = true;
   overlayMount.appendChild(modal);
+  let focusReturn: HTMLElement | null = null;
 
   const render = () => {
     const state = useGameStore.getState();
@@ -111,12 +120,22 @@ export function mountFlavorInspectorModal(overlayMount: HTMLElement): () => void
     if (!ingredientId) {
       modal.hidden = true;
       modal.innerHTML = '';
+      if (focusReturn?.isConnected) {
+        focusReturn.focus({ preventScroll: true });
+      }
+      focusReturn = null;
       return;
     }
 
+    if (modal.hidden) {
+      focusReturn =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+    }
     modal.hidden = false;
     modal.innerHTML = `
-      <div class="modal-card flavor-modal-card" role="dialog" aria-labelledby="flavor-modal-title">
+      <div class="modal-card flavor-modal-card" role="dialog" aria-modal="true" aria-labelledby="flavor-modal-title">
         <div class="modal-card-header">
           <h2 id="flavor-modal-title">Ingredient Profile</h2>
           <button type="button" class="icon-btn" id="close-flavor-modal" aria-label="Close">✕</button>
@@ -127,8 +146,12 @@ export function mountFlavorInspectorModal(overlayMount: HTMLElement): () => void
     `;
 
     const close = () => useGameStore.getState().closeFlavorInspector();
-    modal.querySelector('#close-flavor-modal')?.addEventListener('click', close);
-    modal.querySelector('#close-flavor-modal-bottom')?.addEventListener('click', close);
+    modal
+      .querySelector('#close-flavor-modal')
+      ?.addEventListener('click', close);
+    modal
+      .querySelector('#close-flavor-modal-bottom')
+      ?.addEventListener('click', close);
     modal.addEventListener(
       'click',
       (event) => {
@@ -136,18 +159,37 @@ export function mountFlavorInspectorModal(overlayMount: HTMLElement): () => void
       },
       { once: true },
     );
+    queueMicrotask(() => {
+      modal
+        .querySelector<HTMLElement>('#close-flavor-modal')
+        ?.focus({ preventScroll: true });
+    });
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
-    if (state.flavorInspectorIngredientId !== prev.flavorInspectorIngredientId) {
+    if (
+      state.flavorInspectorIngredientId !== prev.flavorInspectorIngredientId
+    ) {
       render();
     }
   });
+
+  const onKeydown = (event: KeyboardEvent) => {
+    if (
+      event.key === 'Escape' &&
+      useGameStore.getState().flavorInspectorIngredientId
+    ) {
+      event.preventDefault();
+      useGameStore.getState().closeFlavorInspector();
+    }
+  };
+  document.addEventListener('keydown', onKeydown);
 
   render();
 
   return () => {
     unsubscribe();
+    document.removeEventListener('keydown', onKeydown);
     modal.remove();
   };
 }

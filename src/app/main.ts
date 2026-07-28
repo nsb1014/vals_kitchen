@@ -13,7 +13,6 @@ import { attachAudioBridge } from './audio-bridge.ts';
 import { installE2eBridge } from './e2e-bridge.ts';
 
 async function bootstrap(): Promise<void> {
-  installE2eBridge();
   await loadBootContent();
 
   const { statusMount, canvasMount, chromeMount, overlayMount, bubbleMount, hud, surface } =
@@ -76,6 +75,7 @@ async function bootstrap(): Promise<void> {
 
   const { RestaurantApp: RestaurantAppClass } = await import('../canvas/RestaurantApp.ts');
   restaurantApp = await RestaurantAppClass.create(canvasMount);
+  installE2eBridge(() => restaurantApp);
   restaurantApp.start();
 
   let teardownAudioUnlock: (() => void) | undefined;

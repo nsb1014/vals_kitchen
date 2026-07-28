@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import { emptyFlavorProfile } from '../../domain/flavor/axis-labels.ts';
+import type { Ingredient } from '../../domain/types.ts';
+import {
+  clearComposeAxes,
+  clearComposeNameQuery,
+  composePantrySummary,
+  emptyComposePantryFilters,
+  filterComposePantry,
+  setComposeNameQuery,
+  toggleComposeAxis,
+} from '../../ui/presentation/compose-pantry.ts';
+
+function ingredient(
+  id: string,
+  name: string,
+  flavor: Partial<Ingredient['flavor']>,
+): Ingredient {
+  return {
+    id,
+    name,
+    category: 'test',
+    equipmentId: 'prep_station',
+    flavor: { ...emptyFlavorProfile(), ...flavor },
+    compoundIds: [],
+    purchaseIndex: 0,
+  };
+}
+
+const pantry = [
+  ingredient('stock', 'Alpha Stock', { UM: 8, HT: 7 }),
+  ingredient('oil', 'Beta Oil', { UM: 8, HT: 0 }),
+  ingredient('chili', 'Chili Flake', { UM: 0, HT: 9 }),
+];
+
+describe('compose pantry filters', () => {
+  it('combines selected high axes with AND semantics', () => {
+    let filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
+    filters = toggleComposeAxis(filters, 'HT');
+    expect(filterComposePantry(pantry, filters).map((item) => item.id)).toEqual(
+      ['stock'],
+    );
+  });
+
+  it('normalizes and trims a name query', () => {
+    const filters = setComposeNameQuery(emptyComposePantryFilters(), '  OIL ');
+    expect(filterComposePantry(pantry, filters).map((item) => item.id)).toEqual(
+      ['oil'],
+    );
+  });
+
+  it('clears search and axes independently', () => {
+    let filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
+    filters = setComposeNameQuery(filters, 'oil');
+    filters = clearComposeNameQuery(filters);
+    expect(filterComposePantry(pantry, filters)).toHaveLength(2);
+    filters = clearComposeAxes(filters);
+    expect(filterComposePantry(pantry, filters)).toHaveLength(3);
+  });
+
+  it('summarizes the result count and active axes', () => {
+    const filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
+    expect(composePantrySummary(filters, 2)).toBe('2 matching · Umami');
+  });
+});

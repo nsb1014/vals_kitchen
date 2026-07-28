@@ -19,7 +19,7 @@ export function mountShopScreen(container: HTMLElement): () => void {
   root.className = 'screen-root';
   container.appendChild(root);
   root.innerHTML = `
-    <section class="screen-panel" id="shop-screen" data-testid="shop-screen" hidden>
+    <section class="screen-panel sheet-tier-meta-full meta-screen" id="shop-screen" data-testid="shop-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Shop</h1>
         <p class="screen-subtitle" id="shop-cash">Cash: $0</p>
@@ -36,13 +36,17 @@ export function mountShopScreen(container: HTMLElement): () => void {
     title: string,
     subtitle: string,
     cost: number,
-    availability: ReturnType<typeof buildEquipmentShopRows>[number]['availability'],
+    availability: ReturnType<
+      typeof buildEquipmentShopRows
+    >[number]['availability'],
     purchaseId: string,
     meta?: string,
     iconIngredientId?: string,
   ): string => {
     const canBuy = availability === 'available';
-    const icon = iconIngredientId ? renderFoodIconHtml(iconIngredientId, 28) : '';
+    const icon = iconIngredientId
+      ? renderFoodIconHtml(iconIngredientId, 28)
+      : '';
     return `
       <article class="shop-item ${shopAvailabilityClass(availability)}">
         <div class="shop-item-body">
@@ -75,91 +79,118 @@ export function mountShopScreen(container: HTMLElement): () => void {
     sectionsEl.innerHTML = `
       <section class="shop-section">
         <h2 class="shop-section-title">Kitchen Equipment</h2>
-        ${equipmentRows
-          .map((row) =>
-            renderRow(
-              row.name,
-              `Unlocks ${row.groupName} ingredients`,
-              row.cost,
-              row.availability,
-              `equipment:${row.id}`,
-            ),
-          )
-          .join('') || '<p class="screen-empty">All equipment owned.</p>'}
+        ${
+          equipmentRows
+            .map((row) =>
+              renderRow(
+                row.name,
+                `Unlocks ${row.groupName} ingredients`,
+                row.cost,
+                row.availability,
+                `equipment:${row.id}`,
+              ),
+            )
+            .join('') || '<p class="screen-empty">All equipment owned.</p>'
+        }
       </section>
       <section class="shop-section">
         <h2 class="shop-section-title">Layout</h2>
         ${utilityRows
           .map((row) =>
-            renderRow(row.name, row.description, row.cost, row.availability, row.id),
+            renderRow(
+              row.name,
+              row.description,
+              row.cost,
+              row.availability,
+              row.id,
+            ),
           )
           .join('')}
       </section>
       <section class="shop-section">
         <h2 class="shop-section-title">Ingredients</h2>
-        ${ingredientRows
-          .slice(0, 80)
-          .map((row) =>
-            renderRow(
-              row.name,
-              row.availability === 'gate_locked'
-                ? `Requires ${row.equipmentGateName}`
-                : row.category,
-              row.cost,
-              row.availability,
-              `ingredient:${row.id}`,
-              row.availability === 'gate_locked' ? '🔒 Gate locked' : undefined,
-              row.id,
-            ),
-          )
-          .join('') || '<p class="screen-empty">All eligible ingredients owned.</p>'}
+        ${
+          ingredientRows
+            .slice(0, 80)
+            .map((row) =>
+              renderRow(
+                row.name,
+                row.availability === 'gate_locked'
+                  ? `Requires ${row.equipmentGateName}`
+                  : row.category,
+                row.cost,
+                row.availability,
+                `ingredient:${row.id}`,
+                row.availability === 'gate_locked'
+                  ? '🔒 Gate locked'
+                  : undefined,
+                row.id,
+              ),
+            )
+            .join('') ||
+          '<p class="screen-empty">All eligible ingredients owned.</p>'
+        }
       </section>
     `;
 
-    sectionsEl.querySelectorAll<HTMLButtonElement>('.shop-buy-btn').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const id = button.dataset.purchaseId;
-        if (!id) return;
-        const store = useGameStore.getState();
-        if (id.startsWith('equipment:')) {
-          const equipmentId = id.slice('equipment:'.length);
-          await store.dispatch({
-            type: 'PURCHASE',
-            purchase: { type: 'equipment', equipmentId },
-          });
-          store.startPlacement(equipmentId);
-          return;
-        }
-        if (id.startsWith('ingredient:')) {
-          await store.dispatch({
-            type: 'PURCHASE',
-            purchase: { type: 'ingredient', ingredientId: id.slice('ingredient:'.length) },
-          });
-          return;
-        }
-        if (id === 'table') {
-          await store.dispatch({ type: 'PURCHASE', purchase: { type: 'table' } });
-          store.startPlacement('table_2seat');
-          return;
-        }
-        if (id.startsWith('decor:')) {
-          const itemKey = id.slice('decor:'.length);
-          await store.dispatch({
-            type: 'PURCHASE',
-            purchase: { type: 'decor', itemKey },
-          });
-          store.startPlacement(itemKey);
-          return;
-        }
-        if (id === 'grid_expansion') {
-          await store.dispatch({ type: 'PURCHASE', purchase: { type: 'grid_expansion' } });
-          return;
-        }
-        if (id === 'kitchen_annex') {
-          await store.dispatch({ type: 'PURCHASE', purchase: { type: 'kitchen_annex' } });
-        }
+    sectionsEl
+      .querySelectorAll<HTMLButtonElement>('.shop-buy-btn')
+      .forEach((button) => {
+        button.addEventListener('click', async () => {
+          const id = button.dataset.purchaseId;
+          if (!id) return;
+          const store = useGameStore.getState();
+          if (id.startsWith('equipment:')) {
+            const equipmentId = id.slice('equipment:'.length);
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: { type: 'equipment', equipmentId },
+            });
+            store.startPlacement(equipmentId);
+            return;
+          }
+          if (id.startsWith('ingredient:')) {
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: {
+                type: 'ingredient',
+                ingredientId: id.slice('ingredient:'.length),
+              },
+            });
+            return;
+          }
+          if (id === 'table') {
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: { type: 'table' },
+            });
+            store.startPlacement('table_2seat');
+            return;
+          }
+          if (id.startsWith('decor:')) {
+            const itemKey = id.slice('decor:'.length);
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: { type: 'decor', itemKey },
+            });
+            store.startPlacement(itemKey);
+            return;
+          }
+          if (id === 'grid_expansion') {
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: { type: 'grid_expansion' },
+            });
+            return;
+          }
+          if (id === 'kitchen_annex') {
+            await store.dispatch({
+              type: 'PURCHASE',
+              purchase: { type: 'kitchen_annex' },
+            });
+          }
+        });
       });
-    });
   };
 
   const syncVisibility = () => {
