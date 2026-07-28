@@ -75,9 +75,9 @@ src/
 | Concern | Rationale |
 |---------|-----------|
 | All text (chat bubbles may be DOM) | Crisp text, accessibility |
-| Station compose sheet | Scroll lists, 44px touch targets |
-| Ticket strip / thin service HUD | Overlay chrome during service |
-| Flavor inspector, shop, recipes, rating | Form-like UI |
+| Station compose sheet | Scroll lists, 44px touch targets; dish flavor bars without numeric values |
+| Ticket strip / thin service HUD | Overlay chrome; Orders panel **Order** (phrase text) + **Ideal** (flavor bars with values) |
+| Flavor inspector, shop, recipes, rating | Form-like UI; inspector bars keep numeric values |
 | Modals, settings, Save Code | Native inputs |
 | Day summary, prestige ceremony, tutorial prompts | Rich typography |
 
