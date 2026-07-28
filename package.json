@@ -14,7 +14,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src scripts",
     "test": "vitest run",
-    "test:sim": "vitest run --config vitest.sim.config.ts",
     "test:e2e": "playwright test",
     "preview": "vite preview",
     "build:content": "tsx scripts/build-content.ts",

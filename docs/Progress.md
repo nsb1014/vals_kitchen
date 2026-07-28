@@ -56,7 +56,7 @@
 | 2 | Domain: rating, prestige, soft reset | Done | applyReview, applyPrestige, applySoftReset |
 | 2 | Domain: day generation & reducer | Done | generateDay, serveCustomer, gameReducer |
 | 2 | Domain: seeded RNG | Done | mulberry32 + fork + daySeed hash |
-| 2 | Domain unit tests | Done | Fast suite (48 tests, ~7 s); deep sim via `npm run test:sim` |
+| 2 | Domain unit tests | Done | Fast suite (CI on every push); long-horizon deep sim retired 2026-07-28 |
 | 3 | IndexedDB SaveRepository | Done | `src/persistence/SaveRepository.ts` |
 | 3 | Save Code RS1 export/import | Done | lz-string Uint8Array + base64url + checksum |
 | 3 | Corruption / backup recovery | Done | backup key + graceful load fallback |
@@ -66,7 +66,7 @@
 | 5 | Service-day loop | Done | Queue serve UI + customer sprite + chat bubble |
 | 6 | UI screens | Done | Floor / Shop / Flavors / Recipes / Rating / Settings + nav |
 | 7 | CC0 assets | Done | Kenney CC0 tiles/furniture/customer/audio; generated 32×32 ingredient icons; CREDITS.json + audit:assets |
-| 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; further live balance open |
+| 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; long-horizon deep sim retired 2026-07-28; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
 | 11 | Immersive floor vertical slice | Done | FloorDay, mastery/save v2, path-lerp walk + Urban walk cycle, station compose/plate/deliver, adjacency set/clear/orders, wrong-seat toast; gzip 173,070 |
@@ -89,6 +89,7 @@
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |
 | 2026-07-24 | Phase 8 balance: escalating prestige pacing + long-horizon sim verified |
+| 2026-07-28 | Retired long-horizon deep sim (`test:sim` / `*.sim.test.ts`); keep analytic proxy + short competent-play smoke in fast suite |
 | 2026-07-24 | Post–Phase 5 cleanup: runtime `/data/` fetch (initial JS 157,147 B gzip), PRD §5.6 competent floor 6.75, `MOVE_ITEM` reducer action |
 | 2026-07-24 | Phase 7: Kenney CC0 atlases + audio, CREDITS.json, audit:assets CI, Settings credits, lazy asset load (initial JS 171,466 B gzip) |
 | 2026-07-25 | Phase 7 asset resourcing: vendored Kenney pixel stack (RPG Urban tiles, Pixel Platformer Food icons, Tiny Dungeon customer); removed ETdoFresh mirror from CI; initial JS 172,078 B gzip |

@@ -6,14 +6,6 @@
 /** Assumed real-time minutes per service day for hour projections (PRD §10). */
 export const MINUTES_PER_GAME_DAY = 10;
 
-/** Design aspiration for total playtime (hours) — not a CI pass/fail gate. PRD §2, §10.1. */
-export const DESIGN_PLAYTIME_HOURS_ASPIRATION_MIN = 200;
-export const DESIGN_PLAYTIME_HOURS_ASPIRATION_MAX = 400;
-
-/** Loose sanity bounds for deep sim — catches catastrophic pacing regressions only. */
-export const OBSERVED_HOURS_SANITY_MIN = 20;
-export const OBSERVED_HOURS_SANITY_MAX = 2000;
-
 /**
  * Rating delta resistance per prestige level.
  * multiplier(P) = max(floor, 1 / (1 + P × k))
@@ -34,13 +26,10 @@ export const PRESTIGE_ECONOMY_COST_GROWTH = 1.085;
 export const PRESTIGE_ECONOMY_COST_CEILING = 10;
 
 /**
- * Deep-sim verification horizon (prestige cycles). Simulation bound for CI — not a
- * designed content end state; prestige has no hard cap in product rules (PRD §10.1.1).
+ * Analytic prestige-curve projection length (cycles). Not a designed content end
+ * state — prestige has no hard product cap (PRD §10.1.1).
  */
 export const SIMULATION_PRESTIGE_CYCLE_CAP = 30;
-
-/** @deprecated Use SIMULATION_PRESTIGE_CYCLE_CAP — kept for existing imports. */
-export const TARGET_PRESTIGE_CYCLE_COUNT = SIMULATION_PRESTIGE_CYCLE_CAP;
 
 /** First-cycle target length (days) under competent play at P=0. */
 export const BASE_FIRST_CYCLE_DAYS = 4;
@@ -48,17 +37,11 @@ export const BASE_FIRST_CYCLE_DAYS = 4;
 /**
  * Calibrated analytic cycle-length curve (competent play, seed 424242).
  * projectedCycleDays(P) = round(min(CAP, BASE + LINEAR×P + QUAD×P²))
- * Re-fit when resistance/economy constants change; deep sim asserts agreement.
+ * Re-fit when resistance/economy constants change.
  */
 export const CYCLE_LENGTH_LINEAR_GROWTH = 2.0;
 export const CYCLE_LENGTH_QUADRATIC_GROWTH = 0.03;
 export const CYCLE_LENGTH_CAP = 68;
-
-/** Max relative error allowed per cycle between analytic proxy and deep sim. */
-export const ANALYTIC_SIM_PER_CYCLE_TOLERANCE = 0.15;
-
-/** Max relative error allowed on cumulative days between analytic proxy and deep sim. */
-export const ANALYTIC_SIM_CUMULATIVE_TOLERANCE = 0.1;
 
 export function prestigeRatingDeltaMultiplier(prestige: number): number {
   if (prestige <= 0) return 1;
@@ -111,9 +94,4 @@ export function projectedPrestigeCurve(cycleCount: number): ProjectedPrestigeCyc
     });
   }
   return rows;
-}
-
-/** @deprecated Use projectedCycleDays — kept for deep sim cross-check slack. */
-export function expectedMinCycleDays(prestige: number): number {
-  return projectedCycleDays(prestige);
 }

@@ -449,7 +449,6 @@ Source: [GitHub Pages documentation](https://docs.github.com/en/pages/getting-st
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | **CI** | Every push/PR to `main` | validate, typecheck, lint, fast test, build, bundle gate |
-| **Deep simulation tests** | Manual + nightly 06:00 UTC | `test:sim` only (~2.5 min) |
 | **Deploy GitHub Pages (backup)** | Manual only | Fallback hosting |
 
 ---

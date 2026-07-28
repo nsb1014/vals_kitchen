@@ -41,7 +41,6 @@ Production output is written to `dist/` (includes `/data/*.json`, service worker
 
 ```bash
 npm run test              # fast unit suite (CI on every push)
-npm run test:sim          # deep balance simulation (~2.5 min; manual/nightly CI only)
 npm run validate:content  # content invariant validators (V1–V9)
 ```
 
