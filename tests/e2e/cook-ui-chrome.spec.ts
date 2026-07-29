@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   completeServiceDay,
   gotoFreshGame,
@@ -15,23 +15,33 @@ async function openCookFixture(page: Page): Promise<void> {
   await expect(page.getByTestId('compose-sheet')).toBeVisible();
 }
 
+async function visibleRect(locator: Locator): Promise<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}> {
+  await expect(locator).toBeVisible();
+  return locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
+}
+
 async function expectFooterInsideSheet(
   page: Page,
   sheetTestId = 'compose-sheet',
   footerSelector = '.compose-sheet-footer',
   actionTestId = 'plate-btn',
 ): Promise<void> {
-  const sheet = await page.getByTestId(sheetTestId).boundingBox();
-  const footer = await page.locator(footerSelector).boundingBox();
-  const plate = await page.getByTestId(actionTestId).boundingBox();
-  expect(sheet).not.toBeNull();
-  expect(footer).not.toBeNull();
-  expect(plate).not.toBeNull();
-  expect(footer!.y + footer!.height).toBeLessThanOrEqual(
-    sheet!.y + sheet!.height + 1,
+  const sheet = await visibleRect(page.getByTestId(sheetTestId));
+  const footer = await visibleRect(page.locator(footerSelector));
+  const plate = await visibleRect(page.getByTestId(actionTestId));
+  expect(footer.y + footer.height).toBeLessThanOrEqual(
+    sheet.y + sheet.height + 1,
   );
-  expect(plate!.y + plate!.height).toBeLessThanOrEqual(
-    sheet!.y + sheet!.height + 1,
+  expect(plate.y + plate.height).toBeLessThanOrEqual(
+    sheet.y + sheet.height + 1,
   );
 }
 
@@ -94,19 +104,21 @@ test.describe('cook sheet responsive chrome', () => {
     await expect(page.getByTestId('ingredient-chip')).not.toHaveCount(100);
   });
 
-  test('keeps full flavor detail available without crowding the mobile pantry', async ({
+  test('keeps full flavor detail visible above the mobile Plate action', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 720 });
     await openCookFixture(page);
     await expect(page.locator('.compose-flavor-mini')).toHaveCount(15);
     await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(15);
-    await expect(page.locator('.compose-flavor-mini').first()).toBeHidden();
-    const flavorToggle = page.getByTestId('compose-flavor-toggle');
-    await expect(flavorToggle).toHaveAttribute('aria-expanded', 'false');
-    await flavorToggle.click();
-    await expect(flavorToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('.compose-flavor-mini').first()).toBeVisible();
+    const flavorToggle = page.getByTestId('compose-flavor-toggle');
+    await expect(flavorToggle).toBeHidden();
+    const flavorStrip = await page.locator('.compose-flavor-strip').boundingBox();
+    const plate = await page.getByTestId('plate-btn').boundingBox();
+    expect(flavorStrip).not.toBeNull();
+    expect(plate).not.toBeNull();
+    expect(flavorStrip!.y + flavorStrip!.height).toBeLessThanOrEqual(plate!.y + 1);
   });
 
   test('keeps Plate in view in a short landscape viewport', async ({
@@ -118,6 +130,58 @@ test.describe('cook sheet responsive chrome', () => {
     await page.screenshot({
       path: 'test-results/cook-sheet-short-landscape.png',
       animations: 'disabled',
+    });
+  });
+
+  test('uses a dedicated desktop workspace beside the restaurant', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openCookFixture(page);
+    const sheet = await visibleRect(page.getByTestId('compose-sheet'));
+    const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
+    expect(sheet.width).toBeLessThanOrEqual(600);
+    expect(sheet.x).toBeGreaterThanOrEqual(1280 - sheet.width - 24);
+    expect(canvas.x + canvas.width).toBeLessThanOrEqual(sheet.x + 1);
+    const canvasDataLength = await page
+      .getByTestId('restaurant-canvas')
+      .evaluate((element) => (element as HTMLCanvasElement).toDataURL().length);
+    expect(canvasDataLength).toBeGreaterThan(10_000);
+    await page.screenshot({
+      path: 'test-results/cook-sheet-desktop-workspace.png',
+      animations: 'disabled',
+    });
+  });
+
+  test('keeps the complete restaurant beside the desktop modifier sheet', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 2048, height: 1152 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+    const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
+    const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
+    expect(canvas.x + canvas.width).toBeLessThanOrEqual(sheet.x + 1);
+    await page.screenshot({
+      path: 'test-results/modifier-desktop-full-restaurant.png',
+      animations: 'disabled',
+    });
+  });
+
+  test('supports desktop WASD movement through existing pathfinding', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId('start-service-btn').click();
+    await page.evaluate(() => {
+      window.__E2E__!.setFloorNavPosition({ x: 4, y: 5 });
+    });
+    await page.keyboard.press('d');
+    await page.waitForFunction(() => {
+      const position = window.__E2E__!.getState().floorPlayerGrid;
+      return position?.x === 5 && position.y === 5;
     });
   });
 });

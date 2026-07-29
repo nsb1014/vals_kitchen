@@ -18,9 +18,9 @@
 | Implementation Phase 4 — grid + layout placement | **Done** |
 | Implementation Phase 5 — service-day loop | **Done** |
 | Implementation Phase 6 — UI screens | **Done** |
-| Implementation Phase 7 — CC0 art + audio | **Done** — coherent Kenney tiles/furniture/customer + generated ingredient icons |
+| Implementation Phase 7 — CC0 art + audio | **Done** — project-CC0 chibi chef/guests/restaurant + generated ingredient icons + Kenney audio |
 | Implementation Phase 8 — balance tuning | **Partial** — analytic proxy / prestige pacing shipped; live retune still open |
-| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (23 tests) green; real iPhone QA not done |
+| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (26 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
 | Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
 | Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
@@ -30,6 +30,7 @@
 | Edit catalog + achievements | **Done** — prestige-flat shop costs, edit + decor catalog, celebration banners, Recipe Book achievements; fast suite 280 ([design](./superpowers/specs/2026-07-27-edit-catalog-achievements-design.md), [plan](./superpowers/plans/2026-07-27-edit-catalog-achievements.md)) |
 | Cooking UI + shared chrome | **Done** — tap-to-open cook lifecycle, 100-item flavor/search pantry, locked sheet tiers, shared meta shell; fast suite 297 ([design](./superpowers/specs/2026-07-28-cooking-ui-system-design.md), [plan](./superpowers/plans/2026-07-28-cooking-ui-system.md)) |
 | Storybook v2 art migration | **Rolled back** — rejected perspective-mismatched room and character art removed; orthographic restaurant assets retained |
+| Chibi responsive UI rebuild | **Done** — exact supplied chef sheet, authored carry poses, project-CC0 chibi cast, purpose-made walls/floors/stations, mobile near-full cooking UX, desktop split workspace + WASD/arrow controls; gameplay rules unchanged |
 
 ---
 
@@ -67,7 +68,7 @@
 | 4 | PixiJS restaurant canvas | Done | Grid + furniture DnD + camera fit; see Overall Status |
 | 5 | Service-day loop | Done | Queue serve UI + customer sprite + chat bubble |
 | 6 | UI screens | Done | Floor / Shop / Flavors / Recipes / Rating / Settings + nav |
-| 7 | CC0 assets | Done | Kenney CC0 tiles/furniture/customer/audio; generated 32×32 ingredient icons; CREDITS.json + audit:assets |
+| 7 | CC0 assets | Done | Project-CC0 chibi chef/guests/surfaces/furniture + generated ingredient icons + Kenney audio; CREDITS.json + audit:assets; lazy atlases 1,967,222 B |
 | 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; long-horizon deep sim retired 2026-07-28; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
@@ -78,6 +79,7 @@
 | D | Meta depth | Done | Mastery review line, recipe book progress, day pacing HUD; fast suite 147 |
 | — | Kitchen annex redesign | Done | Separate same-size back-kitchen room + door transfer (replaces +2 width); save v3; fast suite 206 |
 | — | Cooking UI + shared chrome | Done | Explicit station-tap compose lifecycle; AND flavor filters + search; compact/mid/near-full/meta-full shells; fast suite 297 |
+| — | Chibi responsive UI rebuild | Done | Exact supplied chef source preserved byte-for-byte; actual directional wall/door sprites; cohesive chibi furniture/stations; 5-column mobile pantry; persistent flavor meters; desktop room + side workspace; keyboard and touch controls share pathfinding |
 
 **Status values:** `Not started` | `In progress` | `Blocked` | `Done`
 
@@ -90,6 +92,7 @@
 | 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
 | 2026-07-28 | Cooking UI + shared chrome Done: explicit station-tap compose, 100-item flavor/search pantry, fixed responsive sheet regions, shared meta panels; fast suite 297 |
 | 2026-07-29 | Rolled back Storybook v2 migration; retained orthographic walls/furniture, corrected chair facings, and content-sized open-service panel |
+| 2026-07-29 | Rebuilt UI around the supplied chibi chef and espresso/gold reference: new project-CC0 room/furniture pipeline, mobile cooking overlay, desktop split workspace that keeps the complete room visible, corrected two-chair table art, and WASD/arrow controls; no gameplay-rule changes |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |

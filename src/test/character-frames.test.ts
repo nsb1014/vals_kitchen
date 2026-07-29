@@ -4,17 +4,19 @@ import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
+  playerCarryFrameKey,
   playerFrameKey,
 } from '../canvas/world/character-frames.ts';
 
 describe('character-frames', () => {
-  it('maps the cook to player_* texture keys (red-haired girl atlas set)', () => {
+  it('maps the supplied chef to walk and authored carry texture keys', () => {
     expect(playerFrameKey('down', 0)).toBe('player_down_0');
     expect(playerFrameKey('left', 2)).toBe('player_left_2');
     expect(playerFrameKey('up', 1)).toBe('player_up_1');
+    expect(playerCarryFrameKey('right')).toBe('player_carry_right');
   });
 
-  it('exposes multiple guest variants covering distinct Urban looks', () => {
+  it('exposes multiple chibi guest variants', () => {
     expect(GUEST_VARIANTS.length).toBeGreaterThanOrEqual(5);
     expect(new Set(GUEST_VARIANTS).size).toBe(GUEST_VARIANTS.length);
   });

@@ -110,9 +110,15 @@ export function computeGridScale(
   const exact = Math.min(viewW / worldW, viewH / worldH);
   if (!Number.isFinite(exact) || exact <= 0) return 1;
   const integer = Math.max(1, Math.floor(exact));
-  if (integer >= 2) return integer;
   const fillW = (worldW * integer) / viewW;
   const fillH = (worldH * integer) / viewH;
+  if (integer >= 2) {
+    // High-resolution chibi art tolerates fractional scaling. Keep a crisp
+    // integer when it uses the limiting dimension well, but avoid shrinking
+    // the complete restaurant to a postage stamp beside a desktop workspace.
+    const limitingFill = Math.max(fillW, fillH);
+    return limitingFill >= 0.82 ? integer : Math.round(exact * 100) / 100;
+  }
   if (fillW >= 0.55 && fillH >= 0.55) return integer;
   return Math.round(exact * 100) / 100;
 }

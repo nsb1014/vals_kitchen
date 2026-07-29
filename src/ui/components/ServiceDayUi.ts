@@ -143,19 +143,19 @@ export function mountServiceDayUi(
     const state = useGameStore.getState();
     hud.innerHTML = `
       <div class="hud-stat" aria-label="Cash">
-        <span>Cash</span>
+        <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
         <strong>$${state.cash.toLocaleString('en-US')}</strong>
       </div>
       <div class="hud-stat" aria-label="Restaurant rating">
-        <span>Rating</span>
+        <span class="hud-stat-label"><i aria-hidden="true">★</i> Rating</span>
         <strong>${state.rating.toFixed(1)}★</strong>
       </div>
       <div class="hud-stat" aria-label="Prestige">
-        <span>Prestige</span>
+        <span class="hud-stat-label"><i aria-hidden="true">◆</i> Prestige</span>
         <strong>P${state.prestige}</strong>
       </div>
       <div class="hud-stat" aria-label="Day">
-        <span>Day</span>
+        <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
         <strong>${state.day}</strong>
       </div>
     `;

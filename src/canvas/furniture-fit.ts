@@ -7,7 +7,7 @@ import { TILE_PX } from './coordinates.ts';
 export const CHAIR_MAX_OVERHANG_PX = 14;
 
 export function furnitureDrawSize(texture: { width: number; height: number }): { w: number; h: number } {
-  const scale = TILE_PX / 32;
+  const scale = TILE_PX / Math.max(1, texture.width);
   return { w: texture.width * scale, h: texture.height * scale };
 }
 
