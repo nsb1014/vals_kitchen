@@ -1,4 +1,6 @@
-/** Build orthographic room + Storybook character/icon atlases and CC0 audio. */
+/**
+ * Build runtime atlases + audio from vendored Kenney CC0 sources under vendor/kenney/sources/.
+ */
 import {
   copyFileSync,
   existsSync,
@@ -7,21 +9,21 @@ import {
   readdirSync,
   statSync,
   writeFileSync,
-} from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
+} from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
-const OUT = path.join(ROOT, "public", "assets");
-const VENDOR = path.join(ROOT, "vendor", "kenney", "sources");
+const ROOT = path.resolve(__dirname, '..');
+const OUT = path.join(ROOT, 'public', 'assets');
+const VENDOR = path.join(ROOT, 'vendor', 'kenney', 'sources');
 
 interface PackMeta {
   pack: string;
   author: string;
   sourceUrl: string;
-  license: "CC0";
+  license: 'CC0';
   note?: string;
 }
 
@@ -30,219 +32,268 @@ interface CreditEntry {
   pack: string;
   author: string;
   sourceUrl: string;
-  license: "CC0";
+  license: 'CC0';
   usedIn: string[];
   sourceFile?: string;
   approximationNote?: string;
 }
 
 const PACKS: Record<string, PackMeta> = {
+  rpgUrban: {
+    pack: 'Kenney RPG Urban Pack',
+    author: 'Kenney Vleugels',
+    sourceUrl: 'https://kenney.nl/assets/rpg-urban-pack',
+    license: 'CC0',
+  },
   generatedFood: {
-    pack: "Val's Kitchen Storybook v2 Ingredient Icons",
+    pack: 'Restaurant Simulator Ingredient Icons',
+    author: 'Restaurant Simulator project',
+    sourceUrl: 'vendor/generated/ingredient-sheets/',
+    license: 'CC0',
+    note: 'Purpose-made 32×32 pixel-art icons generated for this project; dedicated to CC0.',
+  },
+  generatedSit: {
+    pack: 'Project-generated character sit poses (CC0)',
     author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/storybook-v2/ingredient-sheets/",
-    license: "CC0",
-    note: "Original high-definition hand-painted storybook ingredient art generated for this project; dedicated to CC0.",
+    sourceUrl: 'vendor/generated/character-sit/',
+    license: 'CC0',
+    note: 'Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project.',
   },
   generatedBadges: {
-    pack: "Val's Kitchen Storybook v2 Achievement Badges",
+    pack: "Val's Kitchen Achievement Badges",
     author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/storybook-v2/achievement-badges/",
-    license: "CC0",
-    note: "Original high-definition hand-painted storybook achievement badge art generated for this project; dedicated to CC0.",
+    sourceUrl: 'vendor/generated/achievement-badges/',
+    license: 'CC0',
+    note: 'Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0.',
   },
-  generatedStorybook: {
-    pack: "Val's Kitchen Storybook v2 Characters",
-    author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/storybook-v2/",
-    license: "CC0",
-    note: "Original high-definition hand-painted storybook character art generated for this project; dedicated to CC0.",
-  },
-  generatedRestaurant: {
-    pack: "Val's Kitchen Orthographic Restaurant Tiles",
-    author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/restaurant-tiles/",
-    license: "CC0",
-    note: "Purpose-built orthographic 32×32 room tiles and 32×48 furniture generated for this project; dedicated to CC0.",
+  tinyDungeon: {
+    pack: 'Kenney Tiny Dungeon',
+    author: 'Kenney Vleugels',
+    sourceUrl: 'https://kenney.nl/assets/tiny-dungeon',
+    license: 'CC0',
+    note: '16×16 top-down rogue idle sprite for customer NPC.',
   },
   rpgAudio: {
-    pack: "Kenney RPG Audio",
-    author: "Kenney Vleugels",
-    sourceUrl: "https://kenney.nl/assets/rpg-audio",
-    license: "CC0",
+    pack: 'Kenney RPG Audio',
+    author: 'Kenney Vleugels',
+    sourceUrl: 'https://kenney.nl/assets/rpg-audio',
+    license: 'CC0',
   },
   interfaceSounds: {
-    pack: "Kenney Interface Sounds",
-    author: "Kenney Vleugels",
-    sourceUrl: "https://kenney.nl/assets/interface-sounds",
-    license: "CC0",
+    pack: 'Kenney Interface Sounds',
+    author: 'Kenney Vleugels',
+    sourceUrl: 'https://kenney.nl/assets/interface-sounds',
+    license: 'CC0',
   },
   musicJingles: {
-    pack: "Kenney Music Jingles",
-    author: "Kenney Vleugels",
-    sourceUrl: "https://kenney.nl/assets/music-jingles",
-    license: "CC0",
+    pack: 'Kenney Music Jingles',
+    author: 'Kenney Vleugels',
+    sourceUrl: 'https://kenney.nl/assets/music-jingles',
+    license: 'CC0',
   },
 };
 
-const GENERATED_STORYBOOK = path.join(
-  ROOT,
-  "vendor",
-  "generated",
-  "storybook-v2",
-);
-const GENERATED_BADGES = path.join(GENERATED_STORYBOOK, "achievement-badges");
-const GENERATED_PLAYER_FRAMES = path.join(GENERATED_STORYBOOK, "player-frames");
-const GENERATED_GUEST_FRAMES = path.join(GENERATED_STORYBOOK, "guest-frames");
-const GENERATED_RESTAURANT = path.join(
-  ROOT,
-  "vendor",
-  "generated",
-  "restaurant-tiles",
-);
+const GENERATED_RESTAURANT = path.join(ROOT, 'vendor', 'generated', 'restaurant-tiles');
+const GENERATED_BADGES = path.join(ROOT, 'vendor', 'generated', 'achievement-badges');
 
 const ACHIEVEMENT_BADGE_IDS = [
-  "recipe-unlocks-1",
-  "recipe-unlocks-5",
-  "recipe-unlocks-10",
-  "recipe-unlocks-25",
-  "recipe-unlocks-50",
-  "recipe-unlocks-100",
-  "recipe-mastery-5-1",
-  "recipe-mastery-5-5",
-  "recipe-mastery-5-10",
-  "recipe-mastery-10-1",
-  "recipe-mastery-10-3",
-  "recipe-mastery-10-5",
-  "decor-1",
-  "decor-3",
-  "decor-6",
-  "tables-3",
-  "tables-5",
-  "tables-8",
-  "days-1",
-  "days-7",
-  "days-14",
-  "days-30",
-  "prestiges-1",
-  "prestiges-3",
-  "prestiges-5",
+  'recipe-unlocks-1',
+  'recipe-unlocks-5',
+  'recipe-unlocks-10',
+  'recipe-unlocks-25',
+  'recipe-unlocks-50',
+  'recipe-unlocks-100',
+  'recipe-mastery-5-1',
+  'recipe-mastery-5-5',
+  'recipe-mastery-5-10',
+  'recipe-mastery-10-1',
+  'recipe-mastery-10-3',
+  'recipe-mastery-10-5',
+  'decor-1',
+  'decor-3',
+  'decor-6',
+  'tables-3',
+  'tables-5',
+  'tables-8',
+  'days-1',
+  'days-7',
+  'days-14',
+  'days-30',
+  'prestiges-1',
+  'prestiges-3',
+  'prestiges-5',
 ] as const;
 
 const TILE_SPRITES: Record<string, string> = {
-  floor_a: "floor_wood_a.png",
-  floor_b: "floor_wood_b.png",
-  floor_kitchen_a: "floor_kitchen_a.png",
-  floor_kitchen_b: "floor_kitchen_b.png",
-  wall: "wall.png",
-  wall_n: "wall_n.png",
-  wall_e: "wall_e.png",
-  wall_s: "wall_s.png",
-  wall_w: "wall_w.png",
-  door: "door.png",
-  door_open: "door_open.png",
+  floor_a: 'floor_wood_a.png',
+  floor_b: 'floor_wood_b.png',
+  floor_kitchen_a: 'floor_kitchen_a.png',
+  floor_kitchen_b: 'floor_kitchen_b.png',
+  wall: 'wall.png',
+  wall_n: 'wall_n.png',
+  wall_e: 'wall_e.png',
+  wall_s: 'wall_s.png',
+  wall_w: 'wall_w.png',
+  door: 'door.png',
+  door_open: 'door_open.png',
 };
 
 const FURNITURE_SPRITES: Record<string, string> = {
-  prep_station: "prep_station.png",
-  grill: "grill.png",
-  oven: "oven.png",
-  fryer: "fryer.png",
-  stockpot: "stockpot.png",
-  cold_station: "cold_station.png",
-  pastry_bench: "pastry_bench.png",
-  smoker: "smoker.png",
-  wok: "wok.png",
-  fermentation_crock: "fermentation_crock.png",
-  barista_station: "barista_station.png",
-  spice_rack: "spice_rack.png",
-  table_2seat: "table_2seat.png",
-  table_2seat_unset: "table_2seat_unset.png",
-  table_2seat_dirty: "table_2seat_dirty.png",
-  chair: "chair.png",
-  chair_back: "chair_back.png",
-  chair_side: "chair_side.png",
-  decor_plant: "decor_plant.png",
-  decor_flowers: "decor_flowers.png",
-  decor_rug: "decor_rug.png",
-  decor_lamp: "decor_lamp.png",
-  decor_sign: "decor_sign.png",
+  prep_station: 'prep_station.png',
+  grill: 'grill.png',
+  oven: 'oven.png',
+  fryer: 'fryer.png',
+  stockpot: 'stockpot.png',
+  cold_station: 'cold_station.png',
+  pastry_bench: 'pastry_bench.png',
+  smoker: 'smoker.png',
+  wok: 'wok.png',
+  fermentation_crock: 'fermentation_crock.png',
+  barista_station: 'barista_station.png',
+  spice_rack: 'spice_rack.png',
+  table_2seat: 'table_2seat.png',
+  table_2seat_unset: 'table_2seat_unset.png',
+  table_2seat_dirty: 'table_2seat_dirty.png',
+  chair: 'chair.png',
+  chair_back: 'chair_back.png',
+  chair_side: 'chair_side.png',
+  decor_plant: 'decor_plant.png',
+  decor_flowers: 'decor_flowers.png',
+  decor_rug: 'decor_rug.png',
+  decor_lamp: 'decor_lamp.png',
+  decor_sign: 'decor_sign.png',
 };
 
-/** Original high-definition player art derived from the generated Storybook v2 master. */
-const STORYBOOK_PLAYER_SPRITES = {
-  player_down_0: "player_down_0.png",
-  player_down_1: "player_down_1.png",
-  player_down_2: "player_down_2.png",
-  player_down_3: "player_down_3.png",
-  player_left_0: "player_left_0.png",
-  player_left_1: "player_left_1.png",
-  player_left_2: "player_left_2.png",
-  player_left_3: "player_left_3.png",
-  player_right_0: "player_right_0.png",
-  player_right_1: "player_right_1.png",
-  player_right_2: "player_right_2.png",
-  player_right_3: "player_right_3.png",
-  player_up_0: "player_up_0.png",
-  player_up_1: "player_up_1.png",
-  player_up_2: "player_up_2.png",
-  player_up_3: "player_up_3.png",
-  player_carry_down: "player_carry_down.png",
-  player_carry_left: "player_carry_left.png",
-  player_carry_right: "player_carry_right.png",
-  player_carry_up: "player_carry_up.png",
-  player: "player.png",
-  player_walk: "player_walk.png",
+/**
+ * Walk cycles from Kenney RPG Urban Pack (left, down, up, right × 3 frames).
+ * Player = red-haired girl sheet. Guests a–e = distinct hair/skin/style looks
+ * (player sheet is not reused for guests so the cook stays unique).
+ */
+const CHARACTER_SPRITES = {
+  // Player: long red-haired girl (was guest_b)
+  player_left_0: 'Tiles/tile_0104.png',
+  player_down_0: 'Tiles/tile_0105.png',
+  player_up_0: 'Tiles/tile_0106.png',
+  player_right_0: 'Tiles/tile_0107.png',
+  player_left_1: 'Tiles/tile_0131.png',
+  player_down_1: 'Tiles/tile_0132.png',
+  player_up_1: 'Tiles/tile_0133.png',
+  player_right_1: 'Tiles/tile_0134.png',
+  player_left_2: 'Tiles/tile_0158.png',
+  player_down_2: 'Tiles/tile_0159.png',
+  player_up_2: 'Tiles/tile_0160.png',
+  player_right_2: 'Tiles/tile_0161.png',
+  // Guest A: messy orange-brown hair, light skin, green shirt
+  guest_a_left_0: 'Tiles/tile_0023.png',
+  guest_a_down_0: 'Tiles/tile_0024.png',
+  guest_a_up_0: 'Tiles/tile_0025.png',
+  guest_a_right_0: 'Tiles/tile_0026.png',
+  guest_a_left_1: 'Tiles/tile_0050.png',
+  guest_a_down_1: 'Tiles/tile_0051.png',
+  guest_a_up_1: 'Tiles/tile_0052.png',
+  guest_a_right_1: 'Tiles/tile_0053.png',
+  guest_a_left_2: 'Tiles/tile_0077.png',
+  guest_a_down_2: 'Tiles/tile_0078.png',
+  guest_a_up_2: 'Tiles/tile_0079.png',
+  guest_a_right_2: 'Tiles/tile_0080.png',
+  // Guest B: purple hair + beard, light skin
+  guest_b_left_0: 'Tiles/tile_0185.png',
+  guest_b_down_0: 'Tiles/tile_0186.png',
+  guest_b_up_0: 'Tiles/tile_0187.png',
+  guest_b_right_0: 'Tiles/tile_0188.png',
+  guest_b_left_1: 'Tiles/tile_0212.png',
+  guest_b_down_1: 'Tiles/tile_0213.png',
+  guest_b_up_1: 'Tiles/tile_0214.png',
+  guest_b_right_1: 'Tiles/tile_0215.png',
+  guest_b_left_2: 'Tiles/tile_0239.png',
+  guest_b_down_2: 'Tiles/tile_0240.png',
+  guest_b_up_2: 'Tiles/tile_0241.png',
+  guest_b_right_2: 'Tiles/tile_0242.png',
+  // Guest C: hard hat, dark skin
+  guest_c_left_0: 'Tiles/tile_0266.png',
+  guest_c_down_0: 'Tiles/tile_0267.png',
+  guest_c_up_0: 'Tiles/tile_0268.png',
+  guest_c_right_0: 'Tiles/tile_0269.png',
+  guest_c_left_1: 'Tiles/tile_0293.png',
+  guest_c_down_1: 'Tiles/tile_0294.png',
+  guest_c_up_1: 'Tiles/tile_0295.png',
+  guest_c_right_1: 'Tiles/tile_0296.png',
+  guest_c_left_2: 'Tiles/tile_0320.png',
+  guest_c_down_2: 'Tiles/tile_0321.png',
+  guest_c_up_2: 'Tiles/tile_0322.png',
+  guest_c_right_2: 'Tiles/tile_0323.png',
+  // Guest D: balding / short hair, light skin
+  guest_d_left_0: 'Tiles/tile_0347.png',
+  guest_d_down_0: 'Tiles/tile_0348.png',
+  guest_d_up_0: 'Tiles/tile_0349.png',
+  guest_d_right_0: 'Tiles/tile_0350.png',
+  guest_d_left_1: 'Tiles/tile_0374.png',
+  guest_d_down_1: 'Tiles/tile_0375.png',
+  guest_d_up_1: 'Tiles/tile_0376.png',
+  guest_d_right_1: 'Tiles/tile_0377.png',
+  guest_d_left_2: 'Tiles/tile_0401.png',
+  guest_d_down_2: 'Tiles/tile_0402.png',
+  guest_d_up_2: 'Tiles/tile_0403.png',
+  guest_d_right_2: 'Tiles/tile_0404.png',
+  // Guest E: black hair + headband, tan skin
+  guest_e_left_0: 'Tiles/tile_0428.png',
+  guest_e_down_0: 'Tiles/tile_0429.png',
+  guest_e_up_0: 'Tiles/tile_0430.png',
+  guest_e_right_0: 'Tiles/tile_0431.png',
+  guest_e_left_1: 'Tiles/tile_0455.png',
+  guest_e_down_1: 'Tiles/tile_0456.png',
+  guest_e_up_1: 'Tiles/tile_0457.png',
+  guest_e_right_1: 'Tiles/tile_0458.png',
+  guest_e_left_2: 'Tiles/tile_0482.png',
+  guest_e_down_2: 'Tiles/tile_0483.png',
+  guest_e_up_2: 'Tiles/tile_0484.png',
+  guest_e_right_2: 'Tiles/tile_0485.png',
+  // Legacy names kept for CustomerLayer / older callers
+  customer: 'Tiles/tile_0024.png',
+  customer_b: 'Tiles/tile_0186.png',
+  player: 'Tiles/tile_0105.png',
+  player_walk: 'Tiles/tile_0132.png',
 } as const;
 
-const STORYBOOK_GUEST_SPRITES: Record<string, string> = {
-  customer: "customer.png",
-  customer_b: "customer_b.png",
-};
-for (const variant of ["a", "b", "c", "d", "e"]) {
-  for (const facing of ["left", "down", "up", "right"]) {
-    for (const frame of [0, 1, 2]) {
-      const name = `guest_${variant}_${facing}_${frame}`;
-      STORYBOOK_GUEST_SPRITES[name] = `${name}.png`;
-    }
-    const sitName = `guest_${variant}_sit_${facing}`;
-    STORYBOOK_GUEST_SPRITES[sitName] = `${sitName}.png`;
-  }
-}
+/** Project-derived sit poses (generated under vendor/generated/character-sit/). */
+const CHARACTER_SIT_SPRITES = {
+  guest_a_sit_left: 'guest_a_sit_left.png',
+  guest_a_sit_down: 'guest_a_sit_down.png',
+  guest_a_sit_up: 'guest_a_sit_up.png',
+  guest_a_sit_right: 'guest_a_sit_right.png',
+  guest_b_sit_left: 'guest_b_sit_left.png',
+  guest_b_sit_down: 'guest_b_sit_down.png',
+  guest_b_sit_up: 'guest_b_sit_up.png',
+  guest_b_sit_right: 'guest_b_sit_right.png',
+  guest_c_sit_left: 'guest_c_sit_left.png',
+  guest_c_sit_down: 'guest_c_sit_down.png',
+  guest_c_sit_up: 'guest_c_sit_up.png',
+  guest_c_sit_right: 'guest_c_sit_right.png',
+  guest_d_sit_left: 'guest_d_sit_left.png',
+  guest_d_sit_down: 'guest_d_sit_down.png',
+  guest_d_sit_up: 'guest_d_sit_up.png',
+  guest_d_sit_right: 'guest_d_sit_right.png',
+  guest_e_sit_left: 'guest_e_sit_left.png',
+  guest_e_sit_down: 'guest_e_sit_down.png',
+  guest_e_sit_up: 'guest_e_sit_up.png',
+  guest_e_sit_right: 'guest_e_sit_right.png',
+} as const;
 
-const GENERATED_ICONS = path.join(GENERATED_STORYBOOK, "ingredient-icons");
+const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
+const GENERATED_ICONS = path.join(ROOT, 'scripts', '.asset-build', 'ingredient-icons');
+const GENERATED_SIT = path.join(ROOT, 'vendor', 'generated', 'character-sit');
+
 const AUDIO_FILES: Record<string, { rel: string; pack: keyof typeof PACKS }> = {
-  "sfx/serve.ogg": {
-    rel: "kenney_rpgaudio/Audio/knifeSlice.ogg",
-    pack: "rpgAudio",
-  },
-  "sfx/review.ogg": {
-    rel: "kenney_interfacesounds/Audio/confirmation_001.ogg",
-    pack: "interfaceSounds",
-  },
-  "sfx/purchase.ogg": {
-    rel: "kenney_rpgaudio/Audio/handleCoins.ogg",
-    pack: "rpgAudio",
-  },
-  "sfx/placement.ogg": {
-    rel: "kenney_rpgaudio/Audio/metalClick.ogg",
-    pack: "rpgAudio",
-  },
-  "sfx/day-open.ogg": {
-    rel: "kenney_rpgaudio/Audio/doorOpen_1.ogg",
-    pack: "rpgAudio",
-  },
-  "sfx/day-close.ogg": {
-    rel: "kenney_rpgaudio/Audio/doorClose_3.ogg",
-    pack: "rpgAudio",
-  },
-  "sfx/ui-click.ogg": {
-    rel: "kenney_interfacesounds/Audio/click_001.ogg",
-    pack: "interfaceSounds",
-  },
-  "music/restaurant-loop.ogg": {
-    rel: "kenney_musicjingles/Audio/Pizzicato jingles/jingles_PIZZI01.ogg",
-    pack: "musicJingles",
+  'sfx/serve.ogg': { rel: 'kenney_rpgaudio/Audio/knifeSlice.ogg', pack: 'rpgAudio' },
+  'sfx/review.ogg': { rel: 'kenney_interfacesounds/Audio/confirmation_001.ogg', pack: 'interfaceSounds' },
+  'sfx/purchase.ogg': { rel: 'kenney_rpgaudio/Audio/handleCoins.ogg', pack: 'rpgAudio' },
+  'sfx/placement.ogg': { rel: 'kenney_rpgaudio/Audio/metalClick.ogg', pack: 'rpgAudio' },
+  'sfx/day-open.ogg': { rel: 'kenney_rpgaudio/Audio/doorOpen_1.ogg', pack: 'rpgAudio' },
+  'sfx/day-close.ogg': { rel: 'kenney_rpgaudio/Audio/doorClose_3.ogg', pack: 'rpgAudio' },
+  'sfx/ui-click.ogg': { rel: 'kenney_interfacesounds/Audio/click_001.ogg', pack: 'interfaceSounds' },
+  'music/restaurant-loop.ogg': {
+    rel: 'kenney_musicjingles/Audio/Pizzicato jingles/jingles_PIZZI01.ogg',
+    pack: 'musicJingles',
   },
 };
 
@@ -252,59 +303,44 @@ function vendorPath(rel: string): string {
 
 function assertVendor(): void {
   const required = [
-    vendorPath("audio/kenney_rpgaudio/Audio/knifeSlice.ogg"),
-    path.join(
-      GENERATED_STORYBOOK,
-      "ingredient-sheets",
-      "sheet-01-alliums-roots-chroma.png",
+    ...Object.values(CHARACTER_SPRITES).map((rel) =>
+      vendorPath(`rpg-urban-pack/${rel}`),
     ),
-    path.join(GENERATED_STORYBOOK, "player-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "guest-idle-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "guest-walk-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "guest-sit-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "achievement-badges-sheet-chroma.png"),
+    vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
+    path.join(GENERATED_SHEETS, 'manifest.json'),
+    path.join(GENERATED_SHEETS, 'sheet-01-alliums-roots.png'),
   ];
   for (const file of required) {
     if (!existsSync(file)) {
       console.error(`Missing vendored source: ${file}`);
-      console.error(
-        "Ensure the vendored CC0 sources and vendor/generated/storybook-v2/ masters exist.",
-      );
+      console.error('Ensure vendor/kenney/sources/ and vendor/generated/ingredient-sheets/ exist.');
       process.exit(1);
     }
   }
 }
 
-function runAchievementBadgeBuilder(): void {
-  execFileSync("python3", [path.join(__dirname, "build-storybook-badges.py")], {
-    stdio: "inherit",
+function runRestaurantTileBuilder(): void {
+  execFileSync('python3', [path.join(__dirname, 'build-restaurant-tiles.py')], {
+    stdio: 'inherit',
   });
 }
 
-function runStorybookCharacterBuilder(): void {
+function runAchievementBadgeBuilder(): void {
   execFileSync(
-    "python3",
-    [path.join(__dirname, "build-storybook-characters.py")],
-    {
-      stdio: "inherit",
-    },
+    'python3',
+    [path.join(__dirname, 'build-achievement-badges.py'), GENERATED_BADGES],
+    { stdio: 'inherit' },
   );
 }
 
-function runStorybookGuestBuilder(): void {
-  execFileSync("python3", [path.join(__dirname, "build-storybook-guests.py")], {
-    stdio: "inherit",
-  });
-}
-
-function runRestaurantTileBuilder(): void {
-  execFileSync("python3", [path.join(__dirname, "build-restaurant-tiles.py")], {
-    stdio: "inherit",
+function runCharacterSitBuilder(): void {
+  execFileSync('python3', [path.join(__dirname, 'build-character-sit-frames.py')], {
+    stdio: 'inherit',
   });
 }
 
 function copyAchievementBadges(): void {
-  const destination = path.join(OUT, "achievements");
+  const destination = path.join(OUT, 'achievements');
   mkdirSync(destination, { recursive: true });
   for (const id of ACHIEVEMENT_BADGE_IDS) {
     const source = path.join(GENERATED_BADGES, `${id}.png`);
@@ -320,13 +356,9 @@ function writeManifest(entries: Record<string, string>, file: string): void {
 }
 
 function runIngredientIconBuilder(): void {
-  execFileSync(
-    "python3",
-    [path.join(__dirname, "build-storybook-ingredients.py")],
-    {
-      stdio: "inherit",
-    },
-  );
+  execFileSync('python3', [path.join(__dirname, 'build-ingredient-icons.py'), GENERATED_ICONS], {
+    stdio: 'inherit',
+  });
 }
 
 function runPacker(
@@ -336,25 +368,20 @@ function runPacker(
   cell?: number,
   scale?: number,
 ): void {
-  const args = [
-    path.join(__dirname, "pack-atlas.py"),
-    manifestFile,
-    outPng,
-    outJson,
-  ];
+  const args = [path.join(__dirname, 'pack-atlas.py'), manifestFile, outPng, outJson];
   if (cell !== undefined) args.push(String(cell));
   if (scale !== undefined) {
     if (cell === undefined) {
-      throw new Error("runPacker: cell is required when scale is set");
+      throw new Error('runPacker: cell is required when scale is set');
     }
     args.push(String(scale));
   }
-  execFileSync("python3", args, { stdio: "inherit" });
+  execFileSync('python3', args, { stdio: 'inherit' });
 }
 
 function copyAudio(): void {
   for (const [dest, spec] of Object.entries(AUDIO_FILES)) {
-    const src = vendorPath(path.join("audio", spec.rel));
+    const src = vendorPath(path.join('audio', spec.rel));
     if (!existsSync(src)) {
       console.error(`Missing audio source: ${src}`);
       process.exit(1);
@@ -373,29 +400,30 @@ function buildCredits(shippedFiles: string[]): void {
   };
 
   for (const [sprite, file] of Object.entries(TILE_SPRITES)) {
-    const meta = PACKS.generatedRestaurant;
     add({
       path: `atlases/tiles.json#${sprite}`,
-      pack: meta.pack,
-      author: meta.author,
-      sourceUrl: meta.sourceUrl,
-      license: "CC0",
-      usedIn: ["canvas:GridLayer floor / wall tiles"],
+      pack: 'Project-generated restaurant tiles (CC0)',
+      author: "Val's Kitchen project",
+      sourceUrl: 'vendor/generated/restaurant-tiles/',
+      license: 'CC0',
+      usedIn: ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
-      approximationNote: meta.note,
+      approximationNote:
+        'Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0.',
     });
   }
 
   for (const [itemKey, file] of Object.entries(FURNITURE_SPRITES)) {
     add({
       path: `atlases/furniture.json#${itemKey}`,
-      pack: PACKS.generatedRestaurant.pack,
-      author: PACKS.generatedRestaurant.author,
-      sourceUrl: PACKS.generatedRestaurant.sourceUrl,
-      license: "CC0",
+      pack: 'Project-generated restaurant tiles (CC0)',
+      author: "Val's Kitchen project",
+      sourceUrl: 'vendor/generated/restaurant-tiles/',
+      license: 'CC0',
       usedIn: [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
-      approximationNote: PACKS.generatedRestaurant.note,
+      approximationNote:
+        'Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0.',
     });
   }
 
@@ -405,72 +433,66 @@ function buildCredits(shippedFiles: string[]): void {
       pack: PACKS.generatedBadges.pack,
       author: PACKS.generatedBadges.author,
       sourceUrl: PACKS.generatedBadges.sourceUrl,
-      license: "CC0",
-      usedIn: ["ui:recipe-book achievements", "ui:achievement celebration"],
+      license: 'CC0',
+      usedIn: ['ui:recipe-book achievements', 'ui:achievement celebration'],
       sourceFile: `${id}.png`,
       approximationNote: PACKS.generatedBadges.note,
     });
   }
 
   const characterUsedIn: Record<string, string[]> = {
-    player_down_0: ["canvas:ActorLayer (player / storybook cook)"],
-    player_walk: ["canvas:ActorLayer (player walk)"],
-    guest_a_down_0: ["canvas:ActorLayer (silver-haired older guest)"],
-    guest_b_down_0: ["canvas:ActorLayer (mustached dark-skinned guest)"],
-    guest_c_down_0: ["canvas:ActorLayer (black-bobbed young guest)"],
-    guest_d_down_0: ["canvas:ActorLayer (gray-haired guest with glasses)"],
-    guest_e_down_0: ["canvas:ActorLayer (tan guest with dark curls)"],
-    customer: ["canvas:CustomerLayer", "canvas:ActorLayer"],
-    customer_b: ["canvas:ActorLayer"],
-    player: ["canvas:ActorLayer"],
+    player_down_0: ['canvas:ActorLayer (player / red-haired cook)'],
+    player_walk: ['canvas:ActorLayer (player walk)'],
+    guest_a_down_0: ['canvas:ActorLayer (guest A — messy brown hair)'],
+    guest_b_down_0: ['canvas:ActorLayer (guest B — purple hair)'],
+    guest_c_down_0: ['canvas:ActorLayer (guest C — hard hat / dark skin)'],
+    guest_d_down_0: ['canvas:ActorLayer (guest D — balding)'],
+    guest_e_down_0: ['canvas:ActorLayer (guest E — black hair / headband)'],
+    customer: ['canvas:CustomerLayer', 'canvas:ActorLayer'],
+    customer_b: ['canvas:ActorLayer'],
+    player: ['canvas:ActorLayer'],
   };
-  for (const [name, file] of Object.entries(STORYBOOK_PLAYER_SPRITES)) {
+  for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
     add({
       path: `atlases/characters.json#${name}`,
-      pack: PACKS.generatedStorybook.pack,
-      author: PACKS.generatedStorybook.author,
-      sourceUrl: PACKS.generatedStorybook.sourceUrl,
-      license: "CC0",
-      usedIn: characterUsedIn[name] ?? ["canvas:ActorLayer (player)"],
-      sourceFile: `player-frames/${file}`,
-      approximationNote: PACKS.generatedStorybook.note,
+      pack: PACKS.rpgUrban.pack,
+      author: PACKS.rpgUrban.author,
+      sourceUrl: PACKS.rpgUrban.sourceUrl,
+      license: 'CC0',
+      usedIn: characterUsedIn[name] ?? ['canvas:ActorLayer'],
+      sourceFile: rel,
+      approximationNote: 'RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors.',
     });
   }
 
-  for (const [name, file] of Object.entries(STORYBOOK_GUEST_SPRITES)) {
+  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
     add({
       path: `atlases/characters.json#${name}`,
-      pack: PACKS.generatedStorybook.pack,
-      author: PACKS.generatedStorybook.author,
-      sourceUrl: PACKS.generatedStorybook.sourceUrl,
-      license: "CC0",
-      usedIn: characterUsedIn[name] ?? ["canvas:ActorLayer (restaurant guest)"],
-      sourceFile: `guest-frames/${file}`,
-      approximationNote: PACKS.generatedStorybook.note,
+      pack: PACKS.generatedSit.pack,
+      author: PACKS.generatedSit.author,
+      sourceUrl: PACKS.generatedSit.sourceUrl,
+      license: 'CC0',
+      usedIn: ['canvas:ActorLayer (seated guests)'],
+      sourceFile: file,
+      approximationNote: PACKS.generatedSit.note,
     });
   }
 
   for (const [ingredientId] of Object.entries(
-    JSON.parse(
-      readFileSync(path.join(GENERATED_ICONS, "manifest.json"), "utf8"),
-    ) as Record<string, string>,
+    JSON.parse(readFileSync(path.join(GENERATED_ICONS, 'manifest.json'), 'utf8')) as Record<
+      string,
+      string
+    >,
   )) {
-    const sprite = ingredientId.startsWith("icon_")
-      ? ingredientId
-      : `icon_${ingredientId}`;
-    const id = sprite.replace(/^icon_/, "");
+    const sprite = ingredientId.startsWith('icon_') ? ingredientId : `icon_${ingredientId}`;
+    const id = sprite.replace(/^icon_/, '');
     add({
       path: `atlases/food.json#${sprite}`,
       pack: PACKS.generatedFood.pack,
       author: PACKS.generatedFood.author,
       sourceUrl: PACKS.generatedFood.sourceUrl,
-      license: "CC0",
-      usedIn: [
-        "ui:shop",
-        "ui:compose",
-        "ui:flavor-inspector",
-        "ui:recipe-book",
-      ],
+      license: 'CC0',
+      usedIn: ['ui:shop', 'ui:compose', 'ui:flavor-inspector', 'ui:recipe-book'],
       sourceFile: `${id}.png`,
     });
   }
@@ -482,59 +504,49 @@ function buildCredits(shippedFiles: string[]): void {
       pack: meta.pack,
       author: meta.author,
       sourceUrl: meta.sourceUrl,
-      license: "CC0",
-      usedIn: ["app:AudioManager"],
+      license: 'CC0',
+      usedIn: ['app:AudioManager'],
       sourceFile: spec.rel,
     });
   }
 
   const covered = new Set<string>();
   for (const entry of entries) {
-    const base = entry.path.split("#")[0]!;
+    const base = entry.path.split('#')[0]!;
     covered.add(base);
   }
   for (const file of shippedFiles) {
     if (covered.has(file)) continue;
-    if (file === "CREDITS.json") continue;
-    let meta = PACKS.generatedStorybook;
-    if (file.startsWith("atlases/food")) meta = PACKS.generatedFood;
-    else if (file.startsWith("atlases/furniture"))
-      meta = PACKS.generatedRestaurant;
-    else if (file.startsWith("atlases/tiles"))
-      meta = PACKS.generatedRestaurant;
-    else if (file.startsWith("atlases/characters"))
-      meta = PACKS.generatedStorybook;
-    else if (file.startsWith("sfx/") || file.startsWith("music/"))
-      meta = PACKS.rpgAudio;
+    let meta = PACKS.rpgUrban;
+    if (file.startsWith('atlases/food')) meta = PACKS.generatedFood;
+    else if (file.startsWith('atlases/characters')) meta = PACKS.tinyDungeon;
+    else if (file.startsWith('sfx/') || file.startsWith('music/')) meta = PACKS.rpgAudio;
     add({
       path: file,
       pack: meta.pack,
       author: meta.author,
       sourceUrl: meta.sourceUrl,
-      license: "CC0",
-      usedIn: ["build:generated artifact from CC0 atlas/audio pipeline"],
+      license: 'CC0',
+      usedIn: ['build:generated artifact from CC0 atlas/audio pipeline'],
     });
   }
 
   const manifest = {
     version: 1,
-    generatedBy: "scripts/build-assets.ts",
+    generatedBy: 'scripts/build-assets.ts',
     generatedAt: new Date().toISOString(),
-    policy: "CC0-only",
+    policy: 'CC0-only',
     vendorNote:
-      "CC0 sources are retained under vendor/kenney/sources/ and vendor/generated/; project-generated Storybook and orthographic restaurant art are dedicated to CC0.",
+      'Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.',
     packs: Object.values(PACKS),
     entries,
     shippedFiles,
   };
 
-  writeFileSync(
-    path.join(OUT, "CREDITS.json"),
-    JSON.stringify(manifest, null, 2),
-  );
+  writeFileSync(path.join(OUT, 'CREDITS.json'), JSON.stringify(manifest, null, 2));
 }
 
-function listShippedFiles(dir: string, prefix = ""): string[] {
+function listShippedFiles(dir: string, prefix = ''): string[] {
   const results: string[] = [];
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
@@ -550,25 +562,24 @@ function listShippedFiles(dir: string, prefix = ""): string[] {
 
 function main(): void {
   assertVendor();
-  runAchievementBadgeBuilder();
-  runStorybookCharacterBuilder();
-  runStorybookGuestBuilder();
   runRestaurantTileBuilder();
+  runAchievementBadgeBuilder();
+  runCharacterSitBuilder();
 
-  const tmp = path.join(ROOT, "scripts", ".asset-build");
+  const tmp = path.join(ROOT, 'scripts', '.asset-build');
   mkdirSync(tmp, { recursive: true });
-  mkdirSync(path.join(OUT, "atlases"), { recursive: true });
+  mkdirSync(path.join(OUT, 'atlases'), { recursive: true });
 
   const tileManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(TILE_SPRITES)) {
     tileManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
-  const tileManifestPath = path.join(tmp, "tiles.manifest.json");
+  const tileManifestPath = path.join(tmp, 'tiles.manifest.json');
   writeManifest(tileManifest, tileManifestPath);
   runPacker(
     tileManifestPath,
-    path.join(OUT, "atlases", "tiles.png"),
-    path.join(OUT, "atlases", "tiles.json"),
+    path.join(OUT, 'atlases', 'tiles.png'),
+    path.join(OUT, 'atlases', 'tiles.json'),
     32,
     1,
   );
@@ -577,52 +588,45 @@ function main(): void {
   for (const [name, file] of Object.entries(FURNITURE_SPRITES)) {
     furnitureManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
-  const furnitureManifestPath = path.join(tmp, "furniture.manifest.json");
+  const furnitureManifestPath = path.join(tmp, 'furniture.manifest.json');
   writeManifest(furnitureManifest, furnitureManifestPath);
   runPacker(
     furnitureManifestPath,
-    path.join(OUT, "atlases", "furniture.png"),
-    path.join(OUT, "atlases", "furniture.json"),
+    path.join(OUT, 'atlases', 'furniture.png'),
+    path.join(OUT, 'atlases', 'furniture.json'),
     48,
   );
 
   const charManifest: Record<string, string> = {};
-  for (const [name, file] of Object.entries(STORYBOOK_PLAYER_SPRITES)) {
-    const playerPath = path.join(GENERATED_PLAYER_FRAMES, file);
-    if (!existsSync(playerPath)) {
-      console.error(
-        `Missing generated Storybook v2 player frame: ${playerPath}`,
-      );
+  for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
+    charManifest[name] = vendorPath(`rpg-urban-pack/${rel}`);
+  }
+  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
+    const sitPath = path.join(GENERATED_SIT, file);
+    if (!existsSync(sitPath)) {
+      console.error(`Missing generated sit frame: ${sitPath}`);
       process.exit(1);
     }
-    charManifest[name] = playerPath;
+    charManifest[name] = sitPath;
   }
-  for (const [name, file] of Object.entries(STORYBOOK_GUEST_SPRITES)) {
-    const guestPath = path.join(GENERATED_GUEST_FRAMES, file);
-    if (!existsSync(guestPath)) {
-      console.error(`Missing generated Storybook v2 guest frame: ${guestPath}`);
-      process.exit(1);
-    }
-    charManifest[name] = guestPath;
-  }
-  const charManifestPath = path.join(tmp, "characters.manifest.json");
+  const charManifestPath = path.join(tmp, 'characters.manifest.json');
   writeManifest(charManifest, charManifestPath);
   runPacker(
     charManifestPath,
-    path.join(OUT, "atlases", "characters.png"),
-    path.join(OUT, "atlases", "characters.json"),
-    184,
-    1,
+    path.join(OUT, 'atlases', 'characters.png'),
+    path.join(OUT, 'atlases', 'characters.json'),
+    32,
+    2,
   );
 
   runIngredientIconBuilder();
 
   const generatedManifest = JSON.parse(
-    readFileSync(path.join(GENERATED_ICONS, "manifest.json"), "utf8"),
+    readFileSync(path.join(GENERATED_ICONS, 'manifest.json'), 'utf8'),
   ) as Record<string, string>;
 
   const ingredients = JSON.parse(
-    readFileSync(path.join(ROOT, "src", "data", "ingredients.json"), "utf8"),
+    readFileSync(path.join(ROOT, 'src', 'data', 'ingredients.json'), 'utf8'),
   ) as Array<{ id: string }>;
 
   const foodManifest: Record<string, string> = {};
@@ -638,17 +642,17 @@ function main(): void {
   }
 
   if (missingIcons.length > 0) {
-    console.error("Missing generated food icons:", missingIcons);
+    console.error('Missing generated food icons:', missingIcons);
     process.exit(1);
   }
 
-  const foodManifestPath = path.join(tmp, "food.manifest.json");
+  const foodManifestPath = path.join(tmp, 'food.manifest.json');
   writeManifest(foodManifest, foodManifestPath);
   runPacker(
     foodManifestPath,
-    path.join(OUT, "atlases", "food.png"),
-    path.join(OUT, "atlases", "food.json"),
-    128,
+    path.join(OUT, 'atlases', 'food.png'),
+    path.join(OUT, 'atlases', 'food.json'),
+    32,
   );
 
   copyAudio();
@@ -661,21 +665,15 @@ function main(): void {
   let audioBytes = 0;
   for (const file of shippedFiles) {
     const size = statSync(path.join(OUT, file)).size;
-    if (file.startsWith("sfx/") || file.startsWith("music/"))
-      audioBytes += size;
-    if (file.startsWith("atlases/") && file.endsWith(".png"))
-      atlasBytes += size;
+    if (file.startsWith('sfx/') || file.startsWith('music/')) audioBytes += size;
+    if (file.startsWith('atlases/') && file.endsWith('.png')) atlasBytes += size;
   }
 
-  console.log("");
+  console.log('');
   console.log(`Asset build complete -> ${OUT}`);
-  console.log(
-    `  Atlas PNG payload: ${atlasBytes.toLocaleString("en-US")} bytes`,
-  );
-  console.log(`  Audio payload: ${audioBytes.toLocaleString("en-US")} bytes`);
-  console.log(
-    `  CREDITS entries: ${JSON.parse(readFileSync(path.join(OUT, "CREDITS.json"), "utf8")).entries.length}`,
-  );
+  console.log(`  Atlas PNG payload: ${atlasBytes.toLocaleString('en-US')} bytes`);
+  console.log(`  Audio payload: ${audioBytes.toLocaleString('en-US')} bytes`);
+  console.log(`  CREDITS entries: ${JSON.parse(readFileSync(path.join(OUT, 'CREDITS.json'), 'utf8')).entries.length}`);
 }
 
 main();
