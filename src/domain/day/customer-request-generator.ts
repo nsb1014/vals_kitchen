@@ -33,6 +33,8 @@ const MIN_INGREDIENT_AXIS_PEAK = 3.5;
 const MIN_ACTIONABLE_AXIS_SPREAD = 2.5;
 /** Minimum primary cues shown to the player early game. */
 const MIN_PRIMARY_CUE_COUNT = 2;
+/** Maximum total scored cues, including both primary and avoid preferences. */
+export const MAX_REQUEST_PREFERENCE_COUNT = 3;
 /** Max satisfiable witness combos considered before picking one at random. */
 const REQUEST_CANDIDATE_CAP = 24;
 
@@ -361,6 +363,12 @@ function primaryCueCount(preference: CustomerPreference): number {
   return Object.keys(preference.primary).length;
 }
 
+function preferenceCueCount(preference: CustomerPreference): number {
+  return AXIS_KEYS.filter(
+    (axis) => Boolean(preference.primary[axis]) || Boolean(preference.avoid[axis]),
+  ).length;
+}
+
 function buildAvoidOptions(
   ranked: AxisKey[],
   primary: Partial<Record<AxisKey, Band>>,
@@ -368,6 +376,9 @@ function buildAvoidOptions(
   profile: UnlockedFlavorProfile,
 ): Partial<Record<AxisKey, boolean>>[] {
   const options: Partial<Record<AxisKey, boolean>>[] = [{}];
+  if (Object.keys(primary).length >= MAX_REQUEST_PREFERENCE_COUNT) {
+    return options;
+  }
   for (const axis of ranked) {
     if (primary[axis]) continue;
     if (!profile.actionableAxes.includes(axis)) continue;
@@ -442,6 +453,7 @@ function preferenceFromCombo(
         };
         if (
           primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
+          preferenceCueCount(preference) <= MAX_REQUEST_PREFERENCE_COUNT &&
           preference.phrases.length >= 2 &&
           preferenceUsesActionableAxes(preference, profile) &&
           (!requireSignature || preferenceHonorsName(preference, archetype, signature)) &&
@@ -554,6 +566,7 @@ export function generateCustomerRequest(
       };
       if (
         primaryCueCount(preference) >= MIN_PRIMARY_CUE_COUNT &&
+        preferenceCueCount(preference) <= MAX_REQUEST_PREFERENCE_COUNT &&
         preference.phrases.length >= 2 &&
         (!requireSignature || preferenceHonorsName(preference, archetype, signature))
       ) {

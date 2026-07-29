@@ -52,6 +52,44 @@ export function computeWeightedSatisfaction(
   return satisfactionSum / scoredAxes.length;
 }
 
+/**
+ * Rewards proximity to the generated achievable target without making that
+ * exact vector the only acceptable answer. A five-point average miss exhausts
+ * the bonus; old saves without an ideal profile keep neutral full closeness.
+ */
+export function computeIdealCloseness(
+  dish: FlavorVector,
+  preference: CustomerPreference,
+): number {
+  if (!preference.idealProfile) return 1;
+  const scoredAxes = AXIS_KEYS.filter(
+    (axis) => Boolean(preference.primary[axis]) || Boolean(preference.avoid[axis]),
+  );
+  if (scoredAxes.length === 0) return 1;
+
+  const meanDistance =
+    scoredAxes.reduce(
+      (sum, axis) =>
+        sum + Math.abs(dish[axis] - preference.idealProfile![axis]),
+      0,
+    ) / scoredAxes.length;
+  return clampUnit(1 - meanDistance / 5);
+}
+
+/**
+ * The visible request result: broad flavor bands remain the main requirement,
+ * while one-sixth of the request score distinguishes the achievable ideal.
+ */
+export function computeRequestSatisfaction(
+  dish: FlavorVector,
+  preference: CustomerPreference,
+): number {
+  return (
+    (5 / 6) * computeWeightedSatisfaction(dish, preference) +
+    (1 / 6) * computeIdealCloseness(dish, preference)
+  );
+}
+
 export function meanPairAffinity(
   ingredientIds: string[],
   matrix: Record<string, Record<string, number>>,
@@ -75,9 +113,10 @@ export function computeMatchStars(
   compoundAffinity: Record<string, Record<string, number>>,
   recipeBonus = 0,
 ): number {
-  const weightedSat = computeWeightedSatisfaction(dish, preference);
+  const requestSatisfaction = computeRequestSatisfaction(dish, preference);
   const affinityBonus = meanPairAffinity(ingredientIds, compoundAffinity);
-  // The order match is the result; ingredient affinity is a smaller bonus.
-  const raw = 10 * (0.9 * weightedSat + 0.1 * affinityBonus) + recipeBonus;
+  // The request remains 90% of the result; ingredient affinity is a smaller bonus.
+  const raw =
+    10 * (0.9 * requestSatisfaction + 0.1 * affinityBonus) + recipeBonus;
   return Math.min(10, Math.max(0, raw));
 }

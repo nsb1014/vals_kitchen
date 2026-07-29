@@ -6,6 +6,7 @@ import archetypes from '../data/archetypes.json';
 import compoundAffinity from '../data/compound-affinity.json';
 import {
   COMPETENT_MATCH_EVAL_CAP,
+  MAX_REQUEST_PREFERENCE_COUNT,
   createRng,
   findBestMatchCombo,
   findOptimalMatchCombo,
@@ -15,7 +16,11 @@ import { aggregateDish } from '../domain/flavor/aggregate.ts';
 import { computeMatchStars } from '../domain/flavor/scoring.ts';
 import type { AxisKey, Band } from '../domain/types.ts';
 import type { ContentBundle, Ingredient } from '../domain/types.ts';
-import { NEW_GAME_STARTER_IDS, SOFT_RESET_STARTER_IDS } from '../domain/types.ts';
+import {
+  AXIS_KEYS,
+  NEW_GAME_STARTER_IDS,
+  SOFT_RESET_STARTER_IDS,
+} from '../domain/types.ts';
 import { testBundle, testContext } from './test-helpers.ts';
 
 const bundle: ContentBundle = {
@@ -164,6 +169,18 @@ describe('competent match heuristic', () => {
           ).toBeGreaterThan(6);
         }
       }
+
+      const scoredAxisCount = AXIS_KEYS.filter(
+        (axis) =>
+          Boolean(request.preference.primary[axis]) ||
+          Boolean(request.preference.avoid[axis]),
+      ).length;
+      expect(scoredAxisCount).toBeLessThanOrEqual(
+        MAX_REQUEST_PREFERENCE_COUNT,
+      );
+      expect(request.preference.phrases.length).toBeLessThanOrEqual(
+        MAX_REQUEST_PREFERENCE_COUNT,
+      );
 
       expect(
         computeMatchStars(
