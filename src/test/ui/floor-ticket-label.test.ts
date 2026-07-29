@@ -30,9 +30,9 @@ const customer: Customer = {
 };
 
 describe('floor ticket labels', () => {
-  it('maps statuses to human Open / Cooking / Ready labels', () => {
+  it('maps statuses to human Open / Selected / Ready labels', () => {
     expect(formatTicketStatusLabel('open', false)).toBe('Open');
-    expect(formatTicketStatusLabel('open', true)).toBe('Cooking');
+    expect(formatTicketStatusLabel('open', true)).toBe('Selected');
     expect(formatTicketStatusLabel('plated', false)).toBe('Ready');
     expect(formatTicketStatusLabel('delivered', false)).toBe('Done');
   });
@@ -46,7 +46,7 @@ describe('floor ticket labels', () => {
       selected: false,
     });
     expect(withName.buttonText).not.toMatch(/ticket_/);
-    expect(withName.buttonText).toContain('Comfort Seeker');
+    expect(withName.buttonText).toContain('#1 · Comfort Seeker');
     expect(withName.buttonText).toContain('Open');
     expect(withName.preferenceFull).toMatch(/^Wants:.*Umami/i);
     expect(withName.preferenceFull).toContain('Rich');
@@ -60,7 +60,7 @@ describe('floor ticket labels', () => {
       partyNumber: 2,
       selected: false,
     });
-    expect(fallback.buttonText).toContain('Party 2');
+    expect(fallback.buttonText).toContain('Guest #2');
     expect(fallback.buttonText).toContain('Ready');
     expect(fallback.buttonText).not.toMatch(/ticket_customer/);
   });

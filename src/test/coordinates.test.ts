@@ -56,7 +56,7 @@ describe('coordinates', () => {
     expect(screenToWorld(screenPoint.x, screenPoint.y, camera)).toEqual({ x: 64, y: 96 });
   });
 
-  it('maps screen pointer to snapped grid cell', () => {
+  it('maps screen pointer to the grid cell underneath it', () => {
     const camera = computeCameraCenter(4, 4, 390, 844);
     const { gx, gy } = screenToGrid(
       camera.stageOffsetX + 40 * camera.scale,
@@ -122,7 +122,23 @@ describe('coordinates', () => {
       const sy = camera.stageOffsetY + (targetCenter.y + TILE_PX / 2) * camera.scale;
 
       expect(screenToDragGrid(sx, sy, camera, grabOffset)).toEqual({ gx: 1, gy: 2 });
-      expect(screenToGrid(sx, sy, camera)).toEqual({ gx: 2, gy: 3 });
+      expect(screenToGrid(sx, sy, camera)).toEqual({ gx: 1, gy: 2 });
+    });
+
+    it('keeps every point inside a tile mapped to that tile', () => {
+      const camera = computeCameraCenter(4, 4, 390, 844);
+      const tile = gridToWorld(1, 2);
+      for (const [offsetX, offsetY] of [
+        [1, 1],
+        [TILE_PX / 2, TILE_PX / 2],
+        [TILE_PX - 1, TILE_PX - 1],
+      ]) {
+        const screen = worldToScreen(tile.x + offsetX, tile.y + offsetY, camera);
+        expect(screenToGrid(screen.x, screen.y, camera)).toEqual({
+          gx: 1,
+          gy: 2,
+        });
+      }
     });
   });
 });

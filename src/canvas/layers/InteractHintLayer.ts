@@ -14,13 +14,17 @@ export class InteractHintLayer {
     }
 
     this.view.visible = true;
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 180);
     for (const { x: gx, y: gy } of hints) {
       const { x, y } = gridToWorld(gx, gy);
-      this.view.rect(x + 1, y + 1, TILE_PX - 2, TILE_PX - 2).fill({ color: HINT_FILL, alpha: 0.28 });
-      this.view.rect(x + 1, y + 1, TILE_PX - 2, TILE_PX - 2).stroke({
-        width: 2,
+      const inset = 1 + pulse;
+      this.view
+        .rect(x + inset, y + inset, TILE_PX - inset * 2, TILE_PX - inset * 2)
+        .fill({ color: HINT_FILL, alpha: 0.24 + pulse * 0.18 });
+      this.view.rect(x + inset, y + inset, TILE_PX - inset * 2, TILE_PX - inset * 2).stroke({
+        width: 2 + pulse,
         color: HINT_FILL,
-        alpha: 0.7,
+        alpha: 0.72 + pulse * 0.25,
       });
     }
   }

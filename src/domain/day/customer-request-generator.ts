@@ -287,10 +287,11 @@ function bandForNamedAxis(
   const weight = archetypeWeight(archetype, axis);
   if (weight < 2) return natural;
   if (dishValue < 4) return null;
-  if (dishValue >= 7 || weight >= 3) return 'high';
+  // A named high craving must be high in the aggregate dish, not merely
+  // present on one ingredient or forced high by the archetype weight.
+  if (dishValue > 6) return 'high';
   if (hasPhrase(axis, 'mid')) return 'mid';
-  // No mid phrase — only keep if strong enough to claim high.
-  return dishValue >= 5 ? 'high' : null;
+  return null;
 }
 
 function preferenceHonorsName(
@@ -512,14 +513,14 @@ export function generateCustomerRequest(
     if (candidateCombos.length <= 400) {
       candidateCombos.sort(
         (a, b) =>
-          Math.max(...b.map((item) => item.flavor[topSignature])) -
-          Math.max(...a.map((item) => item.flavor[topSignature])),
+          aggregateDish(b.map((item) => item.flavor))[topSignature] -
+          aggregateDish(a.map((item) => item.flavor))[topSignature],
       );
     } else {
       const strong: Ingredient[][] = [];
       const weak: Ingredient[][] = [];
       for (const combo of candidateCombos) {
-        if (Math.max(...combo.map((item) => item.flavor[topSignature])) >= 7) {
+        if (aggregateDish(combo.map((item) => item.flavor))[topSignature] > 6) {
           strong.push(combo);
         } else {
           weak.push(combo);

@@ -5,8 +5,15 @@ export interface RatingResult {
   softResetTriggered: boolean;
 }
 
+/**
+ * Rating pacing is intentionally slower than the 0–10 review score. With a
+ * well-matched dish now scoring around 9+, this keeps the first prestige cycle
+ * near four service days instead of letting accurate scoring skip progression.
+ */
+export const REVIEW_RATING_DELTA_PER_STAR = 0.04;
+
 export function reviewDelta(matchStars: number, multiplier = 1): number {
-  return (matchStars - 5) * 0.08 * multiplier;
+  return (matchStars - 5) * REVIEW_RATING_DELTA_PER_STAR * multiplier;
 }
 
 export function applyReview(

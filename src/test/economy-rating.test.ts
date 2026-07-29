@@ -67,10 +67,10 @@ describe('economy engine', () => {
 
 describe('rating engine', () => {
   it('applies review delta from PRD table', () => {
-    expect(reviewDelta(10)).toBeCloseTo(0.4, 5);
-    expect(reviewDelta(7)).toBeCloseTo(0.16, 5);
+    expect(reviewDelta(10)).toBeCloseTo(0.2, 5);
+    expect(reviewDelta(7)).toBeCloseTo(0.08, 5);
     expect(reviewDelta(5)).toBeCloseTo(0, 5);
-    expect(reviewDelta(2)).toBeCloseTo(-0.24, 5);
+    expect(reviewDelta(2)).toBeCloseTo(-0.12, 5);
   });
 
   it('clamps rating between 0 and 6', () => {

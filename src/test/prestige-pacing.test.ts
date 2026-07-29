@@ -15,6 +15,7 @@ import {
 } from '../domain/balance/prestige-pacing.ts';
 import { createDomainContext } from '../domain/context.ts';
 import { createNewGameState } from '../domain/state/game-state.ts';
+import { reviewDelta } from '../domain/rating/update.ts';
 import type { DailyModifier } from '../domain/day/modifiers.ts';
 import type { ContentBundle, Ingredient } from '../domain/types.ts';
 import {
@@ -66,7 +67,10 @@ describe('prestige pacing (analytic)', () => {
     }
     const floorMatch = 6.5;
     for (const prestige of [1, 25, 50]) {
-      const delta = (floorMatch - 5) * 0.08 * prestigeRatingDeltaMultiplier(prestige);
+      const delta = reviewDelta(
+        floorMatch,
+        prestigeRatingDeltaMultiplier(prestige),
+      );
       expect(delta).toBeGreaterThan(0);
     }
   });

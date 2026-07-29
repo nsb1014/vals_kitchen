@@ -37,6 +37,12 @@ export function mountFloorServiceHud(
 ): () => void {
   let ticketsMenuOpen = false;
   let ticketsPanelView: TicketsPanelView = 'order';
+  let knownTicketIds = new Set(
+    useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
+      [],
+  );
+  const arrivingTicketIds = new Set<string>();
+  const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -97,11 +103,8 @@ export function mountFloorServiceHud(
 
     const ctx = getDomainContext();
     const partyIndexByCustomerId = new Map<string, number>();
-    let partyCounter = 0;
-    for (const g of floor.pool) {
-      if (g.stage === 'done') continue;
-      partyCounter += 1;
-      partyIndexByCustomerId.set(g.customer.id, partyCounter);
+    for (const [index, guest] of floor.pool.entries()) {
+      partyIndexByCustomerId.set(guest.customer.id, index + 1);
     }
 
     const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
@@ -123,7 +126,7 @@ export function mountFloorServiceHud(
 
     const ticketStrip = ticketMeta
       .map(({ ticket: t, isOpen, selected, label }) => {
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></button>`;
+        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></button>`;
       })
       .join('');
 
@@ -135,27 +138,11 @@ export function mountFloorServiceHud(
           ${ticketStrip || '<span class="floor-ticket-empty">No tickets</span>'}
         </div>
         <div class="floor-actions">
-          ${
-            canSetTable
-              ? `<button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table">Set table</button>`
-              : ''
-          }
-          <button type="button" class="service-btn primary" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
-          ${
-            canTakeOrders
-              ? `<button type="button" class="service-btn primary" id="floor-take-orders" data-testid="floor-take-orders">Take orders</button>`
-              : ''
-          }
-          ${
-            canClearTable
-              ? `<button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table">Clear table</button>`
-              : ''
-          }
-          ${
-            canCloseDay
-              ? `<button type="button" class="service-btn primary" id="floor-close-day" data-testid="close-day-btn">Close Day</button>`
-              : ''
-          }
+          <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
+          <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
+          <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}>Take orders</button>
+          <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}>Clear table</button>
+          <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled'}>Close Day</button>
         </div>
         ${
           floorToast
@@ -199,9 +186,9 @@ export function mountFloorServiceHud(
       const bars = renderFlavorBarsHtml(
         buildFlavorBarsViewModel(ideal, {
           title: idealTicket.label.guestLabel,
-          subtitle: 'Ideal flavor profile',
+          subtitle: 'Scored flavor targets',
         }),
-        { showValues: true },
+        { showValues: true, showTemp: false },
       );
       idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
     }
@@ -327,6 +314,26 @@ export function mountFloorServiceHud(
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
+    const nextTicketIds = new Set(
+      state.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
+    );
+    for (const ticketId of nextTicketIds) {
+      if (knownTicketIds.has(ticketId)) continue;
+      arrivingTicketIds.add(ticketId);
+      const timer = setTimeout(() => {
+        arrivingTicketIds.delete(ticketId);
+        arrivalTimers.delete(timer);
+        dock
+          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
+          ?.classList.remove('arriving');
+        chromeMount
+          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
+          ?.classList.remove('arriving');
+      }, 900);
+      arrivalTimers.add(timer);
+    }
+    knownTicketIds = nextTicketIds;
+
     if (
       state.activeDay?.floor !== prev.activeDay?.floor ||
       state.floorPlayerGrid !== prev.floorPlayerGrid ||
@@ -346,6 +353,8 @@ export function mountFloorServiceHud(
 
   return () => {
     unsubscribe();
+    for (const timer of arrivalTimers) clearTimeout(timer);
+    arrivalTimers.clear();
     document.removeEventListener('pointerdown', onDocumentPointer, true);
     document.removeEventListener('keydown', onDocumentKeydown);
     chromeMount.innerHTML = '';

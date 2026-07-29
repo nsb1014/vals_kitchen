@@ -622,6 +622,31 @@
   color: var(--vk-sage, #6a994e);
 }
 
+.floor-ticket.arriving {
+  animation: ticket-arrive 0.9s ease-out;
+}
+
+@keyframes ticket-arrive {
+  0% {
+    transform: translateY(-10px) scale(0.92);
+    border-color: var(--vk-accent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vk-accent) 65%, transparent);
+  }
+  45% {
+    transform: translateY(0) scale(1.04);
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-ticket.arriving {
+    animation: none;
+  }
+}
+
 .floor-ticket:disabled {
   opacity: 0.55;
   cursor: default;
@@ -633,9 +658,16 @@
 }
 
 .floor-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.floor-actions .service-btn {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .recipe-mastery {
@@ -758,6 +790,11 @@
   color: var(--vk-bg-deep);
 }
 
+.filter-axis-chip.requested:not(.selected) {
+  border-color: color-mix(in srgb, var(--vk-accent) 68%, var(--vk-border));
+  color: var(--vk-accent);
+}
+
 .compose-search-row {
   display: flex;
   align-items: center;
@@ -804,6 +841,105 @@
 .compose-pantry {
   padding: 0.5rem 0.75rem;
   -webkit-overflow-scrolling: touch;
+}
+
+.compose-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 25%);
+  overflow: hidden;
+}
+
+.compose-order-panel {
+  min-width: 0;
+  overflow: auto;
+  padding: 0.55rem 0.65rem 0.7rem;
+  border-left: 1px solid var(--vk-border);
+  background: color-mix(in srgb, var(--vk-panel-2) 72%, var(--vk-panel));
+}
+
+.compose-order-panel-head {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.compose-order-panel-head strong {
+  font-size: 14px;
+}
+
+.compose-order-panel-head p {
+  margin: 0.15rem 0 0;
+  color: var(--vk-text-dim);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.compose-order-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--vk-text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.compose-order-legend i {
+  width: 0.75rem;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--vk-accent);
+}
+
+.compose-order-legend i:last-of-type {
+  margin-left: 0.25rem;
+  background: var(--vk-accent-2);
+}
+
+.compose-request-axis-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.compose-request-axis-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+  font-size: 11px;
+}
+
+.compose-request-axis-head span {
+  color: var(--vk-text-dim);
+  white-space: nowrap;
+}
+
+.compose-request-bars {
+  display: grid;
+  gap: 2px;
+}
+
+.compose-request-bar {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(246, 239, 228, 0.08);
+}
+
+.compose-request-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.compose-request-bar.target > span {
+  background: var(--vk-accent);
+}
+
+.compose-request-bar.current > span {
+  background: var(--vk-accent-2);
 }
 
 .compose-pantry .ingredient-grid {
@@ -857,7 +993,7 @@
 
 .compose-flavor-mini {
   display: grid;
-  grid-template-columns: 3.25rem minmax(2.5rem, 1fr);
+  grid-template-columns: 3.25rem minmax(2.5rem, 1fr) 1.5rem;
   gap: 0.25rem;
   align-items: center;
   min-width: 0;
@@ -882,6 +1018,12 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--vk-accent), var(--vk-accent-2));
+}
+
+.compose-flavor-mini-value {
+  color: var(--vk-text-dim);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .compose-flavor-empty {
@@ -909,6 +1051,40 @@
   border: 0;
 }
 
+@media (max-width: 760px) {
+  .floor-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compose-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .compose-order-panel {
+    grid-row: 1;
+    max-height: 8.5rem;
+    border-left: none;
+    border-bottom: 1px solid var(--vk-border);
+  }
+
+  .compose-order-panel-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    margin-bottom: 0.4rem;
+  }
+
+  .compose-request-axis-list {
+    display: flex;
+    gap: 0.65rem;
+    overflow-x: auto;
+  }
+
+  .compose-request-axis {
+    flex: 0 0 min(11rem, 65vw);
+  }
+}
+
 @media (max-height: 520px) {
   :root {
     --vk-sheet-compact-h: 58%;
@@ -927,5 +1103,14 @@
 
   .compose-flavor-strip {
     grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .compose-order-panel {
+    max-height: 5.5rem;
+  }
+
+  .compose-order-panel-head p,
+  .compose-order-legend {
+    display: none;
   }
 }

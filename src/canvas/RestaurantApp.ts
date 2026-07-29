@@ -257,12 +257,13 @@ export class RestaurantApp {
             floor,
             roomPlacements,
             this.nav.position,
-            selectCanOpenFloorCompose(useGameStore.getState()),
+            floor.tickets.some((ticket) => ticket.status === 'open') &&
+              !floor.carriedTicketId,
           )
         : this.computeStationHints(
             roomPlacements,
-            this.nav.position,
-            selectCanOpenFloorCompose(useGameStore.getState()),
+            floor.tickets.some((ticket) => ticket.status === 'open') &&
+              !floor.carriedTicketId,
           ),
     );
   };
@@ -509,16 +510,13 @@ export class RestaurantApp {
 
   private computeStationHints(
     placements: Placement[],
-    player: { x: number; y: number },
-    canCook: boolean,
+    stationNeedsAttention: boolean,
   ): { x: number; y: number }[] {
-    if (!canCook) return [];
+    if (!stationNeedsAttention) return [];
     const hints: { x: number; y: number }[] = [];
     for (const placement of placements) {
       if (!isCookStationItemKey(placement.itemKey)) continue;
-      if (playerNearPlacement(player, placement)) {
-        hints.push({ x: placement.x, y: placement.y });
-      }
+      hints.push({ x: placement.x, y: placement.y });
     }
     return hints;
   }
@@ -527,7 +525,7 @@ export class RestaurantApp {
     floor: FloorDay,
     placements: Placement[],
     player: { x: number; y: number },
-    canCook: boolean,
+    stationNeedsAttention: boolean,
   ): { x: number; y: number }[] {
     const hints: { x: number; y: number }[] = [];
     const seen = new Set<string>();
@@ -567,12 +565,10 @@ export class RestaurantApp {
         }
       }
     } else {
-      if (canCook) {
+      if (stationNeedsAttention) {
         for (const placement of placements) {
           if (!isCookStationItemKey(placement.itemKey)) continue;
-          if (playerNearPlacement(player, placement)) {
-            add(placement.x, placement.y);
-          }
+          add(placement.x, placement.y);
         }
       }
 

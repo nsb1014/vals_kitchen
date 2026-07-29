@@ -1,8 +1,8 @@
 import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
-import type { AxisKey, Ingredient } from '../../domain/types.ts';
-import { filterIngredientsByAxis } from './flavor-profile.ts';
+import type { AxisKey, Band, Ingredient } from '../../domain/types.ts';
 
 export const COMPOSE_AXIS_HIGH_MIN = 4;
+export type ComposeAxisBands = Partial<Record<AxisKey, Band>>;
 
 export interface ComposePantryFilterState {
   selectedAxes: AxisKey[];
@@ -45,10 +45,18 @@ export function clearComposeNameQuery(
 export function filterComposePantry(
   unlocked: Ingredient[],
   filters: ComposePantryFilterState,
+  requestedBands: ComposeAxisBands = {},
 ): Ingredient[] {
   let matches = unlocked;
   for (const axis of filters.selectedAxes) {
-    matches = filterIngredientsByAxis(matches, axis, COMPOSE_AXIS_HIGH_MIN);
+    const band = requestedBands[axis];
+    matches = matches.filter((ingredient) => {
+      const value = ingredient.flavor[axis];
+      if (band === 'low') return value <= 3;
+      if (band === 'mid') return value >= 3 && value <= 7;
+      if (band === 'high') return value >= 6;
+      return value >= COMPOSE_AXIS_HIGH_MIN;
+    });
   }
 
   const query = filters.nameQuery.trim().toLocaleLowerCase('en-US');
@@ -66,10 +74,19 @@ export function filterComposePantry(
 export function composePantrySummary(
   filters: ComposePantryFilterState,
   matchCount: number,
+  requestedBands: ComposeAxisBands = {},
 ): string {
   const count = `${matchCount} matching`;
   if (filters.selectedAxes.length === 0) return count;
   return `${count} · ${filters.selectedAxes
-    .map((axis) => AXIS_LABELS[axis])
+    .map((axis) => {
+      const band = requestedBands[axis];
+      return band ? `${bandLabel(band)} ${AXIS_LABELS[axis]}` : AXIS_LABELS[axis];
+    })
     .join(' + ')}`;
+}
+
+export function bandLabel(band: Band): string {
+  if (band === 'mid') return 'Moderate';
+  return band === 'high' ? 'High' : 'Low';
 }

@@ -1,4 +1,5 @@
 import { reviewDelta } from '../../domain/rating/update.ts';
+import type { DailyModifier } from '../../domain/day/modifiers.ts';
 
 export interface ReviewDisplay {
   starsText: string;
@@ -25,6 +26,29 @@ export function formatRatingDelta(delta: number): string {
 
 export function expectedRatingDelta(matchStars: number, multiplier = 1): number {
   return reviewDelta(matchStars, multiplier);
+}
+
+export function formatReviewModifierLine(
+  modifier: DailyModifier | null,
+  matchStars: number,
+  prestigeScale = 1,
+): string | null {
+  if (!modifier) return null;
+  if (
+    modifier.effect.type === 'critic' &&
+    matchStars < modifier.effect.threshold
+  ) {
+    return `${modifier.name} penalty: -${(
+      modifier.effect.penalty * prestigeScale
+    ).toFixed(2)}★`;
+  }
+  if (
+    modifier.effect.type === 'rating_multiplier' &&
+    modifier.effect.multiplier !== 1
+  ) {
+    return `${modifier.name}: rating change ×${modifier.effect.multiplier.toFixed(2)}`;
+  }
+  return null;
 }
 
 export function buildReviewDisplay(input: {

@@ -10,18 +10,19 @@ const BAND_TARGET: Record<'low' | 'mid' | 'high', number> = {
 };
 
 /**
- * Resolve the customer’s optimal flavor vector. Generated requests always store
- * the witness aggregate; this backfills older saves / incomplete fixtures.
+ * Resolve only the axes that affect this request's score. Generated requests
+ * store an achievable aggregate witness; older saves use the full-credit band
+ * targets. Unrequested witness flavors stay hidden so "Ideal" matches scoring.
  */
 export function resolveIdealFlavorProfile(preference: CustomerPreference): FlavorVector {
-  if (preference.idealProfile) {
-    return preference.idealProfile;
-  }
   const profile = emptyFlavorProfile();
   for (const axis of AXIS_KEYS) {
     const band = preference.primary[axis];
-    if (band) profile[axis] = BAND_TARGET[band];
-    else if (preference.avoid[axis]) profile[axis] = BAND_TARGET.low;
+    if (band) {
+      profile[axis] = preference.idealProfile?.[axis] ?? BAND_TARGET[band];
+    } else if (preference.avoid[axis]) {
+      profile[axis] = preference.idealProfile?.[axis] ?? BAND_TARGET.low;
+    }
   }
   return profile;
 }

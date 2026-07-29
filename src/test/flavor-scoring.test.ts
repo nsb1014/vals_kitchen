@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aggregateDish } from '../domain/flavor/aggregate.ts';
 import {
+  bandSatisfaction,
   computeMatchStars,
   computeWeightedSatisfaction,
   meanPairAffinity,
@@ -49,6 +50,18 @@ describe('flavor scoring', () => {
     expect(aggregateDish([cold, cold, hot]).TE).toBe(-1);
   });
 
+  it('awards full credit inside the displayed low, moderate, and high bands', () => {
+    expect(bandSatisfaction(2, 'low')).toBe(1);
+    expect(bandSatisfaction(5, 'mid')).toBe(1);
+    expect(bandSatisfaction(8, 'high')).toBe(1);
+  });
+
+  it('clamps satisfaction instead of making an overshot moderate flavor negative', () => {
+    expect(bandSatisfaction(9, 'mid')).toBeCloseTo(1 / 3, 5);
+    expect(bandSatisfaction(10, 'mid')).toBe(0);
+    expect(bandSatisfaction(0, 'high')).toBe(0);
+  });
+
   it('computes weighted satisfaction for primary high band', () => {
     const dish = { ...neutralDish(), UM: 8 };
     const preference: CustomerPreference = {
@@ -56,7 +69,37 @@ describe('flavor scoring', () => {
       avoid: {},
       phrases: [],
     };
-    expect(computeWeightedSatisfaction(dish, preference)).toBeCloseTo(0.8, 4);
+    expect(computeWeightedSatisfaction(dish, preference)).toBe(1);
+  });
+
+  it('gives the displayed Rich Indulger target full request credit', () => {
+    const preference: CustomerPreference = {
+      primary: { UM: 'mid', PU: 'low', RI: 'high' },
+      avoid: {},
+      phrases: ['moderate Umami', 'low Pungent', 'high Rich'],
+    };
+    const displayedIdeal = {
+      ...neutralDish(),
+      UM: 5,
+      PU: 2,
+      RI: 8,
+    };
+    const allHighUmami = {
+      ...displayedIdeal,
+      UM: 9,
+      PU: 0,
+    };
+
+    expect(computeWeightedSatisfaction(displayedIdeal, preference)).toBe(1);
+    expect(computeMatchStars(displayedIdeal, preference, [], {})).toBe(9);
+    expect(computeWeightedSatisfaction(allHighUmami, preference)).toBeCloseTo(
+      7 / 9,
+      5,
+    );
+    expect(computeMatchStars(allHighUmami, preference, [], {})).toBeCloseTo(
+      7,
+      5,
+    );
   });
 
   it('applies avoid penalty when dish exceeds threshold', () => {
@@ -82,8 +125,8 @@ describe('flavor scoring', () => {
       phrases: [],
     };
     const matrix = {
-      a: { b: 1 },
-      b: { a: 1 },
+      a: { b: 0.5 },
+      b: { a: 0.5 },
     };
     const base = computeMatchStars(dish, preference, ['a', 'b', 'c'], matrix, 0);
     const withRecipe = computeMatchStars(
