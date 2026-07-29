@@ -324,7 +324,7 @@ export function mountServiceDayUi(
     if (selectShowOpenForService(state)) {
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-compact" data-testid="open-service-sheet">
+        <div class="service-panel open-service-panel" data-testid="open-service-sheet">
           <div class="service-card">
             <h2 class="service-title">Open for service?</h2>
             <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>

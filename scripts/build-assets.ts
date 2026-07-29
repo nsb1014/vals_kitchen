@@ -1,4 +1,4 @@
-/** Build Storybook v2 runtime atlases and copy the vendored CC0 audio. */
+/** Build orthographic room + Storybook character/icon atlases and CC0 audio. */
 import {
   copyFileSync,
   existsSync,
@@ -58,19 +58,12 @@ const PACKS: Record<string, PackMeta> = {
     license: "CC0",
     note: "Original high-definition hand-painted storybook character art generated for this project; dedicated to CC0.",
   },
-  generatedStorybookProps: {
-    pack: "Val's Kitchen Storybook v2 Restaurant Props",
+  generatedRestaurant: {
+    pack: "Val's Kitchen Orthographic Restaurant Tiles",
     author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/storybook-v2/restaurant-props/",
+    sourceUrl: "vendor/generated/restaurant-tiles/",
     license: "CC0",
-    note: "Original high-definition hand-painted storybook restaurant prop art generated for this project; dedicated to CC0.",
-  },
-  generatedStorybookTiles: {
-    pack: "Val's Kitchen Storybook v2 Restaurant Surfaces",
-    author: "Val's Kitchen project",
-    sourceUrl: "vendor/generated/storybook-v2/restaurant-tiles/",
-    license: "CC0",
-    note: "Original high-definition hand-painted storybook floor and directional wall materials generated for this project; dedicated to CC0.",
+    note: "Purpose-built orthographic 32×32 room tiles and 32×48 furniture generated for this project; dedicated to CC0.",
   },
   rpgAudio: {
     pack: "Kenney RPG Audio",
@@ -101,12 +94,10 @@ const GENERATED_STORYBOOK = path.join(
 const GENERATED_BADGES = path.join(GENERATED_STORYBOOK, "achievement-badges");
 const GENERATED_PLAYER_FRAMES = path.join(GENERATED_STORYBOOK, "player-frames");
 const GENERATED_GUEST_FRAMES = path.join(GENERATED_STORYBOOK, "guest-frames");
-const GENERATED_STORYBOOK_PROPS = path.join(
-  GENERATED_STORYBOOK,
-  "restaurant-props",
-);
-const GENERATED_STORYBOOK_TILES = path.join(
-  GENERATED_STORYBOOK,
+const GENERATED_RESTAURANT = path.join(
+  ROOT,
+  "vendor",
+  "generated",
   "restaurant-tiles",
 );
 
@@ -271,8 +262,6 @@ function assertVendor(): void {
     path.join(GENERATED_STORYBOOK, "guest-idle-sheet-master.png"),
     path.join(GENERATED_STORYBOOK, "guest-walk-sheet-master.png"),
     path.join(GENERATED_STORYBOOK, "guest-sit-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "furniture-sheet-master.png"),
-    path.join(GENERATED_STORYBOOK, "materials-sheet-master.png"),
     path.join(GENERATED_STORYBOOK, "achievement-badges-sheet-chroma.png"),
   ];
   for (const file of required) {
@@ -308,14 +297,8 @@ function runStorybookGuestBuilder(): void {
   });
 }
 
-function runStorybookPropBuilder(): void {
-  execFileSync("python3", [path.join(__dirname, "build-storybook-props.py")], {
-    stdio: "inherit",
-  });
-}
-
-function runStorybookTileBuilder(): void {
-  execFileSync("python3", [path.join(__dirname, "build-storybook-tiles.py")], {
+function runRestaurantTileBuilder(): void {
+  execFileSync("python3", [path.join(__dirname, "build-restaurant-tiles.py")], {
     stdio: "inherit",
   });
 }
@@ -390,10 +373,7 @@ function buildCredits(shippedFiles: string[]): void {
   };
 
   for (const [sprite, file] of Object.entries(TILE_SPRITES)) {
-    const storybookProp = sprite === "door" || sprite === "door_open";
-    const meta = storybookProp
-      ? PACKS.generatedStorybookProps
-      : PACKS.generatedStorybookTiles;
+    const meta = PACKS.generatedRestaurant;
     add({
       path: `atlases/tiles.json#${sprite}`,
       pack: meta.pack,
@@ -409,13 +389,13 @@ function buildCredits(shippedFiles: string[]): void {
   for (const [itemKey, file] of Object.entries(FURNITURE_SPRITES)) {
     add({
       path: `atlases/furniture.json#${itemKey}`,
-      pack: PACKS.generatedStorybookProps.pack,
-      author: PACKS.generatedStorybookProps.author,
-      sourceUrl: PACKS.generatedStorybookProps.sourceUrl,
+      pack: PACKS.generatedRestaurant.pack,
+      author: PACKS.generatedRestaurant.author,
+      sourceUrl: PACKS.generatedRestaurant.sourceUrl,
       license: "CC0",
       usedIn: [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
-      approximationNote: PACKS.generatedStorybookProps.note,
+      approximationNote: PACKS.generatedRestaurant.note,
     });
   }
 
@@ -519,9 +499,9 @@ function buildCredits(shippedFiles: string[]): void {
     let meta = PACKS.generatedStorybook;
     if (file.startsWith("atlases/food")) meta = PACKS.generatedFood;
     else if (file.startsWith("atlases/furniture"))
-      meta = PACKS.generatedStorybookProps;
+      meta = PACKS.generatedRestaurant;
     else if (file.startsWith("atlases/tiles"))
-      meta = PACKS.generatedStorybookTiles;
+      meta = PACKS.generatedRestaurant;
     else if (file.startsWith("atlases/characters"))
       meta = PACKS.generatedStorybook;
     else if (file.startsWith("sfx/") || file.startsWith("music/"))
@@ -542,7 +522,7 @@ function buildCredits(shippedFiles: string[]): void {
     generatedAt: new Date().toISOString(),
     policy: "CC0-only",
     vendorNote:
-      "CC0 sources are retained under vendor/kenney/sources/ and vendor/generated/; Storybook v2 art is project-generated and dedicated to CC0.",
+      "CC0 sources are retained under vendor/kenney/sources/ and vendor/generated/; project-generated Storybook and orthographic restaurant art are dedicated to CC0.",
     packs: Object.values(PACKS),
     entries,
     shippedFiles,
@@ -573,8 +553,7 @@ function main(): void {
   runAchievementBadgeBuilder();
   runStorybookCharacterBuilder();
   runStorybookGuestBuilder();
-  runStorybookPropBuilder();
-  runStorybookTileBuilder();
+  runRestaurantTileBuilder();
 
   const tmp = path.join(ROOT, "scripts", ".asset-build");
   mkdirSync(tmp, { recursive: true });
@@ -582,12 +561,7 @@ function main(): void {
 
   const tileManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(TILE_SPRITES)) {
-    tileManifest[name] = path.join(
-      name === "door" || name === "door_open"
-        ? GENERATED_STORYBOOK_PROPS
-        : GENERATED_STORYBOOK_TILES,
-      file,
-    );
+    tileManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
   const tileManifestPath = path.join(tmp, "tiles.manifest.json");
   writeManifest(tileManifest, tileManifestPath);
@@ -595,13 +569,13 @@ function main(): void {
     tileManifestPath,
     path.join(OUT, "atlases", "tiles.png"),
     path.join(OUT, "atlases", "tiles.json"),
-    192,
+    32,
     1,
   );
 
   const furnitureManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(FURNITURE_SPRITES)) {
-    furnitureManifest[name] = path.join(GENERATED_STORYBOOK_PROPS, file);
+    furnitureManifest[name] = path.join(GENERATED_RESTAURANT, file);
   }
   const furnitureManifestPath = path.join(tmp, "furniture.manifest.json");
   writeManifest(furnitureManifest, furnitureManifestPath);
@@ -609,7 +583,7 @@ function main(): void {
     furnitureManifestPath,
     path.join(OUT, "atlases", "furniture.png"),
     path.join(OUT, "atlases", "furniture.json"),
-    192,
+    48,
   );
 
   const charManifest: Record<string, string> = {};

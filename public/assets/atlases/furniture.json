@@ -4,460 +4,460 @@
       "frame": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "grill": {
       "frame": {
-        "x": 192,
+        "x": 48,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "oven": {
       "frame": {
-        "x": 384,
+        "x": 96,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "fryer": {
       "frame": {
-        "x": 576,
+        "x": 144,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "stockpot": {
       "frame": {
-        "x": 768,
+        "x": 192,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "cold_station": {
       "frame": {
         "x": 0,
-        "y": 192,
-        "w": 160,
-        "h": 192
+        "y": 48,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "pastry_bench": {
       "frame": {
-        "x": 192,
-        "y": 192,
-        "w": 160,
-        "h": 192
+        "x": 48,
+        "y": 48,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "smoker": {
       "frame": {
-        "x": 384,
-        "y": 192,
-        "w": 160,
-        "h": 192
+        "x": 96,
+        "y": 48,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "wok": {
       "frame": {
-        "x": 576,
-        "y": 192,
-        "w": 160,
-        "h": 192
+        "x": 144,
+        "y": 48,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "fermentation_crock": {
       "frame": {
-        "x": 768,
-        "y": 192,
-        "w": 160,
-        "h": 192
+        "x": 192,
+        "y": 48,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "barista_station": {
       "frame": {
         "x": 0,
-        "y": 384,
-        "w": 160,
-        "h": 192
+        "y": 96,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "spice_rack": {
       "frame": {
-        "x": 192,
-        "y": 384,
-        "w": 160,
-        "h": 192
+        "x": 48,
+        "y": 96,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 160,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "table_2seat": {
       "frame": {
-        "x": 384,
-        "y": 384,
-        "w": 192,
-        "h": 144
+        "x": 96,
+        "y": 96,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       }
     },
     "table_2seat_unset": {
       "frame": {
-        "x": 576,
-        "y": 384,
-        "w": 192,
-        "h": 144
+        "x": 144,
+        "y": 96,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       }
     },
     "table_2seat_dirty": {
       "frame": {
-        "x": 768,
-        "y": 384,
-        "w": 192,
-        "h": 144
+        "x": 192,
+        "y": 96,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       }
     },
     "chair": {
       "frame": {
         "x": 0,
-        "y": 576,
-        "w": 128,
-        "h": 192
+        "y": 144,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "chair_back": {
       "frame": {
-        "x": 192,
-        "y": 576,
-        "w": 128,
-        "h": 192
+        "x": 48,
+        "y": 144,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "chair_side": {
       "frame": {
-        "x": 384,
-        "y": 576,
-        "w": 128,
-        "h": 192
+        "x": 96,
+        "y": 144,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "decor_plant": {
       "frame": {
-        "x": 576,
-        "y": 576,
-        "w": 128,
-        "h": 192
+        "x": 144,
+        "y": 144,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "decor_flowers": {
       "frame": {
-        "x": 768,
-        "y": 576,
-        "w": 128,
-        "h": 192
+        "x": 192,
+        "y": 144,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "decor_rug": {
       "frame": {
         "x": 0,
-        "y": 768,
-        "w": 192,
-        "h": 144
+        "y": 192,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 192,
-        "h": 144
+        "w": 32,
+        "h": 48
       }
     },
     "decor_lamp": {
       "frame": {
-        "x": 192,
-        "y": 768,
-        "w": 128,
-        "h": 192
+        "x": 48,
+        "y": 192,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     },
     "decor_sign": {
       "frame": {
-        "x": 384,
-        "y": 768,
-        "w": 128,
-        "h": 192
+        "x": 96,
+        "y": 192,
+        "w": 32,
+        "h": 48
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 48
       }
     }
   },
@@ -467,8 +467,8 @@
     "image": "furniture.png",
     "format": "RGBA8888",
     "size": {
-      "w": 960,
-      "h": 960
+      "w": 240,
+      "h": 240
     },
     "scale": "1"
   }

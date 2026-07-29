@@ -109,6 +109,12 @@
   padding-top: 0.5rem;
 }
 
+/* Between days, keep the whole restaurant visible instead of reserving an
+ * empty fixed-height sheet below this short prompt. */
+.open-service-panel {
+  max-height: none;
+}
+
 .sheet-card-layout {
   flex: 1 1 auto;
   min-height: 0;

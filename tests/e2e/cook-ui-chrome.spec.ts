@@ -127,9 +127,18 @@ test.describe('service sheet tiers', () => {
     await page.setViewportSize({ width: 390, height: 720 });
     await gotoFreshGame(page);
     const sheet = await page.getByTestId('open-service-sheet').boundingBox();
+    const card = await page
+      .getByTestId('open-service-sheet')
+      .locator('.service-card')
+      .boundingBox();
+    const canvas = await page.getByTestId('restaurant-canvas').boundingBox();
     expect(sheet).not.toBeNull();
-    expect(sheet!.height / 720).toBeGreaterThan(0.34);
-    expect(sheet!.height / 720).toBeLessThan(0.42);
+    expect(card).not.toBeNull();
+    expect(canvas).not.toBeNull();
+    // The panel should hug its content, not reserve a fixed empty sheet that
+    // makes the lower half of the restaurant appear missing.
+    expect(sheet!.height).toBeLessThanOrEqual(card!.height + 26);
+    expect(sheet!.y).toBeGreaterThan(canvas!.y + canvas!.height * 0.6);
     await page.screenshot({
       path: 'test-results/open-service-compact.png',
       animations: 'disabled',
