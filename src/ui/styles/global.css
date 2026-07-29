@@ -314,3 +314,149 @@ body {
 canvas {
   image-rendering: pixelated;
 }
+
+/* Chibi UI system --------------------------------------------------------- */
+:root {
+  --vk-bg: #17100c;
+  --vk-bg-deep: #100a07;
+  --vk-panel: #2d1c12;
+  --vk-panel-2: #3d2819;
+  --vk-panel-raised: #4a301c;
+  --vk-border: rgba(221, 173, 99, 0.42);
+  --vk-border-strong: #8e6338;
+  --vk-text: #fff0cf;
+  --vk-text-dim: #c6a879;
+  --vk-accent: #e4ba70;
+  --vk-accent-2: #6f943d;
+  --vk-accent-2-bright: #91b557;
+  --vk-danger: #d87862;
+  --vk-wood: #9a6134;
+  --vk-wood-deep: #52311b;
+  --vk-wood-grain: #c48345;
+  --vk-font: "Trebuchet MS", "Avenir Next Condensed", "Segoe UI", sans-serif;
+  --vk-display-font: "Trebuchet MS", "Avenir Next Condensed", sans-serif;
+  --vk-nav-height: 4.25rem;
+  --vk-sheet-compact-h: 38%;
+  --vk-sheet-mid-h: 54%;
+  --vk-sheet-near-h: 91%;
+  --vk-chip-h: 48px;
+  --vk-cta-h: 52px;
+  --vk-sheet-header-h: 4rem;
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at 50% -20%, #4d321f 0, transparent 45%),
+    #0b0806;
+}
+
+body {
+  letter-spacing: 0.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--vk-accent) 78%, white);
+  outline-offset: 2px;
+}
+
+.game-surface {
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(71, 43, 25, 0.34), transparent 28%),
+    var(--vk-bg-deep);
+}
+
+.restaurant-canvas,
+canvas {
+  image-rendering: auto;
+}
+
+.layout-hud {
+  background:
+    linear-gradient(180deg, rgba(92, 56, 31, 0.96), rgba(39, 24, 16, 0.98));
+  border-top: 2px solid var(--vk-border-strong);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.3);
+}
+
+.layout-btn {
+  border: 1px solid var(--vk-border-strong);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #563821, #352116);
+  color: var(--vk-text);
+  box-shadow: inset 0 1px rgba(255, 240, 207, 0.12), 0 3px 0 #160d08;
+  font-weight: 700;
+}
+
+.layout-btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px rgba(255, 240, 207, 0.1), 0 1px 0 #160d08;
+}
+
+@media (min-width: 900px) {
+  .game-shell {
+    padding: 18px;
+  }
+
+  .game-surface {
+    width: min(100%, 1440px);
+    margin-inline: auto;
+    border: 2px solid #5e4126;
+    border-radius: 26px;
+    box-shadow:
+      0 0 0 7px #15100c,
+      0 0 0 9px #6b4c2c,
+      0 28px 80px rgba(0, 0, 0, 0.62);
+  }
+
+  .game-surface::after {
+    content: "VAL'S KITCHEN";
+    position: absolute;
+    left: 1.25rem;
+    bottom: 1rem;
+    z-index: 10;
+    color: rgba(255, 240, 207, 0.34);
+    font: 800 0.72rem/1 var(--vk-display-font);
+    letter-spacing: 0.22em;
+    pointer-events: none;
+  }
+
+  .game-surface:not([data-screen="restaurant"]) .status-mount,
+  .game-surface:not([data-screen="restaurant"]) .canvas-mount {
+    visibility: visible;
+  }
+
+  .game-surface:not([data-screen="restaurant"]) .canvas-mount {
+    margin-right: 500px;
+    pointer-events: none;
+  }
+
+  .screens-mount .screen-panel:not([hidden]) {
+    inset: 0 0 var(--vk-nav-height) auto;
+    width: 500px;
+    border-left: 2px solid var(--vk-border-strong);
+    box-shadow: -18px 0 40px rgba(0, 0, 0, 0.42);
+  }
+
+  .nav-mount {
+    left: auto;
+    width: 500px;
+  }
+
+  .nav-lock-hint {
+    left: auto;
+    right: 1rem;
+    width: 468px;
+  }
+}
