@@ -10,6 +10,7 @@ import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
+  playerCarryFrameKey,
   playerFrameKey,
 } from './character-frames.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
@@ -18,15 +19,9 @@ import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 
-/**
- * Characters ship as 32×32 (2× nearest-neighbor from Kenney 16×16).
- * Player and guests share one draw scale so they match each other and the
- * 32×48 furniture — earlier 2.5× / 1.75× made the cook a giant next to guests.
- * 1.3× → ~42px tall (~1.3 tiles), fits chairs without becoming unreadable.
- */
-const ACTOR_SCALE = 1.3;
-/** Fallback when atlas still has legacy 16×16 frames (16×2.6 ≈ 42px). */
-const LEGACY_ACTOR_SCALE = 2.6;
+/** Runtime scale is independent from the high-resolution chibi source frames. */
+const PLAYER_DISPLAY_HEIGHT = 68;
+const GUEST_DISPLAY_HEIGHT = 58;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -49,9 +44,8 @@ function tileCenter(gx: number, gy: number): { x: number; y: number } {
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
 }
 
-function scaleForTexture(texture: Texture, intended: number, legacy: number): number {
-  // Pre-upscale atlas frames are 32×32; older 16×16 builds need a larger draw scale.
-  return texture.height <= 16 ? legacy : intended;
+function scaleForTexture(texture: Texture, displayHeight: number): number {
+  return displayHeight / Math.max(1, texture.height);
 }
 
 export class ActorLayer {
@@ -68,6 +62,7 @@ export class ActorLayer {
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
   private lastPlayerFrameKey = '';
+  private playerUsesCarryTexture = false;
 
   constructor() {
     this.view.sortableChildren = true;
@@ -101,7 +96,7 @@ export class ActorLayer {
       this.plateGraphics.clear();
       if (opts.showPlayerWithoutFloor) {
         this.drawDestination(nav.destination);
-        this.syncPlayer(nav);
+        this.syncPlayer(nav, false);
         this.actorContainer.children.sort((a, b) => a.y - b.y);
         return;
       }
@@ -112,8 +107,9 @@ export class ActorLayer {
 
     this.drawDestination(nav.destination);
     this.syncGuests(floor, guestMotion ?? null);
-    this.syncPlayer(nav);
-    this.syncCarryPlate(floor.carriedTicketId != null, nav.facing);
+    const carrying = floor.carriedTicketId != null;
+    const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
+    this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
     this.actorContainer.children.sort((a, b) => a.y - b.y);
   }
 
@@ -130,17 +126,20 @@ export class ActorLayer {
     this.markerLayer.circle(cx, cy, 2).fill({ color: DEST_MARKER_COLOR, alpha: 0.9 });
   }
 
-  private syncPlayer(nav: {
-    worldX: number;
-    worldY: number;
-    facing: 0 | 1 | 2 | 3;
-    isMoving: boolean;
-    walkFrame: () => number;
-  }): void {
+  private syncPlayer(
+    nav: {
+      worldX: number;
+      worldY: number;
+      facing: 0 | 1 | 2 | 3;
+      isMoving: boolean;
+      walkFrame: () => number;
+    },
+    carrying: boolean,
+  ): boolean {
     this.playerWorld = { x: nav.worldX, y: nav.worldY };
     const facing = FACING_NAMES[nav.facing];
     const frame = nav.isMoving ? nav.walkFrame() : 0;
-    const frameKey = `${facing}_${frame}`;
+    const frameKey = carrying ? `carry_${facing}` : `${facing}_${frame}`;
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
 
@@ -151,20 +150,26 @@ export class ActorLayer {
         hadTexture: this.playerSprite.visible,
       })
     ) {
+      const carryTexture = carrying
+        ? getCharacterTexture(playerCarryFrameKey(facing))
+        : null;
       const texture =
+        carryTexture ??
         getCharacterTexture(playerFrameKey(facing, frame)) ??
         getCharacterTexture(playerFrameKey(facing, 0)) ??
         getCharacterTexture('player') ??
         getCharacterTexture('customer');
       if (texture) {
         this.lastPlayerFrameKey = frameKey;
+        this.playerUsesCarryTexture = carryTexture != null;
         this.playerSprite.texture = texture;
-        this.playerSprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
+        this.playerSprite.scale.set(scaleForTexture(texture, PLAYER_DISPLAY_HEIGHT));
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
         // Leave lastPlayerFrameKey stale/empty so the next sync retries after atlas load.
         this.lastPlayerFrameKey = '';
+        this.playerUsesCarryTexture = false;
         this.playerSprite.visible = false;
       }
     }
@@ -178,6 +183,7 @@ export class ActorLayer {
       this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
+    return carrying && this.playerUsesCarryTexture;
   }
 
   private syncCarryPlate(carrying: boolean, facing: 0 | 1 | 2 | 3): void {
@@ -260,7 +266,7 @@ export class ActorLayer {
         if (texture) {
           entry.lastFrameKey = frameKey;
           entry.sprite.texture = texture;
-          entry.sprite.scale.set(scaleForTexture(texture, ACTOR_SCALE, LEGACY_ACTOR_SCALE));
+          entry.sprite.scale.set(scaleForTexture(texture, GUEST_DISPLAY_HEIGHT));
           entry.sprite.visible = true;
         } else {
           entry.lastFrameKey = '';

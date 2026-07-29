@@ -31,6 +31,7 @@ export interface E2eBridge {
     composeDraftIngredientIds: string[];
     composeSheetOpen: boolean;
     screen: string;
+    floorPlayerGrid: { x: number; y: number } | null;
   };
   getGameState: () => ReturnType<typeof getGameStateSnapshot>;
   isScoringReady: () => boolean;
@@ -89,6 +90,7 @@ export function installE2eBridge(
         composeDraftIngredientIds: s.composeDraftIngredientIds ?? [],
         composeSheetOpen: s.composeSheetOpen,
         screen: s.screen,
+        floorPlayerGrid: s.floorPlayerGrid,
       };
     },
 

@@ -20,6 +20,10 @@ export function playerFrameKey(facing: string, frame: number): string {
   return `player_${facing}_${frame}`;
 }
 
+export function playerCarryFrameKey(facing: string): string {
+  return `player_carry_${facing}`;
+}
+
 export function guestWalkFrameKey(variant: GuestVariant, facing: string, frame: number): string {
   return `guest_${variant}_${facing}_${frame}`;
 }

@@ -66,6 +66,13 @@ const PACKS: Record<string, PackMeta> = {
     license: 'CC0',
     note: 'Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0.',
   },
+  chibiUi: {
+    pack: "Val's Kitchen Chibi UI Art",
+    author: "Val's Kitchen project",
+    sourceUrl: 'vendor/generated/chibi-ui/',
+    license: 'CC0',
+    note: 'Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0.',
+  },
   tinyDungeon: {
     pack: 'Kenney Tiny Dungeon',
     author: 'Kenney Vleugels',
@@ -164,124 +171,38 @@ const FURNITURE_SPRITES: Record<string, string> = {
   decor_sign: 'decor_sign.png',
 };
 
-/**
- * Walk cycles from Kenney RPG Urban Pack (left, down, up, right × 3 frames).
- * Player = red-haired girl sheet. Guests a–e = distinct hair/skin/style looks
- * (player sheet is not reused for guests so the cook stays unique).
- */
-const CHARACTER_SPRITES = {
-  // Player: long red-haired girl (was guest_b)
-  player_left_0: 'Tiles/tile_0104.png',
-  player_down_0: 'Tiles/tile_0105.png',
-  player_up_0: 'Tiles/tile_0106.png',
-  player_right_0: 'Tiles/tile_0107.png',
-  player_left_1: 'Tiles/tile_0131.png',
-  player_down_1: 'Tiles/tile_0132.png',
-  player_up_1: 'Tiles/tile_0133.png',
-  player_right_1: 'Tiles/tile_0134.png',
-  player_left_2: 'Tiles/tile_0158.png',
-  player_down_2: 'Tiles/tile_0159.png',
-  player_up_2: 'Tiles/tile_0160.png',
-  player_right_2: 'Tiles/tile_0161.png',
-  // Guest A: messy orange-brown hair, light skin, green shirt
-  guest_a_left_0: 'Tiles/tile_0023.png',
-  guest_a_down_0: 'Tiles/tile_0024.png',
-  guest_a_up_0: 'Tiles/tile_0025.png',
-  guest_a_right_0: 'Tiles/tile_0026.png',
-  guest_a_left_1: 'Tiles/tile_0050.png',
-  guest_a_down_1: 'Tiles/tile_0051.png',
-  guest_a_up_1: 'Tiles/tile_0052.png',
-  guest_a_right_1: 'Tiles/tile_0053.png',
-  guest_a_left_2: 'Tiles/tile_0077.png',
-  guest_a_down_2: 'Tiles/tile_0078.png',
-  guest_a_up_2: 'Tiles/tile_0079.png',
-  guest_a_right_2: 'Tiles/tile_0080.png',
-  // Guest B: purple hair + beard, light skin
-  guest_b_left_0: 'Tiles/tile_0185.png',
-  guest_b_down_0: 'Tiles/tile_0186.png',
-  guest_b_up_0: 'Tiles/tile_0187.png',
-  guest_b_right_0: 'Tiles/tile_0188.png',
-  guest_b_left_1: 'Tiles/tile_0212.png',
-  guest_b_down_1: 'Tiles/tile_0213.png',
-  guest_b_up_1: 'Tiles/tile_0214.png',
-  guest_b_right_1: 'Tiles/tile_0215.png',
-  guest_b_left_2: 'Tiles/tile_0239.png',
-  guest_b_down_2: 'Tiles/tile_0240.png',
-  guest_b_up_2: 'Tiles/tile_0241.png',
-  guest_b_right_2: 'Tiles/tile_0242.png',
-  // Guest C: hard hat, dark skin
-  guest_c_left_0: 'Tiles/tile_0266.png',
-  guest_c_down_0: 'Tiles/tile_0267.png',
-  guest_c_up_0: 'Tiles/tile_0268.png',
-  guest_c_right_0: 'Tiles/tile_0269.png',
-  guest_c_left_1: 'Tiles/tile_0293.png',
-  guest_c_down_1: 'Tiles/tile_0294.png',
-  guest_c_up_1: 'Tiles/tile_0295.png',
-  guest_c_right_1: 'Tiles/tile_0296.png',
-  guest_c_left_2: 'Tiles/tile_0320.png',
-  guest_c_down_2: 'Tiles/tile_0321.png',
-  guest_c_up_2: 'Tiles/tile_0322.png',
-  guest_c_right_2: 'Tiles/tile_0323.png',
-  // Guest D: balding / short hair, light skin
-  guest_d_left_0: 'Tiles/tile_0347.png',
-  guest_d_down_0: 'Tiles/tile_0348.png',
-  guest_d_up_0: 'Tiles/tile_0349.png',
-  guest_d_right_0: 'Tiles/tile_0350.png',
-  guest_d_left_1: 'Tiles/tile_0374.png',
-  guest_d_down_1: 'Tiles/tile_0375.png',
-  guest_d_up_1: 'Tiles/tile_0376.png',
-  guest_d_right_1: 'Tiles/tile_0377.png',
-  guest_d_left_2: 'Tiles/tile_0401.png',
-  guest_d_down_2: 'Tiles/tile_0402.png',
-  guest_d_up_2: 'Tiles/tile_0403.png',
-  guest_d_right_2: 'Tiles/tile_0404.png',
-  // Guest E: black hair + headband, tan skin
-  guest_e_left_0: 'Tiles/tile_0428.png',
-  guest_e_down_0: 'Tiles/tile_0429.png',
-  guest_e_up_0: 'Tiles/tile_0430.png',
-  guest_e_right_0: 'Tiles/tile_0431.png',
-  guest_e_left_1: 'Tiles/tile_0455.png',
-  guest_e_down_1: 'Tiles/tile_0456.png',
-  guest_e_up_1: 'Tiles/tile_0457.png',
-  guest_e_right_1: 'Tiles/tile_0458.png',
-  guest_e_left_2: 'Tiles/tile_0482.png',
-  guest_e_down_2: 'Tiles/tile_0483.png',
-  guest_e_up_2: 'Tiles/tile_0484.png',
-  guest_e_right_2: 'Tiles/tile_0485.png',
-  // Legacy names kept for CustomerLayer / older callers
-  customer: 'Tiles/tile_0024.png',
-  customer_b: 'Tiles/tile_0186.png',
-  player: 'Tiles/tile_0105.png',
-  player_walk: 'Tiles/tile_0132.png',
-} as const;
-
-/** Project-derived sit poses (generated under vendor/generated/character-sit/). */
-const CHARACTER_SIT_SPRITES = {
-  guest_a_sit_left: 'guest_a_sit_left.png',
-  guest_a_sit_down: 'guest_a_sit_down.png',
-  guest_a_sit_up: 'guest_a_sit_up.png',
-  guest_a_sit_right: 'guest_a_sit_right.png',
-  guest_b_sit_left: 'guest_b_sit_left.png',
-  guest_b_sit_down: 'guest_b_sit_down.png',
-  guest_b_sit_up: 'guest_b_sit_up.png',
-  guest_b_sit_right: 'guest_b_sit_right.png',
-  guest_c_sit_left: 'guest_c_sit_left.png',
-  guest_c_sit_down: 'guest_c_sit_down.png',
-  guest_c_sit_up: 'guest_c_sit_up.png',
-  guest_c_sit_right: 'guest_c_sit_right.png',
-  guest_d_sit_left: 'guest_d_sit_left.png',
-  guest_d_sit_down: 'guest_d_sit_down.png',
-  guest_d_sit_up: 'guest_d_sit_up.png',
-  guest_d_sit_right: 'guest_d_sit_right.png',
-  guest_e_sit_left: 'guest_e_sit_left.png',
-  guest_e_sit_down: 'guest_e_sit_down.png',
-  guest_e_sit_up: 'guest_e_sit_up.png',
-  guest_e_sit_right: 'guest_e_sit_right.png',
-} as const;
+/** Exact supplied chef frames plus the project-generated chibi guest cast. */
+const CHARACTER_SPRITES: Record<string, string> = {
+  player: 'player.png',
+  player_walk: 'player_walk.png',
+};
+for (const facing of ['left', 'down', 'up', 'right']) {
+  for (const frame of [0, 1, 2]) {
+    const name = `player_${facing}_${frame}`;
+    CHARACTER_SPRITES[name] = `${name}.png`;
+  }
+  CHARACTER_SPRITES[`player_carry_${facing}`] = `player_carry_${facing}.png`;
+}
+for (const variant of ['a', 'b', 'c', 'd', 'e']) {
+  for (const facing of ['left', 'down', 'up', 'right']) {
+    for (const frame of [0, 1, 2]) {
+      const name = `guest_${variant}_${facing}_${frame}`;
+      CHARACTER_SPRITES[name] = `${name}.png`;
+    }
+    const sitName = `guest_${variant}_sit_${facing}`;
+    CHARACTER_SPRITES[sitName] = `${sitName}.png`;
+  }
+}
+CHARACTER_SPRITES.customer = 'customer.png';
+CHARACTER_SPRITES.customer_b = 'customer_b.png';
 
 const GENERATED_SHEETS = path.join(ROOT, 'vendor', 'generated', 'ingredient-sheets');
 const GENERATED_ICONS = path.join(ROOT, 'scripts', '.asset-build', 'ingredient-icons');
-const GENERATED_SIT = path.join(ROOT, 'vendor', 'generated', 'character-sit');
+const GENERATED_CHIBI = path.join(ROOT, 'vendor', 'generated', 'chibi-ui');
+const GENERATED_CHIBI_PLAYER = path.join(GENERATED_CHIBI, 'player-frames');
+const GENERATED_CHIBI_GUESTS = path.join(GENERATED_CHIBI, 'guest-frames');
+const GENERATED_CHIBI_TILES = path.join(GENERATED_CHIBI, 'restaurant-tiles');
+const GENERATED_CHIBI_PROPS = path.join(GENERATED_CHIBI, 'restaurant-props');
 
 const AUDIO_FILES: Record<string, { rel: string; pack: keyof typeof PACKS }> = {
   'sfx/serve.ogg': { rel: 'kenney_rpgaudio/Audio/knifeSlice.ogg', pack: 'rpgAudio' },
@@ -303,9 +224,10 @@ function vendorPath(rel: string): string {
 
 function assertVendor(): void {
   const required = [
-    ...Object.values(CHARACTER_SPRITES).map((rel) =>
-      vendorPath(`rpg-urban-pack/${rel}`),
-    ),
+    path.join(GENERATED_CHIBI, 'source', 'chef-sheet.png'),
+    path.join(GENERATED_CHIBI, 'source', 'surfaces-sheet-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-keyed.png'),
+    path.join(GENERATED_CHIBI_GUESTS, 'guest_a_down_0.png'),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
     path.join(GENERATED_SHEETS, 'sheet-01-alliums-roots.png'),
@@ -319,8 +241,8 @@ function assertVendor(): void {
   }
 }
 
-function runRestaurantTileBuilder(): void {
-  execFileSync('python3', [path.join(__dirname, 'build-restaurant-tiles.py')], {
+function runChibiUiBuilder(): void {
+  execFileSync('python3', [path.join(__dirname, 'build-chibi-ui-assets.py')], {
     stdio: 'inherit',
   });
 }
@@ -331,12 +253,6 @@ function runAchievementBadgeBuilder(): void {
     [path.join(__dirname, 'build-achievement-badges.py'), GENERATED_BADGES],
     { stdio: 'inherit' },
   );
-}
-
-function runCharacterSitBuilder(): void {
-  execFileSync('python3', [path.join(__dirname, 'build-character-sit-frames.py')], {
-    stdio: 'inherit',
-  });
 }
 
 function copyAchievementBadges(): void {
@@ -402,28 +318,29 @@ function buildCredits(shippedFiles: string[]): void {
   for (const [sprite, file] of Object.entries(TILE_SPRITES)) {
     add({
       path: `atlases/tiles.json#${sprite}`,
-      pack: 'Project-generated restaurant tiles (CC0)',
-      author: "Val's Kitchen project",
-      sourceUrl: 'vendor/generated/restaurant-tiles/',
+      pack: PACKS.chibiUi.pack,
+      author: PACKS.chibiUi.author,
+      sourceUrl: PACKS.chibiUi.sourceUrl,
       license: 'CC0',
       usedIn: ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
-      approximationNote:
-        'Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0.',
+      approximationNote: PACKS.chibiUi.note,
     });
   }
 
   for (const [itemKey, file] of Object.entries(FURNITURE_SPRITES)) {
+    const isChibi = existsSync(path.join(GENERATED_CHIBI_PROPS, file));
     add({
       path: `atlases/furniture.json#${itemKey}`,
-      pack: 'Project-generated restaurant tiles (CC0)',
+      pack: isChibi ? PACKS.chibiUi.pack : 'Project-generated restaurant tiles (CC0)',
       author: "Val's Kitchen project",
-      sourceUrl: 'vendor/generated/restaurant-tiles/',
+      sourceUrl: isChibi ? PACKS.chibiUi.sourceUrl : 'vendor/generated/restaurant-tiles/',
       license: 'CC0',
       usedIn: [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
-      approximationNote:
-        'Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0.',
+      approximationNote: isChibi
+        ? PACKS.chibiUi.note
+        : 'Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0.',
     });
   }
 
@@ -441,13 +358,13 @@ function buildCredits(shippedFiles: string[]): void {
   }
 
   const characterUsedIn: Record<string, string[]> = {
-    player_down_0: ['canvas:ActorLayer (player / red-haired cook)'],
+    player_down_0: ['canvas:ActorLayer (exact supplied main chef)'],
     player_walk: ['canvas:ActorLayer (player walk)'],
-    guest_a_down_0: ['canvas:ActorLayer (guest A — messy brown hair)'],
-    guest_b_down_0: ['canvas:ActorLayer (guest B — purple hair)'],
-    guest_c_down_0: ['canvas:ActorLayer (guest C — hard hat / dark skin)'],
-    guest_d_down_0: ['canvas:ActorLayer (guest D — balding)'],
-    guest_e_down_0: ['canvas:ActorLayer (guest E — black hair / headband)'],
+    guest_a_down_0: ['canvas:ActorLayer (chibi guest A)'],
+    guest_b_down_0: ['canvas:ActorLayer (chibi guest B)'],
+    guest_c_down_0: ['canvas:ActorLayer (chibi guest C)'],
+    guest_d_down_0: ['canvas:ActorLayer (chibi guest D)'],
+    guest_e_down_0: ['canvas:ActorLayer (chibi guest E)'],
     customer: ['canvas:CustomerLayer', 'canvas:ActorLayer'],
     customer_b: ['canvas:ActorLayer'],
     player: ['canvas:ActorLayer'],
@@ -455,26 +372,13 @@ function buildCredits(shippedFiles: string[]): void {
   for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
     add({
       path: `atlases/characters.json#${name}`,
-      pack: PACKS.rpgUrban.pack,
-      author: PACKS.rpgUrban.author,
-      sourceUrl: PACKS.rpgUrban.sourceUrl,
+      pack: PACKS.chibiUi.pack,
+      author: PACKS.chibiUi.author,
+      sourceUrl: PACKS.chibiUi.sourceUrl,
       license: 'CC0',
       usedIn: characterUsedIn[name] ?? ['canvas:ActorLayer'],
       sourceFile: rel,
-      approximationNote: 'RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors.',
-    });
-  }
-
-  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
-    add({
-      path: `atlases/characters.json#${name}`,
-      pack: PACKS.generatedSit.pack,
-      author: PACKS.generatedSit.author,
-      sourceUrl: PACKS.generatedSit.sourceUrl,
-      license: 'CC0',
-      usedIn: ['canvas:ActorLayer (seated guests)'],
-      sourceFile: file,
-      approximationNote: PACKS.generatedSit.note,
+      approximationNote: PACKS.chibiUi.note,
     });
   }
 
@@ -519,7 +423,7 @@ function buildCredits(shippedFiles: string[]): void {
     if (covered.has(file)) continue;
     let meta = PACKS.rpgUrban;
     if (file.startsWith('atlases/food')) meta = PACKS.generatedFood;
-    else if (file.startsWith('atlases/characters')) meta = PACKS.tinyDungeon;
+    else if (file.startsWith('atlases/characters')) meta = PACKS.chibiUi;
     else if (file.startsWith('sfx/') || file.startsWith('music/')) meta = PACKS.rpgAudio;
     add({
       path: file,
@@ -537,7 +441,7 @@ function buildCredits(shippedFiles: string[]): void {
     generatedAt: new Date().toISOString(),
     policy: 'CC0-only',
     vendorNote:
-      'Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.',
+      'Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.',
     packs: Object.values(PACKS),
     entries,
     shippedFiles,
@@ -562,9 +466,8 @@ function listShippedFiles(dir: string, prefix = ''): string[] {
 
 function main(): void {
   assertVendor();
-  runRestaurantTileBuilder();
+  runChibiUiBuilder();
   runAchievementBadgeBuilder();
-  runCharacterSitBuilder();
 
   const tmp = path.join(ROOT, 'scripts', '.asset-build');
   mkdirSync(tmp, { recursive: true });
@@ -572,7 +475,7 @@ function main(): void {
 
   const tileManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(TILE_SPRITES)) {
-    tileManifest[name] = path.join(GENERATED_RESTAURANT, file);
+    tileManifest[name] = path.join(GENERATED_CHIBI_TILES, file);
   }
   const tileManifestPath = path.join(tmp, 'tiles.manifest.json');
   writeManifest(tileManifest, tileManifestPath);
@@ -580,13 +483,16 @@ function main(): void {
     tileManifestPath,
     path.join(OUT, 'atlases', 'tiles.png'),
     path.join(OUT, 'atlases', 'tiles.json'),
-    32,
+    64,
     1,
   );
 
   const furnitureManifest: Record<string, string> = {};
   for (const [name, file] of Object.entries(FURNITURE_SPRITES)) {
-    furnitureManifest[name] = path.join(GENERATED_RESTAURANT, file);
+    const chibiPath = path.join(GENERATED_CHIBI_PROPS, file);
+    furnitureManifest[name] = existsSync(chibiPath)
+      ? chibiPath
+      : path.join(GENERATED_RESTAURANT, file);
   }
   const furnitureManifestPath = path.join(tmp, 'furniture.manifest.json');
   writeManifest(furnitureManifest, furnitureManifestPath);
@@ -594,20 +500,20 @@ function main(): void {
     furnitureManifestPath,
     path.join(OUT, 'atlases', 'furniture.png'),
     path.join(OUT, 'atlases', 'furniture.json'),
-    48,
+    96,
   );
 
   const charManifest: Record<string, string> = {};
   for (const [name, rel] of Object.entries(CHARACTER_SPRITES)) {
-    charManifest[name] = vendorPath(`rpg-urban-pack/${rel}`);
-  }
-  for (const [name, file] of Object.entries(CHARACTER_SIT_SPRITES)) {
-    const sitPath = path.join(GENERATED_SIT, file);
-    if (!existsSync(sitPath)) {
-      console.error(`Missing generated sit frame: ${sitPath}`);
+    const sourceDir = name.startsWith('player')
+      ? GENERATED_CHIBI_PLAYER
+      : GENERATED_CHIBI_GUESTS;
+    const sourcePath = path.join(sourceDir, rel);
+    if (!existsSync(sourcePath)) {
+      console.error(`Missing generated chibi character frame: ${sourcePath}`);
       process.exit(1);
     }
-    charManifest[name] = sitPath;
+    charManifest[name] = sourcePath;
   }
   const charManifestPath = path.join(tmp, 'characters.manifest.json');
   writeManifest(charManifest, charManifestPath);
@@ -615,8 +521,8 @@ function main(): void {
     charManifestPath,
     path.join(OUT, 'atlases', 'characters.png'),
     path.join(OUT, 'atlases', 'characters.json'),
-    32,
-    2,
+    192,
+    1,
   );
 
   runIngredientIconBuilder();
