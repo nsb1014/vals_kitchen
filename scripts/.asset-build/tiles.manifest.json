@@ -1,13 +1,13 @@
 {
-  "floor_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/floor_wood_a.png",
-  "floor_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/floor_wood_b.png",
-  "floor_kitchen_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/floor_kitchen_a.png",
-  "floor_kitchen_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/floor_kitchen_b.png",
-  "wall": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/wall.png",
-  "wall_n": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/wall_n.png",
-  "wall_e": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/wall_e.png",
-  "wall_s": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/wall_s.png",
-  "wall_w": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-tiles/wall_w.png",
-  "door": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-props/door.png",
-  "door_open": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/storybook-v2/restaurant-props/door_open.png"
+  "floor_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_wood_a.png",
+  "floor_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_wood_b.png",
+  "floor_kitchen_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_a.png",
+  "floor_kitchen_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/floor_kitchen_b.png",
+  "wall": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall.png",
+  "wall_n": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_n.png",
+  "wall_e": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_e.png",
+  "wall_s": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_s.png",
+  "wall_w": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/wall_w.png",
+  "door": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door.png",
+  "door_open": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/restaurant-tiles/door_open.png"
 }

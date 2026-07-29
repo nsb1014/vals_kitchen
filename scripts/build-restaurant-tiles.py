@@ -832,6 +832,7 @@ def main() -> None:
         "table_2seat_unset": table_2seat_unset(),
         "table_2seat_dirty": table_2seat_dirty(),
         "chair": chair(),
+        "chair_back": chair().transpose(Image.Transpose.FLIP_TOP_BOTTOM),
         "chair_side": chair_side(),
         "prep_station": prep_station(),
         "grill": grill(),

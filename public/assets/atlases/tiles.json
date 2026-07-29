@@ -4,220 +4,220 @@
       "frame": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "floor_b": {
       "frame": {
-        "x": 192,
+        "x": 32,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "floor_kitchen_a": {
       "frame": {
-        "x": 384,
+        "x": 64,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "floor_kitchen_b": {
       "frame": {
-        "x": 576,
+        "x": 96,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "wall": {
       "frame": {
         "x": 0,
-        "y": 192,
-        "w": 128,
-        "h": 128
+        "y": 32,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "wall_n": {
       "frame": {
-        "x": 192,
-        "y": 192,
-        "w": 128,
-        "h": 128
+        "x": 32,
+        "y": 32,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "wall_e": {
       "frame": {
-        "x": 384,
-        "y": 192,
-        "w": 128,
-        "h": 128
+        "x": 64,
+        "y": 32,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "wall_s": {
       "frame": {
-        "x": 576,
-        "y": 192,
-        "w": 128,
-        "h": 128
+        "x": 96,
+        "y": 32,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "wall_w": {
       "frame": {
         "x": 0,
-        "y": 384,
-        "w": 128,
-        "h": 128
+        "y": 64,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 128
+        "w": 32,
+        "h": 32
       }
     },
     "door": {
       "frame": {
-        "x": 192,
-        "y": 384,
-        "w": 128,
-        "h": 192
+        "x": 32,
+        "y": 64,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 32
       }
     },
     "door_open": {
       "frame": {
-        "x": 384,
-        "y": 384,
-        "w": 128,
-        "h": 192
+        "x": 64,
+        "y": 64,
+        "w": 32,
+        "h": 32
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 32
       },
       "sourceSize": {
-        "w": 128,
-        "h": 192
+        "w": 32,
+        "h": 32
       }
     }
   },
@@ -227,8 +227,8 @@
     "image": "tiles.png",
     "format": "RGBA8888",
     "size": {
-      "w": 768,
-      "h": 576
+      "w": 128,
+      "h": 96
     },
     "scale": "1"
   }
