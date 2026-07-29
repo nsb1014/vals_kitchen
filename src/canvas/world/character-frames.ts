@@ -1,11 +1,11 @@
 /** Texture-key helpers for floor actors (player cook + guest variants). */
 
-export const GUEST_VARIANTS = ["a", "b", "c", "d", "e"] as const;
+export const GUEST_VARIANTS = ['a', 'b', 'c', 'd', 'e'] as const;
 export type GuestVariant = (typeof GUEST_VARIANTS)[number];
 
 /**
- * Stable guest look from id. Variants currently map to distinct legacy walk
- * cycles while the Storybook v2 guest migration is completed.
+ * Stable guest look from id. Variants map to distinct Kenney Urban walk cycles
+ * (hair style / hair color / skin) — not the red-haired girl cook set.
  */
 export function guestVariant(guestId: string): GuestVariant {
   let hash = 0;
@@ -20,21 +20,10 @@ export function playerFrameKey(facing: string, frame: number): string {
   return `player_${facing}_${frame}`;
 }
 
-export function playerCarryFrameKey(facing: string): string {
-  return `player_carry_${facing}`;
-}
-
-export function guestWalkFrameKey(
-  variant: GuestVariant,
-  facing: string,
-  frame: number,
-): string {
+export function guestWalkFrameKey(variant: GuestVariant, facing: string, frame: number): string {
   return `guest_${variant}_${facing}_${frame}`;
 }
 
-export function guestSitFrameKey(
-  variant: GuestVariant,
-  facing: string,
-): string {
+export function guestSitFrameKey(variant: GuestVariant, facing: string): string {
   return `guest_${variant}_sit_${facing}`;
 }

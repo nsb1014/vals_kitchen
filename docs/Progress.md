@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-28  
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -18,7 +18,7 @@
 | Implementation Phase 4 — grid + layout placement | **Done** |
 | Implementation Phase 5 — service-day loop | **Done** |
 | Implementation Phase 6 — UI screens | **Done** |
-| Implementation Phase 7 — CC0 art + audio | **Done** — complete Storybook v2 visual set + Kenney CC0 audio; generated provenance and audit coverage |
+| Implementation Phase 7 — CC0 art + audio | **Done** — coherent Kenney tiles/furniture/customer + generated ingredient icons |
 | Implementation Phase 8 — balance tuning | **Partial** — analytic proxy / prestige pacing shipped; live retune still open |
 | Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (8 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
@@ -29,7 +29,6 @@
 | Overnight program Track D — meta depth | **Done** — mastery on reviews + recipe-book progress + pacing HUD; fast suite 147 ([plan](./superpowers/plans/2026-07-26-track-d-meta-depth.md)) |
 | Edit catalog + achievements | **Done** — prestige-flat shop costs, edit + decor catalog, celebration banners, Recipe Book achievements; fast suite 280 ([design](./superpowers/specs/2026-07-27-edit-catalog-achievements-design.md), [plan](./superpowers/plans/2026-07-27-edit-catalog-achievements.md)) |
 | Cooking UI + shared chrome | **Done** — tap-to-open cook lifecycle, 100-item flavor/search pantry, locked sheet tiers, shared meta shell; fast suite 297 ([design](./superpowers/specs/2026-07-28-cooking-ui-system-design.md), [plan](./superpowers/plans/2026-07-28-cooking-ui-system.md)) |
-| Storybook v2 art migration | **Done** — high-definition player/guest animation, restaurant surfaces/props, 100 ingredient icons, and 25 achievement badges; 5.08 MB lazy atlas payload; CC0 audit green |
 
 ---
 
@@ -67,7 +66,7 @@
 | 4 | PixiJS restaurant canvas | Done | Grid + furniture DnD + camera fit; see Overall Status |
 | 5 | Service-day loop | Done | Queue serve UI + customer sprite + chat bubble |
 | 6 | UI screens | Done | Floor / Shop / Flavors / Recipes / Rating / Settings + nav |
-| 7 | CC0 assets | Done | Project-generated Storybook v2 visual set dedicated to CC0; Kenney CC0 audio retained; CREDITS.json + audit:assets |
+| 7 | CC0 assets | Done | Kenney CC0 tiles/furniture/customer/audio; generated 32×32 ingredient icons; CREDITS.json + audit:assets |
 | 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; long-horizon deep sim retired 2026-07-28; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
@@ -89,7 +88,6 @@
 |------|--------|
 | 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
 | 2026-07-28 | Cooking UI + shared chrome Done: explicit station-tap compose, 100-item flavor/search pantry, fixed responsive sheet regions, shared meta panels; fast suite 297 |
-| 2026-07-29 | Storybook v2 art migration Done: replaced every shipped visual atlas and badge with high-definition generated art; 5.08 MB lazy atlas payload; 306 unit tests and asset audit green |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |

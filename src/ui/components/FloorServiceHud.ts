@@ -88,26 +88,6 @@ export function mountFloorServiceHud(
     }
 
     chromeMount.hidden = false;
-    const initialGuestArriving =
-      floor.pool.some((guest) => guest.stage === 'entering') &&
-      !floor.pool.some(
-        (guest) => guest.stage !== 'queued' && guest.stage !== 'entering',
-      );
-    if (initialGuestArriving) {
-      chromeMount.innerHTML = `
-        <div class="floor-service-panel" data-testid="floor-arrival-panel" aria-live="polite">
-          <p class="floor-tutorial">The first guest is arriving…</p>
-          <div class="floor-ticket-strip">
-            <span class="floor-ticket-empty">Opening the doors</span>
-          </div>
-        </div>
-      `;
-      dock.hidden = true;
-      dock.innerHTML = '';
-      ticketsMenuOpen = false;
-      return;
-    }
-
     dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
