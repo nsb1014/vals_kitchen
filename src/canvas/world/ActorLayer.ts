@@ -1,4 +1,4 @@
-import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
+import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { getCharacterTexture } from '../../assets/loader.ts';
 import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
@@ -63,14 +63,7 @@ export class ActorLayer {
   private readonly plateGraphics = new Graphics();
   private readonly guestSprites = new Map<
     string,
-    {
-      root: Container;
-      sprite: Sprite;
-      cue: Graphics;
-      badge: Graphics;
-      badgeText: Text;
-      lastFrameKey: string;
-    }
+    { root: Container; sprite: Sprite; cue: Graphics; lastFrameKey: string }
   >();
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
@@ -231,23 +224,10 @@ export class ActorLayer {
         sprite.roundPixels = true;
         sprite.anchor.set(0.5, 1);
         const cue = new Graphics();
-        const badge = new Graphics();
-        const badgeText = new Text({
-          text: '',
-          style: {
-            fill: 0x241b17,
-            fontFamily: 'system-ui, sans-serif',
-            fontSize: 9,
-            fontWeight: '700',
-          },
-        });
-        badgeText.anchor.set(0.5);
         root.addChild(sprite);
         root.addChild(cue);
-        root.addChild(badge);
-        root.addChild(badgeText);
         this.actorContainer.addChild(root);
-        entry = { root, sprite, cue, badge, badgeText, lastFrameKey: '' };
+        entry = { root, sprite, cue, lastFrameKey: '' };
         this.guestSprites.set(guest.id, entry);
       }
 
@@ -298,25 +278,6 @@ export class ActorLayer {
       }
       if (!entry.sprite.visible) {
         entry.cue.circle(0, -8, 8).fill(cueColor ?? FALLBACK_GUEST_COLOR);
-      }
-
-      const guestNumber = floor.pool.findIndex(
-        (candidate) => candidate.customer.id === guest.customer.id,
-      ) + 1;
-      const showOrderBadge =
-        guest.stage === 'seated' ||
-        guest.stage === 'ordered' ||
-        guest.stage === 'eating';
-      entry.badge.clear();
-      entry.badge.visible = showOrderBadge;
-      entry.badgeText.visible = showOrderBadge;
-      if (showOrderBadge) {
-        entry.badge
-          .circle(0, -43, 8)
-          .fill({ color: 0xf0d27a, alpha: 0.98 })
-          .stroke({ width: 1.5, color: 0x241b17, alpha: 0.9 });
-        entry.badgeText.text = String(Math.max(1, guestNumber));
-        entry.badgeText.position.set(0, -43);
       }
     }
 

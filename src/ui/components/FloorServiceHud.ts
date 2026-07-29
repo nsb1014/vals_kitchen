@@ -19,6 +19,7 @@ import {
   formatFloorTicketLabel,
   visibleFloorTickets,
 } from '../presentation/floor-ticket.ts';
+import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -102,11 +103,6 @@ export function mountFloorServiceHud(
         : null;
 
     const ctx = getDomainContext();
-    const partyIndexByCustomerId = new Map<string, number>();
-    for (const [index, guest] of floor.pool.entries()) {
-      partyIndexByCustomerId.set(guest.customer.id, index + 1);
-    }
-
     const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
       const isOpen = t.status === 'open';
       const selected = isOpen && selectedTicketId === t.id;
@@ -118,15 +114,22 @@ export function mountFloorServiceHud(
         ticket: t,
         customer: guest?.customer,
         archetypeName,
-        partyNumber: partyIndexByCustomerId.get(t.customerId) ?? 1,
         selected,
       });
-      return { ticket: t, isOpen, selected, label, customer: guest?.customer };
+      return {
+        ticket: t,
+        isOpen,
+        selected,
+        label,
+        customer: guest?.customer,
+        guestId: guest?.id,
+      };
     });
 
     const ticketStrip = ticketMeta
-      .map(({ ticket: t, isOpen, selected, label }) => {
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></button>`;
+      .map(({ ticket: t, isOpen, selected, label, guestId }) => {
+        const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
+        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}">${portrait}<span class="floor-ticket-copy"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></span></button>`;
       })
       .join('');
 
@@ -158,14 +161,15 @@ export function mountFloorServiceHud(
       ticketMeta.length === 0
         ? `<li class="floor-tickets-empty" data-testid="floor-tickets-empty">No active tickets</li>`
         : ticketMeta
-            .map(({ ticket: t, isOpen, selected, label }) => {
+            .map(({ ticket: t, isOpen, selected, label, guestId }) => {
               const wants = label.preferenceFull
                 ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
                 : '';
+              const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
               return `<li class="floor-tickets-item${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-tickets-item">
                 <button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} aria-label="${escapeHtml(`${label.guestLabel}, ${label.statusLabel}`)}">
                   <span class="floor-tickets-item-head">
-                    <span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span>
+                    <span class="floor-tickets-item-identity">${portrait}<span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span></span>
                     <span class="floor-tickets-item-status">${escapeHtml(label.statusLabel)}</span>
                   </span>
                   ${wants}

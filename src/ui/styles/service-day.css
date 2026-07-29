@@ -357,9 +357,8 @@
 
 .floor-ticket {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
+  align-items: center;
+  gap: 0.4rem;
   max-width: 10rem;
   padding: 0.35rem 0.55rem;
   border-radius: 6px;
@@ -371,6 +370,48 @@
   touch-action: manipulation;
   text-align: left;
   line-height: 1.25;
+}
+
+.floor-ticket-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.guest-portrait {
+  display: inline-block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 45%, var(--vk-border));
+  border-radius: 50%;
+  background-color: var(--vk-bg-deep);
+  background-image: url('/assets/atlases/characters.png');
+  background-repeat: no-repeat;
+  background-size: 640px 640px;
+  image-rendering: pixelated;
+}
+
+.guest-portrait-a {
+  background-position: -208px -68px;
+}
+
+.guest-portrait-b {
+  background-position: -336px -132px;
+}
+
+.guest-portrait-c {
+  background-position: -464px -196px;
+}
+
+.guest-portrait-d {
+  background-position: -592px -260px;
+}
+
+.guest-portrait-e {
+  background-position: -80px -388px;
 }
 
 .floor-ticket-guest {
@@ -580,10 +621,17 @@
 
 .floor-tickets-item-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
+}
+
+.floor-tickets-item-identity {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .floor-tickets-item-guest {
@@ -696,6 +744,17 @@
 
 .compose-sheet-header .queue-badge {
   margin-top: 0.2rem;
+}
+
+.compose-ticket-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+
+.compose-ticket-identity .queue-badge {
+  margin-top: 0;
 }
 
 .compose-selection,
@@ -980,6 +1039,10 @@
   grid-column: 1 / -1;
 }
 
+.compose-flavor-toggle {
+  display: none;
+}
+
 .compose-flavor-strip {
   display: grid;
   grid-auto-flow: column;
@@ -1056,6 +1119,52 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .compose-sheet-header {
+    align-items: center;
+    padding: 0.4rem 0.6rem 0.35rem;
+  }
+
+  .compose-sheet-header .service-title {
+    font-size: 17px;
+  }
+
+  .compose-ticket-identity {
+    margin-top: 0.1rem;
+  }
+
+  .compose-ticket-identity .guest-portrait {
+    flex-basis: 28px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .compose-selection,
+  .compose-filters {
+    padding-inline: 0.6rem;
+  }
+
+  .compose-selection {
+    padding-top: 0.25rem;
+  }
+
+  .compose-selected-strip {
+    min-height: 34px;
+    padding-block: 0.15rem;
+  }
+
+  .compose-filters {
+    padding-top: 0.1rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+    display: none;
+  }
+
+  .compose-filter-summary {
+    display: none;
+  }
+
   .compose-workspace {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -1063,25 +1172,88 @@
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: 8.5rem;
+    max-height: none;
+    padding: 0.4rem 0.6rem 0.45rem;
     border-left: none;
     border-bottom: 1px solid var(--vk-border);
   }
 
   .compose-order-panel-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    margin-bottom: 0.4rem;
+    display: none;
   }
 
   .compose-request-axis-list {
-    display: flex;
-    gap: 0.65rem;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    gap: 0.45rem;
+    overflow: visible;
   }
 
   .compose-request-axis {
-    flex: 0 0 min(11rem, 65vw);
+    min-width: 0;
+  }
+
+  .compose-request-axis-head {
+    margin-bottom: 0.15rem;
+    font-size: 10px;
+  }
+
+  .compose-request-axis-head span {
+    display: none;
+  }
+
+  .compose-pantry {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .compose-sheet-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, 34%);
+    grid-template-rows: auto var(--vk-cta-h) auto;
+    height: auto;
+    min-height: 5.4rem;
+    padding: 0.35rem 0.6rem 0.5rem;
+  }
+
+  .compose-footer-copy span:first-child {
+    display: none;
+  }
+
+  .compose-footer-copy {
+    justify-content: flex-start;
+  }
+
+  .compose-flavor-toggle {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: var(--vk-cta-h);
+    margin: 0;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--vk-border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--vk-text-dim);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .compose-flavor-strip {
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    height: 7rem;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    padding-top: 0.15rem;
+  }
+
+  .compose-flavor-strip.expanded {
+    display: grid;
+  }
+
+  .compose-sheet-footer #plate-btn {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -1097,8 +1269,8 @@
   }
 
   .compose-sheet-footer {
-    height: 6.75rem;
-    min-height: 6.75rem;
+    height: auto;
+    min-height: 5rem;
   }
 
   .compose-flavor-strip {
