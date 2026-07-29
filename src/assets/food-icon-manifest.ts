@@ -16,7 +16,7 @@ let atlas: FoodAtlasJson | null = null;
 
 export async function preloadFoodIconManifest(): Promise<void> {
   if (atlas) return;
-  const res = await fetch('/assets/atlases/food.json');
+  const res = await fetch("/assets/atlases/food.json");
   if (!res.ok) throw new Error(`food atlas json ${res.status}`);
   atlas = (await res.json()) as FoodAtlasJson;
 }
@@ -25,7 +25,10 @@ export function isFoodIconManifestReady(): boolean {
   return atlas !== null;
 }
 
-export function foodIconBackgroundStyle(spriteName: string, displayPx = 32): string | null {
+export function foodIconBackgroundStyle(
+  spriteName: string,
+  displayPx = 32,
+): string | null {
   if (!atlas) return null;
   const frame = atlas.frames[spriteName]?.frame;
   if (!frame) return null;
@@ -40,8 +43,8 @@ export function foodIconBackgroundStyle(spriteName: string, displayPx = 32): str
     `background-size:${bgW}px ${bgH}px`,
     `width:${displayPx}px`,
     `height:${displayPx}px`,
-    'image-rendering:pixelated',
-    'display:inline-block',
-    'flex-shrink:0',
-  ].join(';');
+    "image-rendering:auto",
+    "display:inline-block",
+    "flex-shrink:0",
+  ].join(";");
 }

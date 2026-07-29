@@ -1,4 +1,4 @@
-import { TILE_PX } from './coordinates.ts';
+import { TILE_PX } from "./coordinates.ts";
 
 /**
  * Max chair overhang above the seat-cell top.
@@ -6,12 +6,18 @@ import { TILE_PX } from './coordinates.ts';
  */
 export const CHAIR_MAX_OVERHANG_PX = 14;
 
-export function furnitureDrawSize(texture: { width: number; height: number }): { w: number; h: number } {
-  const scale = TILE_PX / 32;
+export function furnitureDrawSize(texture: { width: number; height: number }): {
+  w: number;
+  h: number;
+} {
+  const scale = TILE_PX / Math.max(1, texture.width);
   return { w: texture.width * scale, h: texture.height * scale };
 }
 
-export function furnitureDrawOffset(w: number, h: number): { x: number; y: number } {
+export function furnitureDrawOffset(
+  w: number,
+  h: number,
+): { x: number; y: number } {
   return { x: (TILE_PX - w) / 2, y: TILE_PX - h };
 }
 
