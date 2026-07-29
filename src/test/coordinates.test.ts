@@ -87,6 +87,13 @@ describe('coordinates', () => {
     expect(8 * TILE_PX * scale).toBeLessThanOrEqual(310);
   });
 
+  it('fills a narrowed desktop restaurant workspace without clipping the room', () => {
+    const scale = computeGridScale(10, 8, 836, 1057);
+    expect(scale).toBeCloseTo(2.61, 2);
+    expect(10 * TILE_PX * scale).toBeLessThanOrEqual(836);
+    expect(8 * TILE_PX * scale).toBeLessThanOrEqual(1057);
+  });
+
   describe('drag snap with grab offset', () => {
     it('exposes ambiguous snap when pointer alone hits a tile center boundary', () => {
       const tileCenterY = gridToWorld(0, 2).y + TILE_PX / 2;

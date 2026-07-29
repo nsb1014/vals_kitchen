@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-29T17:44:01.388Z",
+  "generatedAt": "2026-07-29T21:48:25.993Z",
   "policy": "CC0-only",
-  "vendorNote": "Kenney CC0 sources in vendor/kenney/sources/; ingredient icons generated in vendor/generated/ingredient-sheets/.",
+  "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [
     {
       "pack": "Kenney RPG Urban Pack",
@@ -31,6 +31,13 @@
       "sourceUrl": "vendor/generated/achievement-badges/",
       "license": "CC0",
       "note": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "note": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "pack": "Kenney Tiny Dungeon",
@@ -61,219 +68,219 @@
   "entries": [
     {
       "path": "atlases/tiles.json#floor_a",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_wood_a.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_b",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_wood_b.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_kitchen_a",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_kitchen_a.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#floor_kitchen_b",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "floor_kitchen_b.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall_n",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall_n.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall_e",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall_e.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall_s",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall_s.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#wall_w",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "wall_w.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#door",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "door.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#door_open",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:GridLayer floor / wall tiles"
       ],
       "sourceFile": "door_open.png",
-      "approximationNote": "Generated 32×32 cozy diner floor/wall/door art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#prep_station",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (prep_station)"
       ],
       "sourceFile": "prep_station.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#grill",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (grill)"
       ],
       "sourceFile": "grill.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#oven",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (oven)"
       ],
       "sourceFile": "oven.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#fryer",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (fryer)"
       ],
       "sourceFile": "fryer.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#stockpot",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (stockpot)"
       ],
       "sourceFile": "stockpot.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#cold_station",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (cold_station)"
       ],
       "sourceFile": "cold_station.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#pastry_bench",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (pastry_bench)"
       ],
       "sourceFile": "pastry_bench.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#smoker",
@@ -285,43 +292,43 @@
         "canvas:FurnitureLayer (smoker)"
       ],
       "sourceFile": "smoker.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#wok",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (wok)"
       ],
       "sourceFile": "wok.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#fermentation_crock",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (fermentation_crock)"
       ],
       "sourceFile": "fermentation_crock.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#barista_station",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (barista_station)"
       ],
       "sourceFile": "barista_station.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#spice_rack",
@@ -333,79 +340,79 @@
         "canvas:FurnitureLayer (spice_rack)"
       ],
       "sourceFile": "spice_rack.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#table_2seat",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (table_2seat)"
       ],
       "sourceFile": "table_2seat.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#table_2seat_unset",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (table_2seat_unset)"
       ],
       "sourceFile": "table_2seat_unset.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#table_2seat_dirty",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (table_2seat_dirty)"
       ],
       "sourceFile": "table_2seat_dirty.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#chair",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (chair)"
       ],
       "sourceFile": "chair.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#chair_back",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (chair_back)"
       ],
       "sourceFile": "chair_back.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#chair_side",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (chair_side)"
       ],
       "sourceFile": "chair_side.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_plant",
@@ -417,7 +424,7 @@
         "canvas:FurnitureLayer (decor_plant)"
       ],
       "sourceFile": "decor_plant.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_flowers",
@@ -429,7 +436,7 @@
         "canvas:FurnitureLayer (decor_flowers)"
       ],
       "sourceFile": "decor_flowers.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_rug",
@@ -441,7 +448,7 @@
         "canvas:FurnitureLayer (decor_rug)"
       ],
       "sourceFile": "decor_rug.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_lamp",
@@ -453,7 +460,7 @@
         "canvas:FurnitureLayer (decor_lamp)"
       ],
       "sourceFile": "decor_lamp.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_sign",
@@ -465,7 +472,7 @@
         "canvas:FurnitureLayer (decor_sign)"
       ],
       "sourceFile": "decor_sign.png",
-      "approximationNote": "Generated 32×48 cozy diner furniture/station art for this project; dedicated to CC0."
+      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
     },
     {
       "path": "achievements/recipe-unlocks-1.png",
@@ -793,1157 +800,1205 @@
       "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
     },
     {
+      "path": "atlases/characters.json#player",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_walk",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (player walk)"
+      ],
+      "sourceFile": "player_walk.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
       "path": "atlases/characters.json#player_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0104.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (player / red-haired cook)"
-      ],
-      "sourceFile": "Tiles/tile_0105.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0106.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0107.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0131.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0132.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0133.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0134.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0158.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (exact supplied main chef)"
+      ],
+      "sourceFile": "player_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0159.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0160.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0161.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "player_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0023.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (guest A — messy brown hair)"
-      ],
-      "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0025.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0026.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0050.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0051.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0052.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0053.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0077.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_sit_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (chibi guest A)"
+      ],
+      "sourceFile": "guest_a_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0078.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_sit_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0079.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_sit_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_a_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0080.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_a_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_a_sit_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_a_sit_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0185.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (guest B — purple hair)"
-      ],
-      "sourceFile": "Tiles/tile_0186.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0187.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0188.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0212.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0213.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0214.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0215.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0239.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_sit_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (chibi guest B)"
+      ],
+      "sourceFile": "guest_b_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0240.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_sit_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0241.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_sit_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_b_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0242.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_b_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_b_sit_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_b_sit_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0266.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (guest C — hard hat / dark skin)"
-      ],
-      "sourceFile": "Tiles/tile_0267.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0268.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0269.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0293.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0294.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0295.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0296.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0320.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_sit_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (chibi guest C)"
+      ],
+      "sourceFile": "guest_c_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0321.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_sit_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0322.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_sit_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_c_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0323.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_c_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_c_sit_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_c_sit_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0347.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (guest D — balding)"
-      ],
-      "sourceFile": "Tiles/tile_0348.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0349.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0350.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0374.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0375.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0376.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0377.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0401.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_sit_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (chibi guest D)"
+      ],
+      "sourceFile": "guest_d_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0402.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_sit_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0403.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_sit_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_d_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0404.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_d_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_d_sit_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_d_sit_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_left_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0428.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_down_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (guest E — black hair / headband)"
-      ],
-      "sourceFile": "Tiles/tile_0429.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_up_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0430.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_right_0",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0431.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_left_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_left_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0455.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_down_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0456.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_up_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0457.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_right_1",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0458.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_left_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0482.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_left",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_sit_left.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_down_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer (chibi guest E)"
+      ],
+      "sourceFile": "guest_e_down_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_down_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0483.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_down_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_down",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_sit_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_up_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_up_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_up_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0484.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_up",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_sit_up.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_right_0",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_right_0.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#guest_e_right_2",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0485.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "guest_e_right_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#guest_e_sit_right",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "guest_e_sit_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#customer",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:CustomerLayer",
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0024.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
+      "sourceFile": "customer.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#customer_b",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:ActorLayer"
       ],
-      "sourceFile": "Tiles/tile_0186.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer"
-      ],
-      "sourceFile": "Tiles/tile_0105.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#player_walk",
-      "pack": "Kenney RPG Urban Pack",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/rpg-urban-pack",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (player walk)"
-      ],
-      "sourceFile": "Tiles/tile_0132.png",
-      "approximationNote": "RPG Urban Pack character walk frames, nearest-neighbor 2× to 32×32 for readable floor actors."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_sit_left",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_a_sit_left.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_sit_down",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_a_sit_down.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_sit_up",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_a_sit_up.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_a_sit_right",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_a_sit_right.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_sit_left",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_b_sit_left.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_sit_down",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_b_sit_down.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_sit_up",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_b_sit_up.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_b_sit_right",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_b_sit_right.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_sit_left",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_c_sit_left.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_sit_down",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_c_sit_down.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_sit_up",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_c_sit_up.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_c_sit_right",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_c_sit_right.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_sit_left",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_d_sit_left.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_sit_down",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_d_sit_down.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_sit_up",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_d_sit_up.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_d_sit_right",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_d_sit_right.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_sit_left",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_e_sit_left.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_sit_down",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_e_sit_down.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_sit_up",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_e_sit_up.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
-    },
-    {
-      "path": "atlases/characters.json#guest_e_sit_right",
-      "pack": "Project-generated character sit poses (CC0)",
-      "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/character-sit/",
-      "license": "CC0",
-      "usedIn": [
-        "canvas:ActorLayer (seated guests)"
-      ],
-      "sourceFile": "guest_e_sit_right.png",
-      "approximationNote": "Sit frames derived from Kenney RPG Urban Pack idle sprites (CC0) by folding legs into a seated pose; dedicated to CC0 by this project."
+      "sourceFile": "customer_b.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/food.json#icon_almond",
@@ -3445,9 +3500,9 @@
     },
     {
       "path": "atlases/characters.png",
-      "pack": "Kenney Tiny Dungeon",
-      "author": "Kenney Vleugels",
-      "sourceUrl": "https://kenney.nl/assets/tiny-dungeon",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "build:generated artifact from CC0 atlas/audio pipeline"

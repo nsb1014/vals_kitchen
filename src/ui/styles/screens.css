@@ -190,6 +190,175 @@
   visibility: visible;
 }
 
+/* Chibi meta screens share the same carved-wood visual language as service. */
+.screen-panel {
+  background:
+    linear-gradient(180deg, rgba(92, 58, 33, 0.2), transparent 16%),
+    #21150e;
+}
+
+.screen-header {
+  position: relative;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 2px solid var(--vk-border-strong);
+  background:
+    linear-gradient(90deg, rgba(224, 178, 102, 0.11), transparent 65%),
+    #2a1a11;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+}
+
+.screen-header::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: -4px;
+  height: 1px;
+  background: rgba(255, 226, 173, 0.22);
+}
+
+.screen-title {
+  color: var(--vk-text);
+  font: 800 1.45rem/1.1 var(--vk-display-font);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px #160d08;
+}
+
+.screen-subtitle {
+  color: var(--vk-text-dim);
+}
+
+.screen-select,
+.screen-input,
+.screen-textarea {
+  border: 1px solid var(--vk-border-strong);
+  border-radius: 10px;
+  background: #1b100a;
+  color: var(--vk-text);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.42);
+}
+
+.bottom-nav {
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  border-top: 2px solid var(--vk-border-strong);
+  background:
+    linear-gradient(180deg, rgba(104, 66, 36, 0.96), rgba(31, 19, 12, 0.99));
+  box-shadow: 0 -10px 26px rgba(0, 0, 0, 0.38);
+}
+
+.nav-btn {
+  display: flex;
+  min-width: 0;
+  min-height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #c4a77b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-btn.active {
+  border-color: rgba(226, 181, 106, 0.48);
+  background:
+    linear-gradient(180deg, rgba(232, 191, 116, 0.2), rgba(96, 62, 34, 0.4));
+  color: #ffe3a9;
+  box-shadow: inset 0 0 0 1px rgba(255, 239, 204, 0.08);
+}
+
+.nav-btn.active .nav-icon {
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+}
+
+.inspector-list-item,
+.shop-item,
+.recipe-card,
+.rating-card,
+.settings-card {
+  border: 1px solid var(--vk-border-strong);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(116, 74, 40, 0.2), transparent 55%),
+    var(--vk-panel);
+  box-shadow:
+    inset 0 1px rgba(255, 240, 207, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.inspector-list-item.selected {
+  border-color: var(--vk-accent);
+  background:
+    linear-gradient(135deg, rgba(229, 185, 109, 0.2), transparent),
+    var(--vk-panel-raised);
+}
+
+.shop-buy-btn,
+.screen-btn,
+.recipe-action,
+.settings-btn {
+  min-height: 44px;
+  border: 1px solid #8f6539;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #5f3d23, #362116);
+  color: var(--vk-text);
+  box-shadow: 0 3px 0 #150c08;
+  font-weight: 700;
+}
+
+.flavor-bar-track {
+  height: 12px;
+  border: 1px solid rgba(128, 86, 48, 0.72);
+  border-radius: 3px;
+  background: #160d08;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.58);
+}
+
+.flavor-bar-fill {
+  border-radius: 2px;
+  background: linear-gradient(180deg, #e5bb6e, #9d682d);
+  box-shadow: inset 0 1px rgba(255, 241, 205, 0.5);
+}
+
+@media (min-width: 900px) {
+  .game-surface:not([data-screen="restaurant"]) .status-mount,
+  .game-surface:not([data-screen="restaurant"]) .canvas-mount {
+    visibility: visible;
+  }
+
+  .game-surface:not([data-screen="restaurant"]) .canvas-mount {
+    margin-right: 500px;
+    pointer-events: none;
+  }
+
+  .screen-panel {
+    background:
+      linear-gradient(180deg, rgba(102, 63, 35, 0.24), transparent 20%),
+      #21150e;
+  }
+
+  .screen-header {
+    padding-top: 1.25rem;
+  }
+
+  .inspector-layout {
+    grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  }
+}
+
 /* Flavor inspector */
 .inspector-layout {
   flex: 1;

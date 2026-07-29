@@ -7,10 +7,10 @@ import {
 } from './pwa-cache-policy.ts';
 
 const MANIFEST = {
-  name: 'Restaurant Simulator',
-  short_name: 'RestaurantSim',
-  theme_color: '#1a1a2e',
-  background_color: '#1a1a2e',
+  name: "Val's Kitchen",
+  short_name: "Val's Kitchen",
+  theme_color: '#17100c',
+  background_color: '#100a07',
   display: 'standalone',
   start_url: '.',
   scope: '.',

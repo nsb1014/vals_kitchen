@@ -55,10 +55,15 @@ export class RestaurantApp {
   private lastFloorSeed: number | null = null;
   private lastRoom: FloorRoomId | null = null;
   private eatingTickAccumulatorMs = 0;
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeFrame: number | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
-  private constructor(app: Application) {
+  private constructor(
+    app: Application,
+    private readonly mount: HTMLElement,
+  ) {
     this.app = app;
     this.world = new Container();
     this.camera = new Camera();
@@ -105,7 +110,7 @@ export class RestaurantApp {
     app.canvas.tabIndex = -1;
     app.canvas.style.touchAction = 'none';
 
-    const instance = new RestaurantApp(app);
+    const instance = new RestaurantApp(app, mount);
     instance.mounted = true;
     return instance;
   }
@@ -113,6 +118,7 @@ export class RestaurantApp {
   start(): void {
     this.dragPlacement.attach();
     this.app.canvas.addEventListener('pointerdown', this.onTapMove);
+    window.addEventListener('keydown', this.onKeyboardMove);
     this.app.ticker.add(this.onTick);
     this.unsubscribe = useGameStore.subscribe((state, prev) => {
       if (
@@ -131,6 +137,23 @@ export class RestaurantApp {
     });
     this.syncFromStore(useGameStore.getState());
     window.addEventListener('resize', this.handleResize);
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.resizeFrame !== null) cancelAnimationFrame(this.resizeFrame);
+      this.resizeFrame = requestAnimationFrame(() => {
+        this.resizeFrame = null;
+        const width = Math.max(1, Math.round(this.mount.clientWidth));
+        const height = Math.max(1, Math.round(this.mount.clientHeight));
+        if (this.app.screen.width !== width || this.app.screen.height !== height) {
+          this.app.renderer.resize(width, height);
+        }
+        this.handleResize();
+        // Resizing clears the WebGL surface. Render immediately so paused
+        // states (including a stationary compose workspace) never expose a
+        // black restaurant while waiting for the next ticker frame.
+        this.app.render();
+      });
+    });
+    this.resizeObserver.observe(this.mount);
     this.handleResize();
   }
 
@@ -355,6 +378,65 @@ export class RestaurantApp {
     if (path) {
       this.nav.setPath(path);
     }
+  };
+
+  private onKeyboardMove = (event: KeyboardEvent): void => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const deltaByKey: Record<string, { x: number; y: number }> = {
+      ArrowUp: { x: 0, y: -1 },
+      w: { x: 0, y: -1 },
+      W: { x: 0, y: -1 },
+      ArrowDown: { x: 0, y: 1 },
+      s: { x: 0, y: 1 },
+      S: { x: 0, y: 1 },
+      ArrowLeft: { x: -1, y: 0 },
+      a: { x: -1, y: 0 },
+      A: { x: -1, y: 0 },
+      ArrowRight: { x: 1, y: 0 },
+      d: { x: 1, y: 0 },
+      D: { x: 1, y: 0 },
+    };
+    const delta = deltaByKey[event.key];
+    if (!delta) return;
+
+    const store = useGameStore.getState();
+    if (
+      store.screen !== 'restaurant' ||
+      store.editLayoutMode ||
+      store.composeSheetOpen ||
+      !store.activeDay?.floor
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const targetCell = {
+      x: this.nav.position.x + delta.x,
+      y: this.nav.position.y + delta.y,
+    };
+    const roomPlacements = this.roomPlacements(store);
+    const blocked = walkBlockedCells(
+      roomPlacements,
+      store.gridSize.w,
+      store.gridSize.h,
+      this.walkOpts(store),
+    );
+    const path = findPath(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      targetCell,
+    );
+    if (path) this.nav.setPath(path);
   };
 
   private handleResize = (): void => {
@@ -600,6 +682,13 @@ export class RestaurantApp {
   destroy(): void {
     if (!this.mounted) return;
     window.removeEventListener('resize', this.handleResize);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.resizeFrame !== null) {
+      cancelAnimationFrame(this.resizeFrame);
+      this.resizeFrame = null;
+    }
+    window.removeEventListener('keydown', this.onKeyboardMove);
     this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
     this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();
