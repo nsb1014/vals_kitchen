@@ -26,6 +26,7 @@ import {
 } from '../../store/selectors/service-day.ts';
 import { formatCustomerRequestText } from '../presentation/customer-request.ts';
 import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
+import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
 import {
   canToggleIngredient,
   computeDishPreview,
@@ -119,9 +120,11 @@ export function mountServiceDayUi(
   let composeWasVisible = false;
   let composeTicketId: string | null = null;
   let composeFocusReturn: HTMLElement | null = null;
+  let composeFlavorDetailsOpen = false;
 
   const resetComposeFilters = () => {
     composeFilters = emptyComposePantryFilters();
+    composeFlavorDetailsOpen = false;
   };
 
   const focusFloorAfterCompose = () => {
@@ -569,13 +572,9 @@ export function mountServiceDayUi(
           ticket,
           customer: ticketGuest?.customer,
           archetypeName,
-          partyNumber:
-            (state.activeDay?.floor?.pool.findIndex(
-              (guest) => guest.customer.id === ticket.customerId,
-            ) ?? 0) + 1,
           selected: true,
         });
-        ticketBadge = `<p class="queue-badge">${escapeHtml(label.guestLabel)}</p>`;
+        ticketBadge = `<div class="compose-ticket-identity">${ticketGuest ? renderGuestPortraitHtml(ticketGuest.id) : ''}<p class="queue-badge">${escapeHtml(label.guestLabel)}</p></div>`;
 
         if (ticketGuest) {
           const preference = ticketGuest.customer.preference;
@@ -658,7 +657,8 @@ export function mountServiceDayUi(
                 <span>Dish flavor</span>
                 <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
               </div>
-              <div class="compose-flavor-strip" aria-label="Dish flavor preview">${flavorPreview}</div>
+              <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
+              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview">${flavorPreview}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </footer>
           </div>
@@ -777,6 +777,24 @@ export function mountServiceDayUi(
       };
 
       bindIngredientButtons(serviceOverlay);
+      serviceOverlay
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="compose-flavor-toggle"]',
+        )
+        ?.addEventListener('click', (event) => {
+          composeFlavorDetailsOpen = !composeFlavorDetailsOpen;
+          const button = event.currentTarget as HTMLButtonElement;
+          button.setAttribute(
+            'aria-expanded',
+            String(composeFlavorDetailsOpen),
+          );
+          button.textContent = composeFlavorDetailsOpen
+            ? 'Hide flavor details'
+            : 'Flavor details';
+          serviceOverlay
+            .querySelector('.compose-flavor-strip')
+            ?.classList.toggle('expanded', composeFlavorDetailsOpen);
+        });
       serviceOverlay
         .querySelector('[data-testid="compose-pantry"]')
         ?.addEventListener('scroll', () => cancelActiveLongPress?.(), {

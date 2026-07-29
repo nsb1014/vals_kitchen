@@ -21,7 +21,6 @@ export function formatFloorTicketLabel(input: {
   ticket: FloorTicket;
   customer?: Customer;
   archetypeName?: string;
-  partyNumber: number;
   selected: boolean;
 }): {
   guestLabel: string;
@@ -32,11 +31,8 @@ export function formatFloorTicketLabel(input: {
   preferenceSummary: string;
   buttonText: string;
 } {
-  const partyNumber = Math.max(1, input.partyNumber);
   const archetypeName = input.archetypeName?.trim();
-  const guestLabel = archetypeName
-    ? `#${partyNumber} · ${archetypeName}`
-    : `Guest #${partyNumber}`;
+  const guestLabel = archetypeName || 'Guest';
   const statusLabel = formatTicketStatusLabel(input.ticket.status, input.selected);
   const preferenceBody = input.customer
     ? formatCustomerRequestText(input.customer.preference)

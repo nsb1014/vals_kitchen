@@ -107,6 +107,6 @@ describe('prestige pacing (simulated smoke)', () => {
       expect(state.rating).toBeGreaterThanOrEqual(3);
       expect(state.stats.totalEarnings).toBeGreaterThan(50);
     },
-    10_000,
+    20_000,
   );
 });

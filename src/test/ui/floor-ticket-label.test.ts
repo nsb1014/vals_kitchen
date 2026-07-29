@@ -37,16 +37,16 @@ describe('floor ticket labels', () => {
     expect(formatTicketStatusLabel('delivered', false)).toBe('Done');
   });
 
-  it('never shows raw ticket ids; uses guest name or Party N', () => {
+  it('never shows raw ticket ids or numeric guest overlays', () => {
     const withName = formatFloorTicketLabel({
       ticket: ticket('open'),
       customer,
       archetypeName: 'Comfort Seeker',
-      partyNumber: 1,
       selected: false,
     });
     expect(withName.buttonText).not.toMatch(/ticket_/);
-    expect(withName.buttonText).toContain('#1 · Comfort Seeker');
+    expect(withName.buttonText).toContain('Comfort Seeker');
+    expect(withName.buttonText).not.toContain('#');
     expect(withName.buttonText).toContain('Open');
     expect(withName.preferenceFull).toMatch(/^Wants:.*Umami/i);
     expect(withName.preferenceFull).toContain('Rich');
@@ -57,10 +57,10 @@ describe('floor ticket labels', () => {
       ticket: ticket('plated'),
       customer: { ...customer, archetypeId: 'unknown' },
       archetypeName: undefined,
-      partyNumber: 2,
       selected: false,
     });
-    expect(fallback.buttonText).toContain('Guest #2');
+    expect(fallback.buttonText).toContain('Guest');
+    expect(fallback.buttonText).not.toContain('#');
     expect(fallback.buttonText).toContain('Ready');
     expect(fallback.buttonText).not.toMatch(/ticket_customer/);
   });
@@ -88,7 +88,6 @@ describe('floor ticket labels', () => {
         preference: { ...customer.preference, phrases: longPhrases },
       },
       archetypeName: 'Comfort Seeker',
-      partyNumber: 1,
       selected: false,
     });
     for (const phrase of longPhrases) {

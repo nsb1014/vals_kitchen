@@ -1,88 +1,140 @@
+# Maintenance guide: docs/CI.md
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  verify:
+    # Draft pushes create a skipped check but consume no runner time. Marking the
+    # PR ready triggers the complete job. Manual runs always execute every scope.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Scope detection compares the PR head with its base commit.
+          fetch-depth: 0
+
+      - name: Detect change scope
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            printf 'core=true\ncontent=true\nassets=true\ne2e=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$changed_files"
+
+          if grep -Eqv '^(docs/|.*\.md$)' <<< "$changed_files"; then
+            echo 'core=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'core=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^(src/data/|src/app/content-loader\.ts$|src/domain/context\.ts$|scripts/validate-content)' <<< "$changed_files"; then
+            echo 'content=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'content=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^(vendor/|public/assets/|requirements\.txt$|scripts/(build-assets\.ts|audit-assets\.ts|pack-atlas\.py|build-ingredient-icons\.py|build-achievement-badges\.py)|src/data/ingredients\.json$)' <<< "$changed_files"; then
+            echo 'assets=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'assets=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Eq '^(src/(app|assets|canvas|store|ui)/|src/domain/(floor|state)/|public/|tests/e2e/|index\.html$|playwright\.config\.ts$|vite\.config\.ts$|package(-lock)?\.json$)' <<< "$changed_files"; then
+            echo 'e2e=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'e2e=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node.js
+        if: steps.scope.outputs.core == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
           cache: npm
 
       - name: Install dependencies
+        if: steps.scope.outputs.core == 'true'
         run: npm ci
 
       - name: Sync runtime content to public/data
+        if: steps.scope.outputs.core == 'true'
         run: npm run sync:data
 
       - name: Validate content invariants
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.content == 'true'
         run: npm run validate:content
 
       - name: Typecheck
+        if: steps.scope.outputs.core == 'true'
         run: npm run typecheck
 
       - name: Lint
+        if: steps.scope.outputs.core == 'true'
         run: npm run lint
 
-      - name: Test (fast suite)
+      - name: Test
+        if: steps.scope.outputs.core == 'true'
         run: npm run test
 
       - name: Setup Python
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+          cache: pip
 
       - name: Install Python dependencies
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         run: pip install -r requirements.txt
 
       - name: Build CC0 atlases and audio
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         run: npm run build:assets
 
       - name: Asset CC0 audit
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         run: npm run audit:assets
 
       - name: Production build
-        run: npm run build
+        if: steps.scope.outputs.core == 'true'
+        # sync:data and tsc already passed above; invoke Vite directly instead
+        # of repeating both through the full npm run build script.
+        run: npm exec -- vite build
 
       - name: Bundle size gate
+        if: steps.scope.outputs.core == 'true'
         run: npm run size:check
 
-  e2e-smoke:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Sync runtime content to public/data
-        run: npm run sync:data
-
       - name: Install Playwright Chromium
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Headless browser smoke tests
+      - name: Headless browser tests
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
         run: npm run test:e2e
         env:
           CI: true

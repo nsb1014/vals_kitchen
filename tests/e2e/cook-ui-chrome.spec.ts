@@ -45,7 +45,18 @@ test.describe('cook sheet responsive chrome', () => {
       await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
       await expect(page.getByTestId('compose-order-panel')).toBeVisible();
       await expect(page.getByTestId('compose-request-axis')).not.toHaveCount(0);
+      await expect(
+        page.getByTestId('compose-sheet').getByTestId('guest-portrait'),
+      ).toBeVisible();
+      await expect(
+        page.locator(
+          '.compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]):visible',
+        ),
+      ).toHaveCount(0);
       await expectFooterInsideSheet(page);
+      const pantry = await page.getByTestId('compose-pantry').boundingBox();
+      expect(pantry).not.toBeNull();
+      expect(pantry!.height).toBeGreaterThan(150);
       await page.screenshot({
         path: `test-results/cook-sheet-${width}.png`,
         animations: 'disabled',
@@ -83,13 +94,19 @@ test.describe('cook sheet responsive chrome', () => {
     await expect(page.getByTestId('ingredient-chip')).not.toHaveCount(100);
   });
 
-  test('shows all dish flavor axes while choosing ingredients', async ({
+  test('keeps full flavor detail available without crowding the mobile pantry', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 720 });
     await openCookFixture(page);
     await expect(page.locator('.compose-flavor-mini')).toHaveCount(15);
     await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(15);
+    await expect(page.locator('.compose-flavor-mini').first()).toBeHidden();
+    const flavorToggle = page.getByTestId('compose-flavor-toggle');
+    await expect(flavorToggle).toHaveAttribute('aria-expanded', 'false');
+    await flavorToggle.click();
+    await expect(flavorToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.compose-flavor-mini').first()).toBeVisible();
   });
 
   test('keeps Plate in view in a short landscape viewport', async ({
