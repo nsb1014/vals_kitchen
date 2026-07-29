@@ -45,7 +45,9 @@ test.describe('cook sheet responsive chrome', () => {
       await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
       await expect(page.getByTestId('compose-order-panel')).toBeVisible();
       await expect(page.getByTestId('compose-request-axis')).not.toHaveCount(0);
-      await expect(page.getByTestId('guest-portrait')).toBeVisible();
+      await expect(
+        page.getByTestId('compose-sheet').getByTestId('guest-portrait'),
+      ).toBeVisible();
       await expect(
         page.locator(
           '.compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]):visible',
