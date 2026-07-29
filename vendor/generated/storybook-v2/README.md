@@ -1,0 +1,99 @@
+# Storybook v2 generated art
+
+These assets were generated specifically for Restaurant Simulator and are
+dedicated to CC0 by the project. The user's supplied character sheet was used
+only as a visual-style and directional-layout reference; it is not shipped.
+
+## Player sheet prompt
+
+Use case: `stylized-concept`. Asset type: high-definition browser game
+main-character sprite sheet. Create an original female restaurant chef in the
+reference image's soft storybook/chibi visual language, without copying its
+exact character or dress: warm chestnut hair in a loose braided bun, hazel
+eyes, ivory rolled-sleeve blouse, muted sage waist apron, terracotta skirt, and
+brown shoes. Render an exact 5-column × 4-row sheet: down, left, right, and up
+rows; each containing idle, walk A, passing, walk B, and plated-pasta carry
+poses. Keep identity, clothing, scale, and foot baselines consistent. Use soft
+watercolor-like transitions, delicate warm-brown ink contours, and smooth
+anti-aliased edges. Render on a perfectly flat `#ff00ff` chroma background with
+no shadow, floor, text, watermark, or magenta in the subject. Avoid pixel art,
+photorealism, inconsistent anatomy, changed clothing, cropped silhouettes, and
+extra props.
+
+Generated with the built-in image generation tool on 2026-07-29. The chroma
+source and locally background-removed transparent master are retained beside
+this file; runtime frames are reproducibly derived by
+`scripts/build-storybook-characters.py`.
+
+## Guest cast prompts
+
+The idle cast sheet uses five identities by column—silver-haired older woman,
+mustached dark-skinned man, black-bobbed young woman, gray-haired older man
+with glasses, and a tan young adult with dark curls—and four direction rows:
+down, left, right, up. It matches the player's soft watercolor shading,
+warm-brown ink contours, chibi proportions, consistent scale, and flat
+`#ff00ff` chroma background. The walk sheet changes only each body into a
+gentle directional step. The seated sheet changes only each pose into a
+natural chair-ready seated pose while rendering no furniture. All prompts
+prohibit pixel art, shadows, text, watermarks, props, cropped silhouettes,
+identity drift, outfit changes, and magenta within the characters.
+
+All three guest sheets were generated with the built-in image generation tool
+on 2026-07-29. Runtime frames are reproducibly derived by
+`scripts/build-storybook-guests.py`.
+
+## Restaurant prop prompt
+
+The prop sheet uses a consistent three-quarter top-down camera and the same
+watercolor shading, warm-brown contours, rounded shapes, and muted
+walnut/cream/sage/terracotta/brass palette as the characters. It contains the
+complete station, table-state, chair-angle, decor, and door-state set on flat
+`#ff00ff` chroma. The prompt prohibits people, text, logos, scenery, cast
+shadows, cell merges, pixel art, and inconsistent perspective. The model
+provided distinct front, back, and side chair views; all three are retained.
+
+Generated with the built-in image generation tool on 2026-07-29. Runtime props
+are reproducibly derived by `scripts/build-storybook-props.py`.
+
+## Restaurant material prompt
+
+The material sheet contains two honey-oak floors, two cream-and-sage kitchen
+tiles, four directional floral-plaster/sage-wainscot walls, a default wall, and
+an oak/brass threshold in a fixed 5×2 grid. It uses the same hand-painted
+watercolor texture and muted palette as the cast and props, with flat
+`#ff00ff` gutters and no people, furniture, doors, text, shadows, or pixel art.
+
+Generated with the built-in image generation tool on 2026-07-29. The four
+floor materials are made seamlessly repeatable, and wall materials repeat
+along their relevant axis, by `scripts/build-storybook-tiles.py`.
+
+## Ingredient icon prompts
+
+The ingredient catalog was generated as nine fixed-order sheets matching the
+100 gameplay IDs: alliums and roots; greens and produce; meat proteins;
+seafood and legumes; grains and starches; dairy and sweeteners; spices and
+herbs; pantry and fermented ingredients; and beverages and broths. Every
+prompt requests isolated high-definition watercolor-gouache cutouts with warm
+brown contours, consistent visual scale, and a flat `#ff00ff` background. The
+prompts explicitly prohibit pixel art, labels, text, unrelated props, and
+extra or duplicated food. The exact ordered IDs remain encoded in
+`scripts/build-storybook-ingredients.py`.
+
+Generated with the built-in image generation tool on 2026-07-29. Chroma
+sources and transparent masters are retained under `ingredient-sheets/`;
+smooth 128×128 runtime icons are reproducibly derived by
+`scripts/build-storybook-ingredients.py`.
+
+## Achievement badge prompt
+
+The achievement sheet is an exact 5×5 progression of recipe discovery,
+recipe mastery, decor, tables, operating days, and prestige medals. It uses
+painted enamel-like frames, brass and antique gold, sage and terracotta
+accents, and increasingly ornate ribbons, laurels, stars, and gems. The prompt
+prohibits pixel art, labels, readable text, numerals, logos, people, and extra
+badges, and uses flat `#ff00ff` chroma between cells.
+
+Generated with the built-in image generation tool on 2026-07-29. The chroma
+source and transparent master are retained beside this file; the 25 smooth
+96×96 runtime badges are reproducibly derived by
+`scripts/build-storybook-badges.py`.

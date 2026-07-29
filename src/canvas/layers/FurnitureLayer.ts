@@ -1,11 +1,18 @@
-import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
-import type { Placement } from '../../domain/state/game-state.ts';
-import type { SeatSlot, TableSurfaceState } from '../../domain/floor/types.ts';
-import { getFurnitureTexture } from '../../assets/loader.ts';
-import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
-import { furnitureDrawOffset, furnitureDrawSize, chairDrawFit } from '../furniture-fit.ts';
-import { gridToWorld, TILE_PX } from '../coordinates.ts';
-import { seatSitWorldPosition } from '../world/seat-sit.ts';
+import { Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import type { Placement } from "../../domain/state/game-state.ts";
+import type { SeatSlot, TableSurfaceState } from "../../domain/floor/types.ts";
+import { getFurnitureTexture } from "../../assets/loader.ts";
+import {
+  fallbackTintForItemKey,
+  spriteNameForItemKey,
+} from "../../assets/furniture-sprites.ts";
+import {
+  furnitureDrawOffset,
+  furnitureDrawSize,
+  chairDrawFit,
+} from "../furniture-fit.ts";
+import { gridToWorld, TILE_PX } from "../coordinates.ts";
+import { seatSitWorldPosition } from "../world/seat-sit.ts";
 
 const MIN_HIT_PX = 44;
 const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
@@ -39,7 +46,7 @@ export class FurnitureLayer {
         this.sprites.set(placement.id, sprite);
         this.view.addChild(sprite.root);
       }
-      const tableState = placement.itemKey.startsWith('table')
+      const tableState = placement.itemKey.startsWith("table")
         ? (tableStates?.get(placement.id) ?? null)
         : null;
       this.drawSprite(sprite, placement, editMode, tableState);
@@ -95,19 +102,19 @@ export class FurnitureLayer {
   private acquireSprite(): FurnitureSprite {
     const pooled = this.pool.pop();
     if (pooled) {
-      pooled.placementId = '';
+      pooled.placementId = "";
       return pooled;
     }
     const root = new Container();
-    root.eventMode = 'static';
-    root.cursor = 'grab';
+    root.eventMode = "static";
+    root.cursor = "grab";
     const body = new Graphics();
     const sprite = new Sprite();
     sprite.visible = false;
     sprite.roundPixels = true;
     root.addChild(sprite);
     root.addChild(body);
-    return { root, body, sprite, placementId: '' };
+    return { root, body, sprite, placementId: "" };
   }
 
   private releaseSprite(sprite: FurnitureSprite): void {
@@ -117,8 +124,8 @@ export class FurnitureLayer {
     sprite.sprite!.anchor.set(0, 0);
     sprite.sprite!.scale.set(1, 1);
     sprite.root.removeAllListeners();
-    sprite.root.cursor = 'grab';
-    sprite.placementId = '';
+    sprite.root.cursor = "grab";
+    sprite.placementId = "";
     this.pool.push(sprite);
   }
 
@@ -130,8 +137,13 @@ export class FurnitureLayer {
     sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;
+    const frontBackTexture =
+      seat.facing === 180
+        ? getFurnitureTexture("chair_back")
+        : getFurnitureTexture("chair");
     const texture =
-      (sideFacing ? getFurnitureTexture('chair_side') : null) ?? getFurnitureTexture('chair');
+      (sideFacing ? getFurnitureTexture("chair_side") : frontBackTexture) ??
+      getFurnitureTexture("chair");
     if (texture) {
       const fit = chairDrawFit(texture);
       const spr = sprite.sprite!;
@@ -152,8 +164,8 @@ export class FurnitureLayer {
       sprite.sprite!.scale.set(1, 1);
       sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill(0x7a5230);
     }
-    sprite.root.eventMode = 'none';
-    sprite.root.cursor = 'default';
+    sprite.root.eventMode = "none";
+    sprite.root.cursor = "default";
   }
 
   private drawSprite(
@@ -176,21 +188,27 @@ export class FurnitureLayer {
       sprite.sprite!.visible = false;
       const color = fallbackTintForItemKey(placement.itemKey);
       sprite.body.rect(2, 2, TILE_PX - 4, TILE_PX - 4).fill(color);
-      sprite.body.rect(4, 4, TILE_PX - 8, TILE_PX - 8).fill({ color, alpha: 0.75 });
-      if (placement.itemKey.startsWith('table')) {
-        if (tableState === 'ready' || tableState === 'occupied') {
+      sprite.body
+        .rect(4, 4, TILE_PX - 8, TILE_PX - 8)
+        .fill({ color, alpha: 0.75 });
+      if (placement.itemKey.startsWith("table")) {
+        if (tableState === "ready" || tableState === "occupied") {
           sprite.body.circle(TILE_PX / 2 - 6, TILE_PX / 2, 3).fill(0xf5deb3);
           sprite.body.circle(TILE_PX / 2 + 6, TILE_PX / 2, 3).fill(0xf5deb3);
-        } else if (tableState === 'dirty') {
-          sprite.body.circle(TILE_PX / 2 - 5, TILE_PX / 2 - 2, 3).fill(0xc4b59a);
-          sprite.body.circle(TILE_PX / 2 + 5, TILE_PX / 2 + 1, 2).fill(0x8b4513);
+        } else if (tableState === "dirty") {
+          sprite.body
+            .circle(TILE_PX / 2 - 5, TILE_PX / 2 - 2, 3)
+            .fill(0xc4b59a);
+          sprite.body
+            .circle(TILE_PX / 2 + 5, TILE_PX / 2 + 1, 2)
+            .fill(0x8b4513);
           sprite.body.circle(TILE_PX / 2, TILE_PX / 2 + 4, 1).fill(0x6b3a2a);
         }
       }
     }
 
-    sprite.root.eventMode = editMode ? 'static' : 'none';
-    sprite.root.cursor = editMode ? 'grab' : 'default';
+    sprite.root.eventMode = editMode ? "static" : "none";
+    sprite.root.cursor = editMode ? "grab" : "default";
     sprite.root.hitArea = new Rectangle(
       -HIT_PADDING,
       -HIT_PADDING,

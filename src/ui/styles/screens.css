@@ -574,7 +574,7 @@
 
 .achievement-badge {
   flex: 0 0 48px;
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 .achievement-copy {
