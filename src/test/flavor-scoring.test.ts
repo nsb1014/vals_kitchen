@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { aggregateDish } from '../domain/flavor/aggregate.ts';
 import {
   bandSatisfaction,
+  computeIdealCloseness,
   computeMatchStars,
+  computeRequestSatisfaction,
   computeWeightedSatisfaction,
   meanPairAffinity,
 } from '../domain/flavor/scoring.ts';
@@ -73,16 +75,17 @@ describe('flavor scoring', () => {
   });
 
   it('gives the displayed Rich Indulger target full request credit', () => {
-    const preference: CustomerPreference = {
-      primary: { UM: 'mid', PU: 'low', RI: 'high' },
-      avoid: {},
-      phrases: ['moderate Umami', 'low Pungent', 'high Rich'],
-    };
     const displayedIdeal = {
       ...neutralDish(),
       UM: 5,
       PU: 2,
       RI: 8,
+    };
+    const preference: CustomerPreference = {
+      primary: { UM: 'mid', PU: 'low', RI: 'high' },
+      avoid: {},
+      phrases: ['moderate Umami', 'low Pungent', 'high Rich'],
+      idealProfile: displayedIdeal,
     };
     const allHighUmami = {
       ...displayedIdeal,
@@ -91,15 +94,51 @@ describe('flavor scoring', () => {
     };
 
     expect(computeWeightedSatisfaction(displayedIdeal, preference)).toBe(1);
+    expect(computeIdealCloseness(displayedIdeal, preference)).toBe(1);
+    expect(computeRequestSatisfaction(displayedIdeal, preference)).toBe(1);
     expect(computeMatchStars(displayedIdeal, preference, [], {})).toBe(9);
     expect(computeWeightedSatisfaction(allHighUmami, preference)).toBeCloseTo(
       7 / 9,
       5,
     );
     expect(computeMatchStars(allHighUmami, preference, [], {})).toBeCloseTo(
-      7,
+      6.73,
+      2,
+    );
+  });
+
+  it('keeps several band-matching solutions strong while ranking the ideal first', () => {
+    const ideal = { ...neutralDish(), UM: 5, PU: 2, RI: 8 };
+    const closeAlternative = { ...ideal, UM: 6, PU: 3, RI: 7 };
+    const edgeAlternative = { ...ideal, UM: 7, PU: 0, RI: 10 };
+    const preference: CustomerPreference = {
+      primary: { UM: 'mid', PU: 'low', RI: 'high' },
+      avoid: {},
+      phrases: ['moderate Umami', 'low Pungent', 'high Rich'],
+      idealProfile: ideal,
+    };
+
+    for (const dish of [ideal, closeAlternative, edgeAlternative]) {
+      expect(computeWeightedSatisfaction(dish, preference)).toBe(1);
+    }
+    expect(computeIdealCloseness(ideal, preference)).toBe(1);
+    expect(computeIdealCloseness(closeAlternative, preference)).toBeCloseTo(
+      0.8,
       5,
     );
+    expect(computeIdealCloseness(edgeAlternative, preference)).toBeCloseTo(
+      0.6,
+      5,
+    );
+
+    const idealScore = computeMatchStars(ideal, preference, [], {});
+    const closeScore = computeMatchStars(closeAlternative, preference, [], {});
+    const edgeScore = computeMatchStars(edgeAlternative, preference, [], {});
+    expect(idealScore).toBe(9);
+    expect(closeScore).toBeCloseTo(8.7, 5);
+    expect(edgeScore).toBeCloseTo(8.4, 5);
+    expect(idealScore).toBeGreaterThan(closeScore);
+    expect(closeScore).toBeGreaterThan(edgeScore);
   });
 
   it('applies avoid penalty when dish exceeds threshold', () => {

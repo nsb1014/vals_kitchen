@@ -9,7 +9,7 @@ import {
   AXIS_LABELS,
   emptyFlavorProfile,
 } from '../../domain/flavor/axis-labels.ts';
-import { computeWeightedSatisfaction } from '../../domain/flavor/scoring.ts';
+import { computeRequestSatisfaction } from '../../domain/flavor/scoring.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   selectCanAdvanceCustomer,
@@ -469,7 +469,7 @@ export function mountServiceDayUi(
       const requestMatch =
         preview.profile && ticketGuest
           ? 10 *
-            computeWeightedSatisfaction(
+            computeRequestSatisfaction(
               preview.profile,
               ticketGuest.customer.preference,
             )
