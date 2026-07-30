@@ -127,7 +127,7 @@ Budgets are stated in **decimal bytes** (1 KB = 1,000 bytes), matching `gzip -c`
 | **Total initial JS** | **≤ 280,000 bytes** | Hard CI cap. Post-slice measure 2026-07-25: **173,070** gzip — keep 280k headroom for art/UI growth; CI warning at 260,000 |
 | Boot content data (`/data/*.json` except recipes + affinity) | ≤ 7,000 | Fetched at boot; ingredients, equipment, archetypes, modifiers |
 | Deferred content data (recipes + compound-affinity) | ≤ 34,000 | Fetched after boot, before first serve / day open |
-| Asset atlases (lazy) | ≤ 4,000,000 total | Chibi surfaces, furniture, supplied chef, guest variants, and food icons; measured **1,967,222** bytes 2026-07-29; loaded post-boot |
+| Asset atlases (lazy) | ≤ 4,000,000 total | Chibi surfaces, furniture, supplied chef, guest variants, and food icons; measured **2,072,104** bytes 2026-07-30; loaded post-boot |
 | Audio (lazy) | ≤ 5,000,000 total | Loaded on first interaction |
 
 **Load target:** < 2 s first interactive on 4G (iPhone 17). Game content JSON is **not** bundled into initial JS; it is served from `/data/` and injected into `DomainContext` at the app boundary. Recipes and compound-affinity load lazily after first paint but before first use.

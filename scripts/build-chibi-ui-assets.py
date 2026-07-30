@@ -39,13 +39,22 @@ def chroma_alpha(image: Image.Image) -> Image.Image:
 
 
 def white_alpha(image: Image.Image) -> Image.Image:
-    """Remove the chef sheet's neutral white background without erasing skin."""
+    """Remove the chef sheet's neutral white background without erasing skin.
+
+    The source matte is a slightly noisy off-white (usually 252--254), not
+    literal #fff.  The old conversion left those 252-valued pixels with alpha
+    18.  ``trim`` therefore treated the entire source cell as artwork and
+    scaled the chef down together with a box of almost-transparent noise.
+    Keep a fully transparent dead band for the matte, then feather only the
+    darker neutral pixels at the character edge.
+    """
     rgba = image.convert("RGBA")
     pixels = []
     for red, green, blue, source_alpha in rgba.get_flattened_data():
         spread = max(red, green, blue) - min(red, green, blue)
-        if min(red, green, blue) >= 224 and spread <= 14:
-            matte = max(0, min(255, (255 - min(red, green, blue) - 2) * 18))
+        darkest = min(red, green, blue)
+        if darkest >= 215 and spread <= 20:
+            matte = max(0, min(255, round((245 - darkest) * 255 / 30)))
             alpha = min(source_alpha, matte)
         else:
             alpha = source_alpha
@@ -85,6 +94,11 @@ def contain(image: Image.Image, size: tuple[int, int], bottom_pad: int = 2) -> I
     return canvas
 
 
+def resize_exact(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+    """Fill an architectural tile edge-to-edge; seams are worse than mild distortion."""
+    return image.resize(size, Image.Resampling.LANCZOS)
+
+
 def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     """Drop near-invisible matte noise while retaining the character edge ramp."""
     rgba = image.convert("RGBA")
@@ -98,35 +112,80 @@ def save(image: Image.Image, path: Path) -> None:
     image.save(path, optimize=True)
 
 
+def validate_player_frame(image: Image.Image, name: str) -> None:
+    """Fail the asset build if matte noise or a bad crop shrinks an actor again."""
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        raise ValueError(f"Player frame is empty: {name}")
+    visible_height = bounds[3] - bounds[1]
+    bottom_gap = image.height - bounds[3]
+    if visible_height < 84 or not 1 <= bottom_gap <= 4:
+        raise ValueError(
+            f"Player frame is not feet-normalized: {name} "
+            f"(bounds={bounds}, visible_height={visible_height}, bottom_gap={bottom_gap})"
+        )
+
+
+def validate_animation_frames() -> None:
+    """Reject clipped silhouettes and unstable walk-cycle crops before packing."""
+    for variant in ("a", "b", "c", "d", "e"):
+        for facing in ("down", "left", "right", "up"):
+            heights = []
+            for frame in range(3):
+                name = f"guest_{variant}_{facing}_{frame}.png"
+                image = Image.open(OUT / "guest-frames" / name).convert("RGBA")
+                bounds = image.getchannel("A").getbbox()
+                if bounds is None:
+                    raise ValueError(f"Guest animation frame is empty: {name}")
+                margins = (
+                    bounds[0],
+                    bounds[1],
+                    image.width - bounds[2],
+                    image.height - bounds[3],
+                )
+                if min(margins) < 6:
+                    raise ValueError(f"Guest animation frame is clipped: {name} margins={margins}")
+                heights.append(bounds[3] - bounds[1])
+            if max(heights) - min(heights) > 3:
+                raise ValueError(
+                    f"Guest walk cycle changes crop height: {variant} {facing} {heights}"
+                )
+
+
 def build_player() -> None:
     sheet = Image.open(SOURCE / "chef-sheet.png").convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected chef sheet size: {sheet.size}")
-    facings = ("down", "left", "right", "up")
-    for row, facing in enumerate(facings):
-        for frame in range(3):
-            x0 = round(frame * sheet.width / 5)
-            x1 = round((frame + 1) * sheet.width / 5)
-            y0 = row * sheet.height // 4
-            y1 = (row + 1) * sheet.height // 4
-            sprite = clear_alpha_noise(
-                contain(trim(white_alpha(sheet.crop((x0, y0, x1, y1))), 3), (80, 96))
-            )
-            save(sprite, PLAYER_OUT / f"player_{facing}_{frame}.png")
 
-        carry_x0 = round(4 * sheet.width / 5)
-        carry = sheet.crop(
-            (
-                carry_x0,
-                row * sheet.height // 4,
-                sheet.width,
-                (row + 1) * sheet.height // 4,
-            )
-        )
-        save(
-            clear_alpha_noise(contain(trim(white_alpha(carry), 3), (80, 96))),
-            PLAYER_OUT / f"player_carry_{facing}.png",
-        )
+    # The figures are arranged as a 5x4 sheet, but they are not centered in
+    # equal-height cells: the next row starts before an exact 256px boundary.
+    # Cropping on those mathematical boundaries clipped hair from one facing
+    # into another.  These cuts sit in the actual gutters in the supplied art.
+    column_bounds = ((0, 348), (348, 622), (622, 909), (909, 1192), (1192, 1536))
+    facing_rows = {
+        "down": (0, 245),
+        "left": (245, 486),
+        "right": (486, 723),
+        "up": (723, 1024),
+    }
+
+    def player_frame(column: int, facing: str) -> Image.Image:
+        x0, x1 = column_bounds[column]
+        y0, y1 = facing_rows[facing]
+        keyed = white_alpha(sheet.crop((x0, y0, x1, y1)))
+        return clear_alpha_noise(contain(trim(keyed, 3), (80, 96)))
+
+    for facing in facing_rows:
+        for frame in range(3):
+            name = f"player_{facing}_{frame}"
+            sprite = player_frame(frame, facing)
+            validate_player_frame(sprite, name)
+            save(sprite, PLAYER_OUT / f"{name}.png")
+
+        carry_name = f"player_carry_{facing}"
+        carry_sprite = player_frame(4, facing)
+        validate_player_frame(carry_sprite, carry_name)
+        save(carry_sprite, PLAYER_OUT / f"{carry_name}.png")
 
     # Stable compatibility keys used while atlases are loading.
     save(Image.open(PLAYER_OUT / "player_down_0.png"), PLAYER_OUT / "player.png")
@@ -173,11 +232,16 @@ def build_surfaces() -> None:
         "wall_e": (43, 526, 264, 812),
         "wall_w": (359, 528, 566, 812),
         "wall_s": (616, 527, 887, 812),
-        "door": (915, 527, 1190, 812),
-        "door_open": (1223, 526, 1505, 812),
+        # Crop away the neighboring wall panels so the actual doorway fills
+        # its grid opening instead of reading as a miniature door in a wall.
+        "door": (950, 527, 1155, 812),
+        "door_open": (1255, 526, 1475, 812),
     }
     for name, box in wall_boxes.items():
-        sprite = contain(trim(sheet.crop(box), 2), (64, 64), 0)
+        sprite = resize_exact(trim(sheet.crop(box)), (64, 64))
+        bounds = sprite.getchannel("A").getbbox()
+        if bounds != (0, 0, 64, 64):
+            raise ValueError(f"Architectural tile must fill its cell: {name} bounds={bounds}")
         save(sprite, TILE_OUT / f"{name}.png")
 
 
@@ -231,6 +295,7 @@ def main() -> None:
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")
     build_player()
+    validate_animation_frames()
     build_surfaces()
     build_props()
     print("Built chibi UI assets:")

@@ -3,7 +3,13 @@ import type { Placement } from '../../domain/state/game-state.ts';
 import type { SeatSlot, TableSurfaceState } from '../../domain/floor/types.ts';
 import { getFurnitureTexture } from '../../assets/loader.ts';
 import { fallbackTintForItemKey, spriteNameForItemKey } from '../../assets/furniture-sprites.ts';
-import { furnitureDrawOffset, furnitureDrawSize, chairDrawFit } from '../furniture-fit.ts';
+import {
+  chairDepthY,
+  chairDrawFit,
+  furnitureDepthY,
+  furnitureDrawOffset,
+  furnitureDrawSize,
+} from '../furniture-fit.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
 import { seatSitWorldPosition } from '../world/seat-sit.ts';
 
@@ -18,10 +24,15 @@ interface FurnitureSprite {
 }
 
 export class FurnitureLayer {
-  readonly view = new Container();
+  readonly view: Container;
   private sprites = new Map<string, FurnitureSprite>();
   private chairSprites = new Map<string, FurnitureSprite>();
   private pool: FurnitureSprite[] = [];
+
+  constructor(view: Container = new Container()) {
+    this.view = view;
+    this.view.sortableChildren = true;
+  }
 
   sync(
     placements: Placement[],
@@ -128,6 +139,8 @@ export class FurnitureLayer {
     const sit = seatSitWorldPosition(seat);
     const feetY = sit.y + TILE_PX / 2 - 2;
     sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
+    // Chair back first, then seated guest, then table lip.
+    sprite.root.zIndex = chairDepthY(feetY);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;
     const frontBackTexture =
@@ -170,13 +183,16 @@ export class FurnitureLayer {
     sprite.placementId = placement.id;
     const { x, y } = gridToWorld(placement.x, placement.y);
     sprite.root.position.set(x, y);
+    // Furniture joins the same depth-sorted container as actors. A table on
+    // the guest row therefore masks the near half of a seated pose naturally.
+    sprite.root.zIndex = furnitureDepthY(placement.y);
 
     const spriteName = spriteNameForItemKey(placement.itemKey, tableState);
     const texture = getFurnitureTexture(spriteName);
     sprite.body.clear();
 
     if (texture) {
-      this.applyFurnitureTexture(sprite.sprite!, texture);
+      this.applyFurnitureTexture(sprite.sprite!, texture, placement.itemKey);
     } else {
       sprite.sprite!.visible = false;
       const color = fallbackTintForItemKey(placement.itemKey);
@@ -204,8 +220,8 @@ export class FurnitureLayer {
     );
   }
 
-  private applyFurnitureTexture(sprite: Sprite, texture: Texture): void {
-    const { w, h } = furnitureDrawSize(texture);
+  private applyFurnitureTexture(sprite: Sprite, texture: Texture, itemKey: string): void {
+    const { w, h } = furnitureDrawSize(texture, itemKey);
     const { x, y } = furnitureDrawOffset(w, h);
     sprite.texture = texture;
     sprite.visible = true;

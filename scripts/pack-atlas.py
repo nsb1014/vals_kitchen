@@ -34,6 +34,10 @@ def pack_atlas(
     max_h = max(img.height for _, img in images)
     if cell is None:
         cell = max(max_w, max_h)
+    if max_w > cell or max_h > cell:
+        raise SystemExit(
+            f'Atlas cell {cell}px clips a source frame up to {max_w}x{max_h}'
+        )
 
     count = len(images)
     cols = max(1, math.ceil(math.sqrt(count)))
