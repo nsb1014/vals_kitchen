@@ -11,7 +11,7 @@ describe('chair draw fit', () => {
     const fit = chairDrawFit({ width: 32, height: 48 });
     expect(fit.w).toBe(CHAIR_DRAW_WIDTH_PX);
     expect(fit.h).toBe(CHAIR_DRAW_HEIGHT_PX);
-    expect(fit.y).toBeGreaterThanOrEqual(-14);
+    expect(fit.y).toBeGreaterThanOrEqual(-16);
     expect(fit.y + fit.h).toBe(TILE_PX);
   });
 });

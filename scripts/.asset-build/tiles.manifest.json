@@ -1,13 +1,13 @@
 {
-  "floor_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_a.png",
-  "floor_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_b.png",
-  "floor_kitchen_a": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_a.png",
-  "floor_kitchen_b": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_b.png",
-  "wall": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/wall.png",
-  "wall_n": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/wall_n.png",
-  "wall_e": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/wall_e.png",
-  "wall_s": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/wall_s.png",
-  "wall_w": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/wall_w.png",
-  "door": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/door.png",
-  "door_open": "/home/bazzite/CursorProjects/Val Stuff/Restaurant Simulator/vendor/generated/chibi-ui/restaurant-tiles/door_open.png"
+  "floor_a": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_a.png",
+  "floor_b": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_b.png",
+  "floor_kitchen_a": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_a.png",
+  "floor_kitchen_b": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_b.png",
+  "wall": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall.png",
+  "wall_n": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_n.png",
+  "wall_e": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_e.png",
+  "wall_s": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_s.png",
+  "wall_w": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_w.png",
+  "door": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/door.png",
+  "door_open": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/door_open.png"
 }
