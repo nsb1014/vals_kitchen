@@ -139,7 +139,7 @@ export class FurnitureLayer {
     const sit = seatSitWorldPosition(seat);
     const feetY = sit.y + TILE_PX / 2 - 2;
     sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
-    // Chair behind guest; camera-biased sit feet already clear the tabletop.
+    // Chair behind the seated guest. Tables paint under all actors.
     sprite.root.zIndex = chairDepthY(feetY);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;
@@ -183,9 +183,8 @@ export class FurnitureLayer {
     sprite.placementId = placement.id;
     const { x, y } = gridToWorld(placement.x, placement.y);
     sprite.root.position.set(x, y);
-    // Furniture joins the same depth-sorted container as actors. Tables sit
-    // between chairs and seated guests so diners remain visible.
-    sprite.root.zIndex = furnitureDepthY(placement.y);
+    // Flat tabletops sort under actors; tall stations keep south-edge Y-sort.
+    sprite.root.zIndex = furnitureDepthY(placement.y, placement.itemKey);
 
     const spriteName = spriteNameForItemKey(placement.itemKey, tableState);
     const texture = getFurnitureTexture(spriteName);

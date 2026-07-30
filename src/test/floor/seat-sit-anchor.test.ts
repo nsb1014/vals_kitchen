@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TILE_PX } from '../../canvas/coordinates.ts';
-import {
-  SEAT_CAMERA_BIAS_PX,
-  seatSitWorldPosition,
-} from '../../canvas/world/seat-sit.ts';
+import { seatSitWorldPosition } from '../../canvas/world/seat-sit.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import type { Placement } from '../../domain/state/game-state.ts';
 
-describe('¾ seat sit anchors', () => {
+describe('seat sit anchors', () => {
   it('places west+east seats beside a 2-top, facing the table', () => {
     const placements: Placement[] = [
       { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 2, rotation: 0 },
@@ -30,7 +27,7 @@ describe('¾ seat sit anchors', () => {
     });
   });
 
-  it('keeps side diners beside the table and biased toward the camera', () => {
+  it('anchors diners on seat-cell centers beside the table (no tabletop tuck)', () => {
     const seatW = {
       tablePlacementId: 't',
       slotIndex: 0,
@@ -42,22 +39,13 @@ describe('¾ seat sit anchors', () => {
     const west = seatSitWorldPosition(seatW);
     const east = seatSitWorldPosition(seatE);
 
-    const tableCenterX = 2 * TILE_PX + TILE_PX / 2;
-    const tableCenterY = 2 * TILE_PX + TILE_PX / 2;
-
-    expect(west.x).toBeLessThan(tableCenterX);
-    expect(east.x).toBeGreaterThan(tableCenterX);
-
-    // Shallow tuck toward the table, not buried in the tabletop.
-    const westCellCenterX = 1 * TILE_PX + TILE_PX / 2;
-    const eastCellCenterX = 3 * TILE_PX + TILE_PX / 2;
-    expect(west.x).toBeGreaterThan(westCellCenterX);
-    expect(east.x).toBeLessThan(eastCellCenterX);
-    expect(west.x - westCellCenterX).toBeLessThan(TILE_PX * 0.2);
-    expect(eastCellCenterX - east.x).toBeLessThan(TILE_PX * 0.2);
-
-    // Camera bias puts feet south of the table row so Y-sort clears the top-down table.
-    expect(west.y).toBeCloseTo(tableCenterY + SEAT_CAMERA_BIAS_PX);
-    expect(east.y).toBeCloseTo(tableCenterY + SEAT_CAMERA_BIAS_PX);
+    expect(west).toEqual({
+      x: 1 * TILE_PX + TILE_PX / 2,
+      y: 2 * TILE_PX + TILE_PX / 2,
+    });
+    expect(east).toEqual({
+      x: 3 * TILE_PX + TILE_PX / 2,
+      y: 2 * TILE_PX + TILE_PX / 2,
+    });
   });
 });

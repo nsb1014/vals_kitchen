@@ -1,38 +1,43 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHAIR_DRAW_HEIGHT_PX,
   STATION_DRAW_WIDTH_PX,
   TABLE_DRAW_WIDTH_PX,
+  TABLE_MAX_HEIGHT_PX,
   chairDepthY,
   furnitureDepthY,
-  furnitureDrawOffset,
   furnitureDrawSize,
   seatedActorDepthY,
 } from '../../canvas/furniture-fit.ts';
-import { SEAT_CAMERA_BIAS_PX } from '../../canvas/world/seat-sit.ts';
 import { TILE_PX } from '../../canvas/coordinates.ts';
+import {
+  GUEST_DISPLAY_HEIGHT,
+  SEATED_GUEST_DISPLAY_HEIGHT,
+} from '../../canvas/world/ActorLayer.ts';
 
 describe('furniture feet align', () => {
   it('places station art with feet on tile bottom', () => {
     const { w, h } = furnitureDrawSize({ width: 64, height: 96 }, 'prep_station');
     expect(w).toBe(STATION_DRAW_WIDTH_PX);
     expect(h).toBe(51);
-    const o = furnitureDrawOffset(w, h);
-    expect(o.x).toBe((32 - STATION_DRAW_WIDTH_PX) / 2);
-    expect(o.y).toBe(32 - 51);
   });
 
-  it('gives tables more visual weight than chairs', () => {
+  it('keeps flat tabletops short so they do not swallow neighboring cells', () => {
     const { w, h } = furnitureDrawSize({ width: 64, height: 96 }, 'table_2seat');
-    expect(w).toBe(TABLE_DRAW_WIDTH_PX);
-    expect(h).toBe(54);
+    expect(w).toBeLessThanOrEqual(TABLE_DRAW_WIDTH_PX);
+    expect(h).toBeLessThanOrEqual(TABLE_MAX_HEIGHT_PX);
   });
 
-  it('keeps seated guests in front of the same-row table via camera-biased feet', () => {
-    const tableRow = 2;
-    const tableY = furnitureDepthY(tableRow);
-    const seatCellCenterY = tableRow * TILE_PX + TILE_PX / 2;
-    const seatedFeetY = seatCellCenterY + SEAT_CAMERA_BIAS_PX + TILE_PX / 2 - 2;
+  it('sorts flat tables under actors while stations keep south-edge depth', () => {
+    expect(furnitureDepthY(2, 'table_2seat')).toBe(2);
+    expect(furnitureDepthY(2, 'prep_station')).toBe(3 * TILE_PX);
+    const seatedFeetY = 2 * TILE_PX + TILE_PX / 2 + TILE_PX / 2 - 2;
+    expect(furnitureDepthY(2, 'table_2seat')).toBeLessThan(seatedActorDepthY(seatedFeetY));
     expect(chairDepthY(seatedFeetY)).toBeLessThan(seatedActorDepthY(seatedFeetY));
-    expect(seatedActorDepthY(seatedFeetY)).toBeGreaterThan(tableY);
+  });
+
+  it('keeps seated guests within the chair silhouette height', () => {
+    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBe(CHAIR_DRAW_HEIGHT_PX);
+    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBeLessThanOrEqual(GUEST_DISPLAY_HEIGHT);
   });
 });
