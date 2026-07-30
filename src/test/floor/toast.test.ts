@@ -47,4 +47,20 @@ describe('floor toast', () => {
     vi.advanceTimersByTime(1);
     expect(useGameStore.getState().floorToast).toBeNull();
   });
+
+  it('clears the legacy toast when a pacing notice replaces it', () => {
+    useGameStore.getState().setFloorToast('Wrong table');
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: {
+        id: 'pacing:guest-waiting',
+        source: 'pacing',
+        body: 'A guest is waiting',
+      },
+    });
+
+    expect(useGameStore.getState().noticeActive?.source).toBe('pacing');
+    expect(useGameStore.getState().floorToast).toBeNull();
+  });
 });

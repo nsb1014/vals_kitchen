@@ -232,6 +232,10 @@ function sameNotice(left: Notice | null, right: Notice | null): boolean {
   );
 }
 
+function floorToastFromNotice(notice: Notice | null): string | null {
+  return notice?.source === 'toast' ? notice.body : null;
+}
+
 function clearStoreNotificationTimers(): void {
   lastHudPacingNotice = null;
   clearNotificationTimers();
@@ -250,9 +254,10 @@ function syncStoreNotificationTimer(): void {
       dismissNotice(notice) {
         const current = useGameStore.getState();
         if (current.noticeActive !== notice) return;
+        const nextNotice = current.noticeSticky;
         useGameStore.setState({
-          noticeActive: current.noticeSticky,
-          floorToast: notice.source === 'toast' ? null : current.floorToast,
+          noticeActive: nextNotice,
+          floorToast: floorToastFromNotice(nextNotice),
         });
         syncStoreNotificationTimer();
       },
@@ -317,11 +322,15 @@ function applyReducerEvents(
   before: GameState,
   existingReviews: RecentReviewEntry[],
   existingCelebrations: Celebration[],
-): void {
-  Object.assign(
-    patch,
-    mapReducerEventsToUi(events, before, existingReviews, existingCelebrations),
+): Celebration[] {
+  const uiPatch = mapReducerEventsToUi(
+    events,
+    before,
+    existingReviews,
+    existingCelebrations,
   );
+  Object.assign(patch, uiPatch);
+  return uiPatch.celebrationQueue?.slice(existingCelebrations.length) ?? [];
 }
 
 function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
@@ -446,7 +455,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
-    applyReducerEvents(
+    const mappedCelebrations = applyReducerEvents(
       result.events,
       patch,
       before,
@@ -470,7 +479,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.noticeActive = null;
         patch.noticeSticky = null;
         patch.tutorialDismissedStepId = null;
-        patch.celebrationQueue = [];
+        patch.celebrationQueue = mappedCelebrations;
         patch.composeSheetOpen = false;
         break;
       case 'NEXT_CUSTOMER':
@@ -492,7 +501,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.noticeActive = null;
         patch.noticeSticky = null;
         patch.tutorialDismissedStepId = null;
-        patch.celebrationQueue = [];
+        patch.celebrationQueue = mappedCelebrations;
         patch.composeSheetOpen = false;
         break;
       case 'SET_COMPOSE_DRAFT':
@@ -713,13 +722,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         noticeActive: pacing,
         noticeSticky: nextSticky,
         tutorialDismissedStepId,
+        floorToast: floorToastFromNotice(pacing),
       });
       restartNoticeTimer(pacing);
     } else {
+      const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
       set({
-        noticeActive: activeIsSticky ? nextSticky : current.noticeActive,
+        noticeActive: nextActive,
         noticeSticky: nextSticky,
         tutorialDismissedStepId,
+        floorToast: floorToastFromNotice(nextActive),
       });
     }
     syncStoreNotificationTimer();
@@ -737,13 +749,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       set({
         noticeActive: null,
         noticeSticky: null,
+        floorToast: null,
         tutorialDismissedStepId:
           notice.source === 'tutorial' ? (notice.stepId ?? null) : null,
       });
     } else {
+      const nextNotice = current.noticeSticky;
       set({
-        noticeActive: current.noticeSticky,
-        floorToast: notice.source === 'toast' ? null : current.floorToast,
+        noticeActive: nextNotice,
+        floorToast: floorToastFromNotice(nextNotice),
       });
     }
     syncStoreNotificationTimer();

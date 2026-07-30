@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../domain/state/game-state.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import { mapReducerEventsToUi } from '../store/service-events.ts';
+import './test-helpers.ts';
 
 const served = {
   type: 'CUSTOMER_SERVED' as const,
@@ -127,5 +128,34 @@ describe('celebration queue timing', () => {
 
     vi.advanceTimersByTime(1);
     expect(useGameStore.getState().celebrationQueue).toEqual([]);
+  });
+
+  it('preserves a CLOSE_DAY achievement while clearing stale celebrations', async () => {
+    const game = createNewGameState(10);
+    game.activeDay = {
+      seed: 10,
+      modifierId: 'none',
+      customers: [],
+      queueIndex: 0,
+      dayEarnings: 0,
+      dayMatchSum: 0,
+      customersServed: 0,
+    };
+    useGameStore.setState({
+      ...game,
+      celebrationQueue: [
+        { kind: 'recipe', title: 'Stale', body: 'From before close' },
+      ],
+      dayStartRating: game.rating,
+    });
+
+    await useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+
+    expect(useGameStore.getState().celebrationQueue).toEqual([
+      expect.objectContaining({
+        kind: 'achievement',
+        achievementId: 'days-1',
+      }),
+    ]);
   });
 });
