@@ -50,4 +50,25 @@ describe('walkBlockedCells', () => {
     expect(enter![0]).toEqual(door);
     expect(enter![enter!.length - 1]).toEqual(wait);
   });
+
+  it('blocks chair seat cells so the player cannot walk through them', () => {
+    const map = createStarterMap();
+    const { w, h } = map.gridSize;
+    const blocked = walkBlockedCells(map.placements, w, h);
+    // Starter 2-top at (2,2) has seats at (1,2) and (3,2).
+    expect(blocked.has('1,2')).toBe(true);
+    expect(blocked.has('3,2')).toBe(true);
+    expect(
+      findPath({ w, h, blocked }, { x: 1, y: 3 }, { x: 1, y: 2 }),
+    ).toBeNull();
+    // Guests may still path onto their seat.
+    expect(
+      findPath(
+        { w, h, blocked },
+        { x: 1, y: 3 },
+        { x: 1, y: 2 },
+        { allowBlockedEndpoints: true },
+      ),
+    ).not.toBeNull();
+  });
 });

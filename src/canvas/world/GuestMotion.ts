@@ -105,7 +105,9 @@ export class GuestMotion {
       if (!this.enterStarted.has(guest.id)) {
         nav.snapTo(opts.door);
         this.enterStarted.add(guest.id);
-        const path = findPath(opts.grid, opts.door, waitCell) ?? directPath(opts.door, waitCell);
+        const path =
+          findPath(opts.grid, opts.door, waitCell, { allowBlockedEndpoints: true }) ??
+          directPath(opts.door, waitCell);
         nav.setPath(path);
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
@@ -160,7 +162,7 @@ export class GuestMotion {
 
       if (!nav.isMoving) {
         const path =
-          findPath(opts.grid, nav.position, seatCell) ??
+          findPath(opts.grid, nav.position, seatCell, { allowBlockedEndpoints: true }) ??
           directPath(nav.position, seatCell);
         nav.setPath(path);
       }
@@ -181,7 +183,9 @@ export class GuestMotion {
     if (guest.stage === 'leaving') {
       const door = { ...opts.door };
       if (!nav.isMoving && (nav.position.x !== door.x || nav.position.y !== door.y)) {
-        const path = findPath(opts.grid, nav.position, door) ?? directPath(nav.position, door);
+        const path =
+          findPath(opts.grid, nav.position, door, { allowBlockedEndpoints: true }) ??
+          directPath(nav.position, door);
         nav.setPath(path);
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);

@@ -4,12 +4,12 @@ import { TILE_PX } from './coordinates.ts';
  * Max chair overhang above the seat-cell top.
  * Side chairs tuck under the table lip; keep enough silhouette without burying tops.
  */
-export const CHAIR_MAX_OVERHANG_PX = 16;
-export const CHAIR_DRAW_WIDTH_PX = 28;
-export const CHAIR_DRAW_HEIGHT_PX = 42;
-export const TABLE_DRAW_WIDTH_PX = 44;
-/** Kitchen stations/counters need more presence next to shrunken chibi actors. */
-export const STATION_DRAW_WIDTH_PX = 36;
+export const CHAIR_MAX_OVERHANG_PX = 14;
+export const CHAIR_DRAW_WIDTH_PX = 26;
+export const CHAIR_DRAW_HEIGHT_PX = 39;
+export const TABLE_DRAW_WIDTH_PX = 36;
+/** Kitchen stations/counters need presence without dwarfing actors. */
+export const STATION_DRAW_WIDTH_PX = 34;
 
 export function furnitureDrawSize(
   texture: { width: number; height: number },
@@ -37,11 +37,12 @@ export function chairDepthY(seatedFeetY: number): number {
 }
 
 /**
- * Seated diners must paint above the same-row table lip so torsos stay visible.
- * Chair stays behind; table stays between chair and guest.
+ * Seated diners paint just above their chair. Camera-biased sit anchors already
+ * put feet past the same-row tabletop so natural Y-sort keeps them in front of
+ * the flat table sprite without boosting them onto the table surface.
  */
-export function seatedActorDepthY(seatedFeetY: number, tableDepthY = seatedFeetY + 2): number {
-  return Math.max(seatedFeetY + 4, tableDepthY + 1);
+export function seatedActorDepthY(seatedFeetY: number, _tableDepthY?: number): number {
+  return seatedFeetY;
 }
 
 /** Keep chairs subordinate to the table and seated actor silhouettes. */

@@ -304,11 +304,10 @@ def palette_from_wall(wall: Image.Image) -> dict[str, tuple[int, int, int]]:
 
 
 def build_side_wall_tile(side: str, palette: dict[str, tuple[int, int, int]]) -> Image.Image:
-    """Project-CC0 E/W wall with vertical structure so stacked cells read as walls.
+    """Project-CC0 E/W wall matching N/S materials with vertical structure.
 
-    Face-on elevation crops produce repeating horizontal cream bands when tiled
-    down the left/right perimeter. A vertical wood column plus a thin room-facing
-    plaster strip keeps the same materials while reading as a side wall.
+    Face-on elevation crops tile into cream slabs. A thick outer wood post plus a
+    wide plaster face (with baseboard/crown) reads as a side wall when stacked.
     """
     wood_dark = palette["wood_dark"]
     wood = palette["wood"]
@@ -319,37 +318,36 @@ def build_side_wall_tile(side: str, palette: dict[str, tuple[int, int, int]]) ->
     pixels: list[tuple[int, int, int, int]] = []
     for y in range(64):
         for x in range(64):
-            if side == "w":
-                if x < 20:
-                    tone = wood_dark if (x // 4) % 2 == 0 else wood
-                    if x in (3, 7, 11, 15):
+            # Normalize so "outer" is low x for west and high x is mirrored for east.
+            local = x if side == "w" else 63 - x
+            if local < 14:
+                # Outer structural post with vertical planks.
+                tone = wood_dark if (local // 3) % 2 == 0 else wood
+                if local in (2, 5, 8, 11):
+                    tone = wood_light
+                color = tone
+            elif local < 48:
+                # Wide plaster face — the readable "wall" when cells stack.
+                if y < 5 or y > 58:
+                    color = wood_dark  # crown / base plate
+                elif y > 42:
+                    # Lower wainscot band
+                    tone = wood if ((local + y) // 6) % 2 == 0 else wood_dark
+                    if y in (43, 44, 57, 58):
                         tone = wood_light
                     color = tone
-                elif x < 30:
-                    color = plaster_shade if (x * 5 + y) % 13 == 0 else plaster
-                elif x < 34:
-                    color = wood_dark
+                elif y in (5, 6, 41, 42):
+                    color = wood_dark  # rail
                 else:
-                    color = tuple(max(0, c - 18) for c in wood_dark)
+                    color = plaster_shade if (local * 3 + y * 5) % 17 == 0 else plaster
             else:
-                if x >= 44:
-                    local = 63 - x
-                    tone = wood_dark if (local // 4) % 2 == 0 else wood
-                    if local in (3, 7, 11, 15):
-                        tone = wood_light
-                    color = tone
-                elif x >= 34:
-                    color = plaster_shade if (x * 5 + y) % 13 == 0 else plaster
-                elif x >= 30:
-                    color = wood_dark
-                else:
-                    color = tuple(max(0, c - 18) for c in wood_dark)
-            if y < 3 or y > 60:
-                color = wood_dark
+                # Inner shadow strip toward the room floor.
+                color = tuple(max(0, c - 22) for c in wood_dark)
             pixels.append((*color, 255))
     tile = Image.new("RGBA", (64, 64))
     tile.putdata(pixels)
     return tile
+
 
 
 def build_player() -> None:
