@@ -2,10 +2,12 @@ import { TILE_PX } from './coordinates.ts';
 
 /**
  * Max chair overhang above the seat-cell top.
+ * Sized to match player-scale seated guests (see ActorLayer display heights).
  */
-export const CHAIR_MAX_OVERHANG_PX = 12;
-export const CHAIR_DRAW_WIDTH_PX = 24;
-export const CHAIR_DRAW_HEIGHT_PX = 36;
+export const CHAIR_MAX_OVERHANG_PX = 22;
+/** Sized for player-matched sit silhouettes (content-scaled). */
+export const CHAIR_DRAW_WIDTH_PX = 34;
+export const CHAIR_DRAW_HEIGHT_PX = 52;
 /** Flat top-down tabletop width; height is capped so art does not swallow neighbors. */
 export const TABLE_DRAW_WIDTH_PX = 30;
 export const TABLE_MAX_HEIGHT_PX = TILE_PX + 10;
@@ -53,17 +55,19 @@ export function seatedActorDepthY(seatedFeetY: number): number {
   return seatedFeetY;
 }
 
-/** Keep chairs subordinate to seated actor silhouettes. */
+/** Keep chairs matched to player-scale seated guests. */
 export function chairDrawFit(texture: { width: number; height: number }): {
   w: number;
   h: number;
   x: number;
   y: number;
 } {
-  const raw = furnitureDrawSize(texture);
   const maxH = Math.min(TILE_PX + CHAIR_MAX_OVERHANG_PX, CHAIR_DRAW_HEIGHT_PX);
-  const scale = Math.min(CHAIR_DRAW_WIDTH_PX / raw.w, maxH / raw.h, 1);
-  const w = raw.w * scale;
-  const h = raw.h * scale;
+  const scale = Math.min(
+    CHAIR_DRAW_WIDTH_PX / Math.max(1, texture.width),
+    maxH / Math.max(1, texture.height),
+  );
+  const w = texture.width * scale;
+  const h = texture.height * scale;
   return { w, h, ...furnitureDrawOffset(w, h) };
 }

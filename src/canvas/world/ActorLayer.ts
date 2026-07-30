@@ -1,4 +1,4 @@
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import { getCharacterTexture } from '../../assets/loader.ts';
 import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
@@ -13,18 +13,25 @@ import {
   playerCarryFrameKey,
   playerFrameKey,
 } from './character-frames.ts';
-import { CHAIR_DRAW_HEIGHT_PX } from '../furniture-fit.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 
-/** Runtime scale is independent from the high-resolution chibi source frames. */
+/** Runtime silhouette height shared by chef and guests. */
 export const PLAYER_DISPLAY_HEIGHT = 44;
-export const GUEST_DISPLAY_HEIGHT = 42;
-/** Seated guests must fit the chair pocket — taller walk scale dwarfs empty chairs. */
-export const SEATED_GUEST_DISPLAY_HEIGHT = CHAIR_DRAW_HEIGHT_PX;
+export const GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT;
+/** Sit frames are denser; slightly taller fills the grown chair pocket. */
+export const SEATED_GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT + 6;
+
+/**
+ * Opaque content height inside padded atlas frames.
+ * Scale by content, not texture height, or sit frames (more padding) look tiny.
+ */
+export const PLAYER_CONTENT_HEIGHT_PX = 90;
+export const GUEST_WALK_CONTENT_HEIGHT_PX = 167;
+export const GUEST_SIT_CONTENT_HEIGHT_PX = 148;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -47,8 +54,8 @@ function tileCenter(gx: number, gy: number): { x: number; y: number } {
   return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 };
 }
 
-function scaleForTexture(texture: Texture, displayHeight: number): number {
-  return displayHeight / Math.max(1, texture.height);
+function scaleForContent(displayHeight: number, contentHeight: number): number {
+  return displayHeight / Math.max(1, contentHeight);
 }
 
 export class ActorLayer {
@@ -166,7 +173,9 @@ export class ActorLayer {
         this.lastPlayerFrameKey = frameKey;
         this.playerUsesCarryTexture = carryTexture != null;
         this.playerSprite.texture = texture;
-        this.playerSprite.scale.set(scaleForTexture(texture, PLAYER_DISPLAY_HEIGHT));
+        this.playerSprite.scale.set(
+          scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
+        );
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
@@ -277,8 +286,9 @@ export class ActorLayer {
       }
 
       if (entry.sprite.visible) {
+        const contentH = seated ? GUEST_SIT_CONTENT_HEIGHT_PX : GUEST_WALK_CONTENT_HEIGHT_PX;
         const displayH = seated ? SEATED_GUEST_DISPLAY_HEIGHT : GUEST_DISPLAY_HEIGHT;
-        entry.sprite.scale.set(scaleForTexture(entry.sprite.texture, displayH));
+        entry.sprite.scale.set(scaleForContent(displayH, contentH));
       }
 
       const feetY = pose.worldY + TILE_PX / 2 - 2;

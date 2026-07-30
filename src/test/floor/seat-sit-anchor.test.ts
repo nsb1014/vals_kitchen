@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TILE_PX } from '../../canvas/coordinates.ts';
-import { seatSitWorldPosition } from '../../canvas/world/seat-sit.ts';
+import {
+  SEAT_SIT_OFFSET_Y,
+  seatChairWorldPosition,
+  seatSitWorldPosition,
+} from '../../canvas/world/seat-sit.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import type { Placement } from '../../domain/state/game-state.ts';
 
@@ -27,7 +31,7 @@ describe('seat sit anchors', () => {
     });
   });
 
-  it('anchors diners on seat-cell centers beside the table (no tabletop tuck)', () => {
+  it('plants chairs on the seat-cell floor and offsets diners onto the cushion', () => {
     const seatW = {
       tablePlacementId: 't',
       slotIndex: 0,
@@ -36,16 +40,21 @@ describe('seat sit anchors', () => {
       facing: 90 as const,
     };
     const seatE = { ...seatW, slotIndex: 1, x: 3, facing: 270 as const };
+    const chairW = seatChairWorldPosition(seatW);
+    const chairE = seatChairWorldPosition(seatE);
     const west = seatSitWorldPosition(seatW);
     const east = seatSitWorldPosition(seatE);
 
-    expect(west).toEqual({
+    expect(chairW).toEqual({
       x: 1 * TILE_PX + TILE_PX / 2,
       y: 2 * TILE_PX + TILE_PX / 2,
     });
-    expect(east).toEqual({
+    expect(chairE).toEqual({
       x: 3 * TILE_PX + TILE_PX / 2,
       y: 2 * TILE_PX + TILE_PX / 2,
     });
+    expect(SEAT_SIT_OFFSET_Y).toBeLessThan(0);
+    expect(west).toEqual({ x: chairW.x, y: chairW.y + SEAT_SIT_OFFSET_Y });
+    expect(east).toEqual({ x: chairE.x, y: chairE.y + SEAT_SIT_OFFSET_Y });
   });
 });
