@@ -1,6 +1,6 @@
 # Unified floor notifications (banner stack)
 
-**Status:** Draft v6 — isolated responsive corrections; notification architecture ready  
+**Status:** Draft v7 — scrollport floor is one CTA row; otherwise ready for approval  
 **Date:** 2026-07-30  
 **Related:** `CelebrationBanner`, `floorToast`, `FloorServiceHud`, `--vk-status-hud-height`, `--vk-cta-h` (chibi theme: **52px**)
 
@@ -147,9 +147,9 @@ When surface becomes active again: `syncNotificationTimer()` resume from `remain
 
 Canvas taps handle **cook + deliver** only. Always offer Set / Seat / Take orders / Clear (enabled via selectors). **Close Day** only when `selectCanCloseDay`.
 
-### Token-derived sizing (v6 responsive plan)
+### Token-derived sizing (v7 responsive plan)
 
-**Problems addressed vs v5:** 320px with five reserved controls needs **three** rows (not two); short-height must not override the 320px layout on 320×480; 200% zoom tests must not use `deviceScaleFactor`; scroll `max-height` must not go negative.
+**Problems addressed vs v5/v6:** 320px with five reserved controls needs **three** rows (not two); short-height must not override the 320px layout on 320×480; 200% zoom tests must not use `deviceScaleFactor`; scroll `max-height` must not collapse below **one CTA row** (a `0px` floor left every action unreachable).
 
 #### 1. Buttons and labels
 
@@ -241,18 +241,18 @@ Canvas taps handle **cook + deliver** only. Always offer Set / Seat / Take order
 
 Always reserve a Close Day grid cell (`visibility: hidden` when not closable) so showing it does not change `--vk-floor-chrome-min-h`.
 
-#### 4. Extreme zoom — bounded, non-negative scrollport
+#### 4. Extreme zoom — bounded scrollport with one-CTA floor
 
 Do **not** put `overflow-y: auto` on `#chrome-mount` itself.
 
 1. Structure: `#chrome-mount` > `.floor-service-panel` > `.floor-actions-scroll` > `.floor-actions`.
-2. Bound with additive `min` / `max` so the viewport term cannot go negative:
+2. Bound with additive `min` / `max`. The viewport term’s **lower bound is one CTA row** (`var(--vk-cta-h)`), not `0px` — a zero floor collapses the scrollport and makes every action unreachable:
 
 ```css
 .floor-actions-scroll {
   max-height: min(
     var(--vk-floor-chrome-min-h-3),
-    max(0px, calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
+    max(var(--vk-cta-h), calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
   );
   overflow-x: auto;
   overflow-y: auto;
@@ -261,7 +261,7 @@ Do **not** put `overflow-y: auto` on `#chrome-mount` itself.
 ```
 
 3. Internal scrolling only when content exceeds that bound (e.g. real **page/text zoom**). Below the bound, no scrollbar.
-4. Tests prove the scrollport is bounded (`max-height ≥ 0`) and buttons remain reachable.
+4. Tests prove the scrollport `max-height ≥ --vk-cta-h` and at least one action button is reachable (scroll into view).
 
 ### What is removed from chrome
 
@@ -301,7 +301,7 @@ Do **not** put `overflow-y: auto` on `#chrome-mount` itself.
 1. Chromium: `page.evaluate(() => { document.documentElement.style.zoom = '2'; })` (or DevTools Protocol page zoom if available), **or**
 2. Cross-engine text zoom proxy: `document.documentElement.style.fontSize = '200%'` when chrome sizing is rem-based enough to stress layout, documented as the Firefox/WebKit stand-in if `zoom` is unsupported.
 
-Assert under that harness: scrollport `max-height` is ≥ 0; buttons reachable inside `.floor-actions-scroll`.
+Assert under that harness: scrollport `max-height ≥ --vk-cta-h`; at least one action button reachable inside `.floor-actions-scroll`.
 
 Assertions (relative):
 
@@ -311,7 +311,7 @@ Assertions (relative):
 - 320×480 keeps 2-column × 3-row plan; short landscape (wider than 320) keeps one-row min-height.
 - 320px: no label overflow (`scrollWidth` of button ≤ client width + 1).
 - Banner three-line clamp or `max-height` fallback holds.
-- 200% zoom: overflow confined to bounded `.floor-actions-scroll`; `max-height ≥ 0`.
+- 200% zoom: overflow confined to bounded `.floor-actions-scroll`; `max-height ≥ --vk-cta-h`; actions reachable.
 - Canvas height unchanged across notice show/hide.
 - Banner below HUD without double safe-area; pass-through taps; dismiss notice reveals celebration.
 
@@ -326,16 +326,16 @@ Assertions (relative):
 | 320px | 2 columns × **3** rows (`min-h-3`); wins over short-height |
 | Two-row reserve | Narrow (321–760) **and** tall enough |
 | Line clamp | `-webkit-line-clamp` + `line-clamp` + additive `max-height` fallback |
-| Extreme zoom | Bounded scrollport with `max(0px, calc(...))` |
+| Extreme zoom | Bounded scrollport with `max(var(--vk-cta-h), calc(...))` — never collapse below one CTA row |
 | 200% zoom test | Real page/text zoom — **not** `deviceScaleFactor` |
 | Three-button cap | Removed |
 | Tutorial dismiss | Per-step until step changes |
 | Timer while hidden | Pause on unmount **and** `visibilitychange` / BFCache `pagehide` |
 | Tests | Desktop, tablet, 320, 320×480, short landscape, 200% zoom, Chromium/WebKit/Firefox |
 
-## Implementation sketch (after v6 approval)
+## Implementation sketch (after v7 approval)
 
 1. Notification timer + store fields; lifecycle helper (mount, visibility, pagehide/pageshow).
 2. Banner: HUD-offset, stack, inert back, dwell-independent motion, three-line clamp fallback.
-3. Floor chrome: additive `min-h-1`/`min-h-2`/`min-h-3`, short-height excludes ≤320px, 320px 2×3, bounded non-negative `.floor-actions-scroll`, buttons `var(--vk-cta-h)`, remove messages/arrival/ticket strip; reserved Close Day cell.
-4. Tests: unit lifecycle + matrix including 320×480 conflict case and real 200% zoom harness.
+3. Floor chrome: additive `min-h-1`/`min-h-2`/`min-h-3`, short-height excludes ≤320px, 320px 2×3, `.floor-actions-scroll` floored at one CTA row, buttons `var(--vk-cta-h)`, remove messages/arrival/ticket strip; reserved Close Day cell.
+4. Tests: unit lifecycle + matrix including 320×480 conflict case and real 200% zoom harness (scrollport ≥ CTA height).
