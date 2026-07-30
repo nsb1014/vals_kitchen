@@ -40,6 +40,7 @@ export function foodIconBackgroundStyle(spriteName: string, displayPx = 32): str
     `background-size:${bgW}px ${bgH}px`,
     `width:${displayPx}px`,
     `height:${displayPx}px`,
+    'overflow:hidden',
     'image-rendering:pixelated',
     'display:inline-block',
     'flex-shrink:0',

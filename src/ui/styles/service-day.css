@@ -487,8 +487,11 @@
 }
 
 .floor-tickets-menu {
+  /* Fixed height so Order ↔ Ideal tabs do not jump; body scrolls inside. */
+  --vk-tickets-menu-h: min(52vh, 22rem);
   margin-top: 0.35rem;
-  max-height: min(52vh, 22rem);
+  height: var(--vk-tickets-menu-h);
+  max-height: var(--vk-tickets-menu-h);
   display: flex;
   flex-direction: column;
   border-radius: 10px;
@@ -547,11 +550,17 @@
 .floor-tickets-panel-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .floor-tickets-ideal {
   padding: 0.55rem 0.65rem 0.75rem;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .floor-tickets-ideal .flavor-profile-name {
@@ -578,11 +587,8 @@
   list-style: none;
   margin: 0;
   padding: 0.35rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  flex: 1 1 auto;
-  min-height: 0;
+  /* Single scroll host is .floor-tickets-panel-body — nested overflow breaks mobile pan. */
+  overflow: visible;
 }
 
 .floor-tickets-empty {
@@ -676,7 +682,8 @@
   color: var(--vk-sage, #6a994e);
 }
 
-.floor-ticket.arriving {
+.floor-ticket.arriving,
+.floor-tickets-item.arriving {
   animation: ticket-arrive 0.9s ease-out;
 }
 
@@ -696,7 +703,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floor-ticket.arriving {
+  .floor-ticket.arriving,
+  .floor-tickets-item.arriving {
     animation: none;
   }
 }
@@ -1596,6 +1604,7 @@
   width: 32px !important;
   height: 32px !important;
   flex: 0 0 32px;
+  overflow: hidden;
   image-rendering: pixelated;
 }
 
