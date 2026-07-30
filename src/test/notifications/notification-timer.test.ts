@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
+import '../test-helpers.ts';
 
 describe('notification timer', () => {
   beforeEach(() => {
@@ -123,5 +125,55 @@ describe('notification timer', () => {
       pacing: null,
     });
     expect(useGameStore.getState().noticeSticky?.stepId).toBe('wait_seat');
+  });
+
+  it('clears notices and stale timers when SERVE_DISH soft-resets the day', async () => {
+    useGameStore.setState(createNewGameState(424242));
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+
+    const activeDay = useGameStore.getState().activeDay!;
+    activeDay.customers[activeDay.queueIndex]!.preference = {
+      primary: { SW: 'high' },
+      avoid: {},
+      phrases: [],
+    };
+    useGameStore.setState({ rating: 0.01, activeDay });
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: {
+        id: 'tutorial:serve',
+        source: 'tutorial',
+        body: 'Serve the guest',
+        stepId: 'cook',
+      },
+      pacing: null,
+    });
+    useGameStore.getState().setFloorToast('Active before reset');
+    useGameStore.getState().enqueueCelebration({
+      kind: 'mastery',
+      title: 'Stale',
+      body: 'From before reset',
+    });
+
+    await useGameStore.getState().dispatch({
+      type: 'SERVE_DISH',
+      ingredientIds: ['butter', 'olive_oil', 'garlic'],
+    });
+
+    const state = useGameStore.getState();
+    expect(state.activeDay).toBeNull();
+    expect(state.floorToast).toBeNull();
+    expect(state.noticeActive).toBeNull();
+    expect(state.noticeSticky).toBeNull();
+    expect(state.tutorialDismissedStepId).toBeNull();
+    expect(state.celebrationQueue).toEqual([
+      expect.objectContaining({ kind: 'recipe', title: 'Flaky Butter Loaf' }),
+      expect.objectContaining({
+        kind: 'achievement',
+        achievementId: 'recipe-unlocks-1',
+      }),
+    ]);
+
+    vi.advanceTimersByTime(2_500);
+    expect(useGameStore.getState().celebrationQueue).toHaveLength(2);
   });
 });

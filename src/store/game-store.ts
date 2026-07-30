@@ -462,6 +462,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.recentReviews,
       current.celebrationQueue,
     );
+    const resetsNotificationLifecycle =
+      action.type === 'OPEN_DAY' ||
+      action.type === 'CLOSE_DAY' ||
+      (before.activeDay !== null && result.state.activeDay === null);
 
     switch (action.type) {
       case 'OPEN_DAY':
@@ -475,12 +479,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid =
           result.state.activeDay?.floor?.playerPosition ?? null;
-        patch.floorToast = null;
-        patch.noticeActive = null;
-        patch.noticeSticky = null;
-        patch.tutorialDismissedStepId = null;
-        patch.celebrationQueue = mappedCelebrations;
-        patch.composeSheetOpen = false;
         break;
       case 'NEXT_CUSTOMER':
         patch.pendingReview = null;
@@ -497,12 +495,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.editLayoutMode = false;
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = null;
-        patch.floorToast = null;
-        patch.noticeActive = null;
-        patch.noticeSticky = null;
-        patch.tutorialDismissedStepId = null;
-        patch.celebrationQueue = mappedCelebrations;
-        patch.composeSheetOpen = false;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
@@ -515,6 +507,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         break;
     }
 
+    if (resetsNotificationLifecycle) {
+      patch.floorToast = null;
+      patch.noticeActive = null;
+      patch.noticeSticky = null;
+      patch.tutorialDismissedStepId = null;
+      patch.celebrationQueue = mappedCelebrations;
+      patch.composeSheetOpen = false;
+    }
+
     if (
       patch.pendingReview ||
       patch.daySummary ||
@@ -525,7 +526,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
 
     set(patch);
-    if (action.type === 'OPEN_DAY' || action.type === 'CLOSE_DAY') {
+    if (resetsNotificationLifecycle) {
       clearStoreNotificationTimers();
     }
     syncStoreNotificationTimer();
