@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-30T00:27:49.900Z",
+  "generatedAt": "2026-07-30T02:09:36.766Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [

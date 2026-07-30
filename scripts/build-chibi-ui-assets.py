@@ -2,8 +2,9 @@
 """Build the project-CC0 chibi restaurant surfaces, furniture, and chef frames.
 
 The source sheets are intentionally retained in vendor/generated/chibi-ui/source so
-the shipped atlases remain reproducible. This script only crops, keys, and scales
-those sources; it never invents replacement pixels from legacy sprites.
+the shipped atlases remain reproducible. This script crops, keys, and scales those
+sources, and also generates project-CC0 side-wall tiles plus clipped-crown repairs
+for retained guest frames.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "vendor" / "generated" / "chibi-ui" / "source"
 OUT = ROOT / "vendor" / "generated" / "chibi-ui"
 PLAYER_OUT = OUT / "player-frames"
+GUEST_OUT = OUT / "guest-frames"
 TILE_OUT = OUT / "restaurant-tiles"
 PROP_OUT = OUT / "restaurant-props"
 
@@ -126,6 +128,18 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
         )
 
 
+def top_row_fill_ratio(image: Image.Image) -> float:
+    """Opaque fill of the silhouette's top row versus a few pixels lower."""
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        return 0.0
+    x0, y0, x1, y1 = bounds
+    top = sum(1 for x in range(x0, x1) if image.getpixel((x, y0))[3] > 32)
+    probe_y = min(y1 - 1, y0 + 8)
+    mid = sum(1 for x in range(x0, x1) if image.getpixel((x, probe_y))[3] > 32)
+    return top / max(1, mid)
+
+
 def validate_animation_frames() -> None:
     """Reject clipped silhouettes and unstable walk-cycle crops before packing."""
     for variant in ("a", "b", "c", "d", "e"):
@@ -133,7 +147,7 @@ def validate_animation_frames() -> None:
             heights = []
             for frame in range(3):
                 name = f"guest_{variant}_{facing}_{frame}.png"
-                image = Image.open(OUT / "guest-frames" / name).convert("RGBA")
+                image = Image.open(GUEST_OUT / name).convert("RGBA")
                 bounds = image.getchannel("A").getbbox()
                 if bounds is None:
                     raise ValueError(f"Guest animation frame is empty: {name}")
@@ -145,11 +159,197 @@ def validate_animation_frames() -> None:
                 )
                 if min(margins) < 6:
                     raise ValueError(f"Guest animation frame is clipped: {name} margins={margins}")
+                if facing == "up" and top_row_fill_ratio(image) > 0.55:
+                    raise ValueError(
+                        f"Guest up-facing frame still has a flat clipped crown: {name} "
+                        f"fill={top_row_fill_ratio(image):.2f}"
+                    )
                 heights.append(bounds[3] - bounds[1])
             if max(heights) - min(heights) > 3:
                 raise ValueError(
                     f"Guest walk cycle changes crop height: {variant} {facing} {heights}"
                 )
+        sit_up = GUEST_OUT / f"guest_{variant}_sit_up.png"
+        if sit_up.is_file():
+            image = Image.open(sit_up).convert("RGBA")
+            if top_row_fill_ratio(image) > 0.55:
+                raise ValueError(
+                    f"Guest sit-up frame still has a flat clipped crown: {sit_up.name} "
+                    f"fill={top_row_fill_ratio(image):.2f}"
+                )
+
+
+def sample_hair_color(image: Image.Image, bounds: tuple[int, int, int, int]) -> tuple[int, int, int]:
+    x0, y0, x1, y1 = bounds
+    cx = (x0 + x1) // 2
+    samples: list[tuple[int, int, int]] = []
+    for y in range(y0, min(y1, y0 + 12)):
+        for x in range(max(x0, cx - 18), min(x1, cx + 18)):
+            red, green, blue, alpha = image.getpixel((x, y))
+            if alpha < 200:
+                continue
+            # Skip near-skin tones; keep hair / bun colors.
+            if red > 170 and green > 120 and blue > 90 and abs(red - green) < 45:
+                continue
+            samples.append((red, green, blue))
+    if not samples:
+        return (120, 110, 100)
+    samples.sort(key=lambda rgb: rgb[0] + rgb[1] + rgb[2])
+    return samples[len(samples) // 2]
+
+
+def repair_clipped_crown(image: Image.Image) -> Image.Image:
+    """Rebuild a rounded crown when an up-facing frame was hard-clipped flat.
+
+    Take the existing hair just below the clip, shrink it into a short elliptical
+    cap, and paste it on the flat top so the bun finishes with real texture.
+    """
+    rgba = image.convert("RGBA")
+    if top_row_fill_ratio(rgba) <= 0.55:
+        return rgba
+    bounds = rgba.getchannel("A").getbbox()
+    if bounds is None:
+        return rgba
+    x0, y0, x1, y1 = bounds
+    width = x1 - x0
+    tip_y = 6
+    bottom_margin = rgba.height - y1
+    # Need a little headroom above the clip for the cap.
+    needed = 12
+    shift = min(max(0, needed - (y0 - tip_y)), max(0, bottom_margin - 6))
+    if shift > 0:
+        shifted = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
+        shifted.alpha_composite(rgba, (0, shift))
+        rgba = shifted
+        x0, y0, x1, y1 = rgba.getchannel("A").getbbox()
+
+    canvas = rgba.copy()
+    sample_h = min(28, max(12, (y1 - y0) // 5))
+    hair = canvas.crop((x0, y0, x1, min(y1, y0 + sample_h))).convert("RGBA")
+    cap_h = min(14, max(10, y0 - tip_y))
+    cap_w = max(8, int(width * 0.92))
+    cap = hair.resize((cap_w, cap_h), Image.Resampling.LANCZOS)
+
+    # Elliptical mask so the cap reads as a rounded crown, not a brick.
+    mask = Image.new("L", (cap_w, cap_h), 0)
+    mask_px = mask.load()
+    assert mask_px is not None
+    cx_local = (cap_w - 1) / 2
+    cy_local = cap_h - 1  # sit on the hairline; tip at top
+    rx = cap_w / 2
+    ry = cap_h * 0.95
+    for y in range(cap_h):
+        for x in range(cap_w):
+            nx = (x - cx_local) / max(rx, 1)
+            # Use the lower half of an ellipse so the top is rounded.
+            ny = (y - cy_local) / max(ry, 1)
+            if nx * nx + ny * ny <= 1.0:
+                # Soften the tip.
+                mask_px[x, y] = 255 if y > 0 or abs(nx) < 0.25 else 0
+
+    paste_x = int(round(((x0 + x1) / 2) - cap_w / 2))
+    # Overlap the hairline generously so the cap does not float above the bun.
+    paste_y = y0 - cap_h + 5
+    if paste_y < tip_y:
+        paste_y = tip_y
+    canvas.paste(cap, (paste_x, paste_y), mask)
+    return canvas
+
+
+def repair_guest_crowns() -> int:
+    """Repair retained guest up/sit-up frames that lost their crown to a hard crop."""
+    repaired = 0
+    for path in sorted(GUEST_OUT.glob("*.png")):
+        name = path.name
+        if "_up_" not in name and not name.endswith("_sit_up.png"):
+            continue
+        if name.endswith("_sit_down.png") or "_down_" in name:
+            continue
+        original = Image.open(path).convert("RGBA")
+        fixed = repair_clipped_crown(original)
+        if fixed.tobytes() != original.tobytes():
+            save(fixed, path)
+            repaired += 1
+    return repaired
+
+
+def palette_from_wall(wall: Image.Image) -> dict[str, tuple[int, int, int]]:
+    rgba = wall.convert("RGBA")
+    px = rgba.load()
+    assert px is not None
+    width, height = rgba.size
+    pixels = [
+        px[x, y][:3]
+        for y in range(height)
+        for x in range(width)
+        if px[x, y][3] > 200
+    ]
+    if not pixels:
+        return {
+            "wood_dark": (62, 38, 24),
+            "wood": (92, 58, 36),
+            "wood_light": (122, 82, 52),
+            "plaster": (232, 214, 186),
+            "plaster_shade": (210, 190, 160),
+        }
+    by_luma = sorted(pixels, key=lambda rgb: 0.3 * rgb[0] + 0.59 * rgb[1] + 0.11 * rgb[2])
+    n = len(by_luma)
+    return {
+        "wood_dark": by_luma[n // 12],
+        "wood": by_luma[n // 4],
+        "wood_light": by_luma[n // 3],
+        "plaster": by_luma[(3 * n) // 4],
+        "plaster_shade": by_luma[(2 * n) // 3],
+    }
+
+
+def build_side_wall_tile(side: str, palette: dict[str, tuple[int, int, int]]) -> Image.Image:
+    """Project-CC0 E/W wall with vertical structure so stacked cells read as walls.
+
+    Face-on elevation crops produce repeating horizontal cream bands when tiled
+    down the left/right perimeter. A vertical wood column plus a thin room-facing
+    plaster strip keeps the same materials while reading as a side wall.
+    """
+    wood_dark = palette["wood_dark"]
+    wood = palette["wood"]
+    wood_light = palette["wood_light"]
+    plaster = palette["plaster"]
+    plaster_shade = palette["plaster_shade"]
+
+    pixels: list[tuple[int, int, int, int]] = []
+    for y in range(64):
+        for x in range(64):
+            if side == "w":
+                if x < 20:
+                    tone = wood_dark if (x // 4) % 2 == 0 else wood
+                    if x in (3, 7, 11, 15):
+                        tone = wood_light
+                    color = tone
+                elif x < 30:
+                    color = plaster_shade if (x * 5 + y) % 13 == 0 else plaster
+                elif x < 34:
+                    color = wood_dark
+                else:
+                    color = tuple(max(0, c - 18) for c in wood_dark)
+            else:
+                if x >= 44:
+                    local = 63 - x
+                    tone = wood_dark if (local // 4) % 2 == 0 else wood
+                    if local in (3, 7, 11, 15):
+                        tone = wood_light
+                    color = tone
+                elif x >= 34:
+                    color = plaster_shade if (x * 5 + y) % 13 == 0 else plaster
+                elif x >= 30:
+                    color = wood_dark
+                else:
+                    color = tuple(max(0, c - 18) for c in wood_dark)
+            if y < 3 or y > 60:
+                color = wood_dark
+            pixels.append((*color, 255))
+    tile = Image.new("RGBA", (64, 64))
+    tile.putdata(pixels)
+    return tile
 
 
 def build_player() -> None:
@@ -229,8 +429,6 @@ def build_surfaces() -> None:
     wall_boxes = {
         "wall": (1223, 203, 1504, 486),
         "wall_n": (1223, 203, 1504, 486),
-        "wall_e": (43, 526, 264, 812),
-        "wall_w": (359, 528, 566, 812),
         "wall_s": (616, 527, 887, 812),
         # Crop away the neighboring wall panels so the actual doorway fills
         # its grid opening instead of reading as a miniature door in a wall.
@@ -243,6 +441,16 @@ def build_surfaces() -> None:
         if bounds != (0, 0, 64, 64):
             raise ValueError(f"Architectural tile must fill its cell: {name} bounds={bounds}")
         save(sprite, TILE_OUT / f"{name}.png")
+
+    # E/W walls need vertical structure; face-on end-cap crops tile into cream slabs.
+    north = Image.open(TILE_OUT / "wall_n.png").convert("RGBA")
+    palette = palette_from_wall(north)
+    for side in ("e", "w"):
+        sprite = build_side_wall_tile(side, palette)
+        bounds = sprite.getchannel("A").getbbox()
+        if bounds != (0, 0, 64, 64):
+            raise ValueError(f"Architectural tile must fill its cell: wall_{side} bounds={bounds}")
+        save(sprite, TILE_OUT / f"wall_{side}.png")
 
 
 def build_props() -> None:
@@ -295,11 +503,13 @@ def main() -> None:
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")
     build_player()
+    repaired = repair_guest_crowns()
     validate_animation_frames()
     build_surfaces()
     build_props()
     print("Built chibi UI assets:")
     print(f"  player frames: {len(list(PLAYER_OUT.glob('*.png')))}")
+    print(f"  guest crowns repaired: {repaired}")
     print(f"  surfaces: {len(list(TILE_OUT.glob('*.png')))}")
     print(f"  furniture: {len(list(PROP_OUT.glob('*.png')))}")
 

@@ -8,6 +8,13 @@ export class NavController {
   private readonly speedTilesPerMs: number;
   /** Progress 0..1 within the current segment (from path[index] → path[index+1]). */
   private progress = 0;
+  /**
+   * When repathing mid-tile, the first segment lerps from the preserved world
+   * feet position to the next cell center instead of snapping back to the
+   * from-cell center.
+   */
+  private segmentOriginX: number | null = null;
+  private segmentOriginY: number | null = null;
   /** Discrete cell used for pathfinding / adjacency. */
   position: GridPoint;
   /** Smooth world feet position (pixels). */
@@ -39,6 +46,8 @@ export class NavController {
     this.path = [];
     this.index = 0;
     this.progress = 0;
+    this.segmentOriginX = null;
+    this.segmentOriginY = null;
     this.position = { ...cell };
     const world = cellCenter(cell);
     this.worldX = world.x;
@@ -50,10 +59,16 @@ export class NavController {
       this.path = [];
       this.index = 0;
       this.progress = 0;
+      this.segmentOriginX = null;
+      this.segmentOriginY = null;
       return;
     }
     const start = path[0]!;
     const sameCell = start.x === this.position.x && start.y === this.position.y;
+    const midTile =
+      sameCell &&
+      (Math.abs(this.worldX - (start.x * TILE_PX + TILE_PX / 2)) > 0.5 ||
+        Math.abs(this.worldY - (start.y * TILE_PX + TILE_PX / 2)) > 0.5);
     this.path = path.map((p) => ({ ...p }));
     this.index = 0;
     this.progress = 0;
@@ -64,6 +79,14 @@ export class NavController {
       const world = cellCenter(this.position);
       this.worldX = world.x;
       this.worldY = world.y;
+      this.segmentOriginX = null;
+      this.segmentOriginY = null;
+    } else if (midTile) {
+      this.segmentOriginX = this.worldX;
+      this.segmentOriginY = this.worldY;
+    } else {
+      this.segmentOriginX = null;
+      this.segmentOriginY = null;
     }
     this.updateFacingFromSegment();
   }
@@ -82,6 +105,9 @@ export class NavController {
       while (this.progress >= 1 && this.isMoving) {
         this.progress -= 1;
         this.index += 1;
+        // Later segments always run cell-center → cell-center.
+        this.segmentOriginX = null;
+        this.segmentOriginY = null;
         const cell = this.path[this.index];
         if (cell) this.position = { ...cell };
         this.updateFacingFromSegment();
@@ -95,9 +121,14 @@ export class NavController {
       const world = cellCenter(from);
       this.worldX = world.x;
       this.worldY = world.y;
+      this.segmentOriginX = null;
+      this.segmentOriginY = null;
       return;
     }
-    const a = cellCenter(from);
+    const a =
+      this.segmentOriginX != null && this.segmentOriginY != null
+        ? { x: this.segmentOriginX, y: this.segmentOriginY }
+        : cellCenter(from);
     const b = cellCenter(to);
     const t = Math.min(1, Math.max(0, this.progress));
     this.worldX = a.x + (b.x - a.x) * t;

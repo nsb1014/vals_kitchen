@@ -3,11 +3,11 @@ import type { SeatSlot } from '../../domain/floor/types.ts';
 
 /**
  * Pull toward table center from an adjacent seat cell (¾ sit tuck under top).
- * Side seats sit ~0.4 tile into the table footprint so chairs read as beside, not away.
+ * Keep the tuck shallow so seated torsos stay visible beside the table lip.
  */
-export const SEAT_SIDE_TUCK_PX = TILE_PX * 0.4;
+export const SEAT_SIDE_TUCK_PX = TILE_PX * 0.22;
 /** North/south seats (4-tops) tuck similarly along Y. */
-export const SEAT_NS_TUCK_PX = TILE_PX * 0.4;
+export const SEAT_NS_TUCK_PX = TILE_PX * 0.22;
 
 /**
  * World feet position for a seated guest / chair.

@@ -72,4 +72,25 @@ describe('NavController', () => {
     expect(nav.worldX).toBeCloseTo(midX);
     expect(nav.facing).toBe(1); // down
   });
+
+  it('does not snap back to the from-cell center on the first tick after repath', () => {
+    const nav = new NavController({ x: 0, y: 0 }, 10);
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ]);
+    nav.update(50); // halfway across the first segment
+    const midX = nav.worldX;
+    const midY = nav.worldY;
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ]);
+    // Tiny tick must continue from the preserved mid-tile world position,
+    // not rewrite it back to the from-cell center (which looks like a jump).
+    nav.update(1);
+    expect(Math.abs(nav.worldX - midX)).toBeLessThan(TILE_PX * 0.15);
+    expect(Math.abs(nav.worldY - midY)).toBeLessThan(TILE_PX * 0.15);
+    expect(nav.worldX).not.toBeCloseTo(TILE_PX / 2, 0);
+  });
 });

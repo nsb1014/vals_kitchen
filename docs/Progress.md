@@ -94,7 +94,7 @@
 | 2026-07-29 | Rolled back Storybook v2 migration; retained orthographic walls/furniture, corrected chair facings, and content-sized open-service panel |
 | 2026-07-29 | Rebuilt UI around the supplied chibi chef and espresso/gold reference: new project-CC0 room/furniture pipeline, mobile cooking overlay, desktop split workspace that keeps the complete room visible, corrected two-chair table art, and WASD/arrow controls; no gameplay-rule changes |
 | 2026-07-29 | Fixed supplied-chef walk/carry extraction: removed the off-white matte before trimming, cropped on the authored sheet gutters, normalized every frame to one foot baseline, and added asset-build regression guards |
-| 2026-07-30 | Repaired restaurant composition: seamless wall/door tiles, service-time grid removal, shared actor/furniture depth sorting, table/chair/actor rescale, and clipping guards for every character walk cycle and atlas cell |
+| 2026-07-30 | Fixed mid-walk repath snap, seated depth (guest above table), actor/furniture scale balance, project-CC0 E/W side walls, and clipped guest up-facing crowns |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |
