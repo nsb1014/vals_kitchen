@@ -97,9 +97,6 @@ export function mountFloorServiceHud(
       chromeMount.innerHTML = `
         <div class="floor-service-panel" data-testid="floor-arrival-panel" aria-live="polite">
           <p class="floor-tutorial">The first guest is arriving…</p>
-          <div class="floor-ticket-strip">
-            <span class="floor-ticket-empty">Opening the doors</span>
-          </div>
         </div>
       `;
       dock.hidden = true;
@@ -146,20 +143,10 @@ export function mountFloorServiceHud(
       };
     });
 
-    const ticketStrip = ticketMeta
-      .map(({ ticket: t, isOpen, selected, label, guestId }) => {
-        const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}">${portrait}<span class="floor-ticket-copy"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></span></button>`;
-      })
-      .join('');
-
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
         ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
         ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
-        <div class="floor-ticket-strip" data-testid="floor-ticket-strip">
-          ${ticketStrip || '<span class="floor-ticket-empty">No tickets</span>'}
-        </div>
         <div class="floor-actions">
           <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
           <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
@@ -186,7 +173,7 @@ export function mountFloorServiceHud(
                 ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
                 : '';
               const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
-              return `<li class="floor-tickets-item${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}" data-testid="floor-tickets-item">
+              return `<li class="floor-tickets-item${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-tickets-item">
                 <button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} aria-label="${escapeHtml(`${label.guestLabel}, ${label.statusLabel}`)}">
                   <span class="floor-tickets-item-head">
                     <span class="floor-tickets-item-identity">${portrait}<span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span></span>
@@ -297,14 +284,6 @@ export function mountFloorServiceHud(
       }
     };
 
-    chromeMount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const ticketId = button.dataset.ticketId;
-        if (!ticketId) return;
-        selectOpenTicket(ticketId);
-      });
-    });
-
     dock.querySelector('#floor-tickets-toggle')?.addEventListener('click', (event) => {
       event.stopPropagation();
       ticketsMenuOpen = !ticketsMenuOpen;
@@ -348,10 +327,8 @@ export function mountFloorServiceHud(
         arrivingTicketIds.delete(ticketId);
         arrivalTimers.delete(timer);
         dock
-          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
-          ?.classList.remove('arriving');
-        chromeMount
-          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
+          .querySelector(`[data-menu-ticket-id="${CSS.escape(ticketId)}"]`)
+          ?.closest('.floor-tickets-item')
           ?.classList.remove('arriving');
       }, 900);
       arrivalTimers.add(timer);

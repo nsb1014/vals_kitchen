@@ -513,7 +513,7 @@ export function mountServiceDayUi(
             const toggle = canToggleIngredient(item.id, currentDraft);
             const disabled = !selected && !toggle.allowed;
             const name = escapeHtml(item.name);
-            return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 24)}<span>${name}</span></button>`;
+            return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 32)}<span>${name}</span></button>`;
           })
           .join('');
       };
@@ -884,7 +884,7 @@ export function mountServiceDayUi(
           const selected = draftIds.includes(id);
           const toggle = canToggleIngredient(id, draftIds);
           const disabled = !selected && !toggle.allowed;
-          return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-ingredient-id="${id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${renderFoodIconHtml(id, 24)}<span>${item?.name ?? id}</span></button>`;
+          return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-ingredient-id="${id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${renderFoodIconHtml(id, 32)}<span>${item?.name ?? id}</span></button>`;
         })
         .join('');
 
