@@ -6,8 +6,8 @@ import {
   gotoFreshGame,
 } from './helpers.ts';
 
-// WebKit is intentionally absent from playwright.config.ts: its binary
-// downloaded, but launch is blocked by missing sandbox host libraries.
+// Default Playwright project is Chromium (matches CI). Firefox is opt-in via
+// PLAYWRIGHT_BROWSERS. WebKit/iOS remains unverified in this environment.
 const VIEWPORT_MATRIX = [
   { width: 390, height: 844, rows: 2 },
   { width: 320, height: 568, rows: 3 },
@@ -116,6 +116,19 @@ for (const viewport of VIEWPORT_MATRIX) {
     );
     if (viewport.width === 320) {
       expect(layout.columns).toBe(2);
+      const labelOverflow = await actions.evaluateAll((buttons) =>
+        buttons.map((button) => ({
+          label: (button.textContent ?? '').trim(),
+          scrollWidth: button.scrollWidth,
+          clientWidth: button.clientWidth,
+        })),
+      );
+      for (const metric of labelOverflow) {
+        expect(
+          metric.scrollWidth,
+          `${metric.label || 'action'} overflowed at 320px`,
+        ).toBeLessThanOrEqual(metric.clientWidth + 1);
+      }
     }
 
     await dismissInitialNotice(page);
@@ -194,6 +207,52 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
     bannerStyle.lineHeight * 3,
     1,
   );
+
+  const passThrough = await page.evaluate(() => {
+    const host = document.querySelector(
+      '[data-testid="celebration-banner-host"]',
+    ) as HTMLElement;
+    const body = document.querySelector('.notice-banner-body') as HTMLElement;
+    const dismiss = document.querySelector(
+      '.notice-banner-dismiss',
+    ) as HTMLElement;
+    const tickets = document.querySelector(
+      '.floor-tickets-toggle',
+    ) as HTMLElement | null;
+    const canvas = document.querySelector('#canvas-mount') as HTMLElement;
+    const bodyRect = body.getBoundingClientRect();
+    const dismissRect = dismiss.getBoundingClientRect();
+    const ticketsRect = tickets?.getBoundingClientRect() ?? null;
+    // Sample the body center — left edge overlaps the tickets toggle (same band).
+    const sampleX = bodyRect.left + bodyRect.width * 0.5;
+    const sampleY = bodyRect.top + bodyRect.height * 0.5;
+    const hit = document.elementFromPoint(sampleX, sampleY) as HTMLElement | null;
+    const awayFrom = (rect: DOMRect) =>
+      sampleX < rect.left - 2 ||
+      sampleX > rect.right + 2 ||
+      sampleY < rect.top - 2 ||
+      sampleY > rect.bottom + 2;
+    return {
+      hostPointerEvents: getComputedStyle(host).pointerEvents,
+      bodyPointerEvents: getComputedStyle(body).pointerEvents,
+      dismissPointerEvents: getComputedStyle(dismiss).pointerEvents,
+      hitInHost: Boolean(hit && host.contains(hit)),
+      hitIsCanvas: Boolean(hit && canvas.contains(hit)),
+      hitIsDismiss: Boolean(hit && dismiss.contains(hit)),
+      hitIsTickets: Boolean(hit && tickets?.contains(hit)),
+      sampleAwayFromDismiss: awayFrom(dismissRect),
+      sampleAwayFromTickets: ticketsRect ? awayFrom(ticketsRect) : true,
+    };
+  });
+  expect(passThrough.hostPointerEvents).toBe('none');
+  expect(passThrough.bodyPointerEvents).toBe('none');
+  expect(passThrough.dismissPointerEvents).toBe('auto');
+  expect(passThrough.sampleAwayFromDismiss).toBe(true);
+  expect(passThrough.sampleAwayFromTickets).toBe(true);
+  expect(passThrough.hitIsDismiss).toBe(false);
+  expect(passThrough.hitIsTickets).toBe(false);
+  expect(passThrough.hitInHost).toBe(false);
+  expect(passThrough.hitIsCanvas).toBe(true);
 
   await page
     .getByRole('button', { name: 'Dismiss notice' })

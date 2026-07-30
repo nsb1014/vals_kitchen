@@ -161,6 +161,11 @@ body {
   pointer-events: auto;
 }
 
+/* Beat .overlay-mount > * so empty host space (and non-dismiss chrome) passes through. */
+.overlay-mount > .celebration-banner-host {
+  pointer-events: none;
+}
+
 .celebration-banner-host {
   position: absolute;
   top: calc(var(--vk-status-hud-height, 2.75rem) + 0.45rem);
@@ -190,6 +195,11 @@ body {
   box-shadow: 0 8px 24px rgba(30, 23, 20, 0.5);
   pointer-events: none;
   animation: banner-enter 180ms ease-out both;
+}
+
+.celebration-banner *,
+.notice-banner * {
+  pointer-events: none;
 }
 
 .notice-banner {

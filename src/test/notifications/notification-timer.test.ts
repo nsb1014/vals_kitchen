@@ -72,6 +72,23 @@ describe('notification timer', () => {
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
+  it('resumes remainingMs after pause mid-dwell', () => {
+    useGameStore.getState().setFloorToast('Partial');
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(1000);
+    vi.advanceTimersByTime(1000);
+
+    useGameStore.getState().setNotificationSurfaceActive(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(20_000);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Partial');
+
+    useGameStore.getState().setNotificationSurfaceActive(true);
+    vi.advanceTimersByTime(1499);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Partial');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
   it('restores a sticky notice after a transient ends', () => {
     useGameStore.getState().syncFloorNoticesFromHud({
       sticky: {

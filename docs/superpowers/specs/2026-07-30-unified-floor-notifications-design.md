@@ -1,6 +1,6 @@
 # Unified floor notifications (banner stack)
 
-**Status:** Implemented  
+**Status:** Implemented (Chromium CI; Firefox opt-in; WebKit/iOS unverified)  
 **Date:** 2026-07-30  
 **Related:** `CelebrationBanner`, `floorToast`, `FloorServiceHud`, `--vk-status-hud-height`, `--vk-cta-h` (chibi theme: **52px**)
 
@@ -293,8 +293,8 @@ Do **not** put `overflow-y: auto` on `#chrome-mount` itself.
 | Chromium | 768×1024 | Tablet portrait |
 | Chromium | 1280×800 | Desktop |
 | Chromium | 390×844 @ **200% page zoom** | See zoom harness below |
-| WebKit | 390×844 | iOS-like |
-| Firefox | 390×844 | Gecko sanity |
+| Firefox | 390×844 | Opt-in via `PLAYWRIGHT_BROWSERS` — **not** default CI |
+| WebKit | 390×844 | **Unverified** — not in CI; sandbox cannot launch |
 
 **200% zoom harness (required):** do **not** use Playwright `deviceScaleFactor` — that only changes DPR, not browser/page zoom or text scaling. Use one of:
 
@@ -332,7 +332,8 @@ Assertions (relative):
 | Three-button cap | Removed |
 | Tutorial dismiss | Per-step until step changes |
 | Timer while hidden | Pause on unmount **and** `visibilitychange` / BFCache `pagehide` |
-| Tests | Desktop, tablet, 320, 320×480, short landscape, 200% zoom, Chromium/WebKit/Firefox |
+| Tests | Desktop, tablet, 320, 320×480, short landscape, 200% zoom, Chromium CI; Firefox opt-in; **WebKit/iOS unverified** |
+| WebKit / iOS | Not installed in CI; sandbox cannot launch WebKit — treat as open device-QA gap, not covered by “Implemented” |
 
 ## Implementation sketch (approved)
 

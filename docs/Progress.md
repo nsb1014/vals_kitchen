@@ -32,7 +32,7 @@
 | Storybook v2 art migration | **Rolled back** — rejected perspective-mismatched room and character art removed; orthographic restaurant assets retained |
 | Chibi responsive UI rebuild | **Done** — exact supplied chef sheet, authored carry poses, project-CC0 chibi cast, purpose-made walls/floors/stations, mobile near-full cooking UX, desktop split workspace + WASD/arrow controls; gameplay rules unchanged |
 
-- Unified floor notifications shipped: one top banner stack and actions-only floor chrome.
+- Unified floor notifications shipped: one top banner stack and actions-only floor chrome (Chromium CI; Firefox opt-in; WebKit/iOS unverified).
 
 ---
 

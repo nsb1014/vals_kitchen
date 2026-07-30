@@ -43,7 +43,11 @@ The `Detect change scope` step controls the checks:
   data, Python requirements, or the audit itself changes.
 - `e2e`: installs Chromium and runs Playwright when browser-visible runtime
   code, floor/state behavior, public files, browser tests/configuration, Vite
-  configuration, or package dependencies change.
+  configuration, or package dependencies change. `playwright.config.ts` defaults
+  to the **chromium** project only so CI matches what it installs. Extra
+  engines are opt-in locally via `PLAYWRIGHT_BROWSERS` (e.g.
+  `chromium,firefox`). Do not add a default Firefox/WebKit project unless CI
+  also installs that browser.
 
 Core checks must not become conditional on these scopes. A unit-only domain
 change should still typecheck, lint, test, build, and pass the size gate.
@@ -89,6 +93,15 @@ npm run audit:assets
 npm run test:e2e
 ```
 
-Playwright requires a locally installed Chromium build. If the local browser is
-unavailable, leave the relevant PR non-draft and use the GitHub `CI / verify`
-result as the browser gate.
+Playwright requires a locally installed Chromium build (`npx playwright install
+chromium`). Default `npm run test:e2e` runs the chromium project only. To also
+exercise Firefox locally:
+
+```bash
+npx playwright install firefox
+PLAYWRIGHT_BROWSERS=chromium,firefox npm run test:e2e
+```
+
+WebKit/iOS Playwright coverage is not part of CI and remains unverified in the
+agent sandbox. If the local browser is unavailable, leave the relevant PR
+non-draft and use the GitHub `CI / verify` result as the browser gate.
