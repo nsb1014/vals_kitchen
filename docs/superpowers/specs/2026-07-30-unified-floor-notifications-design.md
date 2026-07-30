@@ -1,6 +1,6 @@
 # Unified floor notifications (banner stack)
 
-**Status:** Implemented
+**Status:** Implemented  
 **Date:** 2026-07-30  
 **Related:** `CelebrationBanner`, `floorToast`, `FloorServiceHud`, `--vk-status-hud-height`, `--vk-cta-h` (chibi theme: **52px**)
 

@@ -30,7 +30,7 @@ async function dismissInitialNotice(page: Page): Promise<void> {
   const notice = page.locator('[data-testid="notice-banner"]');
   for (let guard = 0; guard < 4 && (await notice.isVisible()); guard += 1) {
     await page
-      .getByRole('button', { name: 'Dismiss notification' })
+      .getByRole('button', { name: 'Dismiss notice' })
       .click();
   }
   await expect(notice).toHaveCount(0);
@@ -196,7 +196,7 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   );
 
   await page
-    .getByRole('button', { name: 'Dismiss notification' })
+    .getByRole('button', { name: 'Dismiss notice' })
     .click();
   await expect(notice).toHaveCount(0);
   await expect(celebration).toBeVisible();
@@ -231,6 +231,36 @@ test('final floor action remains activatable at 200% page zoom', async ({
   await expect(closeDay).toBeEnabled();
 
   await applyPageZoom(page, 2);
+  const actionMetrics = await page
+    .locator('.floor-actions .service-btn')
+    .evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const label = button.querySelector(
+          '.floor-action-label',
+        ) as HTMLElement | null;
+        if (!label) throw new Error('floor action label is missing');
+        const buttonStyle = getComputedStyle(button);
+        const labelStyle = getComputedStyle(label);
+        return {
+          buttonHeight: (button as HTMLElement).offsetHeight,
+          labelLineClamp: labelStyle.webkitLineClamp,
+          labelLineHeight: Number.parseFloat(labelStyle.lineHeight),
+          labelMaxHeight: Number.parseFloat(labelStyle.maxHeight),
+          verticalExtras:
+            Number.parseFloat(buttonStyle.paddingTop) +
+            Number.parseFloat(buttonStyle.paddingBottom) +
+            Number.parseFloat(buttonStyle.borderTopWidth) +
+            Number.parseFloat(buttonStyle.borderBottomWidth),
+        };
+      }),
+    );
+  for (const metric of actionMetrics) {
+    expect(metric.labelLineClamp).toBe('2');
+    expect(metric.labelMaxHeight).toBeCloseTo(metric.labelLineHeight * 2, 1);
+    expect(metric.buttonHeight).toBeLessThanOrEqual(
+      metric.labelMaxHeight + metric.verticalExtras + 1,
+    );
+  }
   await assertScrollportAtLeastCta(page);
   await assertFinalFloorActionActivatable(page);
   await expect(page.locator('[data-testid="day-summary-title"]')).toBeVisible();

@@ -64,7 +64,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
               ${notice.title ? `<strong class="notice-banner-title">${escapeHtml(notice.title)}</strong>` : ''}
               <span class="notice-banner-body">${escapeHtml(notice.body)}</span>
             </div>
-            <button class="notice-banner-dismiss" type="button" aria-label="Dismiss notification">×</button>
+            <button class="notice-banner-dismiss" type="button" aria-label="Dismiss notice">×</button>
           </aside>
         `
       : '';
