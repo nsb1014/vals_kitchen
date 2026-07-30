@@ -369,8 +369,10 @@ export async function assertFinalFloorActionActivatable(
         height: rect.height,
       },
       layoutViewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        left: 0,
       },
       visualViewport: visual
         ? {
@@ -383,12 +385,18 @@ export async function assertFinalFloorActionActivatable(
     };
   });
   expect(geometry.button.height).toBeGreaterThan(0);
-  expect(geometry.button.top).toBeGreaterThanOrEqual(-1);
-  expect(geometry.button.bottom).toBeLessThanOrEqual(
-    geometry.layoutViewport.height + 1,
+  expect(geometry.button.top).toBeGreaterThanOrEqual(
+    geometry.layoutViewport.top - 1,
   );
-  expect(geometry.button.right).toBeGreaterThan(0);
-  expect(geometry.button.left).toBeLessThan(geometry.layoutViewport.width);
+  expect(geometry.button.bottom).toBeLessThanOrEqual(
+    geometry.layoutViewport.bottom + 1,
+  );
+  expect(geometry.button.left).toBeGreaterThanOrEqual(
+    geometry.layoutViewport.left - 1,
+  );
+  expect(geometry.button.right).toBeLessThanOrEqual(
+    geometry.layoutViewport.right + 1,
+  );
   if (geometry.visualViewport) {
     expect(geometry.button.top).toBeGreaterThanOrEqual(
       geometry.visualViewport.top - 1,
@@ -396,10 +404,12 @@ export async function assertFinalFloorActionActivatable(
     expect(geometry.button.bottom).toBeLessThanOrEqual(
       geometry.visualViewport.bottom + 1,
     );
-    expect(geometry.button.right).toBeGreaterThan(
-      geometry.visualViewport.left,
+    expect(geometry.button.left).toBeGreaterThanOrEqual(
+      geometry.visualViewport.left - 1,
     );
-    expect(geometry.button.left).toBeLessThan(geometry.visualViewport.right);
+    expect(geometry.button.right).toBeLessThanOrEqual(
+      geometry.visualViewport.right + 1,
+    );
   }
   await last.click();
 }
