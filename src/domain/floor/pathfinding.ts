@@ -19,11 +19,12 @@ export function findPath(
   grid: WalkGrid,
   from: GridPoint,
   to: GridPoint,
+  opts: { allowBlockedEndpoints?: boolean } = {},
 ): GridPoint[] | null {
   if (!inBounds(grid, from.x, from.y) || !inBounds(grid, to.x, to.y)) return null;
-  if (grid.blocked.has(key(from.x, from.y)) || grid.blocked.has(key(to.x, to.y))) {
-    return null;
-  }
+  const allowEnds = Boolean(opts.allowBlockedEndpoints);
+  if (!allowEnds && grid.blocked.has(key(from.x, from.y))) return null;
+  if (!allowEnds && grid.blocked.has(key(to.x, to.y))) return null;
   if (from.x === to.x && from.y === to.y) return [{ ...from }];
 
   const open = new Map<string, { x: number; y: number; g: number; f: number }>();
@@ -31,6 +32,7 @@ export function findPath(
   const gScore = new Map<string, number>();
 
   const startK = key(from.x, from.y);
+  const goalK = key(to.x, to.y);
   const h0 = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
   open.set(startK, { x: from.x, y: from.y, g: 0, f: h0 });
   gScore.set(startK, 0);
@@ -72,7 +74,8 @@ export function findPath(
       const ny = current.y + dy;
       if (!inBounds(grid, nx, ny)) continue;
       const nk = key(nx, ny);
-      if (grid.blocked.has(nk)) continue;
+      // Chair/seat cells stay blocked for traversal, but guests may enter their goal seat.
+      if (grid.blocked.has(nk) && !(allowEnds && nk === goalK)) continue;
       const tentative = current.g + 1;
       if (tentative >= (gScore.get(nk) ?? Infinity)) continue;
       came.set(nk, bestK);

@@ -139,7 +139,7 @@ export class FurnitureLayer {
     const sit = seatSitWorldPosition(seat);
     const feetY = sit.y + TILE_PX / 2 - 2;
     sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
-    // Chair behind table; seated guest paints above the table lip.
+    // Chair behind guest; camera-biased sit feet already clear the tabletop.
     sprite.root.zIndex = chairDepthY(feetY);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;

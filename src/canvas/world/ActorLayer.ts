@@ -13,7 +13,6 @@ import {
   playerCarryFrameKey,
   playerFrameKey,
 } from './character-frames.ts';
-import { seatedActorDepthY } from '../furniture-fit.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
@@ -21,8 +20,8 @@ import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 export { carryPlateGeometry } from './carry-plate.ts';
 
 /** Runtime scale is independent from the high-resolution chibi source frames. */
-export const PLAYER_DISPLAY_HEIGHT = 40;
-export const GUEST_DISPLAY_HEIGHT = 38;
+export const PLAYER_DISPLAY_HEIGHT = 46;
+export const GUEST_DISPLAY_HEIGHT = 44;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -276,8 +275,8 @@ export class ActorLayer {
 
       const feetY = pose.worldY + TILE_PX / 2 - 2;
       entry.root.position.set(Math.round(pose.worldX), Math.round(feetY));
-      // Seated guests share a row with their table; boost above the table lip.
-      entry.root.zIndex = seated ? seatedActorDepthY(feetY) : entry.root.y;
+      // Seated feet are camera-biased past the tabletop; use natural Y-sort.
+      entry.root.zIndex = entry.root.y;
       entry.cue.clear();
       const cueColor = GUEST_STAGE_CUE[guest.stage];
       if (cueColor !== undefined) {

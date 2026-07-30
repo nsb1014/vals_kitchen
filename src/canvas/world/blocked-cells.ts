@@ -4,6 +4,7 @@ import {
   isPerimeterWallCell,
   type FloorRoomId,
 } from '../../domain/floor/starter-map.ts';
+import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import { EQUIPMENT_IDS } from '../../domain/types.ts';
 
 const EQUIPMENT_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
@@ -22,11 +23,14 @@ export function blockedCellsFromPlacements(placements: Placement[]): Set<string>
 export interface WalkBlockOptions {
   kitchenAnnexOwned?: boolean;
   room?: FloorRoomId;
+  /** When false, chair/seat cells stay walkable (tests / edit preview). Default true. */
+  blockSeats?: boolean;
 }
 
 /**
- * Full floor walkability mask: furniture plus perimeter walls.
+ * Full floor walkability mask: furniture, chair seats, and perimeter walls.
  * Guest door (main) and connecting door (when annex unlocked) stay open.
+ * Guests may still path onto a seat via findPath({ allowBlockedEndpoints: true }).
  */
 export function walkBlockedCells(
   placements: Placement[],
@@ -36,7 +40,14 @@ export function walkBlockedCells(
 ): Set<string> {
   const room = opts.room ?? 'main';
   const kitchenAnnexOwned = Boolean(opts.kitchenAnnexOwned);
+  const blockSeats = opts.blockSeats !== false;
   const blocked = blockedCellsFromPlacements(placements);
+  if (blockSeats) {
+    for (const seat of seatsFromPlacements(placements)) {
+      if (seat.x < 0 || seat.y < 0 || seat.x >= gridW || seat.y >= gridH) continue;
+      blocked.add(`${seat.x},${seat.y}`);
+    }
+  }
   const openDoors = openDoorCellsForRoom(room, gridW, gridH, kitchenAnnexOwned);
   const open = new Set(openDoors.map((d) => `${d.x},${d.y}`));
   for (let y = 0; y < gridH; y += 1) {
