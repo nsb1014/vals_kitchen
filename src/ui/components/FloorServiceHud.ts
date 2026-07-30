@@ -71,14 +71,10 @@ export function mountFloorServiceHud(
   const render = () => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
-    const show =
-      floor &&
-      state.modifierDismissed &&
-      !state.daySummary &&
-      !state.pendingReview &&
-      !state.ceremony;
 
-    if (!show || !floor) {
+    // Keep the chrome strip mounted for the whole floor day (including review /
+    // summary popups) so canvas height does not jump when messages change.
+    if (!floor) {
       chromeMount.hidden = true;
       chromeMount.innerHTML = '';
       dock.hidden = true;
@@ -88,6 +84,22 @@ export function mountFloorServiceHud(
     }
 
     chromeMount.hidden = false;
+    const interactive =
+      state.modifierDismissed &&
+      !state.daySummary &&
+      !state.pendingReview &&
+      !state.ceremony;
+
+    if (!interactive) {
+      chromeMount.innerHTML = `
+        <div class="floor-service-panel floor-service-panel--reserve" aria-hidden="true"></div>
+      `;
+      dock.hidden = true;
+      dock.innerHTML = '';
+      ticketsMenuOpen = false;
+      return;
+    }
+
     const initialGuestArriving =
       floor.pool.some((guest) => guest.stage === 'entering') &&
       !floor.pool.some(
@@ -96,7 +108,11 @@ export function mountFloorServiceHud(
     if (initialGuestArriving) {
       chromeMount.innerHTML = `
         <div class="floor-service-panel" data-testid="floor-arrival-panel" aria-live="polite">
-          <p class="floor-tutorial">The first guest is arriving…</p>
+          <div class="floor-service-hints">
+            <p class="floor-tutorial">The first guest is arriving…</p>
+          </div>
+          <div class="floor-actions" aria-hidden="true"></div>
+          <p class="floor-toast" hidden></p>
         </div>
       `;
       dock.hidden = true;
@@ -145,8 +161,10 @@ export function mountFloorServiceHud(
 
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
-        ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
-        ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
+        <div class="floor-service-hints">
+          ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
+          ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
+        </div>
         <div class="floor-actions">
           <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
           <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
@@ -154,11 +172,7 @@ export function mountFloorServiceHud(
           <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}>Clear table</button>
           <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled'}>Close Day</button>
         </div>
-        ${
-          floorToast
-            ? `<p class="floor-toast" data-testid="floor-toast">${floorToast}</p>`
-            : ''
-        }
+        <p class="floor-toast" data-testid="floor-toast"${floorToast ? '' : ' hidden'}>${floorToast ? floorToast : ''}</p>
       </div>
     `;
 

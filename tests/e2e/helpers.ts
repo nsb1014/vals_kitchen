@@ -348,6 +348,46 @@ export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
   expect(panel!.y).toBeGreaterThanOrEqual(canvas!.y + canvas!.height - 1);
 }
 
+/**
+ * Canvas height must stay put while floor chrome copy changes (tutorial / tickets /
+ * toasts). Variable message height used to flex-shrink the Pixi mount.
+ */
+export async function assertCanvasHeightStableAcrossFloorChrome(
+  page: Page,
+): Promise<void> {
+  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+  const beforeBox = await page.locator('#canvas-mount').boundingBox();
+  expect(beforeBox).not.toBeNull();
+  const before = Math.round(beforeBox!.height);
+
+  await page.evaluate(() => {
+    const hints = document.querySelector('.floor-service-hints');
+    if (hints && !hints.querySelector('[data-testid="floor-tutorial"]')) {
+      const tutorial = document.createElement('p');
+      tutorial.className = 'floor-tutorial';
+      tutorial.dataset.testid = 'floor-tutorial';
+      tutorial.textContent = 'When the floor is clear, close the day.';
+      hints.prepend(tutorial);
+    }
+    if (hints && !hints.querySelector('[data-testid="floor-pacing"]')) {
+      const pacing = document.createElement('p');
+      pacing.className = 'floor-pacing';
+      pacing.dataset.testid = 'floor-pacing';
+      pacing.textContent = 'No tickets';
+      hints.append(pacing);
+    }
+    const toast = document.querySelector('[data-testid="floor-toast"]');
+    if (toast instanceof HTMLElement) {
+      toast.hidden = false;
+      toast.textContent = 'Move next to the station to cook.';
+    }
+  });
+
+  const afterBox = await page.locator('#canvas-mount').boundingBox();
+  expect(afterBox).not.toBeNull();
+  expect(Math.round(afterBox!.height)).toBe(before);
+}
+
 /** Status HUD is a dedicated strip above the canvas, not an overlay on the playfield. */
 export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
   const hud = await page.locator('[data-testid="game-hud"]').boundingBox();

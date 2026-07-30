@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   assertCanvasHasRenderedContent,
+  assertCanvasHeightStableAcrossFloorChrome,
   assertFloorChromeAboveSafeBottom,
   assertFloorChromeBelowCanvas,
   assertNoDiagnostics,
@@ -246,6 +247,7 @@ test.describe('mobile viewport', () => {
     await expect(page.locator('[data-testid="floor-tickets-menu"]')).toBeHidden();
     await assertStatusHudAboveCanvas(page);
     await assertFloorChromeBelowCanvas(page);
+    await assertCanvasHeightStableAcrossFloorChrome(page);
     await assertFloorChromeAboveSafeBottom(page);
     await assertNoHorizontalOverflow(page);
     await serveCurrentCustomer(page);

@@ -336,29 +336,62 @@
 .floor-service-panel {
   position: relative;
   z-index: 55;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: 2.5rem 2.75rem minmax(0, 1fr) 1.35rem;
+  gap: 0.2rem;
+  height: 100%;
   padding: 0.35rem 0.65rem 0.4rem;
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
   pointer-events: auto;
+  overflow: hidden;
+}
+
+.floor-service-panel--reserve {
+  pointer-events: none;
+  background: transparent;
+  border-top-color: transparent;
+}
+
+.floor-service-hints {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.12rem;
+  overflow: hidden;
 }
 
 .floor-tutorial {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 13px;
+  line-height: 1.25;
   color: var(--vk-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .floor-pacing {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 12px;
+  line-height: 1.25;
   color: var(--vk-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .floor-ticket-strip {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.3rem;
-  margin-bottom: 0.3rem;
+  min-height: 0;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .floor-ticket {
@@ -722,7 +755,21 @@
 .floor-actions {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-content: start;
   gap: 0.5rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.floor-toast {
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--vk-text-dim);
 }
 
 .floor-actions .service-btn {
@@ -1129,6 +1176,11 @@
 }
 
 @media (max-width: 760px) {
+  :root {
+    /* Two action rows on narrow floors — still a fixed strip, not content-sized. */
+    --vk-floor-chrome-h: 13.75rem;
+  }
+
   .floor-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
