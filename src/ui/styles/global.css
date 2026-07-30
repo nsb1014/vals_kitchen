@@ -380,7 +380,10 @@ textarea:focus-visible,
 
 .restaurant-canvas,
 canvas {
-  image-rendering: auto;
+  /* Keep crisp pixel art. `auto` bilinear upscale smears soft atlas edges into
+     silhouettes and reads as see-through characters on busy floors. */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .layout-hud {

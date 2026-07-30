@@ -2,24 +2,28 @@ import { TILE_PX } from './coordinates.ts';
 
 /**
  * Max chair overhang above the seat-cell top.
- * Side chairs tuck under the table lip; keep enough silhouette without burying tops.
  */
-export const CHAIR_MAX_OVERHANG_PX = 14;
-export const CHAIR_DRAW_WIDTH_PX = 26;
-export const CHAIR_DRAW_HEIGHT_PX = 39;
-export const TABLE_DRAW_WIDTH_PX = 36;
-/** Kitchen stations/counters need presence without dwarfing actors. */
+export const CHAIR_MAX_OVERHANG_PX = 12;
+export const CHAIR_DRAW_WIDTH_PX = 24;
+export const CHAIR_DRAW_HEIGHT_PX = 36;
+/** Flat top-down tabletop width; height is capped so art does not swallow neighbors. */
+export const TABLE_DRAW_WIDTH_PX = 30;
+export const TABLE_MAX_HEIGHT_PX = TILE_PX + 10;
+/** Kitchen stations keep taller ¾ silhouettes. */
 export const STATION_DRAW_WIDTH_PX = 34;
 
 export function furnitureDrawSize(
   texture: { width: number; height: number },
   itemKey = '',
 ): { w: number; h: number } {
-  const targetWidth = itemKey.startsWith('table')
-    ? TABLE_DRAW_WIDTH_PX
-    : itemKey.length > 0
-      ? STATION_DRAW_WIDTH_PX
-      : TILE_PX;
+  if (itemKey.startsWith('table')) {
+    const scale = Math.min(
+      TABLE_DRAW_WIDTH_PX / Math.max(1, texture.width),
+      TABLE_MAX_HEIGHT_PX / Math.max(1, texture.height),
+    );
+    return { w: texture.width * scale, h: texture.height * scale };
+  }
+  const targetWidth = itemKey.length > 0 ? STATION_DRAW_WIDTH_PX : TILE_PX;
   const scale = targetWidth / Math.max(1, texture.width);
   return { w: texture.width * scale, h: texture.height * scale };
 }
@@ -28,7 +32,15 @@ export function furnitureDrawOffset(w: number, h: number): { x: number; y: numbe
   return { x: (TILE_PX - w) / 2, y: TILE_PX - h };
 }
 
-export function furnitureDepthY(gridY: number): number {
+/**
+ * Depth for Y-sorted props.
+ * Flat tabletops sort under actors (they are floor-plane surfaces, not tall occluders).
+ * Tall stations keep south-edge sorting so the player can walk behind them.
+ */
+export function furnitureDepthY(gridY: number, itemKey = ''): number {
+  if (itemKey.startsWith('table')) {
+    return gridY;
+  }
   return (gridY + 1) * TILE_PX;
 }
 
@@ -36,16 +48,12 @@ export function chairDepthY(seatedFeetY: number): number {
   return seatedFeetY - 1;
 }
 
-/**
- * Seated diners paint just above their chair. Camera-biased sit anchors already
- * put feet past the same-row tabletop so natural Y-sort keeps them in front of
- * the flat table sprite without boosting them onto the table surface.
- */
-export function seatedActorDepthY(seatedFeetY: number, _tableDepthY?: number): number {
+/** Seated guests use natural feet Y; tables no longer compete in the actor band. */
+export function seatedActorDepthY(seatedFeetY: number): number {
   return seatedFeetY;
 }
 
-/** Keep chairs subordinate to the table and seated actor silhouettes. */
+/** Keep chairs subordinate to seated actor silhouettes. */
 export function chairDrawFit(texture: { width: number; height: number }): {
   w: number;
   h: number;

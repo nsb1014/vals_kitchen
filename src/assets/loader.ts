@@ -15,7 +15,11 @@ async function loadTexture(url: string): Promise<Texture> {
   const image = new Image();
   image.src = url;
   await image.decode();
-  return Texture.from(image);
+  // Pixel art must use nearest filtering. Linear downscale of soft atlas edges
+  // smears mid-alpha into the silhouette and reads as see-through characters.
+  const texture = Texture.from(image);
+  texture.source.scaleMode = 'nearest';
+  return texture;
 }
 
 async function loadSpritesheet(jsonUrl: string): Promise<Spritesheet> {

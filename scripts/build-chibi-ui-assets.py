@@ -109,6 +109,25 @@ def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     return rgba
 
 
+def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 96) -> Image.Image:
+    """Force body pixels fully opaque so characters never render see-through.
+
+    LANCZOS downscales leave a soft mid-alpha haze across dresses/skin that reads
+    as ghosting on busy floors. Keep only a thin feather below solid_cutoff.
+    """
+    rgba = image.convert("RGBA")
+    px = rgba.load()
+    assert px is not None
+    for y in range(rgba.height):
+        for x in range(rgba.width):
+            red, green, blue, alpha = px[x, y]
+            if alpha >= solid_cutoff:
+                px[x, y] = (red, green, blue, 255)
+            elif alpha < 20:
+                px[x, y] = (red, green, blue, 0)
+    return rgba
+
+
 def save(image: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, optimize=True)
@@ -273,6 +292,18 @@ def repair_guest_crowns() -> int:
     return repaired
 
 
+def harden_guest_frames() -> int:
+    """Force guest body pixels opaque so diners never read as ghosts on the floor."""
+    hardened = 0
+    for path in sorted(GUEST_OUT.glob("*.png")):
+        original = Image.open(path).convert("RGBA")
+        fixed = harden_sprite_alpha(original)
+        if fixed.tobytes() != original.tobytes():
+            save(fixed, path)
+            hardened += 1
+    return hardened
+
+
 def palette_from_wall(wall: Image.Image) -> dict[str, tuple[int, int, int]]:
     rgba = wall.convert("RGBA")
     px = rgba.load()
@@ -304,10 +335,11 @@ def palette_from_wall(wall: Image.Image) -> dict[str, tuple[int, int, int]]:
 
 
 def build_side_wall_tile(side: str, palette: dict[str, tuple[int, int, int]]) -> Image.Image:
-    """Project-CC0 E/W wall matching N/S materials with vertical structure.
+    """Project-CC0 E/W wall: continuous vertical wood + plaster (seamless when stacked).
 
-    Face-on elevation crops tile into cream slabs. A thick outer wood post plus a
-    wide plaster face (with baseboard/crown) reads as a side wall when stacked.
+    Avoid horizontal wainscot/crown bands — those tile into cream slabs down the
+    left/right perimeter. Keep only vertical structure so stacked cells read as
+    one wall column.
     """
     wood_dark = palette["wood_dark"]
     wood = palette["wood"]
@@ -318,31 +350,20 @@ def build_side_wall_tile(side: str, palette: dict[str, tuple[int, int, int]]) ->
     pixels: list[tuple[int, int, int, int]] = []
     for y in range(64):
         for x in range(64):
-            # Normalize so "outer" is low x for west and high x is mirrored for east.
             local = x if side == "w" else 63 - x
-            if local < 14:
-                # Outer structural post with vertical planks.
-                tone = wood_dark if (local // 3) % 2 == 0 else wood
-                if local in (2, 5, 8, 11):
+            if local < 16:
+                # Outer structural post — vertical grain only.
+                tone = wood_dark if (local // 4) % 2 == 0 else wood
+                if local in (3, 7, 11, 15):
                     tone = wood_light
                 color = tone
-            elif local < 48:
-                # Wide plaster face — the readable "wall" when cells stack.
-                if y < 5 or y > 58:
-                    color = wood_dark  # crown / base plate
-                elif y > 42:
-                    # Lower wainscot band
-                    tone = wood if ((local + y) // 6) % 2 == 0 else wood_dark
-                    if y in (43, 44, 57, 58):
-                        tone = wood_light
-                    color = tone
-                elif y in (5, 6, 41, 42):
-                    color = wood_dark  # rail
-                else:
-                    color = plaster_shade if (local * 3 + y * 5) % 17 == 0 else plaster
+            elif local < 46:
+                # Continuous plaster face (mottle only; no horizontal rails).
+                color = plaster_shade if ((local * 5) + (y * 2)) % 19 == 0 else plaster
+            elif local < 50:
+                color = wood_dark  # inner rail
             else:
-                # Inner shadow strip toward the room floor.
-                color = tuple(max(0, c - 22) for c in wood_dark)
+                color = tuple(max(0, c - 20) for c in wood_dark)
             pixels.append((*color, 255))
     tile = Image.new("RGBA", (64, 64))
     tile.putdata(pixels)
@@ -371,7 +392,7 @@ def build_player() -> None:
         x0, x1 = column_bounds[column]
         y0, y1 = facing_rows[facing]
         keyed = white_alpha(sheet.crop((x0, y0, x1, y1)))
-        return clear_alpha_noise(contain(trim(keyed, 3), (80, 96)))
+        return harden_sprite_alpha(clear_alpha_noise(contain(trim(keyed, 3), (80, 96))))
 
     for facing in facing_rows:
         for frame in range(3):
@@ -502,12 +523,14 @@ def main() -> None:
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")
     build_player()
     repaired = repair_guest_crowns()
+    hardened = harden_guest_frames()
     validate_animation_frames()
     build_surfaces()
     build_props()
     print("Built chibi UI assets:")
     print(f"  player frames: {len(list(PLAYER_OUT.glob('*.png')))}")
     print(f"  guest crowns repaired: {repaired}")
+    print(f"  guest frames alpha-hardened: {hardened}")
     print(f"  surfaces: {len(list(TILE_OUT.glob('*.png')))}")
     print(f"  furniture: {len(list(PROP_OUT.glob('*.png')))}")
 

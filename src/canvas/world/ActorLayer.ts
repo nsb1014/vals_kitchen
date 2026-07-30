@@ -13,6 +13,7 @@ import {
   playerCarryFrameKey,
   playerFrameKey,
 } from './character-frames.ts';
+import { CHAIR_DRAW_HEIGHT_PX } from '../furniture-fit.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
@@ -20,8 +21,10 @@ import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 export { carryPlateGeometry } from './carry-plate.ts';
 
 /** Runtime scale is independent from the high-resolution chibi source frames. */
-export const PLAYER_DISPLAY_HEIGHT = 46;
-export const GUEST_DISPLAY_HEIGHT = 44;
+export const PLAYER_DISPLAY_HEIGHT = 44;
+export const GUEST_DISPLAY_HEIGHT = 42;
+/** Seated guests must fit the chair pocket — taller walk scale dwarfs empty chairs. */
+export const SEATED_GUEST_DISPLAY_HEIGHT = CHAIR_DRAW_HEIGHT_PX;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -70,6 +73,7 @@ export class ActorLayer {
     this.actorContainer.sortableChildren = true;
     this.playerSprite.roundPixels = true;
     this.playerSprite.anchor.set(0.5, 1);
+    this.playerSprite.alpha = 1;
     this.playerSprite.visible = false;
     this.actorContainer.addChild(this.playerSprite);
     this.actorContainer.addChild(this.playerFallback);
@@ -265,7 +269,6 @@ export class ActorLayer {
         if (texture) {
           entry.lastFrameKey = frameKey;
           entry.sprite.texture = texture;
-          entry.sprite.scale.set(scaleForTexture(texture, GUEST_DISPLAY_HEIGHT));
           entry.sprite.visible = true;
         } else {
           entry.lastFrameKey = '';
@@ -273,9 +276,14 @@ export class ActorLayer {
         }
       }
 
+      if (entry.sprite.visible) {
+        const displayH = seated ? SEATED_GUEST_DISPLAY_HEIGHT : GUEST_DISPLAY_HEIGHT;
+        entry.sprite.scale.set(scaleForTexture(entry.sprite.texture, displayH));
+      }
+
       const feetY = pose.worldY + TILE_PX / 2 - 2;
       entry.root.position.set(Math.round(pose.worldX), Math.round(feetY));
-      // Seated feet are camera-biased past the tabletop; use natural Y-sort.
+      // Natural feet Y-sort; flat tables sort under this band (see furnitureDepthY).
       entry.root.zIndex = entry.root.y;
       entry.cue.clear();
       const cueColor = GUEST_STAGE_CUE[guest.stage];
