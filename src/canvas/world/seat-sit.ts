@@ -5,26 +5,46 @@ import type { SeatSlot } from '../../domain/floor/types.ts';
  * Top-down seating model (flat tabletops, separate chair cells):
  *
  * 1. Seats live in adjacent grid cells — never on the table cell.
- * 2. Sit anchor = seat-cell center. No tuck/camera bias into the tabletop;
- *    those dials made full-body sit sprites look glued onto the wood.
- * 3. Draw order in the shared depth layer: table (floor prop) → chair → guest.
- *    Flat tables sort under actors; chairs sort just behind the seated guest.
- * 4. Seated guest display height matches the chair so hips read as in the seat.
+ * 2. Chair feet stay on the seat-cell floor; the diner is offset so sit-pose
+ *    hips land on the cushion (SEAT_SIT_OFFSET_Y). That is seat-contact
+ *    alignment, not a tabletop tuck. Chairs always Y-sort behind the diner.
+ * 3. Draw order: table (floor prop) → chair → guest.
+ * 4. Guests match the chef’s silhouette height (content-based scale).
  *
- * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS as visual "fixes".
+ * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
  */
 export const SEAT_SIDE_TUCK_PX = 0;
 export const SEAT_NS_TUCK_PX = 0;
 export const SEAT_CAMERA_BIAS_PX = 0;
-
 /**
- * World nav-center for a seated guest / chair (feet derived by ActorLayer).
+ * World Y offset for seated guests relative to the chair feet.
+ * Negative pulls the sit pose onto the cushion / toward the chair back.
+ * Chair Y-sort always uses the diner’s feet so the chair stays behind them.
  */
-export function seatSitWorldPosition(seat: SeatSlot): { x: number; y: number } {
+export const SEAT_SIT_OFFSET_Y = -4;
+
+function seatCellCenter(seat: SeatSlot): { x: number; y: number } {
   const { x: gx, y: gy } = gridToWorld(seat.x, seat.y);
   return {
     x: gx + TILE_PX / 2,
     y: gy + TILE_PX / 2,
+  };
+}
+
+/** Chair feet: planted on the seat-cell floor. */
+export function seatChairWorldPosition(seat: SeatSlot): { x: number; y: number } {
+  return seatCellCenter(seat);
+}
+
+/**
+ * World nav-center for a seated guest (feet derived by ActorLayer).
+ * Offset onto the cushion relative to the chair feet.
+ */
+export function seatSitWorldPosition(seat: SeatSlot): { x: number; y: number } {
+  const center = seatCellCenter(seat);
+  return {
+    x: center.x,
+    y: center.y + SEAT_SIT_OFFSET_Y,
   };
 }
 

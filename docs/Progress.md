@@ -97,6 +97,7 @@
 | 2026-07-30 | Fixed mid-walk repath snap, seated depth (guest above table), actor/furniture scale balance, project-CC0 E/W side walls, and clipped guest up-facing crowns |
 | 2026-07-30 | Seating composition: camera-biased sit anchors beside top-down tables; chair cells block player walks; guests may still path onto seats; rebalanced actor/furniture scale; richer E/W wall tiles |
 | 2026-07-30 | Seating architecture (no tuck dials): seat-cell centers beside tables; flat tables sort under actors; seated scale matches chair; nearest atlas filtering + hardened guest alpha; continuous E/W wall columns |
+| 2026-07-30 | Guest scale matched to chef; chairs grown to fit; diners sink onto cushion (chair stays planted) |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |
 | 2026-07-24 | Phase 0 scaffolding complete; Phase 1 content layer + validators passing |

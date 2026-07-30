@@ -12,6 +12,10 @@ import {
 import { TILE_PX } from '../../canvas/coordinates.ts';
 import {
   GUEST_DISPLAY_HEIGHT,
+  GUEST_SIT_CONTENT_HEIGHT_PX,
+  GUEST_WALK_CONTENT_HEIGHT_PX,
+  PLAYER_CONTENT_HEIGHT_PX,
+  PLAYER_DISPLAY_HEIGHT,
   SEATED_GUEST_DISPLAY_HEIGHT,
 } from '../../canvas/world/ActorLayer.ts';
 
@@ -36,8 +40,13 @@ describe('furniture feet align', () => {
     expect(chairDepthY(seatedFeetY)).toBeLessThan(seatedActorDepthY(seatedFeetY));
   });
 
-  it('keeps seated guests within the chair silhouette height', () => {
-    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBe(CHAIR_DRAW_HEIGHT_PX);
-    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBeLessThanOrEqual(GUEST_DISPLAY_HEIGHT);
+  it('matches guest silhouette height to the player via content-based scale', () => {
+    expect(GUEST_DISPLAY_HEIGHT).toBe(PLAYER_DISPLAY_HEIGHT);
+    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBeGreaterThanOrEqual(PLAYER_DISPLAY_HEIGHT);
+    expect(CHAIR_DRAW_HEIGHT_PX).toBeGreaterThanOrEqual(SEATED_GUEST_DISPLAY_HEIGHT);
+    // Content heights must be below padded frame sizes used in the atlas.
+    expect(PLAYER_CONTENT_HEIGHT_PX).toBeLessThanOrEqual(96);
+    expect(GUEST_WALK_CONTENT_HEIGHT_PX).toBeLessThanOrEqual(184);
+    expect(GUEST_SIT_CONTENT_HEIGHT_PX).toBeLessThan(GUEST_WALK_CONTENT_HEIGHT_PX);
   });
 });

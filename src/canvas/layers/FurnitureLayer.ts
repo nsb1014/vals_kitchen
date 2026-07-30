@@ -11,7 +11,7 @@ import {
   furnitureDrawSize,
 } from '../furniture-fit.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
-import { seatSitWorldPosition } from '../world/seat-sit.ts';
+import { seatChairWorldPosition, seatSitWorldPosition } from '../world/seat-sit.ts';
 
 const MIN_HIT_PX = 44;
 const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
@@ -135,12 +135,14 @@ export class FurnitureLayer {
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
-    // Sit anchor uses nav-center space; guest feet = sit.y + TILE_PX / 2 - 2.
+    // Chair stays on the seat-cell floor; guests may be offset onto the cushion.
+    const chair = seatChairWorldPosition(seat);
     const sit = seatSitWorldPosition(seat);
-    const feetY = sit.y + TILE_PX / 2 - 2;
-    sprite.root.position.set(sit.x - TILE_PX / 2, feetY - TILE_PX);
-    // Chair behind the seated guest. Tables paint under all actors.
-    sprite.root.zIndex = chairDepthY(feetY);
+    const chairFeetY = chair.y + TILE_PX / 2 - 2;
+    const guestFeetY = sit.y + TILE_PX / 2 - 2;
+    sprite.root.position.set(chair.x - TILE_PX / 2, chairFeetY - TILE_PX);
+    // Always sort behind the diner — even when the sit offset raises them north of the chair feet.
+    sprite.root.zIndex = chairDepthY(guestFeetY);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;
     const frontBackTexture =
