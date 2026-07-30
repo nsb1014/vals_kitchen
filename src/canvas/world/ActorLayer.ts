@@ -20,8 +20,8 @@ import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 export { carryPlateGeometry } from './carry-plate.ts';
 
 /** Runtime scale is independent from the high-resolution chibi source frames. */
-const PLAYER_DISPLAY_HEIGHT = 68;
-const GUEST_DISPLAY_HEIGHT = 58;
+const PLAYER_DISPLAY_HEIGHT = 54;
+const GUEST_DISPLAY_HEIGHT = 48;
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
@@ -51,7 +51,7 @@ function scaleForTexture(texture: Texture, displayHeight: number): number {
 export class ActorLayer {
   readonly view = new Container();
   private readonly markerLayer = new Graphics();
-  private readonly actorContainer = new Container();
+  private readonly actorContainer: Container;
   private readonly playerSprite = new Sprite();
   private readonly playerFallback = new Graphics();
   private readonly plateGraphics = new Graphics();
@@ -64,7 +64,8 @@ export class ActorLayer {
   private lastPlayerFrameKey = '';
   private playerUsesCarryTexture = false;
 
-  constructor() {
+  constructor(actorContainer?: Container) {
+    this.actorContainer = actorContainer ?? new Container();
     this.view.sortableChildren = true;
     this.actorContainer.sortableChildren = true;
     this.playerSprite.roundPixels = true;
@@ -74,7 +75,7 @@ export class ActorLayer {
     this.actorContainer.addChild(this.playerFallback);
     this.actorContainer.addChild(this.plateGraphics);
     this.view.addChild(this.markerLayer);
-    this.view.addChild(this.actorContainer);
+    if (!actorContainer) this.view.addChild(this.actorContainer);
   }
 
   sync(
@@ -97,7 +98,6 @@ export class ActorLayer {
       if (opts.showPlayerWithoutFloor) {
         this.drawDestination(nav.destination);
         this.syncPlayer(nav, false);
-        this.actorContainer.children.sort((a, b) => a.y - b.y);
         return;
       }
       this.playerSprite.visible = false;
@@ -110,7 +110,6 @@ export class ActorLayer {
     const carrying = floor.carriedTicketId != null;
     const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
     this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
-    this.actorContainer.children.sort((a, b) => a.y - b.y);
   }
 
   getPlayerWorldPosition(): { x: number; y: number } {

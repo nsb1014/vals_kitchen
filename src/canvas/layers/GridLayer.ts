@@ -36,6 +36,7 @@ export class GridLayer {
       doorOpen?: boolean;
       kitchenAnnexOwned?: boolean;
       room?: FloorRoomId;
+      showGrid?: boolean;
     } = {},
   ): void {
     const doorOpen = Boolean(opts.doorOpen);
@@ -139,6 +140,7 @@ export class GridLayer {
     }
 
     this.gridLines.clear();
+    if (!opts.showGrid) return;
     this.gridLines.setStrokeStyle({ width: 1, color: GRID_LINE_COLOR, alpha: 0.25 });
     for (let gx = 0; gx <= gridW; gx += 1) {
       const x = gx * TILE_PX;

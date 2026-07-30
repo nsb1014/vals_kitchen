@@ -39,6 +39,7 @@ function integerResolution(): number {
 export class RestaurantApp {
   readonly app: Application;
   readonly world: Container;
+  readonly depthLayer: Container;
   readonly camera: Camera;
   readonly gridLayer: GridLayer;
   readonly furnitureLayer: FurnitureLayer;
@@ -66,10 +67,12 @@ export class RestaurantApp {
   ) {
     this.app = app;
     this.world = new Container();
+    this.depthLayer = new Container();
+    this.depthLayer.sortableChildren = true;
     this.camera = new Camera();
     this.gridLayer = new GridLayer();
-    this.furnitureLayer = new FurnitureLayer();
-    this.actorLayer = new ActorLayer();
+    this.furnitureLayer = new FurnitureLayer(this.depthLayer);
+    this.actorLayer = new ActorLayer(this.depthLayer);
     this.customerLayer = new CustomerLayer();
     this.previewLayer = new PreviewLayer();
     this.interactHintLayer = new InteractHintLayer();
@@ -77,9 +80,9 @@ export class RestaurantApp {
     this.guestMotion = new GuestMotion();
 
     this.world.addChild(this.gridLayer.view);
-    this.world.addChild(this.furnitureLayer.view);
-    this.world.addChild(this.interactHintLayer.view);
     this.world.addChild(this.actorLayer.view);
+    this.world.addChild(this.interactHintLayer.view);
+    this.world.addChild(this.depthLayer);
     this.world.addChild(this.customerLayer.view);
     this.world.addChild(this.previewLayer.view);
     this.app.stage.addChild(this.world);
@@ -273,6 +276,7 @@ export class RestaurantApp {
       doorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
+      showGrid: state.editLayoutMode,
     });
     this.interactHintLayer.sync(
       state.activeFloorRoom === 'main'
@@ -467,6 +471,7 @@ export class RestaurantApp {
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
+      showGrid: state.editLayoutMode,
     });
   };
 
@@ -554,6 +559,7 @@ export class RestaurantApp {
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
+      showGrid: state.editLayoutMode,
     });
     const tableStates = new Map(
       (state.activeDay?.floor?.tables ?? []).map(
