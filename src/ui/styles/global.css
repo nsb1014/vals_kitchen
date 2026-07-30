@@ -26,6 +26,8 @@
   --vk-recipe-row-h: 72px;
   --vk-cta-h: 48px;
   --vk-sheet-header-h: 3.25rem;
+  /* Fixed floor chrome strip — keeps canvas aspect stable when hints/tickets change. */
+  --vk-floor-chrome-h: 11.25rem;
 }
 
 /* Make scroll affordance obvious on dark panels (Android/desktop); wood thumb from floor tiles. */
@@ -120,6 +122,10 @@ body {
 }
 
 .chrome-mount:not([hidden]) {
+  flex: 0 0 var(--vk-floor-chrome-h);
+  height: var(--vk-floor-chrome-h);
+  max-height: var(--vk-floor-chrome-h);
+  overflow: hidden;
   pointer-events: auto;
 }
 
