@@ -26,6 +26,19 @@
   --vk-recipe-row-h: 72px;
   --vk-cta-h: 48px;
   --vk-sheet-header-h: 3.25rem;
+  --vk-floor-chrome-pad-y: 0.75rem;
+  --vk-floor-chrome-gap: 0.5rem;
+  --vk-floor-chrome-min-h-1: calc(
+    var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+  );
+  --vk-floor-chrome-min-h-2: calc(
+    var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+  );
+  --vk-floor-chrome-min-h-3: calc(
+    var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-gap)
+      + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+  );
+  --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
 }
 
 /* Make scroll affordance obvious on dark panels (Android/desktop); wood thumb from floor tiles. */
@@ -120,6 +133,7 @@ body {
 }
 
 .chrome-mount:not([hidden]) {
+  min-height: var(--vk-floor-chrome-min-h);
   pointer-events: auto;
 }
 

@@ -38,12 +38,6 @@ export function mountFloorServiceHud(
 ): () => void {
   let ticketsMenuOpen = false;
   let ticketsPanelView: TicketsPanelView = 'order';
-  let knownTicketIds = new Set(
-    useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
-      [],
-  );
-  const arrivingTicketIds = new Set<string>();
-  const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -79,6 +73,7 @@ export function mountFloorServiceHud(
       !state.ceremony;
 
     if (!show || !floor) {
+      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
       chromeMount.hidden = true;
       chromeMount.innerHTML = '';
       dock.hidden = true;
@@ -93,34 +88,42 @@ export function mountFloorServiceHud(
       !floor.pool.some(
         (guest) => guest.stage !== 'queued' && guest.stage !== 'entering',
       );
-    if (initialGuestArriving) {
-      chromeMount.innerHTML = `
-        <div class="floor-service-panel" data-testid="floor-arrival-panel" aria-live="polite">
-          <p class="floor-tutorial">The first guest is arriving…</p>
-          <div class="floor-ticket-strip">
-            <span class="floor-ticket-empty">Opening the doors</span>
-          </div>
-        </div>
-      `;
-      dock.hidden = true;
-      dock.innerHTML = '';
-      ticketsMenuOpen = false;
-      return;
-    }
-
     dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
     const canCloseDay = selectCanCloseDay(state);
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
     const canTakeOrders = selectCanTakeFloorOrders(state);
-    const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
+    const step = nextTutorialStep(floor, state.day === 1);
+    const prompt = tutorialPrompt(step);
+    const sticky =
+      prompt && step
+        ? {
+            id: `tutorial:${step}`,
+            source: 'tutorial' as const,
+            body: prompt,
+            stepId: step,
+          }
+        : null;
     const selectedTicketId = floor.selectedTicketId;
-    const floorToast = state.floorToast;
     const pacingHint =
       state.day > 1
         ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
         : null;
+    const pacing = initialGuestArriving
+      ? {
+          id: `pacing:first-guest-arriving:${state.day}`,
+          source: 'pacing' as const,
+          body: 'The first guest is arriving…',
+        }
+      : pacingHint
+        ? {
+            id: `pacing:day:${state.day}`,
+            source: 'pacing' as const,
+            body: pacingHint,
+          }
+        : null;
+    state.syncFloorNoticesFromHud({ sticky, pacing });
 
     const ctx = getDomainContext();
     const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
@@ -146,32 +149,17 @@ export function mountFloorServiceHud(
       };
     });
 
-    const ticketStrip = ticketMeta
-      .map(({ ticket: t, isOpen, selected, label, guestId }) => {
-        const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
-        return `<button type="button" class="floor-ticket${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-ticket" data-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} title="${escapeHtml(label.buttonText)}">${portrait}<span class="floor-ticket-copy"><span class="floor-ticket-guest">${escapeHtml(label.guestLabel)}</span><span class="floor-ticket-status">${escapeHtml(label.statusLabel)}</span></span></button>`;
-      })
-      .join('');
-
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
-        ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
-        ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
-        <div class="floor-ticket-strip" data-testid="floor-ticket-strip">
-          ${ticketStrip || '<span class="floor-ticket-empty">No tickets</span>'}
+        <div class="floor-actions-scroll">
+          <div class="floor-actions">
+            <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
+            <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
+            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}>Take orders</button>
+            <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}>Clear table</button>
+            <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}>Close Day</button>
+          </div>
         </div>
-        <div class="floor-actions">
-          <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
-          <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
-          <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}>Take orders</button>
-          <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}>Clear table</button>
-          <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled'}>Close Day</button>
-        </div>
-        ${
-          floorToast
-            ? `<p class="floor-toast" data-testid="floor-toast">${floorToast}</p>`
-            : ''
-        }
       </div>
     `;
 
@@ -297,14 +285,6 @@ export function mountFloorServiceHud(
       }
     };
 
-    chromeMount.querySelectorAll<HTMLButtonElement>('[data-ticket-id]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const ticketId = button.dataset.ticketId;
-        if (!ticketId) return;
-        selectOpenTicket(ticketId);
-      });
-    });
-
     dock.querySelector('#floor-tickets-toggle')?.addEventListener('click', (event) => {
       event.stopPropagation();
       ticketsMenuOpen = !ticketsMenuOpen;
@@ -338,26 +318,6 @@ export function mountFloorServiceHud(
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
-    const nextTicketIds = new Set(
-      state.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
-    );
-    for (const ticketId of nextTicketIds) {
-      if (knownTicketIds.has(ticketId)) continue;
-      arrivingTicketIds.add(ticketId);
-      const timer = setTimeout(() => {
-        arrivingTicketIds.delete(ticketId);
-        arrivalTimers.delete(timer);
-        dock
-          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
-          ?.classList.remove('arriving');
-        chromeMount
-          .querySelector(`[data-ticket-id="${CSS.escape(ticketId)}"]`)
-          ?.classList.remove('arriving');
-      }, 900);
-      arrivalTimers.add(timer);
-    }
-    knownTicketIds = nextTicketIds;
-
     if (
       state.activeDay?.floor !== prev.activeDay?.floor ||
       state.floorPlayerGrid !== prev.floorPlayerGrid ||
@@ -377,8 +337,6 @@ export function mountFloorServiceHud(
 
   return () => {
     unsubscribe();
-    for (const timer of arrivalTimers) clearTimeout(timer);
-    arrivalTimers.clear();
     document.removeEventListener('pointerdown', onDocumentPointer, true);
     document.removeEventListener('keydown', onDocumentKeydown);
     chromeMount.innerHTML = '';
