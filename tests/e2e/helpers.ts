@@ -357,22 +357,51 @@ export async function assertFinalFloorActionActivatable(
   );
   await expect(last).toBeVisible();
   await expect(last).toBeEnabled();
-  const box = await last.boundingBox();
-  expect(box).toBeTruthy();
-  if (!box) return;
-  const scroll = page.locator('.floor-actions-scroll');
-  const scrollBox = await scroll.boundingBox();
-  expect(scrollBox).toBeTruthy();
-  if (!scrollBox) return;
-  expect(box.y).toBeGreaterThanOrEqual(scrollBox.y - 1);
-  expect(box.y + box.height).toBeLessThanOrEqual(
-    scrollBox.y + scrollBox.height + 1,
+  const geometry = await last.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const visual = window.visualViewport;
+    return {
+      button: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        height: rect.height,
+      },
+      layoutViewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      visualViewport: visual
+        ? {
+            top: visual.offsetTop,
+            right: visual.offsetLeft + visual.width,
+            bottom: visual.offsetTop + visual.height,
+            left: visual.offsetLeft,
+          }
+        : null,
+    };
+  });
+  expect(geometry.button.height).toBeGreaterThan(0);
+  expect(geometry.button.top).toBeGreaterThanOrEqual(-1);
+  expect(geometry.button.bottom).toBeLessThanOrEqual(
+    geometry.layoutViewport.height + 1,
   );
-  // CSS root zoom scales fixed-position coordinates outside Playwright's
-  // pointer viewport. Enter is still native, non-forced user activation.
-  await last.focus();
-  await expect(last).toBeFocused();
-  await last.press('Enter');
+  expect(geometry.button.right).toBeGreaterThan(0);
+  expect(geometry.button.left).toBeLessThan(geometry.layoutViewport.width);
+  if (geometry.visualViewport) {
+    expect(geometry.button.top).toBeGreaterThanOrEqual(
+      geometry.visualViewport.top - 1,
+    );
+    expect(geometry.button.bottom).toBeLessThanOrEqual(
+      geometry.visualViewport.bottom + 1,
+    );
+    expect(geometry.button.right).toBeGreaterThan(
+      geometry.visualViewport.left,
+    );
+    expect(geometry.button.left).toBeLessThan(geometry.visualViewport.right);
+  }
+  await last.click();
 }
 
 export async function assertPrimaryControlsInViewport(

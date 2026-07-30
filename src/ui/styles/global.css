@@ -92,7 +92,9 @@ body {
 }
 
 .game-shell {
-  position: fixed;
+  /* Absolute keeps normal full-viewport sizing while allowing root-zoomed
+   * chrome to contribute to document scrolling. */
+  position: absolute;
   inset: 0;
   width: 100%;
   /* inset defines height; keep svh/dvh as a floor for odd containing blocks */
