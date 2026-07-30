@@ -147,16 +147,18 @@ body {
 
 .celebration-banner-host {
   position: absolute;
-  top: 0.75rem;
+  top: calc(var(--vk-status-hud-height, 2.75rem) + 0.45rem);
   left: 0.75rem;
   right: 0.75rem;
   z-index: 80;
-  display: flex;
-  justify-content: center;
-  pointer-events: none !important;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
 }
 
-.celebration-banner {
+.celebration-banner,
+.notice-banner {
+  grid-area: 1 / 1;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -170,8 +172,16 @@ body {
     var(--vk-panel-2);
   color: var(--vk-text);
   box-shadow: 0 8px 24px rgba(30, 23, 20, 0.5);
-  pointer-events: auto;
-  animation: celebration-banner-cycle 4s ease both;
+  pointer-events: none;
+  animation: banner-enter 180ms ease-out both;
+}
+
+.notice-banner {
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--vk-accent-2) 72%, var(--vk-text));
+  background:
+    linear-gradient(135deg, rgba(122, 158, 126, 0.25), transparent 55%),
+    var(--vk-panel-2);
 }
 
 .celebration-banner-mastery {
@@ -196,7 +206,8 @@ body {
   gap: 0.15rem;
 }
 
-.celebration-banner-copy {
+.celebration-banner-copy,
+.notice-banner-copy {
   min-width: 0;
   display: flex;
   flex: 1 1 auto;
@@ -205,22 +216,35 @@ body {
 }
 
 .celebration-banner-title,
-.celebration-banner-body {
+.notice-banner-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.celebration-banner-title {
+.celebration-banner-title,
+.notice-banner-title {
   font-size: 1rem;
 }
 
-.celebration-banner-body {
+.celebration-banner-body,
+.notice-banner-body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.25;
+  max-height: calc(1.25em + 1.25em + 1.25em);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--vk-text-dim);
   font-size: 0.88rem;
 }
 
-.celebration-banner-dismiss {
+.celebration-banner-dismiss,
+.notice-banner-dismiss {
   flex: 0 0 auto;
   min-width: 36px;
   min-height: 36px;
@@ -231,26 +255,23 @@ body {
   font: inherit;
   font-size: 1.25rem;
   cursor: pointer;
+  pointer-events: auto;
 }
 
-@keyframes celebration-banner-cycle {
-  0% {
+@keyframes banner-enter {
+  from {
     opacity: 0;
     transform: translateY(-0.75rem);
   }
-  10%,
-  90% {
+  to {
     opacity: 1;
     transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-0.25rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .celebration-banner {
+  .celebration-banner,
+  .notice-banner {
     animation: none;
   }
 }
