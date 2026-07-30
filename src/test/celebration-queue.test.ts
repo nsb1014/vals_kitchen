@@ -60,7 +60,12 @@ describe('recipe celebration mapping', () => {
 describe('celebration queue timing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useGameStore.setState({ celebrationQueue: [] });
+    useGameStore.setState({
+      noticeActive: null,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      celebrationQueue: [],
+    });
   });
 
   afterEach(() => {
@@ -70,7 +75,11 @@ describe('celebration queue timing', () => {
 
   it('shows one FIFO item at a time for four seconds each', () => {
     const first = { kind: 'recipe' as const, title: 'First', body: 'Unlocked' };
-    const second = { kind: 'achievement' as const, title: 'Second', body: 'Milestone' };
+    const second = {
+      kind: 'achievement' as const,
+      title: 'Second',
+      body: 'Milestone',
+    };
 
     useGameStore.getState().enqueueCelebration(first);
     useGameStore.getState().enqueueCelebration(second);
@@ -94,7 +103,29 @@ describe('celebration queue timing', () => {
       achievementId: 'days-7',
     });
 
-    const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;
+    const snapshot = getGameStateSnapshot() as unknown as Record<
+      string,
+      unknown
+    >;
     expect(snapshot.celebrationQueue).toBeUndefined();
+  });
+
+  it('gives the next item a full dwell after manual dismissal', () => {
+    const first = { kind: 'recipe' as const, title: 'First', body: 'Unlocked' };
+    const second = {
+      kind: 'achievement' as const,
+      title: 'Second',
+      body: 'Milestone',
+    };
+    useGameStore.getState().enqueueCelebration(first);
+    useGameStore.getState().enqueueCelebration(second);
+    vi.advanceTimersByTime(1000);
+
+    useGameStore.getState().dismissCelebration();
+    vi.advanceTimersByTime(3999);
+    expect(useGameStore.getState().celebrationQueue).toEqual([second]);
+
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().celebrationQueue).toEqual([]);
   });
 });
