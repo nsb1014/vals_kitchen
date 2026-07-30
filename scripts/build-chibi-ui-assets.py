@@ -109,11 +109,12 @@ def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     return rgba
 
 
-def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 96) -> Image.Image:
+def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 40) -> Image.Image:
     """Force body pixels fully opaque so characters never render see-through.
 
     LANCZOS downscales leave a soft mid-alpha haze across dresses/skin that reads
-    as ghosting on busy floors. Keep only a thin feather below solid_cutoff.
+    as ghosting on busy floors. Below solid_cutoff, snap to fully transparent so
+    remaining edge ramp cannot smear into the silhouette under nearest filtering.
     """
     rgba = image.convert("RGBA")
     px = rgba.load()
@@ -123,7 +124,7 @@ def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 96) -> Image.Ima
             red, green, blue, alpha = px[x, y]
             if alpha >= solid_cutoff:
                 px[x, y] = (red, green, blue, 255)
-            elif alpha < 20:
+            else:
                 px[x, y] = (red, green, blue, 0)
     return rgba
 

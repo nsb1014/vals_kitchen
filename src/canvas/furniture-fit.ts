@@ -2,12 +2,11 @@ import { TILE_PX } from './coordinates.ts';
 
 /**
  * Max chair overhang above the seat-cell top.
- * Sized to match player-scale seated guests (see ActorLayer display heights).
+ * Chairs stay slightly under seated guest height so diners fill the seat.
  */
-export const CHAIR_MAX_OVERHANG_PX = 22;
-/** Sized for player-matched sit silhouettes (content-scaled). */
-export const CHAIR_DRAW_WIDTH_PX = 34;
-export const CHAIR_DRAW_HEIGHT_PX = 52;
+export const CHAIR_MAX_OVERHANG_PX = 28;
+export const CHAIR_DRAW_WIDTH_PX = 36;
+export const CHAIR_DRAW_HEIGHT_PX = 58;
 /** Flat top-down tabletop width; height is capped so art does not swallow neighbors. */
 export const TABLE_DRAW_WIDTH_PX = 30;
 export const TABLE_MAX_HEIGHT_PX = TILE_PX + 10;

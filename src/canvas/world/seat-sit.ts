@@ -21,7 +21,7 @@ export const SEAT_CAMERA_BIAS_PX = 0;
  * Negative pulls the sit pose onto the cushion / toward the chair back.
  * Chair Y-sort always uses the diner’s feet so the chair stays behind them.
  */
-export const SEAT_SIT_OFFSET_Y = -4;
+export const SEAT_SIT_OFFSET_Y = -2;
 
 function seatCellCenter(seat: SeatSlot): { x: number; y: number } {
   const { x: gx, y: gy } = gridToWorld(seat.x, seat.y);

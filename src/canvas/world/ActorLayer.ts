@@ -19,11 +19,11 @@ import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 
-/** Runtime silhouette height shared by chef and guests. */
-export const PLAYER_DISPLAY_HEIGHT = 44;
+/** Runtime silhouette height — ~2 tiles so actors read above furniture, not under it. */
+export const PLAYER_DISPLAY_HEIGHT = 60;
 export const GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT;
-/** Sit frames are denser; slightly taller fills the grown chair pocket. */
-export const SEATED_GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT + 6;
+/** Sit art is narrower; a touch taller matches the chef’s visual weight in a chair. */
+export const SEATED_GUEST_DISPLAY_HEIGHT = 66;
 
 /**
  * Opaque content height inside padded atlas frames.
@@ -187,6 +187,10 @@ export class ActorLayer {
     }
 
     if (this.playerSprite.visible) {
+      this.playerSprite.alpha = 1;
+      this.playerSprite.scale.set(
+        scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
+      );
       this.playerSprite.position.set(Math.round(nav.worldX), Math.round(feetY));
       this.playerSprite.zIndex = this.playerSprite.y;
     } else {
@@ -241,6 +245,7 @@ export class ActorLayer {
         const sprite = new Sprite();
         sprite.roundPixels = true;
         sprite.anchor.set(0.5, 1);
+        sprite.alpha = 1;
         const cue = new Graphics();
         root.addChild(sprite);
         root.addChild(cue);
@@ -288,6 +293,7 @@ export class ActorLayer {
       if (entry.sprite.visible) {
         const contentH = seated ? GUEST_SIT_CONTENT_HEIGHT_PX : GUEST_WALK_CONTENT_HEIGHT_PX;
         const displayH = seated ? SEATED_GUEST_DISPLAY_HEIGHT : GUEST_DISPLAY_HEIGHT;
+        entry.sprite.alpha = 1;
         entry.sprite.scale.set(scaleForContent(displayH, contentH));
       }
 
