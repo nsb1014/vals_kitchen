@@ -145,6 +145,19 @@ export function connectingDoorInterior(
 }
 
 /**
+ * Cook spawn for a new service day: one tile north of the waiting line so Val
+ * does not start stacked on north-wall table seats (starter tables at y=2).
+ */
+export function servicePlayerSpawn(
+  gridW: number,
+  gridH: number,
+): { x: number; y: number } {
+  const door = doorForGrid(gridW, gridH);
+  const waitY = Math.max(0, door.y - 1);
+  return { x: door.x, y: Math.max(1, waitY - 1) };
+}
+
+/**
  * Dining / kitchen / door for any grid size.
  * Main: kitchen is the eastmost STARTER_KITCHEN_WIDTH columns; dining is the rest;
  * guest door sits on the south perimeter, centered in the dining wing.

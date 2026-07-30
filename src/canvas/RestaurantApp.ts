@@ -76,7 +76,7 @@ export class RestaurantApp {
     this.customerLayer = new CustomerLayer();
     this.previewLayer = new PreviewLayer();
     this.interactHintLayer = new InteractHintLayer();
-    this.nav = new NavController({ x: 1, y: 1 });
+    this.nav = new NavController({ x: 3, y: 5 });
     this.guestMotion = new GuestMotion();
 
     this.world.addChild(this.gridLayer.view);

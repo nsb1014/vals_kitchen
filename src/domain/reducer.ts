@@ -26,7 +26,7 @@ import {
   applyTransferItemRoom,
   type PurchaseKind,
 } from './economy/purchases.ts';
-import type { FloorRoomId } from './floor/starter-map.ts';
+import { servicePlayerSpawn, type FloorRoomId } from './floor/starter-map.ts';
 import type { GameState, Placement } from './state/game-state.ts';
 import { cloneGameState } from './state/game-state.ts';
 import { applyAchievementUnlocks } from './achievements/evaluate.ts';
@@ -195,10 +195,12 @@ export function gameReducer(
       );
       const tables = tablesFromPlacements(state.placements);
       const seats = seatsFromPlacements(state.placements);
-      const floor = createFloorDayFromCustomers(generated.customers, tables, seats, {
-        x: 1,
-        y: 1,
-      });
+      const floor = createFloorDayFromCustomers(
+        generated.customers,
+        tables,
+        seats,
+        servicePlayerSpawn(state.gridSize.w, state.gridSize.h),
+      );
       const next = cloneGameState(state);
       next.activeDay = {
         seed: generated.seed,

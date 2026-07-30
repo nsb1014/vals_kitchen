@@ -49,6 +49,19 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   openComposeSheet: () => void;
+  /** Debug: live actor sprite sizes after floor sync (Playwright visual QA). */
+  getActorSpriteMetrics: () => Array<{
+    kind: string;
+    tex: string;
+    width: number;
+    height: number;
+    scaleX: number;
+    scaleY: number;
+    alpha: number;
+    x: number;
+    y: number;
+    zIndex: number;
+  }>;
 }
 
 declare global {
@@ -129,6 +142,64 @@ export function installE2eBridge(
     setFloorNavPosition(pos) {
       getRestaurantApp()?.nav.snapTo(pos);
       useGameStore.getState().setFloorNavPosition(pos);
+    },
+
+    getActorSpriteMetrics() {
+      const app = getRestaurantApp();
+      if (!app) return [];
+      const out: Array<{
+        kind: string;
+        tex: string;
+        width: number;
+        height: number;
+        scaleX: number;
+        scaleY: number;
+        alpha: number;
+        x: number;
+        y: number;
+        zIndex: number;
+      }> = [];
+      const visit = (node: { children?: Iterable<unknown> }) => {
+        for (const child of node.children ?? []) {
+          const c = child as {
+            texture?: { height?: number; width?: number; uid?: number };
+            width?: number;
+            height?: number;
+            scale?: { x: number; y: number };
+            alpha?: number;
+            worldTransform?: { tx: number; ty: number; a: number; d: number };
+            x?: number;
+            y?: number;
+            zIndex?: number;
+            children?: Iterable<unknown>;
+            visible?: boolean;
+          };
+          const tex = c.texture;
+          if (
+            tex &&
+            c.visible !== false &&
+            typeof c.width === 'number' &&
+            typeof c.height === 'number' &&
+            c.height > 8
+          ) {
+            out.push({
+              kind: 'sprite',
+              tex: `${Math.round(tex.width ?? 0)}x${Math.round(tex.height ?? 0)}`,
+              width: Math.round(c.width),
+              height: Math.round(c.height),
+              scaleX: Number((c.scale?.x ?? 1).toFixed(4)),
+              scaleY: Number((c.scale?.y ?? 1).toFixed(4)),
+              alpha: c.alpha ?? 1,
+              x: Math.round(c.worldTransform?.tx ?? c.x ?? 0),
+              y: Math.round(c.worldTransform?.ty ?? c.y ?? 0),
+              zIndex: c.zIndex ?? 0,
+            });
+          }
+          if (c.children) visit(c);
+        }
+      };
+      visit(app.depthLayer);
+      return out.sort((a, b) => a.y - b.y);
     },
 
     dismissPendingReview() {

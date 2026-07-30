@@ -19,6 +19,8 @@ async function loadTexture(url: string): Promise<Texture> {
   // smears mid-alpha into the silhouette and reads as see-through characters.
   const texture = Texture.from(image);
   texture.source.scaleMode = 'nearest';
+  // Binary-hardened atlases are straight alpha; avoid double-multiply haze.
+  texture.source.alphaMode = 'no-premultiply-alpha';
   return texture;
 }
 

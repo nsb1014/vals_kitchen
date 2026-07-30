@@ -125,7 +125,8 @@ def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 40) -> Image.Ima
             if alpha >= solid_cutoff:
                 px[x, y] = (red, green, blue, 255)
             else:
-                px[x, y] = (red, green, blue, 0)
+                # Zero RGB on cutouts so premultiply/fringe cannot revive ghosts.
+                px[x, y] = (0, 0, 0, 0)
     return rgba
 
 

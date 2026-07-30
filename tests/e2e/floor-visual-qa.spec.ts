@@ -45,6 +45,20 @@ test('captures seated floor for visual QA', async ({ page }) => {
   await page.waitForTimeout(3500);
   await assertCanvasHasRenderedContent(page);
 
+  const metrics = await page.evaluate(() => window.__E2E__!.getActorSpriteMetrics());
+  const player = metrics.find((m) => m.tex === '80x96');
+  const seatedSprite = metrics.find((m) => m.tex === '152x184' && m.height >= 70);
+  expect(player, 'player sprite').toBeTruthy();
+  expect(seatedSprite, 'seated guest sprite').toBeTruthy();
+  expect(player!.height).toBeGreaterThanOrEqual(56);
+  expect(seatedSprite!.height).toBeGreaterThanOrEqual(player!.height);
+  expect(player!.alpha).toBe(1);
+  expect(seatedSprite!.alpha).toBe(1);
+  // Cook must not stand on the same seat cell as a diner (ghost stack).
+  expect(Math.hypot(player!.x - seatedSprite!.x, player!.y - seatedSprite!.y)).toBeGreaterThan(
+    24,
+  );
+
   const canvasStyle = await page.evaluate(() => {
     const canvas = document.querySelector('[data-testid="restaurant-canvas"]') as HTMLCanvasElement;
     const style = getComputedStyle(canvas);

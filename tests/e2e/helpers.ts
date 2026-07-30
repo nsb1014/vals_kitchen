@@ -426,6 +426,18 @@ declare global {
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
       openComposeSheet: () => void;
+      getActorSpriteMetrics: () => Array<{
+        kind: string;
+        tex: string;
+        width: number;
+        height: number;
+        scaleX: number;
+        scaleY: number;
+        alpha: number;
+        x: number;
+        y: number;
+        zIndex: number;
+      }>;
     };
   }
 }
