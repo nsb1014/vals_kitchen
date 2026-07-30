@@ -23,7 +23,26 @@ All in-game status copy (toasts, tutorial steps, pacing hints) uses the **same t
 - **Placement (no double safe-area):**  
   `top: calc(var(--vk-status-hud-height, 2.75rem) + 0.45rem)`  
   Match `.floor-tickets-dock`. Do **not** add `env(safe-area-inset-top)` here — `.game-shell` already applies top safe-area padding, and `--vk-status-hud-height` is measured inside that padded surface. Adding the inset again double-counts on iOS.
-- Horizontal inset `0.75rem` (or `0.45rem` to match tickets dock); body copy **wraps up to 3 lines** then clamps (tutorial must remain readable).
+- Horizontal inset `0.75rem` (or `0.45rem` to match tickets dock).
+- **Three-line clamp (cross-engine):** banner body uses an explicit fallback stack so WebKit/Chromium/Firefox all hard-stop at three lines:
+
+```css
+.celebration-banner-body,
+.notice-banner-body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.25;
+  /* Fallback when line-clamp is ignored: additive cap by 3 line-heights */
+  max-height: calc(1.25em + 1.25em + 1.25em);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+```
+
+  Do not rely on `-webkit-line-clamp` alone.
 - Transient floor copy uses a `notice` visual variant (same geometry; no badge / ingredient icon row).
 
 ### Stack (front covers back)
@@ -140,6 +159,9 @@ Canvas taps handle **cook + deliver** only. Always offer Set / Seat / Take order
 
 ```css
 @media (max-width: 320px) {
+  :root {
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
+  }
   .floor-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
