@@ -7,7 +7,11 @@ import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts'
 import { isDayComplete } from '../domain/day/serve.ts';
 import type { GameAction } from '../domain/reducer.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
-import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
+import {
+  getGameStateSnapshot,
+  useGameStore,
+  type Celebration,
+} from '../store/game-store.ts';
 import {
   getDomainContext,
   isRecipesContentReady,
@@ -49,6 +53,8 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   openComposeSheet: () => void;
+  setFloorToast: (message: string | null) => void;
+  enqueueCelebration: (celebration: Celebration) => void;
 }
 
 declare global {
@@ -204,6 +210,14 @@ export function installE2eBridge(
 
     openComposeSheet() {
       useGameStore.getState().openComposeSheet();
+    },
+
+    setFloorToast(message) {
+      useGameStore.getState().setFloorToast(message);
+    },
+
+    enqueueCelebration(celebration) {
+      useGameStore.getState().enqueueCelebration(celebration);
     },
 
     async advanceFloorServiceOnce() {

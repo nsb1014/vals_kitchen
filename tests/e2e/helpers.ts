@@ -71,9 +71,11 @@ export async function clearBrowserStorage(page: Page): Promise<void> {
 
 export async function gotoFreshGame(page: Page): Promise<PageDiagnostics> {
   const diagnostics = attachDiagnostics(page);
-  await page.goto(E2E_PATH);
+  // Establish the app origin without starting bootstrap, then clear storage.
+  // Clearing IndexedDB during bootstrap races hydrate(), especially in Firefox.
+  await page.goto('/data/ingredients.json');
   await clearBrowserStorage(page);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.goto(E2E_PATH, { waitUntil: 'networkidle' });
   await waitForInteractiveBoot(page);
   return diagnostics;
 }
@@ -322,6 +324,57 @@ export async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   expect(overflow).toBe(false);
 }
 
+/** Apply Chromium's real CSS page zoom without changing the emulated DPR. */
+export async function applyPageZoom(page: Page, factor: 2): Promise<void> {
+  await page.evaluate((zoom) => {
+    document.documentElement.style.zoom = String(zoom);
+  }, factor);
+}
+
+/** The action scrollport must always expose at least one full CTA row. */
+export async function assertScrollportAtLeastCta(page: Page): Promise<void> {
+  const ok = await page.evaluate(() => {
+    const scroll = document.querySelector(
+      '.floor-actions-scroll',
+    ) as HTMLElement | null;
+    if (!scroll) return false;
+    const cta = getComputedStyle(document.documentElement)
+      .getPropertyValue('--vk-cta-h')
+      .trim();
+    const ctaPx = Number.parseFloat(cta) || 52;
+    return scroll.getBoundingClientRect().height + 0.5 >= ctaPx;
+  });
+  expect(ok).toBe(true);
+}
+
+/** Scroll the final reserved action fully into view and activate it. */
+export async function assertFinalFloorActionActivatable(
+  page: Page,
+): Promise<void> {
+  const last = page.locator('.floor-actions .service-btn').last();
+  await last.evaluate((element) =>
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+  );
+  await expect(last).toBeVisible();
+  await expect(last).toBeEnabled();
+  const box = await last.boundingBox();
+  expect(box).toBeTruthy();
+  if (!box) return;
+  const scroll = page.locator('.floor-actions-scroll');
+  const scrollBox = await scroll.boundingBox();
+  expect(scrollBox).toBeTruthy();
+  if (!scrollBox) return;
+  expect(box.y).toBeGreaterThanOrEqual(scrollBox.y - 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(
+    scrollBox.y + scrollBox.height + 1,
+  );
+  // CSS root zoom scales fixed-position coordinates outside Playwright's
+  // pointer viewport. Enter is still native, non-forced user activation.
+  await last.focus();
+  await expect(last).toBeFocused();
+  await last.press('Enter');
+}
+
 export async function assertPrimaryControlsInViewport(
   page: Page,
 ): Promise<void> {
@@ -426,6 +479,14 @@ declare global {
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
       openComposeSheet: () => void;
+      setFloorToast: (message: string | null) => void;
+      enqueueCelebration: (celebration: {
+        kind: 'recipe' | 'mastery' | 'achievement';
+        title: string;
+        body: string;
+        ingredientIds?: string[];
+        level?: number;
+      }) => void;
     };
   }
 }

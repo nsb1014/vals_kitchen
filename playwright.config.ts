@@ -32,6 +32,18 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            'dom.storageManager.prompt.testing': true,
+            'dom.storageManager.prompt.testing.allow': true,
+          },
+        },
+      },
+    },
   ],
   webServer: {
     command: previewCommand,
