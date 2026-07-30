@@ -1,6 +1,6 @@
 # Unified floor notifications (banner stack)
 
-**Status:** Draft v5 — responsive plan tightened; notification architecture unchanged  
+**Status:** Draft v6 — isolated responsive corrections; notification architecture ready  
 **Date:** 2026-07-30  
 **Related:** `CelebrationBanner`, `floorToast`, `FloorServiceHud`, `--vk-status-hud-height`, `--vk-cta-h` (chibi theme: **52px**)
 
@@ -147,20 +147,20 @@ When surface becomes active again: `syncNotificationTimer()` resume from `remain
 
 Canvas taps handle **cook + deliver** only. Always offer Set / Seat / Take orders / Clear (enabled via selectors). **Close Day** only when `selectCanCloseDay`.
 
-### Token-derived sizing (v5 responsive plan)
+### Token-derived sizing (v6 responsive plan)
 
-**Problems addressed vs v3/v4:** fixed rem locks clip under zoom; typed CSS multiplication (`N * var(...)`) has uneven engine support; short landscape must not waste vertical space on a forced second row; 320px widths need a dedicated label layout; internal scroll needs a bounded container first.
+**Problems addressed vs v5:** 320px with five reserved controls needs **three** rows (not two); short-height must not override the 320px layout on 320×480; 200% zoom tests must not use `deviceScaleFactor`; scroll `max-height` must not go negative.
 
 #### 1. Buttons and labels
 
 - Floor actions: `min-height: var(--vk-cta-h)`; `height: auto` so text zoom can grow the control; do **not** hard-code 48px.
-- Labels: allow wrap up to two lines inside the button (`line-height` + `max-height` fallback similar to banner), with `hyphens` / `overflow-wrap: anywhere` as needed.
-- **`max-width: 320px` layout (required):** dedicated rules so four verbs (+ Close Day) do not overflow labels:
+- Labels: allow wrap up to two lines inside the button (`line-height` + additive `max-height` fallback), with `overflow-wrap: anywhere` as needed.
+- **`max-width: 320px` layout (required):** two columns × **three** rows for five reserved controls (Set, Seat, Take orders, Clear, Close Day slot):
 
 ```css
 @media (max-width: 320px) {
   :root {
-    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-3);
   }
   .floor-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -173,21 +173,22 @@ Canvas taps handle **cook + deliver** only. Always offer Set / Seat / Take order
 }
 ```
 
-  At 321px–760px portrait, keep a 2×2 / 3+ wrap grid as today but with wrapping labels, not a single cramped row of five.
+  At 321px–760px and tall enough, keep the 3-column wrap (two-row reserve). Source order in the stylesheet: **320px block after the short-height block**, and/or short-height excludes ≤320px (see §3).
 
 #### 2. Additive `calc()` only (no typed multiplication)
-
-Avoid `calc(var(--vk-floor-action-rows) * var(--vk-cta-h))` and similar. Publish **explicit** one-row and two-row min-heights with additive sums:
 
 ```css
 :root {
   --vk-floor-chrome-pad-y: 0.75rem; /* top + bottom padding */
   --vk-floor-chrome-gap: 0.5rem;
-  /* one row: cta + pad */
   --vk-floor-chrome-min-h-1: calc(var(--vk-cta-h) + var(--vk-floor-chrome-pad-y));
-  /* two rows: cta + gap + cta + pad */
   --vk-floor-chrome-min-h-2: calc(
     var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+  );
+  /* three rows: cta + gap + cta + gap + cta + pad — required for 2×3 at 320px */
+  --vk-floor-chrome-min-h-3: calc(
+    var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-gap)
+      + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
   );
   --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
 }
@@ -197,17 +198,17 @@ Avoid `calc(var(--vk-floor-action-rows) * var(--vk-cta-h))` and similar. Publish
 }
 ```
 
-#### 3. When to reserve two rows (not “short landscape ⇒ two”)
+#### 3. Row reservation (320px wins over short-height)
 
-| Viewport | Action rows reserved | Rationale |
-|----------|----------------------|-----------|
-| Wide + tall (e.g. `min-width: 761px` and `min-height: 501px`) | **1** | Single row of controls |
-| Narrow portrait (`max-width: 760px` and `min-height: 501px`) | **2** | Grid wraps; reserve height so Close Day does not jump |
-| Short landscape (`max-height: 500px`) | **1** | Prefer one row — vertical space is scarce; allow horizontal scroll of the action track if needed rather than eating the canvas |
-| `max-width: 320px` | **2** (2×2 grid) | Dedicated tiny-width layout |
+| Viewport | Rows | Layout |
+|----------|------|--------|
+| Wide + tall (`min-width: 761px`) | **1** | Single row |
+| Narrow + tall (`max-width: 760px` and `min-width: 321px` and `min-height: 501px`) | **2** | 3-column wrap |
+| Short height **and** wider than 320px (`max-height: 500px` and `min-width: 321px`) | **1** | One row; horizontal scroll if needed |
+| `max-width: 320px` (any height, including 320×480) | **3** | 2-column × 3-row; **must not** be overridden by short-height |
 
 ```css
-@media (max-width: 760px) and (min-height: 501px) {
+@media (max-width: 760px) and (min-width: 321px) and (min-height: 501px) {
   :root {
     --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
   }
@@ -215,7 +216,8 @@ Avoid `calc(var(--vk-floor-action-rows) * var(--vk-cta-h))` and similar. Publish
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-@media (max-height: 500px) {
+/* Short landscape / short tablet — exclude ≤320px so tiny portrait keeps 2×3 */
+@media (max-height: 500px) and (min-width: 321px) {
   :root {
     --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
   }
@@ -226,22 +228,31 @@ Avoid `calc(var(--vk-floor-action-rows) * var(--vk-cta-h))` and similar. Publish
     overscroll-behavior-x: contain;
   }
 }
+/* Last among these: 320px wins on 320×480 */
+@media (max-width: 320px) {
+  :root {
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-3);
+  }
+  .floor-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 ```
 
-Always reserve a Close Day grid cell (`visibility: hidden` when not closable) inside the chosen row plan so showing Close Day does not change `--vk-floor-chrome-min-h`.
+Always reserve a Close Day grid cell (`visibility: hidden` when not closable) so showing it does not change `--vk-floor-chrome-min-h`.
 
-#### 4. Extreme zoom — bounded scroll region first
+#### 4. Extreme zoom — bounded, non-negative scrollport
 
-Do **not** put `overflow-y: auto` on `#chrome-mount` itself (that fights flex sizing).
+Do **not** put `overflow-y: auto` on `#chrome-mount` itself.
 
 1. Structure: `#chrome-mount` > `.floor-service-panel` > `.floor-actions-scroll` > `.floor-actions`.
-2. Bound the scrollport with additive `max-height` from tokens + viewport, e.g.:
+2. Bound with additive `min` / `max` so the viewport term cannot go negative:
 
 ```css
 .floor-actions-scroll {
   max-height: min(
-    var(--vk-floor-chrome-min-h-2),
-    calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem)
+    var(--vk-floor-chrome-min-h-3),
+    max(0px, calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
   );
   overflow-x: auto;
   overflow-y: auto;
@@ -249,8 +260,8 @@ Do **not** put `overflow-y: auto` on `#chrome-mount` itself (that fights flex si
 }
 ```
 
-3. Only when computed content height exceeds that bound (text zoom / 200% page zoom) does internal scrolling engage. Below the bound, no scrollbar.
-4. Tests must prove the scrollport exists and that buttons remain reachable (scroll into view), not that the outer chrome equals one pixel height.
+3. Internal scrolling only when content exceeds that bound (e.g. real **page/text zoom**). Below the bound, no scrollbar.
+4. Tests prove the scrollport is bounded (`max-height ≥ 0`) and buttons remain reachable.
 
 ### What is removed from chrome
 
@@ -276,22 +287,31 @@ Do **not** put `overflow-y: auto` on `#chrome-mount` itself (that fights flex si
 | Engine | Viewport / condition | Intent |
 |--------|----------------------|--------|
 | Chromium | 390×844 | Tall phone portrait (2-row reserve) |
-| Chromium | 320×568 | Tiny width — 2×2 label layout, no overflow |
-| Chromium | 667×375 | Short landscape — **one** row (+ horizontal scroll if needed) |
+| Chromium | 320×568 | Tiny width — 2×3 grid, `min-h-3` |
+| Chromium | **320×480** | Tiny **and** short — must still use 320px 2×3, **not** short-height one-row |
+| Chromium | 667×375 | Short landscape — **one** row (`min-width: 321px`) |
 | Chromium | 768×1024 | Tablet portrait |
 | Chromium | 1280×800 | Desktop |
-| Chromium | 390×844 @ **200% zoom** (or `deviceScaleFactor` + CSS zoom harness) | Token min-height + bounded scrollport; buttons reachable |
+| Chromium | 390×844 @ **200% page zoom** | See zoom harness below |
 | WebKit | 390×844 | iOS-like |
 | Firefox | 390×844 | Gecko sanity |
+
+**200% zoom harness (required):** do **not** use Playwright `deviceScaleFactor` — that only changes DPR, not browser/page zoom or text scaling. Use one of:
+
+1. Chromium: `page.evaluate(() => { document.documentElement.style.zoom = '2'; })` (or DevTools Protocol page zoom if available), **or**
+2. Cross-engine text zoom proxy: `document.documentElement.style.fontSize = '200%'` when chrome sizing is rem-based enough to stress layout, documented as the Firefox/WebKit stand-in if `zoom` is unsupported.
+
+Assert under that harness: scrollport `max-height` is ≥ 0; buttons reachable inside `.floor-actions-scroll`.
 
 Assertions (relative):
 
 - No tutorial/toast/arrival nodes in chrome.
 - Four verbs present; Close Day reserved/hidden when not closable.
-- Chrome `min-height` ≥ additive token formula for the active row plan (`min-h-1` or `min-h-2`).
-- Short landscape uses one-row min-height; 320px uses 2-column grid without label overflow (`scrollWidth` of button ≤ client width + 1).
-- Banner body computed style exposes three-line clamp **or** `max-height` fallback; long copy does not exceed ~3 lines.
-- Under 200% zoom, overflow is confined to `.floor-actions-scroll` (bounded); outer flex layout does not unbounded-grow past the scrollport max-height.
+- Chrome `min-height` ≥ additive formula for the active plan (`min-h-1` / `min-h-2` / `min-h-3`).
+- 320×480 keeps 2-column × 3-row plan; short landscape (wider than 320) keeps one-row min-height.
+- 320px: no label overflow (`scrollWidth` of button ≤ client width + 1).
+- Banner three-line clamp or `max-height` fallback holds.
+- 200% zoom: overflow confined to bounded `.floor-actions-scroll`; `max-height ≥ 0`.
 - Canvas height unchanged across notice show/hide.
 - Banner below HUD without double safe-area; pass-through taps; dismiss notice reveals celebration.
 
@@ -301,20 +321,21 @@ Assertions (relative):
 |-------|----------|
 | Banner offset | HUD height + 0.45rem only — **no** extra safe-area-top |
 | CTA token | Use `--vk-cta-h` (52px in chibi `:root`); floor buttons must not hard-code 48px |
-| Chrome height | Additive token `min-height` (`min-h-1` / `min-h-2`); no typed multiplication |
-| Short landscape | **One** row preferred |
-| 320px | Dedicated 2-column label-safe layout |
-| Two-row reserve | Narrow **and** tall enough (`max-width: 760px` and `min-height: 501px`) |
+| Chrome height | Additive `min-h-1` / `min-h-2` / `min-h-3`; no typed multiplication |
+| Short landscape | **One** row when `min-width: 321px` |
+| 320px | 2 columns × **3** rows (`min-h-3`); wins over short-height |
+| Two-row reserve | Narrow (321–760) **and** tall enough |
 | Line clamp | `-webkit-line-clamp` + `line-clamp` + additive `max-height` fallback |
-| Extreme zoom | Bounded `.floor-actions-scroll` before internal scroll |
+| Extreme zoom | Bounded scrollport with `max(0px, calc(...))` |
+| 200% zoom test | Real page/text zoom — **not** `deviceScaleFactor` |
 | Three-button cap | Removed |
 | Tutorial dismiss | Per-step until step changes |
 | Timer while hidden | Pause on unmount **and** `visibilitychange` / BFCache `pagehide` |
-| Tests | Desktop, tablet, 320, short landscape, 200% zoom, Chromium/WebKit/Firefox |
+| Tests | Desktop, tablet, 320, 320×480, short landscape, 200% zoom, Chromium/WebKit/Firefox |
 
-## Implementation sketch (after v5 approval)
+## Implementation sketch (after v6 approval)
 
 1. Notification timer + store fields; lifecycle helper (mount, visibility, pagehide/pageshow).
 2. Banner: HUD-offset, stack, inert back, dwell-independent motion, three-line clamp fallback.
-3. Floor chrome: additive `min-h-1`/`min-h-2`, short-landscape one-row, 320px 2-col, bounded `.floor-actions-scroll`, buttons `var(--vk-cta-h)`, remove messages/arrival/ticket strip; reserved Close Day cell.
-4. Tests: unit lifecycle + required viewport/zoom matrix above.
+3. Floor chrome: additive `min-h-1`/`min-h-2`/`min-h-3`, short-height excludes ≤320px, 320px 2×3, bounded non-negative `.floor-actions-scroll`, buttons `var(--vk-cta-h)`, remove messages/arrival/ticket strip; reserved Close Day cell.
+4. Tests: unit lifecycle + matrix including 320×480 conflict case and real 200% zoom harness.
