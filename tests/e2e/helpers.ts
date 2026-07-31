@@ -97,7 +97,7 @@ export async function waitForGameReady(page: Page): Promise<void> {
   await page.waitForFunction(
     () => window.__E2E__?.getState()?.hydrated === true,
   );
-  await page.waitForSelector('[data-testid="inspector-screen"]', {
+  await page.waitForSelector('[data-testid="recipes-screen"]', {
     state: 'attached',
   });
 }
@@ -306,10 +306,13 @@ export async function trackContentRequests(page: Page): Promise<{
 
 export async function navigateToScreen(
   page: Page,
-  screen:
-    'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings',
+  screen: 'restaurant' | 'recipes' | 'settings',
 ): Promise<void> {
-  await page.locator(`[data-testid="nav-${screen}"]`).click();
+  if (screen === 'settings') {
+    await page.getByTestId('hud-settings').click();
+  } else {
+    await page.locator(`[data-testid="nav-${screen}"]`).click();
+  }
   await expect(page.locator('#game-root')).toHaveAttribute(
     'data-screen',
     screen,
@@ -417,7 +420,7 @@ export async function assertFinalFloorActionActivatable(
 export async function assertPrimaryControlsInViewport(
   page: Page,
 ): Promise<void> {
-  for (const testId of ['nav-restaurant', 'nav-shop', 'open-day-btn']) {
+  for (const testId of ['nav-restaurant', 'nav-recipes', 'open-day-btn']) {
     const box = await page.locator(`[data-testid="${testId}"]`).boundingBox();
     expect(box).not.toBeNull();
     const viewport = page.viewportSize();
