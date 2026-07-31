@@ -7,6 +7,14 @@ import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
 import { nextBoundFrameKey } from './actor-texture-bind.ts';
 import {
+  GUEST_DISPLAY_HEIGHT,
+  GUEST_SIT_CONTENT_HEIGHT_PX,
+  GUEST_WALK_CONTENT_HEIGHT_PX,
+  PLAYER_CONTENT_HEIGHT_PX,
+  PLAYER_DISPLAY_HEIGHT,
+  SEATED_GUEST_DISPLAY_HEIGHT,
+} from './actor-metrics.ts';
+import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
@@ -18,20 +26,14 @@ import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
-
-/** Runtime silhouette height — ~2 tiles so actors read above furniture, not under it. */
-export const PLAYER_DISPLAY_HEIGHT = 60;
-export const GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT;
-/** Sit art is narrower; a touch taller matches the chef’s visual weight in a chair. */
-export const SEATED_GUEST_DISPLAY_HEIGHT = 66;
-
-/**
- * Opaque content height inside padded atlas frames.
- * Scale by content, not texture height, or sit frames (more padding) look tiny.
- */
-export const PLAYER_CONTENT_HEIGHT_PX = 90;
-export const GUEST_WALK_CONTENT_HEIGHT_PX = 167;
-export const GUEST_SIT_CONTENT_HEIGHT_PX = 148;
+export {
+  GUEST_DISPLAY_HEIGHT,
+  GUEST_SIT_CONTENT_HEIGHT_PX,
+  GUEST_WALK_CONTENT_HEIGHT_PX,
+  PLAYER_CONTENT_HEIGHT_PX,
+  PLAYER_DISPLAY_HEIGHT,
+  SEATED_GUEST_DISPLAY_HEIGHT,
+} from './actor-metrics.ts';
 
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
