@@ -441,8 +441,9 @@ export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
 }
 
 /**
- * Canvas height must stay put while floor chrome copy changes (tutorial / tickets /
- * toasts). Variable message height used to flex-shrink the Pixi mount.
+ * Canvas height must stay put while floor status copy changes. Notices live in
+ * the top banner stack; chrome keeps a token min-height so the Pixi mount does
+ * not flex-shrink.
  */
 export async function assertCanvasHeightStableAcrossFloorChrome(
   page: Page,
@@ -453,27 +454,20 @@ export async function assertCanvasHeightStableAcrossFloorChrome(
   const before = Math.round(beforeBox!.height);
 
   await page.evaluate(() => {
-    const hints = document.querySelector('.floor-service-hints');
-    if (hints && !hints.querySelector('[data-testid="floor-tutorial"]')) {
-      const tutorial = document.createElement('p');
-      tutorial.className = 'floor-tutorial';
-      tutorial.dataset.testid = 'floor-tutorial';
-      tutorial.textContent = 'When the floor is clear, close the day.';
-      hints.prepend(tutorial);
-    }
-    if (hints && !hints.querySelector('[data-testid="floor-pacing"]')) {
-      const pacing = document.createElement('p');
-      pacing.className = 'floor-pacing';
-      pacing.dataset.testid = 'floor-pacing';
-      pacing.textContent = 'No tickets';
-      hints.append(pacing);
-    }
-    const toast = document.querySelector('[data-testid="floor-toast"]');
-    if (toast instanceof HTMLElement) {
-      toast.hidden = false;
-      toast.textContent = 'Move next to the station to cook.';
-    }
+    window.__E2E__!.setFloorToast(
+      'Move next to the station to cook — canvas height must not change.',
+    );
   });
+  await expect(page.locator('[data-testid="notice-banner"]')).toBeVisible();
+
+  const duringBox = await page.locator('#canvas-mount').boundingBox();
+  expect(duringBox).not.toBeNull();
+  expect(Math.round(duringBox!.height)).toBe(before);
+
+  await page.evaluate(() => {
+    window.__E2E__!.setFloorToast(null);
+  });
+  await expect(page.locator('[data-testid="notice-banner"]')).toHaveCount(0);
 
   const afterBox = await page.locator('#canvas-mount').boundingBox();
   expect(afterBox).not.toBeNull();
