@@ -127,6 +127,15 @@ export class ActorLayer {
     return { ...this.playerWorld };
   }
 
+  getGuestWorldPosition(guestId: string): { x: number; y: number } | null {
+    const entry = this.guestSprites.get(guestId);
+    if (!entry) return null;
+    return {
+      x: entry.root.x,
+      y: entry.root.y - SEATED_GUEST_DISPLAY_HEIGHT,
+    };
+  }
+
   private drawDestination(dest: GridPoint | null): void {
     if (!dest) return;
     const { x, y } = gridToWorld(dest.x, dest.y);

@@ -7,6 +7,9 @@ export interface DaySummaryDisplayInput {
   averageMatch: number;
   ratingStart: number;
   ratingEnd: number;
+  /** Review-earned delta, excluding prestige/soft-reset jumps. */
+  ratingDelta?: number;
+  ratingResetOccurred?: boolean;
   customersServed: number;
   seatingCapacity: number;
   unlockCount: number;
@@ -34,7 +37,7 @@ export function formatMasterySummaryLine(masteryLines: string[] | undefined): st
 
 export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummaryDisplay {
   const totalEarnings = input.dayEarnings + input.dayBonus + input.volumeBonus;
-  const ratingDelta = input.ratingEnd - input.ratingStart;
+  const ratingDelta = input.ratingDelta ?? input.ratingEnd - input.ratingStart;
   const capacity = Math.max(1, input.seatingCapacity);
   return {
     earningsLine: `Today's earnings: ${formatCurrency(totalEarnings)}`,
@@ -47,7 +50,9 @@ export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummar
         ? `Volume bonus (${input.customersServed}/${capacity} seats): +${formatCurrency(input.volumeBonus)}`
         : null,
     averageMatchText: `Average match: ${input.averageMatch.toFixed(1)} / 10`,
-    ratingDeltaText: `Rating change: ${formatRatingDelta(ratingDelta)} (${input.ratingStart.toFixed(1)} → ${input.ratingEnd.toFixed(1)})`,
+    ratingDeltaText: input.ratingResetOccurred
+      ? `Rating change from reviews: ${formatRatingDelta(ratingDelta)} (reset excluded)`
+      : `Rating change: ${formatRatingDelta(ratingDelta)} (${input.ratingStart.toFixed(1)} → ${input.ratingEnd.toFixed(1)})`,
     unlockProgressText: `Ingredients unlocked: ${input.unlockCount} / ${input.totalIngredients}`,
     customersServedText: `Customers served: ${input.customersServed}`,
     masteryLine: formatMasterySummaryLine(input.masteryLines),

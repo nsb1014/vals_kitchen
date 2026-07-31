@@ -15,6 +15,10 @@ export interface ActiveDay {
   queueIndex: number;
   dayEarnings: number;
   dayMatchSum: number;
+  /** Sum of customer-review deltas; excludes prestige/soft-reset jumps. */
+  dayRatingDelta?: number;
+  /** True when a prestige or soft reset changed the displayed rating mid-day. */
+  ratingResetOccurred?: boolean;
   customersServed: number;
   floor?: FloorDay | null;
 }

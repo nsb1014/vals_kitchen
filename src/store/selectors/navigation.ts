@@ -2,11 +2,7 @@ import type { GameStore, ScreenId } from '../game-store.ts';
 
 export const NAV_SCREENS: ScreenId[] = [
   'restaurant',
-  'shop',
-  'inspector',
   'recipes',
-  'rating',
-  'settings',
 ];
 
 export function selectCurrentScreen(state: GameStore): ScreenId {
@@ -19,7 +15,10 @@ export function selectNavigationLocked(state: GameStore): boolean {
 
 export function selectCanNavigateTo(state: GameStore, target: ScreenId): boolean {
   if (target === state.screen) return true;
-  if (state.activeDay && target !== 'restaurant') return false;
+  // Settings remains reachable from the status-bar gear during service. All
+  // gameplay/meta destinations stay locked so an active floor cannot be
+  // abandoned accidentally.
+  if (state.activeDay && target !== 'restaurant' && target !== 'settings') return false;
   return true;
 }
 

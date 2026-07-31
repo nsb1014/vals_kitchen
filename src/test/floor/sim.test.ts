@@ -4,6 +4,7 @@ import {
   beginEating,
   completeGuestEntering,
   createFloorDayFromCustomers,
+  hasAvailableSeatForWaitingGuest,
   isFloorDayComplete,
   seatNextWaiting,
   tablesFromPlacements,
@@ -62,5 +63,37 @@ describe('floor sim', () => {
     tables = day.tables.map((t) => (t.state === 'dirty' ? clearTable(t) : t));
     day = { ...day, tables, tickets: day.tickets.map((t) => ({ ...t, status: 'delivered' as const })) };
     expect(isFloorDayComplete(day)).toBe(true);
+  });
+
+  it('only enables seating when a waiting guest and prepared seat are available', () => {
+    const tables = tablesFromPlacements(placements);
+    const seats = seatsFromPlacements(placements);
+    let day = createFloorDayFromCustomers([customer('c1')], tables, seats);
+
+    expect(hasAvailableSeatForWaitingGuest(day)).toBe(false);
+    day = completeGuestEntering(day);
+    expect(hasAvailableSeatForWaitingGuest(day)).toBe(false);
+    day = { ...day, tables: day.tables.map(setTable) };
+    expect(hasAvailableSeatForWaitingGuest(day)).toBe(true);
+  });
+
+  it('takes one nearby order at a time when multiple guests are supplied', () => {
+    const tables = tablesFromPlacements(placements).map(setTable);
+    const seats = seatsFromPlacements(placements);
+    let day = createFloorDayFromCustomers(
+      [customer('c1'), customer('c2')],
+      tables,
+      seats,
+    );
+    day = completeGuestEntering(day);
+    day = seatNextWaiting(day);
+    day = completeGuestEntering(day);
+    day = seatNextWaiting(day);
+
+    day = takeOrdersForSeated(day, ['c1', 'c2']);
+
+    expect(day.tickets).toHaveLength(1);
+    expect(day.pool.find((guest) => guest.id === 'c1')?.stage).toBe('ordered');
+    expect(day.pool.find((guest) => guest.id === 'c2')?.stage).toBe('seated');
   });
 });

@@ -39,7 +39,12 @@ export async function loadCreditsManifest(): Promise<CreditsManifest> {
 }
 
 export function renderCreditsHtml(manifest: CreditsManifest): string {
-  const packRows = manifest.packs
+  const externalPacks = manifest.packs.filter(
+    (pack) =>
+      pack.author !== 'Val\'s Kitchen project' &&
+      pack.author !== 'Restaurant Simulator project',
+  );
+  const packRows = externalPacks
     .map((pack) => {
       const source =
         pack.sourceUrl.startsWith('http://') || pack.sourceUrl.startsWith('https://')
@@ -49,25 +54,11 @@ export function renderCreditsHtml(manifest: CreditsManifest): string {
     })
     .join('');
 
-  const grouped = new Map<string, CreditEntry[]>();
-  for (const entry of manifest.entries) {
-    const list = grouped.get(entry.pack) ?? [];
-    list.push(entry);
-    grouped.set(entry.pack, list);
-  }
-
-  const detailSections = [...grouped.entries()]
-    .map(([pack, entries]) => {
-      const uses = [...new Set(entries.flatMap((e) => e.usedIn))].sort().join(', ');
-      return `<p class="settings-note"><strong>${pack}</strong> — used in: ${uses}</p>`;
-    })
-    .join('');
-
   return `
-    <p class="settings-note">All shipped art and audio is <strong>CC0 (public domain)</strong>. Attribution is optional but listed for auditability.</p>
+    <p class="settings-note">Original game art, character poses, ingredient icons, and achievement badges are AI-assisted or project-generated and dedicated to <strong>CC0</strong>.</p>
+    <p class="settings-note">External music, sound effects, and source packs:</p>
     <ul class="credits-list">${packRows}</ul>
-    ${detailSections}
-    <p class="settings-note credits-meta">Manifest v${manifest.version} · ${manifest.entries.length} tracked assets · generated ${manifest.generatedAt.slice(0, 10)}</p>
+    <p class="settings-note credits-meta">Full asset provenance remains recorded in manifest v${manifest.version}.</p>
   `;
 }
 

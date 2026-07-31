@@ -160,6 +160,8 @@ export function scoreAndPayForCustomer(
     ...nextState.activeDay!,
     dayEarnings: nextState.activeDay!.dayEarnings + score.tip,
     dayMatchSum: nextState.activeDay!.dayMatchSum + score.matchStars,
+    dayRatingDelta:
+      (nextState.activeDay!.dayRatingDelta ?? 0) + score.ratingDelta,
     customersServed: nextState.activeDay!.customersServed + 1,
   };
   nextState.activeDay = activeDay;
@@ -181,6 +183,12 @@ export function scoreAndPayForCustomer(
   } else if (softResetTriggered) {
     nextState = applySoftReset({ ...nextState, rating: 0 });
     softResetTriggered = true;
+  }
+  if (nextState.activeDay && (prestigeTriggered || softResetTriggered)) {
+    nextState.activeDay = {
+      ...nextState.activeDay,
+      ratingResetOccurred: true,
+    };
   }
 
   return {

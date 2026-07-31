@@ -11,7 +11,7 @@ const NAV_LABELS: Record<ScreenId, string> = {
   restaurant: 'Floor',
   shop: 'Shop',
   inspector: 'Flavors',
-  recipes: 'Recipes',
+  recipes: 'Recipe Book',
   rating: 'Rating',
   settings: 'Settings',
 };

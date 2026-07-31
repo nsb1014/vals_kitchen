@@ -25,6 +25,9 @@ describe('shop item presentation', () => {
 
     expect(locked).toBeDefined();
     expect(unaffordable).toBeUndefined();
+    expect(rows.findIndex((row) => row.availability === 'available')).toBeLessThan(
+      rows.findIndex((row) => row.availability === 'gate_locked'),
+    );
 
     state.cash = 0;
     const poorRows = buildIngredientShopRows(
@@ -39,6 +42,11 @@ describe('shop item presentation', () => {
         testContext.ingredientsById.get(row.id)!.equipmentId === 'prep_station',
     );
     expect(gateOwnedPoor).toBeDefined();
+    expect(
+      poorRows.findIndex((row) => row.availability === 'unaffordable'),
+    ).toBeLessThan(
+      poorRows.findIndex((row) => row.availability === 'gate_locked'),
+    );
     expect(shopAvailabilityLabel('gate_locked')).toBe('Needs equipment');
     expect(shopAvailabilityLabel('unaffordable')).toBe('Not enough cash');
   });

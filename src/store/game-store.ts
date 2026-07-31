@@ -69,7 +69,7 @@ export interface ServeReview {
 
 export type CeremonyKind = 'prestige' | 'soft_reset';
 
-export type CelebrationKind = 'recipe' | 'mastery' | 'achievement';
+export type CelebrationKind = 'recipe' | 'mastery' | 'achievement' | 'prestige';
 
 export interface Celebration {
   kind: CelebrationKind;
@@ -379,6 +379,8 @@ function buildDaySummary(
     averageMatch,
     ratingStart,
     ratingEnd: after.rating,
+    ratingDelta: activeDay.dayRatingDelta,
+    ratingResetOccurred: activeDay.ratingResetOccurred,
     customersServed: activeDay.customersServed,
     seatingCapacity: before.seatingCapacity,
     unlockCount: before.unlockedIngredientIds.length,

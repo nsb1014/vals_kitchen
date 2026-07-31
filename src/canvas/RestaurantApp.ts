@@ -327,17 +327,33 @@ export class RestaurantApp {
         const guest = floor.pool.find(
           (g) => g.customer.id === ticket.customerId,
         );
-        if (guest?.seat && isAdjacent(tapCell, guest.seat)) {
+        const tappedGuest = floor.pool.find(
+          (candidate) =>
+            candidate.seat &&
+            candidate.stage === 'ordered' &&
+            isAdjacent(tapCell, candidate.seat),
+        );
+        const player = store.floorPlayerGrid ?? this.nav.position;
+        if (
+          guest?.seat &&
+          tappedGuest?.customer.id === ticket.customerId &&
+          !playerNearGuestSeat(player, guest)
+        ) {
+          store.setFloorToast('Move within 1 tile of the guest to deliver');
+          return;
+        }
+        if (
+          guest?.seat &&
+          tappedGuest?.customer.id === ticket.customerId &&
+          playerNearGuestSeat(player, guest)
+        ) {
           void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
           return;
         }
-        const wrongSeat = floor.pool.some(
-          (g) =>
-            g.customer.id !== ticket.customerId &&
-            g.stage === 'ordered' &&
-            playerNearGuestSeat(tapCell, g),
-        );
-        if (wrongSeat) {
+        if (
+          tappedGuest &&
+          tappedGuest.customer.id !== ticket.customerId
+        ) {
           store.setFloorToast('Wrong table — deliver to the matching guest');
           return;
         }
@@ -676,6 +692,17 @@ export class RestaurantApp {
 
   getCustomerScreenAnchor(): { x: number; y: number } | null {
     const world = this.customerLayer.getAnchorWorldPosition();
+    if (!world) return null;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const screen = worldToScreen(world.x, world.y, this.camera.state);
+    return {
+      x: rect.left + screen.x,
+      y: rect.top + screen.y,
+    };
+  }
+
+  getGuestScreenAnchor(guestId: string): { x: number; y: number } | null {
+    const world = this.actorLayer.getGuestWorldPosition(guestId);
     if (!world) return null;
     const rect = this.app.canvas.getBoundingClientRect();
     const screen = worldToScreen(world.x, world.y, this.camera.state);

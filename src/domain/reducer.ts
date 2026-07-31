@@ -209,6 +209,8 @@ export function gameReducer(
         queueIndex: 0,
         dayEarnings: 0,
         dayMatchSum: 0,
+        dayRatingDelta: 0,
+        ratingResetOccurred: false,
         customersServed: 0,
         floor,
       };

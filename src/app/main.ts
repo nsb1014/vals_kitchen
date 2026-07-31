@@ -34,24 +34,17 @@ async function bootstrap(): Promise<void> {
   mountNavigationBar(navMount);
 
   const [
-    { mountFlavorInspectorScreen, mountFlavorInspectorModal },
-    { mountShopScreen },
+    { mountFlavorInspectorModal },
     { mountRecipeBookScreen },
-    { mountRatingScreen },
     { mountSettingsScreen },
   ] = await Promise.all([
     import('../ui/screens/FlavorInspectorScreen.ts'),
-    import('../ui/screens/ShopScreen.ts'),
     import('../ui/screens/RecipeBookScreen.ts'),
-    import('../ui/screens/RatingScreen.ts'),
     import('../ui/screens/SettingsScreen.ts'),
   ]);
 
   const teardownScreens = [
-    mountFlavorInspectorScreen(screensMount),
-    mountShopScreen(screensMount),
     mountRecipeBookScreen(screensMount),
-    mountRatingScreen(screensMount),
     mountSettingsScreen(screensMount),
   ];
   const teardownFlavorModal = mountFlavorInspectorModal(overlayMount);
@@ -94,9 +87,8 @@ async function bootstrap(): Promise<void> {
     );
   };
   useGameStore.subscribe((state, prev) => {
-    const foodScreen = state.screen === 'shop' || state.screen === 'inspector' || state.screen === 'recipes';
-    const wasFoodScreen =
-      prev.screen === 'shop' || prev.screen === 'inspector' || prev.screen === 'recipes';
+    const foodScreen = state.screen === 'recipes' || state.editLayoutMode;
+    const wasFoodScreen = prev.screen === 'recipes' || prev.editLayoutMode;
     if (foodScreen && !wasFoodScreen) loadFoodWhenNeeded();
     if (state.activeDay && !prev.activeDay) loadFoodWhenNeeded();
   });

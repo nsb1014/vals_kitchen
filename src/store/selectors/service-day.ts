@@ -7,6 +7,7 @@ import {
   playerNearStation,
   seatedUnorderedCustomerIds,
 } from '../../domain/floor/interact.ts';
+import { hasAvailableSeatForWaitingGuest } from '../../domain/floor/sim.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { getDomainContext } from '../../app/content-loader.ts';
@@ -98,6 +99,11 @@ export function selectAdjacentSeatedCustomerIds(state: GameStore): string[] {
 
 export function selectCanTakeFloorOrders(state: GameStore): boolean {
   return selectAdjacentSeatedCustomerIds(state).length > 0;
+}
+
+export function selectCanSeatFloorGuest(state: GameStore): boolean {
+  const floor = state.activeDay?.floor;
+  return floor ? hasAvailableSeatForWaitingGuest(floor) : false;
 }
 
 export function selectAdjacentUnsetTablePlacementIds(

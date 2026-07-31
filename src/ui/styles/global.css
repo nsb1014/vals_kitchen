@@ -217,6 +217,13 @@ body {
     var(--vk-panel-2);
 }
 
+.celebration-banner-prestige {
+  border-color: color-mix(in srgb, var(--vk-accent) 86%, white);
+  background:
+    linear-gradient(135deg, rgba(228, 186, 112, 0.34), transparent 58%),
+    var(--vk-panel-2);
+}
+
 .celebration-banner-achievement {
   border-color: color-mix(in srgb, var(--vk-accent-2) 72%, var(--vk-text));
 }
@@ -311,9 +318,11 @@ body {
 }
 
 .layout-hud {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--vk-nav-height);
   z-index: 50;
-  flex: 0 0 auto;
   padding: 0.5rem 0.75rem;
   background: rgba(42, 33, 28, 0.92);
   border-top: 1px solid var(--vk-border);

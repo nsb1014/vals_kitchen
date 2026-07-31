@@ -7,14 +7,10 @@ import {
   selectAdjacentUnsetTablePlacementIds,
   selectCanClearFloorTable,
   selectCanCloseDay,
+  selectCanSeatFloorGuest,
   selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
-import {
-  buildFlavorBarsViewModel,
-  renderFlavorBarsHtml,
-} from '../presentation/flavor-profile.ts';
-import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import {
   formatFloorTicketLabel,
   visibleFloorTickets,
@@ -29,15 +25,12 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-type TicketsPanelView = 'order' | 'ideal';
-
 export function mountFloorServiceHud(
   chromeMount: HTMLElement,
   /** Host above the cooking overlay stacking context (typically overlay-mount). */
   ticketsHost: HTMLElement,
 ): () => void {
   let ticketsMenuOpen = false;
-  let ticketsPanelView: TicketsPanelView = 'order';
   let knownTicketIds = new Set(
     useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
       [],
@@ -109,7 +102,7 @@ export function mountFloorServiceHud(
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
     const canCloseDay = selectCanCloseDay(state);
-    const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
+    const canSeatGuest = selectCanSeatFloorGuest(state);
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const step = nextTutorialStep(floor, state.day === 1);
     const prompt = tutorialPrompt(step);
@@ -170,8 +163,8 @@ export function mountFloorServiceHud(
       <div class="floor-service-panel" data-testid="floor-service-panel">
         <div class="floor-actions-scroll">
           <div class="floor-actions">
-            <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="service-btn${canSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
+            <button type="button" class="service-btn${canSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
             <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}><span class="floor-action-label">Take orders</span></button>
             <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
             <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}><span class="floor-action-label">Close Day</span></button>
@@ -203,30 +196,6 @@ export function mountFloorServiceHud(
             })
             .join('');
 
-    const idealTicket =
-      ticketMeta.find((row) => row.selected) ??
-      ticketMeta.find((row) => row.isOpen) ??
-      ticketMeta[0];
-    let idealBody: string;
-    if (!idealTicket?.customer) {
-      idealBody = `<p class="floor-tickets-empty" data-testid="floor-tickets-ideal-empty">No active order</p>`;
-    } else {
-      const ideal = resolveIdealFlavorProfile(idealTicket.customer.preference);
-      const bars = renderFlavorBarsHtml(
-        buildFlavorBarsViewModel(ideal, {
-          title: idealTicket.label.guestLabel,
-          subtitle: 'Scored flavor targets',
-        }),
-        { showValues: true, showTemp: false },
-      );
-      idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
-    }
-
-    const panelBody =
-      ticketsPanelView === 'order'
-        ? `<ul class="floor-tickets-list" data-testid="floor-tickets-list">${orderItems}</ul>`
-        : idealBody;
-
     dock.innerHTML = `
       <button
         type="button"
@@ -246,13 +215,12 @@ export function mountFloorServiceHud(
         ${ticketsMenuOpen ? '' : 'hidden'}
       >
         <div class="floor-tickets-menu-header">
-          <div class="floor-tickets-view-tabs" role="tablist" aria-label="Ticket views">
-            <button type="button" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'order' ? ' active' : ''}" data-testid="tickets-view-order" data-tickets-view="order" aria-selected="${ticketsPanelView === 'order' ? 'true' : 'false'}">Order</button>
-            <button type="button" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'ideal' ? ' active' : ''}" data-testid="tickets-view-ideal" data-tickets-view="ideal" aria-selected="${ticketsPanelView === 'ideal' ? 'true' : 'false'}">Ideal</button>
-          </div>
+          <strong class="floor-tickets-menu-title">Orders</strong>
           <button type="button" class="floor-tickets-close" data-testid="floor-tickets-close" aria-label="Close tickets menu">Close</button>
         </div>
-        <div class="floor-tickets-panel-body" data-testid="floor-tickets-panel">${panelBody}</div>
+        <div class="floor-tickets-panel-body" data-testid="floor-tickets-panel">
+          <ul class="floor-tickets-list" data-testid="floor-tickets-list">${orderItems}</ul>
+        </div>
       </div>
     `;
 
@@ -275,7 +243,7 @@ export function mountFloorServiceHud(
       if (customerIds.length === 0) return;
       void useGameStore.getState().dispatch({
         type: 'FLOOR_TAKE_ORDERS',
-        customerIds,
+        customerIds: [customerIds[0]!],
       });
     });
 
@@ -312,17 +280,6 @@ export function mountFloorServiceHud(
       event.stopPropagation();
       ticketsMenuOpen = false;
       render();
-    });
-
-    dock.querySelectorAll<HTMLButtonElement>('[data-tickets-view]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const view = button.dataset.ticketsView;
-        if (view === 'order' || view === 'ideal') {
-          ticketsPanelView = view;
-          render();
-        }
-      });
     });
 
     dock.querySelectorAll<HTMLButtonElement>('[data-menu-ticket-id]').forEach((button) => {
