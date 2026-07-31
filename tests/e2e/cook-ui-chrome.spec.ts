@@ -136,9 +136,13 @@ test.describe('cook sheet responsive chrome', () => {
     await page.setViewportSize({ width: 2048, height: 1152 });
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
-    const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
-    const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
-    expect(canvas.x + canvas.width).toBeLessThanOrEqual(sheet.x + 1);
+    await expect
+      .poll(async () => {
+        const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
+        const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
+        return canvas.x + canvas.width <= sheet.x + 1;
+      })
+      .toBe(true);
     await page.screenshot({
       path: 'test-results/modifier-desktop-full-restaurant.png',
       animations: 'disabled',
@@ -172,18 +176,17 @@ test.describe('service sheet tiers', () => {
       .getByTestId('open-service-sheet')
       .locator('.service-card')
       .boundingBox();
-    const canvas = await page.getByTestId('restaurant-canvas').boundingBox();
+    const nav = await page.locator('.bottom-nav').boundingBox();
     expect(sheet).not.toBeNull();
     expect(card).not.toBeNull();
-    expect(canvas).not.toBeNull();
+    expect(nav).not.toBeNull();
     // The panel should hug its content, not reserve a fixed empty sheet that
     // makes the lower half of the restaurant appear missing.
     expect(sheet!.height).toBeLessThanOrEqual(card!.height + 26);
     // Overlay sits in the lower half of the viewport (same basis as other sheet-tier tests).
     expect(sheet!.y / 720).toBeGreaterThan(0.5);
-    expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(
-      canvas!.y + canvas!.height - 2,
-    );
+    expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(nav!.y - 2);
+    expect(sheet!.y + sheet!.height).toBeLessThanOrEqual(nav!.y + 2);
     await page.screenshot({
       path: 'test-results/open-service-compact.png',
       animations: 'disabled',

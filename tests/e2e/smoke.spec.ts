@@ -122,7 +122,7 @@ test.describe('screen navigation', () => {
     ).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Layout' })).toBeVisible();
     await page.getByRole('button', { name: 'Close furniture catalog' }).click();
-    await page.getByTestId('edit-restaurant-btn').click();
+    await page.getByTestId('toggle-edit-layout').click();
 
     await page
       .getByRole('button', { name: 'Restaurant rating details' })
