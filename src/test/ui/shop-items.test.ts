@@ -25,6 +25,14 @@ describe('shop item presentation', () => {
 
     expect(locked).toBeDefined();
     expect(unaffordable).toBeUndefined();
+    expect(rows.slice(0, state.unlockedIngredientIds.length)).toEqual(
+      expect.arrayContaining(
+        state.unlockedIngredientIds.map((id) =>
+          expect.objectContaining({ id, availability: 'owned' }),
+        ),
+      ),
+    );
+    expect(rows[0]?.availability).toBe('owned');
     expect(rows.findIndex((row) => row.availability === 'available')).toBeLessThan(
       rows.findIndex((row) => row.availability === 'gate_locked'),
     );

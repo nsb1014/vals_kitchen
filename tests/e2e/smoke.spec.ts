@@ -150,12 +150,20 @@ test.describe('persistence', () => {
       await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
       const afterSeat = bridge.getGameState() as {
         activeDay?: {
-          floor?: { pool: Array<{ stage: string; customer: { id: string } }> };
+          floor?: {
+            pool: Array<{
+              stage: string;
+              customer: { id: string };
+              seat?: { x: number; y: number };
+            }>;
+          };
         } | null;
         unlockedIngredientIds: string[];
       };
       const seated = afterSeat.activeDay?.floor?.pool.find((g) => g.stage === 'seated');
       if (!seated) throw new Error('expected seated guest');
+      if (!seated.seat) throw new Error('expected seated guest position');
+      bridge.setFloorNavPosition(seated.seat);
       await bridge.dispatch({
         type: 'FLOOR_TAKE_ORDERS',
         customerIds: [seated.customer.id],

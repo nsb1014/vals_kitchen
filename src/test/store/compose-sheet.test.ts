@@ -49,6 +49,7 @@ async function advanceToCookableTicket(): Promise<void> {
   const seated = useGameStore
     .getState()
     .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
+  useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
   await useGameStore.getState().dispatch({
     type: 'FLOOR_TAKE_ORDERS',
     customerIds: [seated.customer.id],
@@ -65,6 +66,39 @@ async function advanceToCookableTicket(): Promise<void> {
 describe('compose sheet UI lifecycle', () => {
   beforeEach(() => {
     resetStore();
+  });
+
+  it('rejects remote orders at the store boundary', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    useGameStore.getState().dismissModifier();
+    for (const table of useGameStore.getState().activeDay!.floor!.tables) {
+      await useGameStore.getState().dispatch({
+        type: 'FLOOR_SET_TABLE',
+        placementId: table.placementId,
+      });
+    }
+    await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+    const seated = useGameStore
+      .getState()
+      .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
+
+    useGameStore.getState().setFloorNavPosition({ x: 99, y: 99 });
+    await useGameStore.getState().dispatch({
+      type: 'FLOOR_TAKE_ORDERS',
+      customerIds: [seated.customer.id],
+    });
+    expect(useGameStore.getState().activeDay!.floor!.tickets).toHaveLength(0);
+
+    useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
+    expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual(
+      { x: seated.seat!.x, y: seated.seat!.y },
+    );
+    await useGameStore.getState().dispatch({
+      type: 'FLOOR_TAKE_ORDERS',
+      customerIds: [seated.customer.id],
+    });
+    expect(useGameStore.getState().activeDay!.floor!.tickets).toHaveLength(1);
   });
 
   it('requires an explicit eligible open action', async () => {

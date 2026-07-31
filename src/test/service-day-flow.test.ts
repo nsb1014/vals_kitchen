@@ -116,6 +116,8 @@ describe('service day store flow', () => {
     expect(state.celebrationQueue).toContainEqual(
       expect.objectContaining({ kind: 'prestige' }),
     );
+    expect(state.pendingReview?.ratingDelta).toBeGreaterThanOrEqual(0);
+    expect(state.activeDay?.dayRatingDelta).toBeGreaterThanOrEqual(0);
     expect(state.prestige).toBeGreaterThan(0);
     expect(state.rating).toBe(3);
   });

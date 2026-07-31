@@ -96,6 +96,16 @@ describe('persistence', () => {
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerPosition: { ...seated.seat! },
+        },
+      },
+    };
     state = gameReducer(
       state,
       { type: 'FLOOR_TAKE_ORDERS', customerIds: [seated.customer.id] },

@@ -3,6 +3,7 @@ import { markDirty, occupyTable } from './tables.ts';
 import { assignPartyToTable } from './seats.ts';
 import { enqueueTickets } from './tickets.ts';
 import { waitingAreaOccupied } from './entry.ts';
+import { playerNearGuestSeat } from './interact.ts';
 import type { FloorDay, FloorGuest, FloorTable, FloorTicket, SeatSlot } from './types.ts';
 
 const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
@@ -116,9 +117,15 @@ export function seatNextWaiting(day: FloorDay): FloorDay {
 
 export function takeOrdersForSeated(day: FloorDay, customerIds: string[]): FloorDay {
   // The service interaction is intentionally one guest at a time even when a
-  // caller supplies more than one nearby id.
+  // caller supplies more than one id. Proximity is a domain rule, not a HUD
+  // convention, so remote seated guests are ignored.
   const customerId = customerIds.find((id) =>
-    day.pool.some((guest) => guest.customer.id === id && guest.stage === 'seated'),
+    day.pool.some(
+      (guest) =>
+        guest.customer.id === id &&
+        guest.stage === 'seated' &&
+        playerNearGuestSeat(day.playerPosition, guest),
+    ),
   );
   if (!customerId) return day;
   const newTickets: FloorTicket[] = [];

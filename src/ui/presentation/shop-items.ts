@@ -112,25 +112,27 @@ export function buildIngredientShopRows(
   ctx: DomainContext,
 ): ShopIngredientRow[] {
   const availabilityOrder: Record<ShopItemAvailability, number> = {
-    available: 0,
-    unaffordable: 1,
-    gate_locked: 2,
-    owned: 3,
+    owned: 0,
+    available: 1,
+    unaffordable: 2,
+    gate_locked: 3,
     limit_reached: 4,
   };
   return ingredients
-    .filter((item) => !state.unlockedIngredientIds.includes(item.id))
     .map((item) => {
       const gateOwned = state.purchasedEquipmentIds.includes(item.equipmentId);
       const purchase: PurchaseKind = { type: 'ingredient', ingredientId: item.id };
+      const owned = state.unlockedIngredientIds.includes(item.id);
       return {
         kind: 'ingredient' as const,
         id: item.id,
         name: item.name,
         category: item.category,
         equipmentGateName: equipmentNameById.get(item.equipmentId) ?? item.equipmentId,
-        cost: purchaseCost(state, purchase),
-        availability: deriveAvailability(state, purchase, ctx, !gateOwned),
+        cost: owned ? 0 : purchaseCost(state, purchase),
+        availability: owned
+          ? 'owned' as const
+          : deriveAvailability(state, purchase, ctx, !gateOwned),
         purchase,
       };
     })
