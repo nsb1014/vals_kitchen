@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-30
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -31,6 +31,8 @@
 | Cooking UI + shared chrome | **Done** — tap-to-open cook lifecycle, 100-item flavor/search pantry, locked sheet tiers, shared meta shell; fast suite 297 ([design](./superpowers/specs/2026-07-28-cooking-ui-system-design.md), [plan](./superpowers/plans/2026-07-28-cooking-ui-system.md)) |
 | Storybook v2 art migration | **Rolled back** — rejected perspective-mismatched room and character art removed; orthographic restaurant assets retained |
 | Chibi responsive UI rebuild | **Done** — exact supplied chef sheet, authored carry poses, project-CC0 chibi cast, purpose-made walls/floors/stations, mobile near-full cooking UX, desktop split workspace + WASD/arrow controls; gameplay rules unchanged |
+
+- Unified floor notifications shipped: one top banner stack and actions-only floor chrome (Chromium CI; Firefox opt-in; WebKit/iOS unverified).
 
 ---
 

@@ -43,6 +43,18 @@ import { selectCanNavigateTo } from './selectors/navigation.ts';
 import { selectCanOpenFloorCompose } from './selectors/service-day.ts';
 
 import { mapReducerEventsToUi } from './service-events.ts';
+import {
+  clearNotificationTimers,
+  restartNoticeTimer,
+  syncNotificationTimer as syncNotificationTimerController,
+  type Notice,
+} from './notification-timer.ts';
+
+export {
+  CELEBRATION_DURATION_MS,
+  NOTICE_DURATION_MS,
+} from './notification-timer.ts';
+export type { Notice, NoticeSource } from './notification-timer.ts';
 
 export type ScreenId =
   'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings';
@@ -68,6 +80,11 @@ export interface Celebration {
   level?: number;
 }
 
+export interface FloorNoticesFromHud {
+  sticky: Notice | null;
+  pacing: Notice | null;
+}
+
 interface StoreMeta {
   screen: ScreenId;
   editLayoutMode: boolean;
@@ -88,6 +105,10 @@ interface StoreMeta {
   musicEnabled: boolean;
   floorPlayerGrid: { x: number; y: number } | null;
   floorToast: string | null;
+  noticeActive: Notice | null;
+  noticeSticky: Notice | null;
+  tutorialDismissedStepId: NonNullable<Notice['stepId']> | null;
+  notificationSurfaceActive: boolean;
   celebrationQueue: Celebration[];
   /** Ephemeral UI state. Never included in GameState persistence. */
   composeSheetOpen: boolean;
@@ -119,9 +140,13 @@ export interface GameStore extends GameState, StoreMeta {
   openComposeSheet: () => void;
   closeComposeSheet: () => void;
   setFloorToast: (message: string | null) => void;
+  syncFloorNoticesFromHud: (notices: FloorNoticesFromHud) => void;
+  dismissFrontNotice: () => void;
   enqueueCelebration: (celebration: Celebration) => void;
   dismissCelebration: () => void;
   clearCelebrations: () => void;
+  setNotificationSurfaceActive: (active: boolean) => void;
+  syncNotificationTimer: () => void;
   setActiveFloorRoom: (room: FloorRoomId) => void;
   enterConnectingDoor: () => boolean;
   movePlacement: (placementId: string, x: number, y: number) => boolean;
@@ -160,11 +185,19 @@ const META_KEYS = [
   'openComposeSheet',
   'closeComposeSheet',
   'setFloorToast',
+  'syncFloorNoticesFromHud',
+  'dismissFrontNotice',
   'enqueueCelebration',
   'dismissCelebration',
   'clearCelebrations',
+  'setNotificationSurfaceActive',
+  'syncNotificationTimer',
   'floorPlayerGrid',
   'floorToast',
+  'noticeActive',
+  'noticeSticky',
+  'tutorialDismissedStepId',
+  'notificationSurfaceActive',
   'celebrationQueue',
   'composeSheetOpen',
   'screen',
@@ -185,34 +218,59 @@ const META_KEYS = [
   'musicEnabled',
 ] as const;
 
-const FLOOR_TOAST_MS = 2000;
-let floorToastClearTimer: ReturnType<typeof setTimeout> | null = null;
-export const CELEBRATION_DURATION_MS = 4000;
-let celebrationTimer: ReturnType<typeof setTimeout> | null = null;
-let timedCelebration: Celebration | null = null;
+let toastNoticeSequence = 0;
+let lastHudPacingNotice: Notice | null = null;
 
-function syncCelebrationTimer(): void {
-  const head = useGameStore.getState().celebrationQueue[0] ?? null;
-  if (celebrationTimer && timedCelebration === head) return;
+function sameNotice(left: Notice | null, right: Notice | null): boolean {
+  return (
+    left === right ||
+    (left?.id === right?.id &&
+      left?.source === right?.source &&
+      left?.title === right?.title &&
+      left?.body === right?.body &&
+      left?.stepId === right?.stepId)
+  );
+}
 
-  if (celebrationTimer) {
-    clearTimeout(celebrationTimer);
-    celebrationTimer = null;
-  }
-  timedCelebration = head;
-  if (!head) return;
+function floorToastFromNotice(notice: Notice | null): string | null {
+  return notice?.source === 'toast' ? notice.body : null;
+}
 
-  celebrationTimer = setTimeout(() => {
-    celebrationTimer = null;
-    timedCelebration = null;
-    const current = useGameStore.getState();
-    if (current.celebrationQueue[0] === head) {
-      useGameStore.setState({
-        celebrationQueue: current.celebrationQueue.slice(1),
-      });
-    }
-    syncCelebrationTimer();
-  }, CELEBRATION_DURATION_MS);
+function clearStoreNotificationTimers(): void {
+  lastHudPacingNotice = null;
+  clearNotificationTimers();
+}
+
+function syncStoreNotificationTimer(): void {
+  const state = useGameStore.getState();
+  syncNotificationTimerController(
+    {
+      noticeActive: state.noticeActive,
+      noticeSticky: state.noticeSticky,
+      notificationSurfaceActive: state.notificationSurfaceActive,
+      celebrationHead: state.celebrationQueue[0] ?? null,
+    },
+    {
+      dismissNotice(notice) {
+        const current = useGameStore.getState();
+        if (current.noticeActive !== notice) return;
+        const nextNotice = current.noticeSticky;
+        useGameStore.setState({
+          noticeActive: nextNotice,
+          floorToast: floorToastFromNotice(nextNotice),
+        });
+        syncStoreNotificationTimer();
+      },
+      dismissCelebration(celebration) {
+        const current = useGameStore.getState();
+        if (current.celebrationQueue[0] !== celebration) return;
+        useGameStore.setState({
+          celebrationQueue: current.celebrationQueue.slice(1),
+        });
+        syncStoreNotificationTimer();
+      },
+    },
+  );
 }
 
 function pickGameState(store: GameStore): GameState {
@@ -249,6 +307,10 @@ function mergeReducerState(
     musicEnabled: current.musicEnabled,
     floorPlayerGrid: current.floorPlayerGrid,
     floorToast: current.floorToast,
+    noticeActive: current.noticeActive,
+    noticeSticky: current.noticeSticky,
+    tutorialDismissedStepId: current.tutorialDismissedStepId,
+    notificationSurfaceActive: current.notificationSurfaceActive,
     celebrationQueue: current.celebrationQueue,
     composeSheetOpen: current.composeSheetOpen,
   };
@@ -260,11 +322,15 @@ function applyReducerEvents(
   before: GameState,
   existingReviews: RecentReviewEntry[],
   existingCelebrations: Celebration[],
-): void {
-  Object.assign(
-    patch,
-    mapReducerEventsToUi(events, before, existingReviews, existingCelebrations),
+): Celebration[] {
+  const uiPatch = mapReducerEventsToUi(
+    events,
+    before,
+    existingReviews,
+    existingCelebrations,
   );
+  Object.assign(patch, uiPatch);
+  return uiPatch.celebrationQueue?.slice(existingCelebrations.length) ?? [];
 }
 
 function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
@@ -341,6 +407,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   musicEnabled: false,
   floorPlayerGrid: null,
   floorToast: null,
+  noticeActive: null,
+  noticeSticky: null,
+  tutorialDismissedStepId: null,
+  notificationSurfaceActive: false,
   celebrationQueue: [],
   composeSheetOpen: false,
 
@@ -368,10 +438,14 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       musicEnabled: false,
       floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
+      noticeActive: null,
+      noticeSticky: null,
+      tutorialDismissedStepId: null,
       celebrationQueue: [],
       composeSheetOpen: false,
     });
-    syncCelebrationTimer();
+    clearStoreNotificationTimers();
+    syncStoreNotificationTimer();
   },
 
   async dispatch(action) {
@@ -381,13 +455,17 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
-    applyReducerEvents(
+    const mappedCelebrations = applyReducerEvents(
       result.events,
       patch,
       before,
       current.recentReviews,
       current.celebrationQueue,
     );
+    const resetsNotificationLifecycle =
+      action.type === 'OPEN_DAY' ||
+      action.type === 'CLOSE_DAY' ||
+      (before.activeDay !== null && result.state.activeDay === null);
 
     switch (action.type) {
       case 'OPEN_DAY':
@@ -401,8 +479,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid =
           result.state.activeDay?.floor?.playerPosition ?? null;
-        patch.floorToast = null;
-        patch.composeSheetOpen = false;
         break;
       case 'NEXT_CUSTOMER':
         patch.pendingReview = null;
@@ -419,8 +495,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         patch.editLayoutMode = false;
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = null;
-        patch.floorToast = null;
-        patch.composeSheetOpen = false;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
@@ -433,6 +507,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         break;
     }
 
+    if (resetsNotificationLifecycle) {
+      patch.floorToast = null;
+      patch.noticeActive = null;
+      patch.noticeSticky = null;
+      patch.tutorialDismissedStepId = null;
+      patch.celebrationQueue = mappedCelebrations;
+      patch.composeSheetOpen = false;
+    }
+
     if (
       patch.pendingReview ||
       patch.daySummary ||
@@ -443,7 +526,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
 
     set(patch);
-    syncCelebrationTimer();
+    if (resetsNotificationLifecycle) {
+      clearStoreNotificationTimers();
+    }
+    syncStoreNotificationTimer();
 
     if (shouldAutosaveAfterDispatch(action.type)) {
       void get().autosave();
@@ -498,10 +584,14 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         pendingPlacementItemKey: null,
         floorPlayerGrid: null,
         floorToast: null,
+        noticeActive: null,
+        noticeSticky: null,
+        tutorialDismissedStepId: null,
         celebrationQueue: [],
         composeSheetOpen: false,
       });
-      syncCelebrationTimer();
+      clearStoreNotificationTimers();
+      syncStoreNotificationTimer();
       await get().autosave();
       return { ok: true as const };
     } catch (error) {
@@ -575,38 +665,132 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   setFloorToast(message) {
-    if (floorToastClearTimer) {
-      clearTimeout(floorToastClearTimer);
-      floorToastClearTimer = null;
+    const current = get();
+    if (!message) {
+      set({
+        floorToast: null,
+        noticeActive:
+          current.noticeActive?.source === 'toast'
+            ? current.noticeSticky
+            : current.noticeActive,
+      });
+      syncStoreNotificationTimer();
+      return;
     }
-    set({ floorToast: message });
-    if (message) {
-      floorToastClearTimer = setTimeout(() => {
-        if (get().floorToast === message) {
-          set({ floorToast: null });
-        }
-        floorToastClearTimer = null;
-      }, FLOOR_TOAST_MS);
+
+    const notice =
+      current.noticeActive?.source === 'toast' &&
+      current.noticeActive.body === message
+        ? current.noticeActive
+        : {
+            id: `toast:${++toastNoticeSequence}`,
+            source: 'toast' as const,
+            body: message,
+          };
+    set({ floorToast: message, noticeActive: notice });
+    restartNoticeTimer(notice);
+    syncStoreNotificationTimer();
+  },
+
+  syncFloorNoticesFromHud({ sticky, pacing }) {
+    const current = get();
+    const pacingChanged = !sameNotice(lastHudPacingNotice, pacing);
+    lastHudPacingNotice = pacing;
+    let tutorialDismissedStepId = current.tutorialDismissedStepId;
+
+    if (!sticky?.stepId) {
+      tutorialDismissedStepId = null;
+    } else if (
+      tutorialDismissedStepId &&
+      sticky.stepId !== tutorialDismissedStepId
+    ) {
+      tutorialDismissedStepId = null;
     }
+
+    const allowedSticky =
+      sticky?.stepId && sticky.stepId === tutorialDismissedStepId
+        ? null
+        : sticky;
+    const nextSticky = sameNotice(current.noticeSticky, allowedSticky)
+      ? current.noticeSticky
+      : allowedSticky;
+    const activeIsSticky =
+      current.noticeActive === null ||
+      current.noticeActive === current.noticeSticky;
+
+    if (pacing && pacingChanged && !sameNotice(current.noticeActive, pacing)) {
+      set({
+        noticeActive: pacing,
+        noticeSticky: nextSticky,
+        tutorialDismissedStepId,
+        floorToast: floorToastFromNotice(pacing),
+      });
+      restartNoticeTimer(pacing);
+    } else {
+      const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
+      set({
+        noticeActive: nextActive,
+        noticeSticky: nextSticky,
+        tutorialDismissedStepId,
+        floorToast: floorToastFromNotice(nextActive),
+      });
+    }
+    syncStoreNotificationTimer();
+  },
+
+  dismissFrontNotice() {
+    const current = get();
+    const notice = current.noticeActive;
+    if (!notice) {
+      syncStoreNotificationTimer();
+      return;
+    }
+
+    if (notice === current.noticeSticky) {
+      set({
+        noticeActive: null,
+        noticeSticky: null,
+        floorToast: null,
+        tutorialDismissedStepId:
+          notice.source === 'tutorial' ? (notice.stepId ?? null) : null,
+      });
+    } else {
+      const nextNotice = current.noticeSticky;
+      set({
+        noticeActive: nextNotice,
+        floorToast: floorToastFromNotice(nextNotice),
+      });
+    }
+    syncStoreNotificationTimer();
   },
 
   enqueueCelebration(celebration) {
     set((state) => ({
       celebrationQueue: [...state.celebrationQueue, celebration],
     }));
-    syncCelebrationTimer();
+    syncStoreNotificationTimer();
   },
 
   dismissCelebration() {
     set((state) => ({
       celebrationQueue: state.celebrationQueue.slice(1),
     }));
-    syncCelebrationTimer();
+    syncStoreNotificationTimer();
   },
 
   clearCelebrations() {
     set({ celebrationQueue: [] });
-    syncCelebrationTimer();
+    syncStoreNotificationTimer();
+  },
+
+  setNotificationSurfaceActive(active) {
+    if (get().notificationSurfaceActive === active) return;
+    set({ notificationSurfaceActive: active });
+    syncStoreNotificationTimer();
+  },
+
+  syncNotificationTimer() {
+    syncStoreNotificationTimer();
   },
 
   dismissModifier() {

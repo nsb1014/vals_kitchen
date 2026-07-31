@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../domain/state/game-state.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import { mapReducerEventsToUi } from '../store/service-events.ts';
+import './test-helpers.ts';
 
 const served = {
   type: 'CUSTOMER_SERVED' as const,
@@ -60,7 +61,12 @@ describe('recipe celebration mapping', () => {
 describe('celebration queue timing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useGameStore.setState({ celebrationQueue: [] });
+    useGameStore.setState({
+      noticeActive: null,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      celebrationQueue: [],
+    });
   });
 
   afterEach(() => {
@@ -70,7 +76,11 @@ describe('celebration queue timing', () => {
 
   it('shows one FIFO item at a time for four seconds each', () => {
     const first = { kind: 'recipe' as const, title: 'First', body: 'Unlocked' };
-    const second = { kind: 'achievement' as const, title: 'Second', body: 'Milestone' };
+    const second = {
+      kind: 'achievement' as const,
+      title: 'Second',
+      body: 'Milestone',
+    };
 
     useGameStore.getState().enqueueCelebration(first);
     useGameStore.getState().enqueueCelebration(second);
@@ -94,7 +104,58 @@ describe('celebration queue timing', () => {
       achievementId: 'days-7',
     });
 
-    const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;
+    const snapshot = getGameStateSnapshot() as unknown as Record<
+      string,
+      unknown
+    >;
     expect(snapshot.celebrationQueue).toBeUndefined();
+  });
+
+  it('gives the next item a full dwell after manual dismissal', () => {
+    const first = { kind: 'recipe' as const, title: 'First', body: 'Unlocked' };
+    const second = {
+      kind: 'achievement' as const,
+      title: 'Second',
+      body: 'Milestone',
+    };
+    useGameStore.getState().enqueueCelebration(first);
+    useGameStore.getState().enqueueCelebration(second);
+    vi.advanceTimersByTime(1000);
+
+    useGameStore.getState().dismissCelebration();
+    vi.advanceTimersByTime(3999);
+    expect(useGameStore.getState().celebrationQueue).toEqual([second]);
+
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().celebrationQueue).toEqual([]);
+  });
+
+  it('preserves a CLOSE_DAY achievement while clearing stale celebrations', async () => {
+    const game = createNewGameState(10);
+    game.activeDay = {
+      seed: 10,
+      modifierId: 'none',
+      customers: [],
+      queueIndex: 0,
+      dayEarnings: 0,
+      dayMatchSum: 0,
+      customersServed: 0,
+    };
+    useGameStore.setState({
+      ...game,
+      celebrationQueue: [
+        { kind: 'recipe', title: 'Stale', body: 'From before close' },
+      ],
+      dayStartRating: game.rating,
+    });
+
+    await useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+
+    expect(useGameStore.getState().celebrationQueue).toEqual([
+      expect.objectContaining({
+        kind: 'achievement',
+        achievementId: 'days-1',
+      }),
+    ]);
   });
 });

@@ -4,7 +4,12 @@ import { getGameStateSnapshot, useGameStore } from '../../store/game-store.ts';
 describe('floor toast', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useGameStore.setState({ floorToast: null });
+    useGameStore.setState({
+      noticeActive: null,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      floorToast: null,
+    });
   });
 
   afterEach(() => {
@@ -12,19 +17,50 @@ describe('floor toast', () => {
   });
 
   it('is stripped from save snapshots', () => {
-    useGameStore.getState().setFloorToast('Wrong table — deliver to the matching guest');
-    const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;
+    useGameStore
+      .getState()
+      .setFloorToast('Wrong table — deliver to the matching guest');
+    const snapshot = getGameStateSnapshot() as unknown as Record<
+      string,
+      unknown
+    >;
     expect(snapshot.floorToast).toBeUndefined();
+    expect(snapshot.noticeActive).toBeUndefined();
+    expect(snapshot.noticeSticky).toBeUndefined();
+    expect(snapshot.tutorialDismissedStepId).toBeUndefined();
+    expect(snapshot.notificationSurfaceActive).toBeUndefined();
   });
 
-  it('auto-clears after two seconds', () => {
-    useGameStore.getState().setFloorToast('Wrong table — deliver to the matching guest');
-    expect(useGameStore.getState().floorToast).toBe('Wrong table — deliver to the matching guest');
+  it('auto-clears after 2500ms', () => {
+    useGameStore
+      .getState()
+      .setFloorToast('Wrong table — deliver to the matching guest');
+    expect(useGameStore.getState().floorToast).toBe(
+      'Wrong table — deliver to the matching guest',
+    );
 
-    vi.advanceTimersByTime(1999);
-    expect(useGameStore.getState().floorToast).toBe('Wrong table — deliver to the matching guest');
+    vi.advanceTimersByTime(2499);
+    expect(useGameStore.getState().floorToast).toBe(
+      'Wrong table — deliver to the matching guest',
+    );
 
     vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().floorToast).toBeNull();
+  });
+
+  it('clears the legacy toast when a pacing notice replaces it', () => {
+    useGameStore.getState().setFloorToast('Wrong table');
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: {
+        id: 'pacing:guest-waiting',
+        source: 'pacing',
+        body: 'A guest is waiting',
+      },
+    });
+
+    expect(useGameStore.getState().noticeActive?.source).toBe('pacing');
     expect(useGameStore.getState().floorToast).toBeNull();
   });
 });

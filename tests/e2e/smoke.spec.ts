@@ -144,6 +144,9 @@ test.describe('persistence', () => {
           await bridge.dispatch({ type: 'FLOOR_SET_TABLE', placementId: table.placementId });
         }
       }
+      if (floor.pool.some((guest) => guest.stage === 'entering')) {
+        await bridge.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+      }
       await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
       const afterSeat = bridge.getGameState() as {
         activeDay?: {

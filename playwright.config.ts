@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type Project } from '@playwright/test';
 
 const port = 4173;
 const host = '127.0.0.1';
@@ -10,6 +10,49 @@ const previewCommand = [
   'node node_modules/vite/bin/vite.js build',
   `node node_modules/vite/bin/vite.js preview --host ${host} --port ${port}`,
 ].join(' && ');
+
+/**
+ * Default matches CI (`.github/workflows/ci.yml` installs Chromium only).
+ * Opt in locally: `PLAYWRIGHT_BROWSERS=chromium,firefox npm run test:e2e`
+ * WebKit/iOS remain unverified in this environment (missing sandbox libs).
+ */
+const requestedBrowsers = (process.env.PLAYWRIGHT_BROWSERS ?? 'chromium')
+  .split(',')
+  .map((name) => name.trim().toLowerCase())
+  .filter(Boolean);
+
+const browserProjects: Record<string, Project> = {
+  chromium: {
+    name: 'chromium',
+    use: { ...devices['Desktop Chrome'] },
+  },
+  firefox: {
+    name: 'firefox',
+    use: {
+      ...devices['Desktop Firefox'],
+      launchOptions: {
+        firefoxUserPrefs: {
+          'dom.storageManager.prompt.testing': true,
+          'dom.storageManager.prompt.testing.allow': true,
+        },
+      },
+    },
+  },
+};
+
+const projects = requestedBrowsers.map((name) => {
+  const project = browserProjects[name];
+  if (!project) {
+    throw new Error(
+      `Unknown PLAYWRIGHT_BROWSERS entry "${name}". Use chromium and/or firefox.`,
+    );
+  }
+  return project;
+});
+
+if (projects.length === 0) {
+  throw new Error('PLAYWRIGHT_BROWSERS resolved to an empty project list.');
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -27,12 +70,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     actionTimeout: 10_000,
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
+  projects,
   webServer: {
     command: previewCommand,
     url: `http://${host}:${port}`,

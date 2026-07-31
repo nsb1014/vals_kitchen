@@ -71,9 +71,11 @@ export async function clearBrowserStorage(page: Page): Promise<void> {
 
 export async function gotoFreshGame(page: Page): Promise<PageDiagnostics> {
   const diagnostics = attachDiagnostics(page);
-  await page.goto(E2E_PATH);
+  // Establish the app origin without starting bootstrap, then clear storage.
+  // Clearing IndexedDB during bootstrap races hydrate(), especially in Firefox.
+  await page.goto('/data/ingredients.json');
   await clearBrowserStorage(page);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.goto(E2E_PATH, { waitUntil: 'networkidle' });
   await waitForInteractiveBoot(page);
   return diagnostics;
 }
@@ -322,6 +324,96 @@ export async function assertNoHorizontalOverflow(page: Page): Promise<void> {
   expect(overflow).toBe(false);
 }
 
+/** Apply Chromium's real CSS page zoom without changing the emulated DPR. */
+export async function applyPageZoom(page: Page, factor: 2): Promise<void> {
+  await page.evaluate((zoom) => {
+    document.documentElement.style.zoom = String(zoom);
+  }, factor);
+}
+
+/** The action scrollport must always expose at least one full CTA row. */
+export async function assertScrollportAtLeastCta(page: Page): Promise<void> {
+  const ok = await page.evaluate(() => {
+    const scroll = document.querySelector(
+      '.floor-actions-scroll',
+    ) as HTMLElement | null;
+    if (!scroll) return false;
+    const cta = getComputedStyle(document.documentElement)
+      .getPropertyValue('--vk-cta-h')
+      .trim();
+    const ctaPx = Number.parseFloat(cta) || 52;
+    return scroll.getBoundingClientRect().height + 0.5 >= ctaPx;
+  });
+  expect(ok).toBe(true);
+}
+
+/** Scroll the final reserved action fully into view and activate it. */
+export async function assertFinalFloorActionActivatable(
+  page: Page,
+): Promise<void> {
+  const last = page.locator('.floor-actions .service-btn').last();
+  await last.evaluate((element) =>
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+  );
+  await expect(last).toBeVisible();
+  await expect(last).toBeEnabled();
+  const geometry = await last.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const visual = window.visualViewport;
+    return {
+      button: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        height: rect.height,
+      },
+      layoutViewport: {
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        left: 0,
+      },
+      visualViewport: visual
+        ? {
+            top: visual.offsetTop,
+            right: visual.offsetLeft + visual.width,
+            bottom: visual.offsetTop + visual.height,
+            left: visual.offsetLeft,
+          }
+        : null,
+    };
+  });
+  expect(geometry.button.height).toBeGreaterThan(0);
+  expect(geometry.button.top).toBeGreaterThanOrEqual(
+    geometry.layoutViewport.top - 1,
+  );
+  expect(geometry.button.bottom).toBeLessThanOrEqual(
+    geometry.layoutViewport.bottom + 1,
+  );
+  expect(geometry.button.left).toBeGreaterThanOrEqual(
+    geometry.layoutViewport.left - 1,
+  );
+  expect(geometry.button.right).toBeLessThanOrEqual(
+    geometry.layoutViewport.right + 1,
+  );
+  if (geometry.visualViewport) {
+    expect(geometry.button.top).toBeGreaterThanOrEqual(
+      geometry.visualViewport.top - 1,
+    );
+    expect(geometry.button.bottom).toBeLessThanOrEqual(
+      geometry.visualViewport.bottom + 1,
+    );
+    expect(geometry.button.left).toBeGreaterThanOrEqual(
+      geometry.visualViewport.left - 1,
+    );
+    expect(geometry.button.right).toBeLessThanOrEqual(
+      geometry.visualViewport.right + 1,
+    );
+  }
+  await last.click();
+}
+
 export async function assertPrimaryControlsInViewport(
   page: Page,
 ): Promise<void> {
@@ -478,6 +570,14 @@ declare global {
         y: number;
         zIndex: number;
       }>;
+      setFloorToast: (message: string | null) => void;
+      enqueueCelebration: (celebration: {
+        kind: 'recipe' | 'mastery' | 'achievement';
+        title: string;
+        body: string;
+        ingredientIds?: string[];
+        level?: number;
+      }) => void;
     };
   }
 }

@@ -71,10 +71,10 @@ export function mountFloorServiceHud(
   const render = () => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
-
     // Keep the chrome strip mounted for the whole floor day (including review /
-    // summary popups) so canvas height does not jump when messages change.
+    // summary popups) so canvas height does not jump when overlays open.
     if (!floor) {
+      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
       chromeMount.hidden = true;
       chromeMount.innerHTML = '';
       dock.hidden = true;
@@ -91,6 +91,7 @@ export function mountFloorServiceHud(
       !state.ceremony;
 
     if (!interactive) {
+      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
       chromeMount.innerHTML = `
         <div class="floor-service-panel floor-service-panel--reserve" aria-hidden="true"></div>
       `;
@@ -99,41 +100,47 @@ export function mountFloorServiceHud(
       ticketsMenuOpen = false;
       return;
     }
-
     const initialGuestArriving =
       floor.pool.some((guest) => guest.stage === 'entering') &&
       !floor.pool.some(
         (guest) => guest.stage !== 'queued' && guest.stage !== 'entering',
       );
-    if (initialGuestArriving) {
-      chromeMount.innerHTML = `
-        <div class="floor-service-panel" data-testid="floor-arrival-panel" aria-live="polite">
-          <div class="floor-service-hints">
-            <p class="floor-tutorial">The first guest is arriving…</p>
-          </div>
-          <div class="floor-actions" aria-hidden="true"></div>
-          <p class="floor-toast" hidden></p>
-        </div>
-      `;
-      dock.hidden = true;
-      dock.innerHTML = '';
-      ticketsMenuOpen = false;
-      return;
-    }
-
     dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
     const canCloseDay = selectCanCloseDay(state);
     const waitingGuests = floor.pool.filter((g) => g.stage === 'waiting');
     const canTakeOrders = selectCanTakeFloorOrders(state);
-    const tutorial = tutorialPrompt(nextTutorialStep(floor, state.day === 1));
+    const step = nextTutorialStep(floor, state.day === 1);
+    const prompt = tutorialPrompt(step);
+    const sticky =
+      prompt && step
+        ? {
+            id: `tutorial:${step}`,
+            source: 'tutorial' as const,
+            body: prompt,
+            stepId: step,
+          }
+        : null;
     const selectedTicketId = floor.selectedTicketId;
-    const floorToast = state.floorToast;
     const pacingHint =
       state.day > 1
         ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
         : null;
+    const pacing = initialGuestArriving
+      ? {
+          id: `pacing:first-guest-arriving:${state.day}`,
+          source: 'pacing' as const,
+          body: 'The first guest is arriving…',
+        }
+      : pacingHint
+        ? {
+            id: `pacing:day:${state.day}`,
+            source: 'pacing' as const,
+            body: pacingHint,
+          }
+        : null;
+    state.syncFloorNoticesFromHud({ sticky, pacing });
 
     const ctx = getDomainContext();
     const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
@@ -161,18 +168,15 @@ export function mountFloorServiceHud(
 
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
-        <div class="floor-service-hints">
-          ${tutorial ? `<p class="floor-tutorial" data-testid="floor-tutorial">${tutorial}</p>` : ''}
-          ${pacingHint ? `<p class="floor-pacing" data-testid="floor-pacing">${pacingHint}</p>` : ''}
+        <div class="floor-actions-scroll">
+          <div class="floor-actions">
+            <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
+            <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}><span class="floor-action-label">Take orders</span></button>
+            <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
+            <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}><span class="floor-action-label">Close Day</span></button>
+          </div>
         </div>
-        <div class="floor-actions">
-          <button type="button" class="service-btn" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}>Set table</button>
-          <button type="button" class="service-btn${waitingGuests.length > 0 ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${waitingGuests.length === 0 ? 'disabled' : ''}>Seat guest</button>
-          <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}>Take orders</button>
-          <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}>Clear table</button>
-          <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled'}>Close Day</button>
-        </div>
-        <p class="floor-toast" data-testid="floor-toast"${floorToast ? '' : ' hidden'}>${floorToast ? floorToast : ''}</p>
       </div>
     `;
 
@@ -368,10 +372,10 @@ export function mountFloorServiceHud(
 
   return () => {
     unsubscribe();
-    for (const timer of arrivalTimers) clearTimeout(timer);
-    arrivalTimers.clear();
     document.removeEventListener('pointerdown', onDocumentPointer, true);
     document.removeEventListener('keydown', onDocumentKeydown);
+    for (const timer of arrivalTimers) clearTimeout(timer);
+    arrivalTimers.clear();
     chromeMount.innerHTML = '';
     dock.remove();
   };

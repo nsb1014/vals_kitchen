@@ -337,18 +337,15 @@
   position: relative;
   z-index: 55;
   box-sizing: border-box;
-  display: grid;
-  grid-template-rows: 2.5rem 2.75rem minmax(0, 1fr) 1.35rem;
-  gap: 0.2rem;
-  height: 100%;
   padding: 0.35rem 0.65rem 0.4rem;
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
   pointer-events: auto;
-  overflow: hidden;
 }
 
 .floor-service-panel--reserve {
+  /* Holds chrome min-height during review/summary so the canvas does not jump. */
+  min-height: inherit;
   pointer-events: none;
   background: transparent;
   border-top-color: transparent;
@@ -772,11 +769,75 @@
   color: var(--vk-text-dim);
 }
 
+.floor-actions-scroll {
+  max-height: min(
+    var(--vk-floor-chrome-min-h-3),
+    max(var(--vk-cta-h), calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
+  );
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .floor-actions .service-btn {
   width: 100%;
+  height: auto;
+  min-height: var(--vk-cta-h);
   min-width: 0;
   margin: 0;
-  white-space: nowrap;
+}
+
+.floor-actions .floor-action-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  max-height: calc(1.2em + 1.2em);
+  overflow: hidden;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 760px) and (min-width: 321px) and (min-height: 501px) {
+  :root {
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
+  }
+
+  .floor-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Short landscape / short tablet — tiny portrait keeps its 2×3 layout. */
+@media (max-height: 500px) and (min-width: 321px) {
+  :root {
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
+  }
+
+  .floor-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: column;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* Keep this last: 320px must win over the short-height layout. */
+@media (max-width: 320px) {
+  :root {
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-3);
+  }
+
+  .floor-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .floor-actions .service-btn {
+    padding-inline: 0.35rem;
+    font-size: 0.8125rem;
+    white-space: normal;
+  }
 }
 
 .recipe-mastery {
@@ -1176,15 +1237,6 @@
 }
 
 @media (max-width: 760px) {
-  :root {
-    /* Two action rows on narrow floors — still a fixed strip, not content-sized. */
-    --vk-floor-chrome-h: 13.75rem;
-  }
-
-  .floor-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .compose-sheet-header {
     align-items: center;
     padding: 0.4rem 0.6rem 0.35rem;
