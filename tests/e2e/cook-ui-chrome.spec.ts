@@ -202,7 +202,11 @@ test.describe('service sheet tiers', () => {
     // The panel should hug its content, not reserve a fixed empty sheet that
     // makes the lower half of the restaurant appear missing.
     expect(sheet!.height).toBeLessThanOrEqual(card!.height + 26);
-    expect(sheet!.y).toBeGreaterThan(canvas!.y + canvas!.height * 0.6);
+    // Overlay sits in the lower half of the viewport (same basis as other sheet-tier tests).
+    expect(sheet!.y / 720).toBeGreaterThan(0.5);
+    expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(
+      canvas!.y + canvas!.height - 2,
+    );
     await page.screenshot({
       path: 'test-results/open-service-compact.png',
       animations: 'disabled',
