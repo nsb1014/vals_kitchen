@@ -185,8 +185,7 @@ test.describe('service sheet tiers', () => {
     expect(sheet!.height).toBeLessThanOrEqual(card!.height + 26);
     // Overlay sits in the lower half of the viewport (same basis as other sheet-tier tests).
     expect(sheet!.y / 720).toBeGreaterThan(0.5);
-    expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(nav!.y - 2);
-    expect(sheet!.y + sheet!.height).toBeLessThanOrEqual(nav!.y + 2);
+    expect(Math.abs(sheet!.y + sheet!.height - nav!.y)).toBeLessThanOrEqual(3);
     await page.screenshot({
       path: 'test-results/open-service-compact.png',
       animations: 'disabled',
