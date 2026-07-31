@@ -4,7 +4,7 @@ import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
-import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
+import { AXIS_KEYS } from '../../domain/types.ts';
 import {
   AXIS_LABELS,
   emptyFlavorProfile,
@@ -41,16 +41,14 @@ import {
   renderStarGlyphs,
 } from '../presentation/review-display.ts';
 import { prestigeRatingDeltaMultiplier } from '../../domain/balance/prestige-pacing.ts';
+import { prestigeMultiplier } from '../../domain/economy/tips.ts';
+import {
+  buildRatingDisplayModel,
+  formatRecentReview,
+} from '../presentation/rating-display.ts';
 import {
   bandLabel,
-  clearComposeAxes,
-  clearComposeNameQuery,
-  composePantrySummary,
   type ComposeAxisBands,
-  emptyComposePantryFilters,
-  filterComposePantry,
-  setComposeNameQuery,
-  toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
@@ -116,14 +114,15 @@ export function mountServiceDayUi(
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
-  let composeFilters = emptyComposePantryFilters();
+  let orderBubbleGuestId: string | null = null;
+  let orderBubbleTimer: ReturnType<typeof setTimeout> | null = null;
   let composeWasVisible = false;
   let composeTicketId: string | null = null;
   let composeFocusReturn: HTMLElement | null = null;
   let composeFlavorDetailsOpen = false;
+  let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
 
-  const resetComposeFilters = () => {
-    composeFilters = emptyComposePantryFilters();
+  const resetComposeUi = () => {
     composeFlavorDetailsOpen = false;
   };
 
@@ -141,24 +140,88 @@ export function mountServiceDayUi(
 
   const renderHud = () => {
     const state = useGameStore.getState();
+    const activeDay = state.activeDay;
+    const ratingModel = buildRatingDisplayModel(state.rating, state.prestige);
+    const customersTotal = activeDay?.customers.length ?? 0;
+    const customersServed = activeDay?.customersServed ?? 0;
+    const customersLeft = Math.max(0, customersTotal - customersServed);
+    const dayRatingDelta = activeDay?.dayRatingDelta ?? 0;
+    const detailContent =
+      hudDetail === 'cash'
+        ? `<h2>Cash</h2>
+           <p class="hud-detail-value">$${state.cash.toLocaleString('en-US')}</p>
+           <p>Total cash gained since day 1: <strong>$${state.stats.totalEarnings.toLocaleString('en-US')}</strong></p>`
+        : hudDetail === 'rating'
+          ? `<h2>Rating</h2>
+             <p class="hud-detail-value">${ratingModel.ratingText}</p>
+             <p>${ratingModel.prestigeDistanceText}</p>
+             <p>${ratingModel.softResetDistanceText}</p>
+             <p>Current payout multiplier: <strong>${ratingModel.ratingMultiplierText}</strong></p>
+             <h3>Recent reviews</h3>
+             <ul class="hud-detail-list">${
+               state.recentReviews.length > 0
+                 ? state.recentReviews
+                     .slice(0, 4)
+                     .map((review) => `<li>${escapeHtml(formatRecentReview(review))}</li>`)
+                     .join('')
+                 : '<li>No reviews yet.</li>'
+             }</ul>`
+          : hudDetail === 'prestige'
+            ? `<h2>Prestige P${state.prestige}</h2>
+               <p>Current permanent payout multiplier: <strong>${prestigeMultiplier(state.prestige).toFixed(2)}×</strong></p>
+               <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
+               <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
+            : hudDetail === 'day'
+              ? `<h2>Day ${state.day}</h2>
+                 <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
+                 <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
+                 <p>Customers served: <strong>${customersServed}</strong></p>
+                 <p>Customers left: <strong>${customersLeft}</strong></p>`
+              : '';
     hud.innerHTML = `
-      <div class="hud-stat" aria-label="Cash">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-label="Cash details">
         <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
         <strong>$${state.cash.toLocaleString('en-US')}</strong>
-      </div>
-      <div class="hud-stat" aria-label="Restaurant rating">
+      </button>
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="rating" aria-expanded="${hudDetail === 'rating'}" aria-label="Restaurant rating details">
         <span class="hud-stat-label"><i aria-hidden="true">★</i> Rating</span>
         <strong>${state.rating.toFixed(1)}★</strong>
-      </div>
-      <div class="hud-stat" aria-label="Prestige">
+      </button>
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="prestige" aria-expanded="${hudDetail === 'prestige'}" aria-label="Prestige details">
         <span class="hud-stat-label"><i aria-hidden="true">◆</i> Prestige</span>
         <strong>P${state.prestige}</strong>
-      </div>
-      <div class="hud-stat" aria-label="Day">
+      </button>
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-label="Day details">
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
         <strong>${state.day}</strong>
-      </div>
+      </button>
+      <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
+      ${
+        hudDetail
+          ? `<aside class="hud-detail-menu" data-testid="hud-detail-menu" aria-live="polite">
+               <button type="button" class="hud-detail-close" aria-label="Close details">×</button>
+               ${detailContent}
+             </aside>`
+          : ''
+      }
     `;
+    hud
+      .querySelectorAll<HTMLButtonElement>('[data-hud-detail]')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          const detail = button.dataset.hudDetail as typeof hudDetail;
+          hudDetail = hudDetail === detail ? null : detail;
+          renderHud();
+        });
+      });
+    hud.querySelector('[data-testid="hud-settings"]')?.addEventListener('click', () => {
+      hudDetail = null;
+      useGameStore.getState().navigateTo('settings');
+    });
+    hud.querySelector('.hud-detail-close')?.addEventListener('click', () => {
+      hudDetail = null;
+      renderHud();
+    });
     syncStatusHudHeight();
   };
 
@@ -166,7 +229,9 @@ export function mountServiceDayUi(
     if (!bubbleEl) return;
     const app = getRestaurantApp();
     if (!app) return;
-    const anchor = app.getCustomerScreenAnchor();
+    const anchor = orderBubbleGuestId
+      ? app.getGuestScreenAnchor(orderBubbleGuestId)
+      : app.getCustomerScreenAnchor();
     if (!anchor) {
       bubbleEl.hidden = true;
       return;
@@ -179,14 +244,21 @@ export function mountServiceDayUi(
   const renderChatBubble = () => {
     const state = useGameStore.getState();
     const customer = selectCurrentCustomer(state);
+    const orderGuest = orderBubbleGuestId
+      ? state.activeDay?.floor?.pool.find(
+          (guest) => guest.customer.id === orderBubbleGuestId,
+        )
+      : undefined;
+    const showOrderBubble = Boolean(orderGuest && state.activeDay?.floor);
     const showBubble =
-      state.activeDay &&
-      state.modifierDismissed &&
-      customer &&
-      !state.pendingReview &&
-      selectIsAwaitingServe(state);
+      showOrderBubble ||
+      (state.activeDay &&
+        state.modifierDismissed &&
+        customer &&
+        !state.pendingReview &&
+        selectIsAwaitingServe(state));
 
-    if (!showBubble || !customer) {
+    if (!showBubble || (!customer && !orderGuest)) {
       if (bubbleEl) bubbleEl.hidden = true;
       return;
     }
@@ -199,7 +271,10 @@ export function mountServiceDayUi(
       bubbleMount.appendChild(bubbleEl);
     }
 
-    bubbleEl.textContent = formatCustomerRequestText(customer.preference);
+    bubbleEl.classList.toggle('order-bubble', showOrderBubble);
+    bubbleEl.textContent = formatCustomerRequestText(
+      orderGuest?.customer.preference ?? customer!.preference,
+    );
     bubbleEl.hidden = false;
     positionChatBubble();
   };
@@ -253,16 +328,16 @@ export function mountServiceDayUi(
         document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null;
-      resetComposeFilters();
+      resetComposeUi();
     } else if (!composeVisible && composeWasVisible) {
-      resetComposeFilters();
+      resetComposeUi();
       queueMicrotask(focusFloorAfterCompose);
     } else if (
       composeVisible &&
       composeTicketId !== null &&
       nextComposeTicketId !== composeTicketId
     ) {
-      resetComposeFilters();
+      resetComposeUi();
     }
     composeWasVisible = composeVisible;
     composeTicketId = nextComposeTicketId;
@@ -293,9 +368,9 @@ export function mountServiceDayUi(
             <p class="review-detail">${state.daySummary.customersServedText}</p>
             ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
             </div>
-            <footer class="sheet-footer service-actions">
+            <footer class="sheet-footer service-actions day-summary-actions">
               <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Back to floor</button>
-              <button type="button" class="service-btn primary" id="summary-visit-shop" data-testid="summary-visit-shop">Visit shop</button>
+              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Edit Restaurant</button>
             </footer>
           </div>
         </div>
@@ -309,12 +384,13 @@ export function mountServiceDayUi(
         },
         { once: true },
       );
-      serviceOverlay.querySelector('#summary-visit-shop')?.addEventListener(
+      serviceOverlay.querySelector('#summary-edit-restaurant')?.addEventListener(
         'click',
         () => {
           const store = useGameStore.getState();
           store.dismissDaySummary();
-          store.navigateTo('shop');
+          store.navigateTo('restaurant');
+          if (!store.editLayoutMode) store.toggleEditLayout();
         },
         { once: true },
       );
@@ -499,15 +575,7 @@ export function mountServiceDayUi(
 
       const renderIngredientButtons = (): string => {
         const currentDraft = selectComposeDraftIds(useGameStore.getState());
-        const matches = filterComposePantry(
-          unlocked,
-          composeFilters,
-          requestedBands,
-        );
-        if (matches.length === 0) {
-          return '<p class="compose-empty" data-testid="compose-empty">No ingredients match. Clear a filter to see more.</p>';
-        }
-        return matches
+        return unlocked
           .map((item) => {
             const selected = currentDraft.includes(item.id);
             const toggle = canToggleIngredient(item.id, currentDraft);
@@ -529,24 +597,6 @@ export function mountServiceDayUi(
               })
               .join('');
 
-      const orderedFilterAxes = [
-        ...requestedAxes,
-        ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
-      ];
-      const axisChips = orderedFilterAxes.map((axis) => {
-        const selected = composeFilters.selectedAxes.includes(axis);
-        const band = requestedBands[axis];
-        const label = band
-          ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
-          : AXIS_LABELS[axis];
-        return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
-      }).join('');
-
-      const matchingCount = filterComposePantry(
-        unlocked,
-        composeFilters,
-        requestedBands,
-      ).length;
       const flavorPreview = buildFlavorBarsViewModel(
         preview.profile ?? emptyFlavorProfile(),
       ).axes
@@ -632,20 +682,6 @@ export function mountServiceDayUi(
               </div>
               <div class="compose-selected-strip">${selectedStrip}</div>
             </section>
-            <section class="compose-filters" aria-label="Pantry filters">
-              <div class="compose-axis-row">
-                <button type="button" class="filter-axis-chip${composeFilters.selectedAxes.length === 0 ? ' selected' : ''}" data-compose-all aria-pressed="${composeFilters.selectedAxes.length === 0}">All</button>
-                ${axisChips}
-              </div>
-              <div class="compose-search-row">
-                <label class="compose-search-field">
-                  <span class="sr-only">Search ingredients by name</span>
-                  <input type="search" class="compose-search-input" data-testid="compose-search" placeholder="Search ingredients" autocomplete="off" value="${escapeHtml(composeFilters.nameQuery)}" />
-                </label>
-                <button type="button" class="compose-search-clear" data-testid="compose-search-clear" ${composeFilters.nameQuery ? '' : 'hidden'}>Clear</button>
-              </div>
-              <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount, requestedBands))}</p>
-            </section>
             <div class="compose-workspace">
               <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
                 <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${renderIngredientButtons()}</div>
@@ -726,56 +762,6 @@ export function mountServiceDayUi(
           });
       };
 
-      const updateFilterUi = () => {
-        const pantry = serviceOverlay.querySelector<HTMLElement>(
-          '[data-testid="compose-pantry"] .ingredient-grid',
-        );
-        const summary = serviceOverlay.querySelector(
-          '[data-testid="compose-filter-summary"]',
-        );
-        const clear = serviceOverlay.querySelector<HTMLButtonElement>(
-          '[data-testid="compose-search-clear"]',
-        );
-        if (pantry) {
-          pantry.innerHTML = renderIngredientButtons();
-          bindIngredientButtons(pantry);
-        }
-        const count = filterComposePantry(
-          unlocked,
-          composeFilters,
-          requestedBands,
-        ).length;
-        if (summary) {
-          summary.textContent = composePantrySummary(
-            composeFilters,
-            count,
-            requestedBands,
-          );
-        }
-        if (clear) clear.hidden = composeFilters.nameQuery.length === 0;
-        serviceOverlay
-          .querySelector<HTMLButtonElement>('[data-compose-all]')
-          ?.setAttribute(
-            'aria-pressed',
-            String(composeFilters.selectedAxes.length === 0),
-          );
-        serviceOverlay
-          .querySelector<HTMLButtonElement>('[data-compose-all]')
-          ?.classList.toggle(
-            'selected',
-            composeFilters.selectedAxes.length === 0,
-          );
-        serviceOverlay
-          .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
-          .forEach((button) => {
-            const selected = composeFilters.selectedAxes.includes(
-              button.dataset.composeAxis as AxisKey,
-            );
-            button.classList.toggle('selected', selected);
-            button.setAttribute('aria-pressed', String(selected));
-          });
-      };
-
       bindIngredientButtons(serviceOverlay);
       serviceOverlay
         .querySelector<HTMLButtonElement>(
@@ -809,41 +795,6 @@ export function mountServiceDayUi(
           { once: true },
         );
 
-      serviceOverlay
-        .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
-        .forEach((button) => {
-          button.addEventListener('click', () => {
-            composeFilters = toggleComposeAxis(
-              composeFilters,
-              button.dataset.composeAxis as AxisKey,
-            );
-            updateFilterUi();
-          });
-        });
-
-      serviceOverlay
-        .querySelector('[data-compose-all]')
-        ?.addEventListener('click', () => {
-          composeFilters = clearComposeAxes(composeFilters);
-          updateFilterUi();
-        });
-
-      const searchInput = serviceOverlay.querySelector<HTMLInputElement>(
-        '[data-testid="compose-search"]',
-      );
-      searchInput?.addEventListener('input', () => {
-        composeFilters = setComposeNameQuery(composeFilters, searchInput.value);
-        updateFilterUi();
-      });
-      serviceOverlay
-        .querySelector('[data-testid="compose-search-clear"]')
-        ?.addEventListener('click', () => {
-          composeFilters = clearComposeNameQuery(composeFilters);
-          if (searchInput) searchInput.value = '';
-          updateFilterUi();
-          searchInput?.focus({ preventScroll: true });
-        });
-
       serviceOverlay.querySelector('#plate-btn')?.addEventListener(
         'click',
         () => {
@@ -861,13 +812,6 @@ export function mountServiceDayUi(
         },
         { once: true },
       );
-      if (composeOpenedNow) {
-        queueMicrotask(() => {
-          serviceOverlay
-            .querySelector<HTMLElement>('[data-testid="compose-search"]')
-            ?.focus({ preventScroll: true });
-        });
-      }
       return;
     }
 
@@ -984,6 +928,21 @@ export function mountServiceDayUi(
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
+    const previousTicketIds = new Set(
+      prev.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
+    );
+    const newTicket = state.activeDay?.floor?.tickets.find(
+      (ticket) => !previousTicketIds.has(ticket.id),
+    );
+    if (newTicket) {
+      orderBubbleGuestId = newTicket.customerId;
+      if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+      orderBubbleTimer = setTimeout(() => {
+        orderBubbleGuestId = null;
+        orderBubbleTimer = null;
+        renderChatBubble();
+      }, 2400);
+    }
     const domainChanged =
       state.screen !== prev.screen ||
       state.activeDay !== prev.activeDay ||
@@ -1022,6 +981,7 @@ export function mountServiceDayUi(
     window.removeEventListener('resize', positionChatBubble);
     document.removeEventListener('keydown', onComposeKeydown);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
+    if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
     bubbleEl?.remove();
     statusMount.innerHTML = '';
     overlayMount.innerHTML = '';

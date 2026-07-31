@@ -23,6 +23,16 @@ describe('floor vertical slice loop', () => {
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated');
     expect(seated).toBeTruthy();
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerPosition: { ...seated!.seat! },
+        },
+      },
+    };
 
     state = gameReducer(
       state,
@@ -98,6 +108,19 @@ describe('floor vertical slice loop', () => {
         .filter((g) => g.stage === 'seated')
         .map((g) => g.customer.id);
       if (toOrder.length) {
+        const target = state.activeDay!.floor!.pool.find(
+          (guest) => guest.customer.id === toOrder[0],
+        )!;
+        state = {
+          ...state,
+          activeDay: {
+            ...state.activeDay!,
+            floor: {
+              ...state.activeDay!.floor!,
+              playerPosition: { ...target.seat! },
+            },
+          },
+        };
         state = gameReducer(state, { type: 'FLOOR_TAKE_ORDERS', customerIds: toOrder }, testContext)
           .state;
       }

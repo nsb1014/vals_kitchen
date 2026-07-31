@@ -18,9 +18,15 @@ import {
   achievementBadgeUrl,
 } from '../../domain/achievements/catalog.ts';
 import { achievementProgress } from '../../domain/achievements/evaluate.ts';
+import type { AxisKey } from '../../domain/types.ts';
+import {
+  buildInspectorIngredientList,
+  inspectorFilterOptions,
+  renderFlavorInspectorContent,
+} from '../components/FlavorInspectorPanel.ts';
 
 const ROW_HEIGHT = 88;
-type RecipeBookTab = 'recipes' | 'achievements';
+type RecipeBookTab = 'flavors' | 'recipes' | 'achievements';
 
 export function mountRecipeBookScreen(container: HTMLElement): () => void {
   const root = document.createElement('div');
@@ -33,11 +39,16 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
         <p class="screen-subtitle" id="recipe-progress">Loading…</p>
       </header>
       <div class="recipe-book-tabs" role="tablist" aria-label="Recipe Book sections">
-        <button type="button" class="recipe-book-tab active" id="recipe-tab" role="tab" aria-selected="true">Recipes</button>
+        <button type="button" class="recipe-book-tab active" id="flavors-tab" role="tab" aria-selected="true">Flavors</button>
+        <button type="button" class="recipe-book-tab" id="recipe-tab" role="tab" aria-selected="false">Recipes</button>
         <button type="button" class="recipe-book-tab" id="achievements-tab" role="tab" aria-selected="false">Achievements</button>
       </div>
       <div class="screen-toolbar" id="recipe-toolbar">
-        <label class="screen-field screen-field-grow">
+        <label class="screen-field screen-field-grow" id="flavor-filter-field">
+          <span>Flavor filter</span>
+          <select id="recipe-flavor-filter" class="screen-select">${inspectorFilterOptions()}</select>
+        </label>
+        <label class="screen-field screen-field-grow" id="recipe-search-field" hidden>
           <span>Search</span>
           <input type="search" id="recipe-search" class="screen-input" placeholder="Search discovered recipes" enterkeyhint="search" />
         </label>
@@ -51,11 +62,15 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
 
   const panel = root.querySelector('#recipes-screen') as HTMLElement;
   const progressEl = root.querySelector('#recipe-progress') as HTMLElement;
+  const flavorsTabEl = root.querySelector('#flavors-tab') as HTMLButtonElement;
   const recipesTabEl = root.querySelector('#recipe-tab') as HTMLButtonElement;
   const achievementsTabEl = root.querySelector(
     '#achievements-tab',
   ) as HTMLButtonElement;
   const toolbarEl = root.querySelector('#recipe-toolbar') as HTMLElement;
+  const flavorFilterFieldEl = root.querySelector('#flavor-filter-field') as HTMLElement;
+  const flavorFilterEl = root.querySelector('#recipe-flavor-filter') as HTMLSelectElement;
+  const recipeSearchFieldEl = root.querySelector('#recipe-search-field') as HTMLElement;
   const searchEl = root.querySelector('#recipe-search') as HTMLInputElement;
   const scrollEl = root.querySelector('#recipe-scroll') as HTMLElement;
   const innerEl = root.querySelector('#recipe-inner') as HTMLElement;
@@ -64,7 +79,9 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   let query = '';
   let pageIndex = 0;
   let recipesLoaded = isRecipesContentReady();
-  let activeTab: RecipeBookTab = 'recipes';
+  let activeTab: RecipeBookTab = 'flavors';
+  let selectedFlavorId: string | null = null;
+  let flavorFilterAxis: AxisKey | 'none' = 'none';
 
   const getEntries = () => {
     const ctx = getDomainContext();
@@ -156,6 +173,43 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     pagerEl.innerHTML = '';
   };
 
+  const renderFlavors = () => {
+    const state = useGameStore.getState();
+    if (
+      !selectedFlavorId ||
+      !state.unlockedIngredientIds.includes(selectedFlavorId)
+    ) {
+      selectedFlavorId = state.unlockedIngredientIds[0] ?? null;
+    }
+    progressEl.textContent = `${state.unlockedIngredientIds.length} ingredients unlocked`;
+    innerEl.className = 'recipe-virtual-inner flavor-book-layout';
+    innerEl.style.height = 'auto';
+    innerEl.innerHTML = `
+      <div class="inspector-list" id="recipe-flavor-list" role="listbox" aria-label="Unlocked ingredients">
+        ${buildInspectorIngredientList(state.unlockedIngredientIds, flavorFilterAxis)}
+      </div>
+      <div class="inspector-detail" id="recipe-flavor-detail" data-testid="recipe-flavor-detail" aria-live="polite">
+        ${
+          selectedFlavorId
+            ? renderFlavorInspectorContent(selectedFlavorId)
+            : '<p class="screen-empty">Unlock ingredients to inspect flavors.</p>'
+        }
+      </div>
+    `;
+    innerEl
+      .querySelectorAll<HTMLButtonElement>('[data-ingredient-id]')
+      .forEach((button) => {
+        const id = button.dataset.ingredientId;
+        if (!id) return;
+        button.classList.toggle('selected', id === selectedFlavorId);
+        button.addEventListener('click', () => {
+          selectedFlavorId = id;
+          renderFlavors();
+        });
+      });
+    pagerEl.innerHTML = '';
+  };
+
   const renderRecipes = () => {
     const ctx = getDomainContext();
     const state = useGameStore.getState();
@@ -184,14 +238,24 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   };
 
   const render = () => {
+    const showingFlavors = activeTab === 'flavors';
     const showingRecipes = activeTab === 'recipes';
+    flavorsTabEl.classList.toggle('active', showingFlavors);
+    flavorsTabEl.setAttribute('aria-selected', String(showingFlavors));
     recipesTabEl.classList.toggle('active', showingRecipes);
     recipesTabEl.setAttribute('aria-selected', String(showingRecipes));
-    achievementsTabEl.classList.toggle('active', !showingRecipes);
-    achievementsTabEl.setAttribute('aria-selected', String(!showingRecipes));
-    toolbarEl.hidden = !showingRecipes;
+    achievementsTabEl.classList.toggle('active', activeTab === 'achievements');
+    achievementsTabEl.setAttribute(
+      'aria-selected',
+      String(activeTab === 'achievements'),
+    );
+    toolbarEl.hidden = activeTab === 'achievements';
+    flavorFilterFieldEl.hidden = !showingFlavors;
+    recipeSearchFieldEl.hidden = !showingRecipes;
     pagerEl.hidden = !showingRecipes;
-    if (showingRecipes) {
+    if (showingFlavors) {
+      renderFlavors();
+    } else if (showingRecipes) {
       renderRecipes();
     } else {
       renderAchievements();
@@ -210,9 +274,19 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     scrollEl.scrollTop = 0;
     render();
   });
+  flavorFilterEl.addEventListener('change', () => {
+    flavorFilterAxis = (flavorFilterEl.value as AxisKey | 'none') || 'none';
+    render();
+  });
+  flavorsTabEl.addEventListener('click', () => {
+    activeTab = 'flavors';
+    scrollEl.scrollTop = 0;
+    render();
+  });
   recipesTabEl.addEventListener('click', () => {
     activeTab = 'recipes';
     scrollEl.scrollTop = 0;
+    void ensureLoaded();
     render();
   });
   achievementsTabEl.addEventListener('click', () => {
@@ -231,7 +305,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
   const syncVisibility = () => {
     const visible = useGameStore.getState().screen === 'recipes';
     panel.hidden = !visible;
-    if (visible) void ensureLoaded();
+    if (visible && activeTab === 'recipes') void ensureLoaded();
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -239,6 +313,7 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     if (
       state.discoveredRecipeIds !== prev.discoveredRecipeIds ||
       state.recipeMastery !== prev.recipeMastery ||
+      state.unlockedIngredientIds !== prev.unlockedIngredientIds ||
       state.unlockedAchievementIds !== prev.unlockedAchievementIds ||
       state.decorPurchasedCounts !== prev.decorPurchasedCounts ||
       state.tableCount !== prev.tableCount ||

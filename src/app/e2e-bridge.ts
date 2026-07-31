@@ -248,9 +248,17 @@ export function installE2eBridge(
         .activeDay!.floor!.pool.filter((guest) => guest.stage === 'seated')
         .map((guest) => guest.customer.id);
       if (customerIds.length > 0) {
+        const target = useGameStore
+          .getState()
+          .activeDay!.floor!.pool.find(
+            (guest) => guest.customer.id === customerIds[0],
+          );
+        if (target?.seat) {
+          useGameStore.getState().setFloorNavPosition({ ...target.seat });
+        }
         await useGameStore.getState().dispatch({
           type: 'FLOOR_TAKE_ORDERS',
-          customerIds,
+          customerIds: [customerIds[0]!],
         });
       }
 
@@ -334,7 +342,16 @@ export function installE2eBridge(
         .pool.filter((g) => g.stage === 'seated')
         .map((g) => g.customer.id);
       if (toOrder.length > 0) {
-        await dispatch({ type: 'FLOOR_TAKE_ORDERS', customerIds: toOrder });
+        const target = floor().pool.find(
+          (guest) => guest.customer.id === toOrder[0],
+        );
+        if (target?.seat) {
+          useGameStore.getState().setFloorNavPosition({ ...target.seat });
+        }
+        await dispatch({
+          type: 'FLOOR_TAKE_ORDERS',
+          customerIds: [toOrder[0]!],
+        });
       }
 
       if (useGameStore.getState().pendingReview) return 'pending_review';

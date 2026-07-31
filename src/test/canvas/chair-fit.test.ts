@@ -5,7 +5,7 @@ import {
   CHAIR_DRAW_WIDTH_PX,
   chairDrawFit,
 } from '../../canvas/furniture-fit.ts';
-import { SEATED_GUEST_DISPLAY_HEIGHT } from '../../canvas/world/ActorLayer.ts';
+import { SEATED_GUEST_DISPLAY_HEIGHT } from '../../canvas/world/actor-metrics.ts';
 
 describe('chair draw fit', () => {
   it('scales chairs into the seated-guest size band', () => {

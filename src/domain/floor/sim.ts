@@ -3,6 +3,7 @@ import { markDirty, occupyTable } from './tables.ts';
 import { assignPartyToTable } from './seats.ts';
 import { enqueueTickets } from './tickets.ts';
 import { waitingAreaOccupied } from './entry.ts';
+import { playerNearGuestSeat } from './interact.ts';
 import type { FloorDay, FloorGuest, FloorTable, FloorTicket, SeatSlot } from './types.ts';
 
 const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
@@ -78,6 +79,15 @@ function freeSlotsOnTable(day: FloorDay, tablePlacementId: string): SeatSlot[] {
     .sort((a, b) => a.slotIndex - b.slotIndex);
 }
 
+export function hasAvailableSeatForWaitingGuest(day: FloorDay): boolean {
+  if (!day.pool.some((guest) => guest.stage === 'waiting')) return false;
+  return day.tables.some(
+    (table) =>
+      (table.state === 'ready' || table.state === 'occupied') &&
+      freeSlotsOnTable(day, table.placementId).length > 0,
+  );
+}
+
 /** Seat the next waiting guest on a ready table (or occupied with a free chair). Party size 1. */
 export function seatNextWaiting(day: FloorDay): FloorDay {
   const waiting = day.pool.find((g) => g.stage === 'waiting');
@@ -106,10 +116,21 @@ export function seatNextWaiting(day: FloorDay): FloorDay {
 }
 
 export function takeOrdersForSeated(day: FloorDay, customerIds: string[]): FloorDay {
-  const idSet = new Set(customerIds);
+  // The service interaction is intentionally one guest at a time even when a
+  // caller supplies more than one id. Proximity is a domain rule, not a HUD
+  // convention, so remote seated guests are ignored.
+  const customerId = customerIds.find((id) =>
+    day.pool.some(
+      (guest) =>
+        guest.customer.id === id &&
+        guest.stage === 'seated' &&
+        playerNearGuestSeat(day.playerPosition, guest),
+    ),
+  );
+  if (!customerId) return day;
   const newTickets: FloorTicket[] = [];
   const pool = day.pool.map((g) => {
-    if (!idSet.has(g.customer.id) || g.stage !== 'seated') return g;
+    if (g.customer.id !== customerId || g.stage !== 'seated') return g;
     newTickets.push({
       id: `ticket_${g.customer.id}`,
       customerId: g.customer.id,

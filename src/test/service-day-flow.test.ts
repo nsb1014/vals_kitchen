@@ -89,11 +89,14 @@ describe('service day store flow', () => {
     );
   });
 
-  it('maps prestige and soft-reset reducer events to ceremony state', () => {
+  it('maps prestige to the notification queue and soft reset to ceremony state', () => {
     const before = createNewGameState(1);
     expect(mapReducerEventsToUi([{ type: 'PRESTIGE_TRIGGERED', prestige: 3 }], before)).toEqual({
-      ceremony: 'prestige',
-      ceremonyPrestige: 3,
+      celebrationQueue: [{
+        kind: 'prestige',
+        title: 'Prestige Achieved!',
+        body: 'Reached P3. Rating reset to 3.0★ and permanent payouts increased.',
+      }],
     });
     expect(mapReducerEventsToUi([{ type: 'SOFT_RESET_TRIGGERED' }], before)).toEqual({
       ceremony: 'soft_reset',
@@ -101,7 +104,7 @@ describe('service day store flow', () => {
     });
   });
 
-  it('surfaces prestige ceremony when rating reaches 6', async () => {
+  it('surfaces prestige through the notification queue when rating reaches 6', async () => {
     resetStore(777001);
     useGameStore.setState({ rating: 5.95 });
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
@@ -109,7 +112,12 @@ describe('service day store flow', () => {
 
     await serveCurrentCustomer();
     const state = useGameStore.getState();
-    expect(state.ceremony).toBe('prestige');
+    expect(state.ceremony).toBeNull();
+    expect(state.celebrationQueue).toContainEqual(
+      expect.objectContaining({ kind: 'prestige' }),
+    );
+    expect(state.pendingReview?.ratingDelta).toBeGreaterThanOrEqual(0);
+    expect(state.activeDay?.dayRatingDelta).toBeGreaterThanOrEqual(0);
     expect(state.prestige).toBeGreaterThan(0);
     expect(state.rating).toBe(3);
   });

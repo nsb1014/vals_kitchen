@@ -94,26 +94,42 @@ test.describe('layout editing', () => {
 });
 
 test.describe('screen navigation', () => {
-  test('each Phase 6 screen renders key content', async ({ page }) => {
+  test('current meta surfaces render key content', async ({ page }) => {
     await gotoFreshGame(page);
 
-    await navigateToScreen(page, 'inspector');
-    await assertScreenOpen(page, 'inspector-screen');
+    await navigateToScreen(page, 'recipes');
+    await assertScreenOpen(page, 'recipes-screen');
+    await expect(page.getByRole('tab', { name: 'Flavors' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     // Flavor profiles intentionally omit axes whose displayed value is zero.
     await expect(page.locator('[data-testid="flavor-axis-row"]')).toHaveCount(5);
     await expect(page.locator('.flavor-temp-badge')).toBeVisible();
 
-    await navigateToScreen(page, 'shop');
-    await assertScreenOpen(page, 'shop-screen');
-    await expect(page.locator('#shop-sections')).not.toBeEmpty();
-
-    await navigateToScreen(page, 'recipes');
-    await assertScreenOpen(page, 'recipes-screen');
+    await page.getByRole('tab', { name: 'Recipes' }).click();
     await expect(page.locator('#recipe-progress')).not.toHaveText('Loading…');
 
-    await navigateToScreen(page, 'rating');
-    await assertScreenOpen(page, 'rating-screen');
-    await expect(page.locator('.rating-current')).toContainText('★');
+    await navigateToScreen(page, 'restaurant');
+    await page.getByTestId('edit-restaurant-btn').click();
+    await page.getByTestId('open-layout-catalog').click();
+    await expect(page.getByTestId('layout-catalog-sheet')).toBeVisible();
+    await expect(
+      page.getByRole('tab', { name: 'Ingredients' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      page.getByRole('tab', { name: 'Kitchen Equipment' }),
+    ).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Layout' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close furniture catalog' }).click();
+    await page.getByTestId('toggle-edit-layout').click();
+
+    await page
+      .getByRole('button', { name: 'Restaurant rating details' })
+      .click();
+    await expect(page.getByTestId('hud-detail-menu')).toContainText(
+      'Recent reviews',
+    );
 
     await navigateToScreen(page, 'settings');
     await assertScreenOpen(page, 'settings-screen');
@@ -150,12 +166,20 @@ test.describe('persistence', () => {
       await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
       const afterSeat = bridge.getGameState() as {
         activeDay?: {
-          floor?: { pool: Array<{ stage: string; customer: { id: string } }> };
+          floor?: {
+            pool: Array<{
+              stage: string;
+              customer: { id: string };
+              seat?: { x: number; y: number };
+            }>;
+          };
         } | null;
         unlockedIngredientIds: string[];
       };
       const seated = afterSeat.activeDay?.floor?.pool.find((g) => g.stage === 'seated');
       if (!seated) throw new Error('expected seated guest');
+      if (!seated.seat) throw new Error('expected seated guest position');
+      bridge.setFloorNavPosition(seated.seat);
       await bridge.dispatch({
         type: 'FLOOR_TAKE_ORDERS',
         customerIds: [seated.customer.id],

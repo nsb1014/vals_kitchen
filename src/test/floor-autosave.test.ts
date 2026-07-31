@@ -84,6 +84,7 @@ async function advanceFloorToCarryTicket(): Promise<{
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
 
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
+  useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
   await useGameStore.getState().dispatch({
     type: 'FLOOR_TAKE_ORDERS',
     customerIds: [seated.customer.id],

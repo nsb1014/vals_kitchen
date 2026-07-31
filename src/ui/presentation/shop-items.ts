@@ -111,22 +111,37 @@ export function buildIngredientShopRows(
   equipmentNameById: Map<string, string>,
   ctx: DomainContext,
 ): ShopIngredientRow[] {
+  const availabilityOrder: Record<ShopItemAvailability, number> = {
+    owned: 0,
+    available: 1,
+    unaffordable: 2,
+    gate_locked: 3,
+    limit_reached: 4,
+  };
   return ingredients
-    .filter((item) => !state.unlockedIngredientIds.includes(item.id))
     .map((item) => {
       const gateOwned = state.purchasedEquipmentIds.includes(item.equipmentId);
       const purchase: PurchaseKind = { type: 'ingredient', ingredientId: item.id };
+      const owned = state.unlockedIngredientIds.includes(item.id);
       return {
         kind: 'ingredient' as const,
         id: item.id,
         name: item.name,
         category: item.category,
         equipmentGateName: equipmentNameById.get(item.equipmentId) ?? item.equipmentId,
-        cost: purchaseCost(state, purchase),
-        availability: deriveAvailability(state, purchase, ctx, !gateOwned),
+        cost: owned ? 0 : purchaseCost(state, purchase),
+        availability: owned
+          ? 'owned' as const
+          : deriveAvailability(state, purchase, ctx, !gateOwned),
         purchase,
       };
-    });
+    })
+    .sort(
+      (left, right) =>
+        availabilityOrder[left.availability] -
+          availabilityOrder[right.availability] ||
+        left.name.localeCompare(right.name),
+    );
 }
 
 export function buildUtilityShopRows(state: GameState, ctx: DomainContext): ShopUtilityRow[] {

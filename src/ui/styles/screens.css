@@ -119,7 +119,7 @@
 .bottom-nav {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem;
   padding: 0.25rem 0.5rem;
   background: rgba(30, 23, 20, 0.96);
@@ -646,9 +646,28 @@
 /* Recipe book */
 .recipe-book-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
   padding: 0.65rem 1rem 0;
+}
+
+.flavor-book-layout {
+  display: grid;
+  grid-template-rows: minmax(10rem, 38%) minmax(0, 1fr);
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 0.25rem 0 1rem;
+}
+
+.flavor-book-layout .inspector-list {
+  max-height: none;
+}
+
+@media (min-width: 620px) {
+  .flavor-book-layout {
+    grid-template-columns: minmax(16rem, 38%) minmax(0, 1fr);
+    grid-template-rows: 1fr;
+  }
 }
 
 .recipe-book-tab {
@@ -988,6 +1007,16 @@
   overflow: hidden;
 }
 
+.layout-shop-tabs {
+  padding: 0.6rem 0.75rem 0;
+}
+
+.layout-shop-tabs .recipe-book-tab {
+  padding-inline: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.15;
+}
+
 .layout-catalog-header {
   display: flex;
   align-items: flex-start;
@@ -1024,7 +1053,7 @@
 }
 
 .layout-catalog-scroll {
-  max-height: calc(min(68vh, 36rem) - 4.5rem);
+  max-height: calc(min(68vh, 36rem) - 8.1rem);
   padding: 0 0.75rem 0.75rem;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1053,6 +1082,26 @@
   background: var(--vk-panel);
   color: var(--vk-text);
   text-align: left;
+}
+
+.layout-catalog-row-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.layout-catalog-row-copy strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.layout-catalog-row-copy small {
+  overflow: hidden;
+  color: var(--vk-text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .layout-catalog-row:not(:disabled) {

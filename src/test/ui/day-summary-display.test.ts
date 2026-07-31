@@ -104,4 +104,26 @@ describe('day summary display', () => {
     expect(display.ratingDeltaText).toMatch(/\+0\.45★/);
     expect(display.ratingDeltaText).toContain('3.0 → 3.5');
   });
+
+  it('reports review gains without treating a prestige reset as a loss', () => {
+    const display = buildDaySummaryDisplay({
+      dayEarnings: 300,
+      dayBonus: 20,
+      volumeBonus: 20,
+      averageMatch: 8.5,
+      ratingStart: 5.8,
+      ratingEnd: 3,
+      ratingDelta: 0.25,
+      ratingResetOccurred: true,
+      customersServed: 4,
+      seatingCapacity: 4,
+      unlockCount: 12,
+      totalIngredients: 40,
+    });
+
+    expect(display.ratingDeltaText).toBe(
+      'Rating change from reviews: +0.25★ (reset excluded)',
+    );
+    expect(display.ratingDeltaText).not.toContain('-');
+  });
 });

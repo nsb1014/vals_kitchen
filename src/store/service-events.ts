@@ -76,8 +76,11 @@ export function mapReducerEventsToUi(
         }
         break;
       case 'PRESTIGE_TRIGGERED':
-        patch.ceremony = 'prestige';
-        patch.ceremonyPrestige = event.prestige;
+        celebrations.push({
+          kind: 'prestige',
+          title: 'Prestige Achieved!',
+          body: `Reached P${event.prestige}. Rating reset to 3.0★ and permanent payouts increased.`,
+        });
         break;
       case 'SOFT_RESET_TRIGGERED':
         patch.ceremony = 'soft_reset';

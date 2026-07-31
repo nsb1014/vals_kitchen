@@ -58,11 +58,8 @@ test.describe('cook sheet responsive chrome', () => {
       await expect(
         page.getByTestId('compose-sheet').getByTestId('guest-portrait'),
       ).toBeVisible();
-      await expect(
-        page.locator(
-          '.compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]):visible',
-        ),
-      ).toHaveCount(0);
+      await expect(page.getByTestId('compose-search')).toHaveCount(0);
+      await expect(page.locator('.compose-filters')).toHaveCount(0);
       await expectFooterInsideSheet(page);
       const pantry = await page.getByTestId('compose-pantry').boundingBox();
       expect(pantry).not.toBeNull();
@@ -74,34 +71,14 @@ test.describe('cook sheet responsive chrome', () => {
     });
   }
 
-  test('keeps search focus while typing and filters without rebuilding the input', async ({
+  test('shows the whole pantry without search or multi-select filters', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 720 });
     await openCookFixture(page);
-    const search = page.getByTestId('compose-search');
-    await search.pressSequentially('oil');
-    await expect(search).toBeFocused();
-    await expect(search).toHaveValue('oil');
-    await expect(page.getByTestId('compose-filter-summary')).toContainText(
-      'matching',
-    );
-    await expect(page.getByTestId('ingredient-chip')).toHaveCount(2);
-  });
-
-  test('order flavor pills visibly filter with request-band semantics', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 390, height: 720 });
-    await openCookFixture(page);
-    const requestedFilter = page.locator('.filter-axis-chip.requested').first();
-    await expect(requestedFilter).toBeVisible();
-    const label = (await requestedFilter.textContent())?.trim();
-    expect(label).toMatch(/^(High|Moderate|Low) /);
-    await requestedFilter.click();
-    await expect(requestedFilter).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByTestId('compose-filter-summary')).toContainText(label!);
-    await expect(page.getByTestId('ingredient-chip')).not.toHaveCount(100);
+    await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
+    await expect(page.getByTestId('compose-search')).toHaveCount(0);
+    await expect(page.locator('.compose-filters')).toHaveCount(0);
   });
 
   test('keeps full flavor detail visible above the mobile Plate action', async ({
@@ -159,9 +136,13 @@ test.describe('cook sheet responsive chrome', () => {
     await page.setViewportSize({ width: 2048, height: 1152 });
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
-    const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
-    const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
-    expect(canvas.x + canvas.width).toBeLessThanOrEqual(sheet.x + 1);
+    await expect
+      .poll(async () => {
+        const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
+        const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
+        return canvas.x + canvas.width <= sheet.x + 1;
+      })
+      .toBe(true);
     await page.screenshot({
       path: 'test-results/modifier-desktop-full-restaurant.png',
       animations: 'disabled',
@@ -195,18 +176,16 @@ test.describe('service sheet tiers', () => {
       .getByTestId('open-service-sheet')
       .locator('.service-card')
       .boundingBox();
-    const canvas = await page.getByTestId('restaurant-canvas').boundingBox();
+    const nav = await page.locator('.bottom-nav').boundingBox();
     expect(sheet).not.toBeNull();
     expect(card).not.toBeNull();
-    expect(canvas).not.toBeNull();
+    expect(nav).not.toBeNull();
     // The panel should hug its content, not reserve a fixed empty sheet that
     // makes the lower half of the restaurant appear missing.
     expect(sheet!.height).toBeLessThanOrEqual(card!.height + 26);
     // Overlay sits in the lower half of the viewport (same basis as other sheet-tier tests).
     expect(sheet!.y / 720).toBeGreaterThan(0.5);
-    expect(sheet!.y + sheet!.height).toBeGreaterThanOrEqual(
-      canvas!.y + canvas!.height - 2,
-    );
+    expect(Math.abs(sheet!.y + sheet!.height - nav!.y)).toBeLessThanOrEqual(3);
     await page.screenshot({
       path: 'test-results/open-service-compact.png',
       animations: 'disabled',
@@ -237,7 +216,7 @@ test.describe('service sheet tiers', () => {
       page,
       'day-summary-sheet',
       '[data-testid="day-summary-sheet"] .sheet-footer',
-      'summary-visit-shop',
+      'summary-edit-restaurant',
     );
     await page.screenshot({
       path: 'test-results/day-summary-near-full.png',
@@ -246,12 +225,60 @@ test.describe('service sheet tiers', () => {
   });
 });
 
+test.describe('consolidated mobile navigation', () => {
+  test('keeps the restaurant canvas stable while edit controls open', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    const before = await visibleRect(page.getByTestId('restaurant-canvas'));
+
+    await page.getByTestId('edit-restaurant-btn').click();
+    const after = await visibleRect(page.getByTestId('restaurant-canvas'));
+    expect(after.width).toBe(before.width);
+    expect(after.height).toBe(before.height);
+
+    await page.getByTestId('open-layout-catalog').click();
+    const catalog = page.getByTestId('layout-catalog-sheet');
+    await expect(catalog.getByRole('tab', { name: 'Ingredients' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(
+      catalog.getByRole('tab', { name: 'Kitchen Equipment' }),
+    ).toBeVisible();
+    await expect(catalog.getByRole('tab', { name: 'Layout' })).toBeVisible();
+  });
+
+  test('opens status details as buttons and settings from the top-right gear', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+
+    await page.getByRole('button', { name: 'Cash details' }).click();
+    await expect(page.getByTestId('hud-detail-menu')).toContainText(
+      'Total cash gained since day 1',
+    );
+    await page.getByTestId('hud-settings').click();
+    await expect(page.getByTestId('settings-screen')).toBeVisible();
+  });
+
+  test('opens the recipe book on Flavors', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    await navigateToScreen(page, 'recipes');
+
+    await expect(
+      page.getByRole('tab', { name: 'Flavors' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('recipe-flavor-detail')).toBeVisible();
+  });
+});
+
 test.describe('meta-full screen chrome', () => {
   for (const [screen, testId] of [
-    ['shop', 'shop-screen'],
-    ['inspector', 'inspector-screen'],
     ['recipes', 'recipes-screen'],
-    ['rating', 'rating-screen'],
     ['settings', 'settings-screen'],
   ] as const) {
     test(`${screen} uses the shared meta shell`, async ({ page }) => {

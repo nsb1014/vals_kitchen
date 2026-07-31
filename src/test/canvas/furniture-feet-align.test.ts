@@ -17,7 +17,7 @@ import {
   PLAYER_CONTENT_HEIGHT_PX,
   PLAYER_DISPLAY_HEIGHT,
   SEATED_GUEST_DISPLAY_HEIGHT,
-} from '../../canvas/world/ActorLayer.ts';
+} from '../../canvas/world/actor-metrics.ts';
 
 describe('furniture feet align', () => {
   it('places station art with feet on tile bottom', () => {

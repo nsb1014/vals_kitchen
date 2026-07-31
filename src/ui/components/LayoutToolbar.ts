@@ -1,12 +1,22 @@
 import type { PurchaseKind } from '../../domain/economy/purchases.ts';
-import { getDomainContext, getEquipmentNameMap } from '../../app/content-loader.ts';
-import { useGameStore, type GameStore } from '../../store/game-store.ts';
 import {
-  buildLayoutCatalogRows,
-  selectShowLayoutHud,
-  type LayoutCatalogRow,
-} from '../../store/selectors/layout.ts';
+  getDomainContext,
+  getEquipmentCatalog,
+  getEquipmentNameMap,
+} from '../../app/content-loader.ts';
+import { useGameStore, type GameStore } from '../../store/game-store.ts';
+import { selectShowLayoutHud } from '../../store/selectors/layout.ts';
 import { selectUnplacedItems } from '../../store/selectors/shop.ts';
+import {
+  buildEquipmentShopRows,
+  buildIngredientShopRows,
+  buildUtilityShopRows,
+  formatShopCost,
+  shopAvailabilityClass,
+  shopAvailabilityLabel,
+  type ShopRow,
+} from '../presentation/shop-items.ts';
+import { renderFoodIconHtml } from './food-icon.ts';
 
 export async function purchaseAndStartPlacement(
   store: Pick<GameStore, 'dispatch' | 'startPlacement'>,
@@ -17,15 +27,25 @@ export async function purchaseAndStartPlacement(
   store.startPlacement(itemKey);
 }
 
-function catalogAvailabilityLabel(row: LayoutCatalogRow): string {
-  switch (row.availability) {
-    case 'available':
-      return 'Buy & place';
-    case 'unaffordable':
-      return 'Not enough cash';
-    case 'cap_reached':
-      return 'Decor limit reached';
+type CatalogTab = 'ingredients' | 'equipment' | 'layout';
+
+function shopRowDescription(row: ShopRow): string {
+  if (row.kind === 'ingredient') {
+    return row.availability === 'gate_locked'
+      ? `Requires ${row.equipmentGateName}`
+      : row.category;
   }
+  if (row.kind === 'equipment') {
+    return `Unlocks ${row.groupName} ingredients`;
+  }
+  return row.description;
+}
+
+function placementItemKey(row: ShopRow): string | null {
+  if (row.kind === 'equipment') return row.id;
+  if (row.kind === 'table') return 'table_2seat';
+  if (row.kind === 'decor') return row.id.replace(/^decor:/, '');
+  return null;
 }
 
 export function mountLayoutToolbar(container: HTMLElement): () => void {
@@ -53,6 +73,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
   const catalogEl = container.querySelector('#layout-catalog-sheet') as HTMLElement;
   const hintEl = container.querySelector('#placement-hint') as HTMLElement;
   let catalogOpen = false;
+  let catalogTab: CatalogTab = 'ingredients';
 
   const renderCatalog = (state: GameStore) => {
     catalogBtn?.setAttribute('aria-expanded', String(catalogOpen));
@@ -62,21 +83,35 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       return;
     }
 
-    const catalogRows = buildLayoutCatalogRows(state, getDomainContext());
-    const tableRows = catalogRows.filter((row) => row.kind === 'table');
-    const decorRows = catalogRows.filter((row) => row.kind === 'decor');
+    const ctx = getDomainContext();
+    const ingredientRows = buildIngredientShopRows(
+      state,
+      ctx.ingredients,
+      getEquipmentNameMap(),
+      ctx,
+    );
+    const equipmentRows = buildEquipmentShopRows(
+      state,
+      getEquipmentCatalog(),
+      ctx,
+    );
+    const utilityRows = buildUtilityShopRows(state, ctx);
+    const rows: ShopRow[] =
+      catalogTab === 'ingredients'
+        ? ingredientRows
+        : catalogTab === 'equipment'
+          ? equipmentRows
+          : utilityRows;
     const unplaced = selectUnplacedItems(state, getEquipmentNameMap());
-    const renderPurchaseRow = (row: LayoutCatalogRow, index: number) => `
-      <button
-        type="button"
-        class="layout-catalog-row"
-        data-catalog-index="${index}"
-        ${row.availability === 'available' ? '' : 'disabled'}
-      >
-        <span>${row.label}</span>
+    const renderPurchaseRow = (row: ShopRow, index: number) => `
+      <button type="button" class="layout-catalog-row ${shopAvailabilityClass(row.availability)}" data-catalog-index="${index}" ${row.availability === 'available' ? '' : 'disabled'}>
+        <span class="layout-catalog-row-copy">
+          <strong>${row.kind === 'ingredient' ? renderFoodIconHtml(row.id, 26) : ''}${row.name}</strong>
+          <small>${shopRowDescription(row)}</small>
+        </span>
         <span class="layout-catalog-row-action">
-          <strong>$${row.cost.toLocaleString('en-US')}</strong>
-          <small>${catalogAvailabilityLabel(row)}</small>
+          <strong>${formatShopCost(row.cost, row.availability)}</strong>
+          <small>${shopAvailabilityLabel(row.availability)}</small>
         </span>
       </button>
     `;
@@ -85,34 +120,38 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
     catalogEl.innerHTML = `
       <header class="layout-catalog-header">
         <div>
-          <h2>Furniture Catalog</h2>
-          <p>Buy an item, then tap a valid tile to place it.</p>
+          <h2>Edit Restaurant</h2>
+          <p>Cash: $${state.cash.toLocaleString('en-US')}</p>
         </div>
         <button type="button" class="layout-catalog-close" aria-label="Close furniture catalog">×</button>
       </header>
+      <div class="recipe-book-tabs layout-shop-tabs" role="tablist" aria-label="Restaurant shop sections">
+        <button type="button" class="recipe-book-tab${catalogTab === 'ingredients' ? ' active' : ''}" data-catalog-tab="ingredients" role="tab" aria-selected="${catalogTab === 'ingredients'}">Ingredients</button>
+        <button type="button" class="recipe-book-tab${catalogTab === 'equipment' ? ' active' : ''}" data-catalog-tab="equipment" role="tab" aria-selected="${catalogTab === 'equipment'}">Kitchen Equipment</button>
+        <button type="button" class="recipe-book-tab${catalogTab === 'layout' ? ' active' : ''}" data-catalog-tab="layout" role="tab" aria-selected="${catalogTab === 'layout'}">Layout</button>
+      </div>
       <div class="layout-catalog-scroll">
+        ${
+          catalogTab === 'layout'
+            ? `<section class="layout-catalog-group">
+                <h3>Owned, not placed</h3>
+                <div class="placement-palette">
+                  ${
+                    unplaced.length > 0
+                      ? unplaced
+                          .map(
+                            (item, index) =>
+                              `<button type="button" class="placement-chip${state.pendingPlacementItemKey === item.itemKey ? ' active' : ''}" data-item-key="${item.itemKey}" data-item-index="${index}">${item.label}</button>`,
+                          )
+                          .join('')
+                      : '<p class="layout-catalog-empty">Everything you own is placed.</p>'
+                  }
+                </div>
+              </section>`
+            : ''
+        }
         <section class="layout-catalog-group">
-          <h3>Buy &amp; place — Tables</h3>
-          ${tableRows.map((row) => renderPurchaseRow(row, catalogRows.indexOf(row))).join('')}
-        </section>
-        <section class="layout-catalog-group">
-          <h3>Owned, not placed</h3>
-          <div class="placement-palette">
-            ${
-              unplaced.length > 0
-                ? unplaced
-                    .map(
-                      (item, index) =>
-                        `<button type="button" class="placement-chip${state.pendingPlacementItemKey === item.itemKey ? ' active' : ''}" data-item-key="${item.itemKey}" data-item-index="${index}">${item.label}</button>`,
-                    )
-                    .join('')
-                : '<p class="layout-catalog-empty">Everything you own is placed.</p>'
-            }
-          </div>
-        </section>
-        <section class="layout-catalog-group">
-          <h3>Buy &amp; place — Decorations</h3>
-          ${decorRows.map((row) => renderPurchaseRow(row, catalogRows.indexOf(row))).join('')}
+          ${rows.map((row, index) => renderPurchaseRow(row, index)).join('') || '<p class="layout-catalog-empty">Everything in this section is unlocked.</p>'}
         </section>
       </div>
     `;
@@ -123,16 +162,33 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
         catalogOpen = false;
         renderCatalog(useGameStore.getState());
       });
+    catalogEl
+      .querySelectorAll<HTMLButtonElement>('[data-catalog-tab]')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          const tab = button.dataset.catalogTab;
+          if (tab !== 'ingredients' && tab !== 'equipment' && tab !== 'layout') {
+            return;
+          }
+          catalogTab = tab;
+          renderCatalog(useGameStore.getState());
+        });
+      });
     catalogEl.querySelectorAll<HTMLButtonElement>('.layout-catalog-row').forEach((button) => {
       button.addEventListener('click', async () => {
         const index = Number(button.dataset.catalogIndex);
-        const row = catalogRows[index];
+        const row = rows[index];
         if (!row || row.availability !== 'available') return;
         button.disabled = true;
         const store = useGameStore.getState();
         try {
-          await purchaseAndStartPlacement(store, row.purchase, row.itemKey);
-          catalogOpen = false;
+          const itemKey = placementItemKey(row);
+          if (itemKey) {
+            await purchaseAndStartPlacement(store, row.purchase, itemKey);
+            catalogOpen = false;
+          } else {
+            await store.dispatch({ type: 'PURCHASE', purchase: row.purchase });
+          }
         } catch {
           store.setFloorToast('That item is no longer available.');
         }
@@ -198,6 +254,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
   });
   catalogBtn?.addEventListener('click', () => {
     catalogOpen = !catalogOpen;
+    if (catalogOpen) catalogTab = 'ingredients';
     renderCatalog(useGameStore.getState());
   });
 

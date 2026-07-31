@@ -115,11 +115,18 @@ export function scoreDishForCustomer(
     matchStars,
     modifierOutcome.ratingDeltaMultiplier * prestigeRatingScale,
   );
-  let nextRating = ratingResult.rating + modifierOutcome.extraRatingDelta * prestigeRatingScale;
-  nextRating = Math.min(6, Math.max(0, nextRating));
+  const reviewRating = Math.min(
+    6,
+    Math.max(
+      0,
+      state.rating +
+        ratingResult.delta +
+        modifierOutcome.extraRatingDelta * prestigeRatingScale,
+    ),
+  );
 
-  let prestigeTriggered = ratingResult.prestigeTriggered || nextRating >= 6;
-  let softResetTriggered = ratingResult.softResetTriggered || nextRating <= 0;
+  let prestigeTriggered = ratingResult.prestigeTriggered || reviewRating >= 6;
+  let softResetTriggered = ratingResult.softResetTriggered || reviewRating <= 0;
 
   if (prestigeTriggered) {
     prestigeTriggered = true;
@@ -127,11 +134,13 @@ export function scoreDishForCustomer(
   } else if (softResetTriggered) {
     softResetTriggered = true;
   }
+  const nextRating = prestigeTriggered ? 3 : reviewRating;
 
   return {
     matchStars,
     tip,
-    ratingDelta: nextRating - state.rating,
+    // Review delta intentionally excludes prestige's reset to 3★.
+    ratingDelta: reviewRating - state.rating,
     nextRating,
     recipeId: recipe?.id ?? null,
     recipeName: recipe?.name ?? null,
@@ -160,6 +169,8 @@ export function scoreAndPayForCustomer(
     ...nextState.activeDay!,
     dayEarnings: nextState.activeDay!.dayEarnings + score.tip,
     dayMatchSum: nextState.activeDay!.dayMatchSum + score.matchStars,
+    dayRatingDelta:
+      (nextState.activeDay!.dayRatingDelta ?? 0) + score.ratingDelta,
     customersServed: nextState.activeDay!.customersServed + 1,
   };
   nextState.activeDay = activeDay;
@@ -181,6 +192,12 @@ export function scoreAndPayForCustomer(
   } else if (softResetTriggered) {
     nextState = applySoftReset({ ...nextState, rating: 0 });
     softResetTriggered = true;
+  }
+  if (nextState.activeDay && (prestigeTriggered || softResetTriggered)) {
+    nextState.activeDay = {
+      ...nextState.activeDay,
+      ratingResetOccurred: true,
+    };
   }
 
   return {

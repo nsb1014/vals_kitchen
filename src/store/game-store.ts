@@ -69,7 +69,7 @@ export interface ServeReview {
 
 export type CeremonyKind = 'prestige' | 'soft_reset';
 
-export type CelebrationKind = 'recipe' | 'mastery' | 'achievement';
+export type CelebrationKind = 'recipe' | 'mastery' | 'achievement' | 'prestige';
 
 export interface Celebration {
   kind: CelebrationKind;
@@ -379,6 +379,8 @@ function buildDaySummary(
     averageMatch,
     ratingStart,
     ratingEnd: after.rating,
+    ratingDelta: activeDay.dayRatingDelta,
+    ratingResetOccurred: activeDay.ratingResetOccurred,
     customersServed: activeDay.customersServed,
     seatingCapacity: before.seatingCapacity,
     unlockCount: before.unlockedIngredientIds.length,
@@ -629,11 +631,29 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   setFloorNavPosition(pos) {
-    const prev = get().floorPlayerGrid;
-    if (prev?.x === pos.x && prev?.y === pos.y) return;
-    set({ floorPlayerGrid: { x: pos.x, y: pos.y } });
     const current = get();
-    if (current.composeSheetOpen && !selectCanOpenFloorCompose(current)) {
+    const prev = current.floorPlayerGrid;
+    const persisted = current.activeDay?.floor?.playerPosition;
+    if (
+      prev?.x === pos.x &&
+      prev?.y === pos.y &&
+      (!persisted || (persisted.x === pos.x && persisted.y === pos.y))
+    ) {
+      return;
+    }
+    const playerPosition = { x: pos.x, y: pos.y };
+    const activeDay = current.activeDay?.floor
+      ? {
+          ...current.activeDay,
+          floor: {
+            ...current.activeDay.floor,
+            playerPosition,
+          },
+        }
+      : current.activeDay;
+    set({ floorPlayerGrid: playerPosition, activeDay });
+    const next = get();
+    if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
     }
   },
