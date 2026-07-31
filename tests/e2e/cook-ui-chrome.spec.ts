@@ -59,7 +59,7 @@ test.describe('cook sheet responsive chrome', () => {
         page.getByTestId('compose-sheet').getByTestId('guest-portrait'),
       ).toBeVisible();
       await expect(page.getByTestId('compose-search')).toHaveCount(0);
-      await expect(page.locator('.compose-filters')).toHaveCount(0);
+      await expect(page.locator('.compose-filters')).toBeVisible();
       await expectFooterInsideSheet(page);
       const pantry = await page.getByTestId('compose-pantry').boundingBox();
       expect(pantry).not.toBeNull();
@@ -71,14 +71,31 @@ test.describe('cook sheet responsive chrome', () => {
     });
   }
 
-  test('shows the whole pantry without search or multi-select filters', async ({
+  test('keeps flavor filtering single-select without a search bar', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 720 });
     await openCookFixture(page);
     await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
     await expect(page.getByTestId('compose-search')).toHaveCount(0);
-    await expect(page.locator('.compose-filters')).toHaveCount(0);
+    const requestedFilters = page.locator(
+      '.filter-axis-chip.requested[data-compose-axis]',
+    );
+    expect(await requestedFilters.count()).toBeGreaterThan(1);
+
+    const first = requestedFilters.nth(0);
+    const second = requestedFilters.nth(1);
+    await first.click();
+    await expect(first).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.getByTestId('ingredient-chip').count()).toBeLessThan(100);
+
+    await second.click();
+    await expect(first).toHaveAttribute('aria-pressed', 'false');
+    await expect(second).toHaveAttribute('aria-pressed', 'true');
+
+    await second.click();
+    await expect(second).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
   });
 
   test('keeps full flavor detail visible above the mobile Plate action', async ({

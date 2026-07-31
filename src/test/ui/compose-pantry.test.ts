@@ -2,12 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { emptyFlavorProfile } from '../../domain/flavor/axis-labels.ts';
 import type { Ingredient } from '../../domain/types.ts';
 import {
-  clearComposeAxes,
-  clearComposeNameQuery,
   composePantrySummary,
   emptyComposePantryFilters,
   filterComposePantry,
-  setComposeNameQuery,
   toggleComposeAxis,
 } from '../../ui/presentation/compose-pantry.ts';
 
@@ -34,27 +31,19 @@ const pantry = [
 ];
 
 describe('compose pantry filters', () => {
-  it('combines selected high axes with AND semantics', () => {
+  it('keeps only the most recently selected flavor axis', () => {
     let filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
     filters = toggleComposeAxis(filters, 'HT');
+    expect(filters.selectedAxis).toBe('HT');
     expect(filterComposePantry(pantry, filters).map((item) => item.id)).toEqual(
-      ['stock'],
+      ['stock', 'chili'],
     );
   });
 
-  it('normalizes and trims a name query', () => {
-    const filters = setComposeNameQuery(emptyComposePantryFilters(), '  OIL ');
-    expect(filterComposePantry(pantry, filters).map((item) => item.id)).toEqual(
-      ['oil'],
-    );
-  });
-
-  it('clears search and axes independently', () => {
+  it('clears the active flavor when it is selected again', () => {
     let filters = toggleComposeAxis(emptyComposePantryFilters(), 'UM');
-    filters = setComposeNameQuery(filters, 'oil');
-    filters = clearComposeNameQuery(filters);
-    expect(filterComposePantry(pantry, filters)).toHaveLength(2);
-    filters = clearComposeAxes(filters);
+    filters = toggleComposeAxis(filters, 'UM');
+    expect(filters.selectedAxis).toBeNull();
     expect(filterComposePantry(pantry, filters)).toHaveLength(3);
   });
 
