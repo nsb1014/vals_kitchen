@@ -3,7 +3,7 @@ import { createStarterMap, doorForGrid, servicePlayerSpawn } from '../../domain/
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 
 describe('servicePlayerSpawn', () => {
-  it('spawns south of north-wall tables and north of the waiting line', () => {
+  it('spawns clear of both north-wall seats and the south-door waiting lane', () => {
     const map = createStarterMap();
     const spawn = servicePlayerSpawn(map.gridSize.w, map.gridSize.h);
     const door = doorForGrid(map.gridSize.w, map.gridSize.h);
@@ -12,7 +12,7 @@ describe('servicePlayerSpawn', () => {
       .filter((p) => p.itemKey.startsWith('table'))
       .map((p) => p.y);
 
-    expect(spawn.x).toBe(door.x);
+    expect(spawn.x).toBe(door.x + 1);
     expect(spawn.y).toBeLessThan(door.y - 1);
     expect(spawn.y).toBeGreaterThan(Math.max(...tableYs));
     expect(seats.every((s) => s.x !== spawn.x || s.y !== spawn.y)).toBe(true);

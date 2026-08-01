@@ -2,13 +2,12 @@ import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import type { SeatSlot } from '../../domain/floor/types.ts';
 
 /**
- * Top-down seating model (flat tabletops, separate chair cells):
+ * ¾-view seating model (compact tables, separate backless-stool cells):
  *
  * 1. Seats live in adjacent grid cells — never on the table cell.
- * 2. Chair feet stay on the seat-cell floor; the diner is offset so sit-pose
- *    hips land on the cushion (SEAT_SIT_OFFSET_Y). That is seat-contact
- *    alignment, not a tabletop tuck. Chairs always Y-sort behind the diner.
- * 3. Draw order: table (floor prop) → chair → guest.
+ * 2. Stool and authored sit-pose feet share one floor baseline. The pose owns
+ *    the hip/leg geometry; runtime never tucks or stretches the diner.
+ * 3. Draw order: table (floor prop) → stool → guest.
  * 4. Guests match the chef’s silhouette height (content-based scale).
  *
  * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
@@ -21,7 +20,7 @@ export const SEAT_CAMERA_BIAS_PX = 0;
  * Negative pulls the sit pose onto the cushion / toward the chair back.
  * Chair Y-sort always uses the diner’s feet so the chair stays behind them.
  */
-export const SEAT_SIT_OFFSET_Y = -2;
+export const SEAT_SIT_OFFSET_Y = 0;
 
 function seatCellCenter(seat: SeatSlot): { x: number; y: number } {
   const { x: gx, y: gy } = gridToWorld(seat.x, seat.y);

@@ -159,6 +159,7 @@ const FURNITURE_SPRITES: Record<string, string> = {
   barista_station: 'barista_station.png',
   spice_rack: 'spice_rack.png',
   table_2seat: 'table_2seat.png',
+  table_2seat_occupied: 'table_2seat_occupied.png',
   table_2seat_unset: 'table_2seat_unset.png',
   table_2seat_dirty: 'table_2seat_dirty.png',
   chair: 'chair.png',
@@ -201,6 +202,7 @@ const GENERATED_ICONS = path.join(ROOT, 'scripts', '.asset-build', 'ingredient-i
 const GENERATED_CHIBI = path.join(ROOT, 'vendor', 'generated', 'chibi-ui');
 const GENERATED_CHIBI_PLAYER = path.join(GENERATED_CHIBI, 'player-frames');
 const GENERATED_CHIBI_GUESTS = path.join(GENERATED_CHIBI, 'guest-frames');
+const GENERATED_CHIBI_PORTRAITS = path.join(GENERATED_CHIBI, 'guest-portraits');
 const GENERATED_CHIBI_TILES = path.join(GENERATED_CHIBI, 'restaurant-tiles');
 const GENERATED_CHIBI_PROPS = path.join(GENERATED_CHIBI, 'restaurant-props');
 
@@ -265,6 +267,18 @@ function copyAchievementBadges(): void {
       throw new Error(`Missing generated achievement badge: ${source}`);
     }
     copyFileSync(source, path.join(destination, `${id}.png`));
+  }
+}
+
+function copyGuestPortraits(): void {
+  const destination = path.join(OUT, 'portraits');
+  mkdirSync(destination, { recursive: true });
+  for (const variant of ['a', 'b', 'c', 'd', 'e']) {
+    const source = path.join(GENERATED_CHIBI_PORTRAITS, `guest_${variant}.png`);
+    if (!existsSync(source)) {
+      throw new Error(`Missing generated guest portrait: ${source}`);
+    }
+    copyFileSync(source, path.join(destination, `guest_${variant}.png`));
   }
 }
 
@@ -355,6 +369,19 @@ function buildCredits(shippedFiles: string[]): void {
       usedIn: ['ui:recipe-book achievements', 'ui:achievement celebration'],
       sourceFile: `${id}.png`,
       approximationNote: PACKS.generatedBadges.note,
+    });
+  }
+
+  for (const variant of ['a', 'b', 'c', 'd', 'e']) {
+    add({
+      path: `portraits/guest_${variant}.png`,
+      pack: PACKS.chibiUi.pack,
+      author: PACKS.chibiUi.author,
+      sourceUrl: PACKS.chibiUi.sourceUrl,
+      license: 'CC0',
+      usedIn: ['ui:order-ticket guest identity'],
+      sourceFile: `guest_${variant}.png`,
+      approximationNote: PACKS.chibiUi.note,
     });
   }
 
@@ -501,7 +528,7 @@ function main(): void {
     furnitureManifestPath,
     path.join(OUT, 'atlases', 'furniture.png'),
     path.join(OUT, 'atlases', 'furniture.json'),
-    96,
+    112,
   );
 
   const charManifest: Record<string, string> = {};
@@ -522,7 +549,7 @@ function main(): void {
     charManifestPath,
     path.join(OUT, 'atlases', 'characters.png'),
     path.join(OUT, 'atlases', 'characters.json'),
-    192,
+    160,
     1,
   );
 
@@ -564,6 +591,7 @@ function main(): void {
 
   copyAudio();
   copyAchievementBadges();
+  copyGuestPortraits();
 
   const shippedFiles = listShippedFiles(OUT);
   buildCredits(shippedFiles);

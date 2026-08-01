@@ -40,13 +40,13 @@ describe('furniture feet align', () => {
     expect(chairDepthY(seatedFeetY)).toBeLessThan(seatedActorDepthY(seatedFeetY));
   });
 
-  it('keeps actors ~2 tiles tall and chairs in the same band as seated guests', () => {
+  it('uses one actor frame scale and keeps stools below seated hips', () => {
     expect(PLAYER_DISPLAY_HEIGHT).toBeGreaterThanOrEqual(TILE_PX * 1.75);
     expect(GUEST_DISPLAY_HEIGHT).toBe(PLAYER_DISPLAY_HEIGHT);
-    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBeGreaterThanOrEqual(PLAYER_DISPLAY_HEIGHT);
-    expect(Math.abs(CHAIR_DRAW_HEIGHT_PX - SEATED_GUEST_DISPLAY_HEIGHT)).toBeLessThanOrEqual(10);
-    expect(PLAYER_CONTENT_HEIGHT_PX).toBeLessThanOrEqual(96);
-    expect(GUEST_WALK_CONTENT_HEIGHT_PX).toBeLessThanOrEqual(184);
-    expect(GUEST_SIT_CONTENT_HEIGHT_PX).toBeLessThan(GUEST_WALK_CONTENT_HEIGHT_PX);
+    expect(SEATED_GUEST_DISPLAY_HEIGHT).toBe(PLAYER_DISPLAY_HEIGHT);
+    expect(CHAIR_DRAW_HEIGHT_PX).toBeLessThan(SEATED_GUEST_DISPLAY_HEIGHT / 2);
+    expect(PLAYER_CONTENT_HEIGHT_PX).toBe(160);
+    expect(GUEST_WALK_CONTENT_HEIGHT_PX).toBe(PLAYER_CONTENT_HEIGHT_PX);
+    expect(GUEST_SIT_CONTENT_HEIGHT_PX).toBe(GUEST_WALK_CONTENT_HEIGHT_PX);
   });
 });

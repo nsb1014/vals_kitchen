@@ -29,7 +29,7 @@ describe('characters atlas coverage', () => {
       expect(keys.has(`player_carry_${facing}`)).toBe(true);
     }
     expect(keys.has('player')).toBe(true);
-    expect(atlas.frames.player_down_0?.sourceSize).toEqual({ w: 80, h: 96 });
+    expect(atlas.frames.player_down_0?.sourceSize).toEqual({ w: 128, h: 160 });
   });
 
   it('keeps the project-owner supplied chef source byte-for-byte', () => {
