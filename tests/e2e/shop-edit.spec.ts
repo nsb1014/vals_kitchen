@@ -32,6 +32,27 @@ test.describe('Shop & Edit progression journey', () => {
       }
 
       const shop = await openShopAndEdit(page);
+      const viewport = page.viewportSize()!;
+      const shopBounds = await shop.boundingBox();
+      const scrollBounds = await shop
+        .locator('.layout-catalog-scroll:not([hidden])')
+        .boundingBox();
+      const firstRowBounds = await shop
+        .locator('.layout-catalog-row')
+        .first()
+        .boundingBox();
+      expect(shopBounds).not.toBeNull();
+      expect(shopBounds!.x).toBeCloseTo(0, 1);
+      expect(shopBounds!.y).toBeCloseTo(0, 1);
+      expect(shopBounds!.width).toBeCloseTo(viewport.width, 1);
+      expect(shopBounds!.height).toBeCloseTo(viewport.height, 1);
+      expect(scrollBounds).not.toBeNull();
+      expect(scrollBounds!.height).toBeGreaterThanOrEqual(48);
+      expect(firstRowBounds).not.toBeNull();
+      expect(firstRowBounds!.y).toBeGreaterThanOrEqual(scrollBounds!.y);
+      expect(firstRowBounds!.y + firstRowBounds!.height).toBeLessThanOrEqual(
+        scrollBounds!.y + scrollBounds!.height + 1,
+      );
       const ingredientTab = shop.getByRole('tab', { name: 'Ingredients' });
       const equipmentTab = shop.getByRole('tab', { name: 'Kitchen Equipment' });
       const layoutTab = shop.getByRole('tab', { name: 'Layout' });
@@ -149,6 +170,28 @@ test.describe('Shop & Edit progression journey', () => {
     await page.keyboard.press('Escape');
     await expect(shop).toBeHidden();
     await expect(page.getByTestId('open-layout-catalog')).toBeFocused();
+  });
+
+  test('pauses a transient notice while the shop covers it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoFreshGame(page);
+    await page.evaluate(() =>
+      window.__E2E__!.setFloorToast('Paused behind shop fixture'),
+    );
+    const notice = page
+      .getByTestId('notice-banner')
+      .filter({ hasText: 'Paused behind shop fixture' });
+    await expect(notice).toBeVisible();
+
+    const shop = await openShopAndEdit(page);
+    await expect(notice).toBeHidden();
+    await page.waitForTimeout(2_750);
+    await expect(notice).toHaveCount(1);
+
+    await page.keyboard.press('Escape');
+    await expect(shop).toBeHidden();
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveCount(0, { timeout: 3_500 });
   });
 
   test('labels the completed day and keeps both post-day choices explicit', async ({

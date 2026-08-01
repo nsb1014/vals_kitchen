@@ -18,13 +18,16 @@ import {
 } from '../presentation/shop-items.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { OPEN_RESTAURANT_SHOP_EVENT } from '../events/restaurant-shop.ts';
+import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
 
 export async function purchaseAndStartPlacement(
-  store: Pick<GameStore, 'dispatch' | 'startPlacement'>,
+  store: Pick<GameStore, 'dispatch' | 'setActiveFloorRoom' | 'startPlacement'>,
   purchase: PurchaseKind,
   itemKey: string,
+  placementRoom?: GameStore['activeFloorRoom'],
 ): Promise<void> {
   await store.dispatch({ type: 'PURCHASE', purchase });
+  if (placementRoom) store.setActiveFloorRoom(placementRoom);
   store.startPlacement(itemKey);
 }
 
@@ -194,9 +197,14 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
     );
     if (previousScroll) catalogScrollTop = previousScroll.scrollTop;
     catalogBtn?.setAttribute('aria-expanded', String(catalogOpen));
+    container.classList.toggle('layout-catalog-open', catalogOpen);
     if (!catalogOpen) {
+      const wasBlockingNotifications = !catalogEl.hidden;
       catalogEl.hidden = true;
       catalogEl.innerHTML = '';
+      if (wasBlockingNotifications) {
+        notifyNotificationBlockingSurfaceChanged();
+      }
       return;
     }
 
@@ -233,6 +241,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       </button>
     `;
 
+    const startsBlockingNotifications = catalogEl.hidden;
     catalogEl.hidden = false;
     syncCatalogViewport();
     catalogEl.innerHTML = `
@@ -280,6 +289,9 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
         )
         .join('')}
     `;
+    if (startsBlockingNotifications) {
+      notifyNotificationBlockingSurfaceChanged();
+    }
 
     const scroll = catalogEl.querySelector<HTMLElement>(
       '.layout-catalog-scroll:not([hidden])',
@@ -336,7 +348,16 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
           if (itemKey) {
             catalogOpen = false;
             renderCatalog(store);
-            await purchaseAndStartPlacement(store, row.purchase, itemKey);
+            const placementRoom =
+              row.kind === 'table' || row.kind === 'decor'
+                ? 'main'
+                : undefined;
+            await purchaseAndStartPlacement(
+              store,
+              row.purchase,
+              itemKey,
+              placementRoom,
+            );
             focusPlacementCancelAfterSync = true;
           } else {
             const rowIndex = rows.indexOf(row);

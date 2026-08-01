@@ -280,7 +280,7 @@ body {
 .notice-banner-dismiss {
   flex: 0 0 auto;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 45px;
   border: 0;
   border-radius: 999px;
   background: rgba(30, 23, 20, 0.45);
@@ -327,6 +327,10 @@ body {
   background: rgba(42, 33, 28, 0.92);
   border-top: 1px solid var(--vk-border);
   contain: layout style;
+}
+
+.layout-hud.layout-catalog-open {
+  contain: style;
 }
 
 .layout-toolbar {
