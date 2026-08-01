@@ -9,6 +9,7 @@ for retained guest frames.
 
 from __future__ import annotations
 
+from collections import deque
 from pathlib import Path
 
 from PIL import Image
@@ -45,29 +46,81 @@ def chroma_alpha(image: Image.Image) -> Image.Image:
     return rgba
 
 
-def white_alpha(image: Image.Image) -> Image.Image:
-    """Remove the chef sheet's neutral white background without erasing skin.
+def flood_remove_white_background(image: Image.Image) -> Image.Image:
+    """Remove only border-connected white matte and decontaminate its edge.
 
-    The source matte is a slightly noisy off-white (usually 252--254), not
-    literal #fff.  The old conversion left those 252-valued pixels with alpha
-    18.  ``trim`` therefore treated the entire source cell as artwork and
-    scaled the chef down together with a box of almost-transparent noise.
-    Keep a fully transparent dead band for the matte, then feather only the
-    darker neutral pixels at the character edge.
+    Global white chroma-keying damages Val's pale skin and floral dress. The
+    source matte is contiguous with the crop border, while the character is
+    enclosed by its authored outline, so flood segmentation preserves every
+    interior color and removes only the actual background/fringe.
     """
     rgba = image.convert("RGBA")
-    pixels = []
-    for red, green, blue, source_alpha in rgba.get_flattened_data():
-        spread = max(red, green, blue) - min(red, green, blue)
-        darkest = min(red, green, blue)
-        if darkest >= 215 and spread <= 20:
-            matte = max(0, min(255, round((245 - darkest) * 255 / 30)))
-            alpha = min(source_alpha, matte)
-        else:
+    width, height = rgba.size
+    pixels = rgba.load()
+    assert pixels is not None
+    background = (253, 253, 253)
+
+    def is_matte(x: int, y: int) -> bool:
+        red, green, blue, _ = pixels[x, y]
+        distance = (
+            (red - background[0]) ** 2
+            + (green - background[1]) ** 2
+            + (blue - background[2]) ** 2
+        ) ** 0.5
+        return min(red, green, blue) >= 190 and distance <= 82
+
+    matte = [[False] * width for _ in range(height)]
+    queue: deque[tuple[int, int]] = deque()
+    for x in range(width):
+        for y in (0, height - 1):
+            if is_matte(x, y) and not matte[y][x]:
+                matte[y][x] = True
+                queue.append((x, y))
+    for y in range(height):
+        for x in (0, width - 1):
+            if is_matte(x, y) and not matte[y][x]:
+                matte[y][x] = True
+                queue.append((x, y))
+
+    while queue:
+        x, y = queue.popleft()
+        for nx in range(max(0, x - 1), min(width, x + 2)):
+            for ny in range(max(0, y - 1), min(height, y + 2)):
+                if matte[ny][nx] or not is_matte(nx, ny):
+                    continue
+                matte[ny][nx] = True
+                queue.append((nx, ny))
+
+    out = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
+    out_pixels = out.load()
+    assert out_pixels is not None
+    for y in range(height):
+        for x in range(width):
+            if matte[y][x]:
+                continue
+            red, green, blue, source_alpha = pixels[x, y]
+            touches_matte = any(
+                matte[ny][nx]
+                for nx in range(max(0, x - 1), min(width, x + 2))
+                for ny in range(max(0, y - 1), min(height, y + 2))
+            )
             alpha = source_alpha
-        pixels.append((red, green, blue, alpha))
-    rgba.putdata(pixels)
-    return rgba
+            if touches_matte:
+                distance = (
+                    (red - background[0]) ** 2
+                    + (green - background[1]) ** 2
+                    + (blue - background[2]) ** 2
+                ) ** 0.5
+                alpha = min(source_alpha, max(0, min(255, round((distance - 35) * 255 / 70))))
+            if alpha <= 8:
+                continue
+            if alpha < 255:
+                opacity = alpha / 255
+                red = max(0, min(255, round((red - (1 - opacity) * background[0]) / opacity)))
+                green = max(0, min(255, round((green - (1 - opacity) * background[1]) / opacity)))
+                blue = max(0, min(255, round((blue - (1 - opacity) * background[2]) / opacity)))
+            out_pixels[x, y] = (red, green, blue, alpha)
+    return out
 
 
 def trim(image: Image.Image, padding: int = 0) -> Image.Image:
@@ -230,6 +283,24 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
             f"Player frame is not feet-normalized: {name} "
             f"(bounds={bounds}, visible_height={visible_height}, bottom_gap={bottom_gap})"
         )
+    white_fringe = 0
+    for y in range(image.height):
+        for x in range(image.width):
+            red, green, blue, alpha = image.getpixel((x, y))
+            if alpha == 0 or min(red, green, blue) <= 200:
+                continue
+            if max(red, green, blue) - min(red, green, blue) >= 45:
+                continue
+            if any(
+                image.getpixel((nx, ny))[3] == 0
+                for nx in range(max(0, x - 1), min(image.width, x + 2))
+                for ny in range(max(0, y - 1), min(image.height, y + 2))
+            ):
+                white_fringe += 1
+    # A carried white plate can contribute an isolated legitimate edge pixel;
+    # the failed source matte appears as a continuous multi-pixel halo.
+    if white_fringe > 3:
+        raise ValueError(f"Player frame retains a white matte fringe: {name} ({white_fringe}px)")
 
 
 def top_row_fill_ratio(image: Image.Image) -> float:
@@ -477,7 +548,7 @@ def build_player() -> None:
     def player_source_frame(column: int, facing: str) -> Image.Image:
         x0, x1 = column_bounds[column]
         y0, y1 = facing_rows[facing]
-        keyed = white_alpha(sheet.crop((x0, y0, x1, y1)))
+        keyed = flood_remove_white_background(sheet.crop((x0, y0, x1, y1)))
         return trim(clear_alpha_noise(keyed), 3)
 
     source_frames = {
@@ -493,8 +564,12 @@ def build_player() -> None:
     )
 
     def player_frame(column: int, facing: str) -> Image.Image:
-        return harden_sprite_alpha(
-            contain_at_scale(source_frames[(facing, column)], ACTOR_FRAME_SIZE, scale)
+        # The source was composited against white before it reached us. A firm
+        # final cutoff removes that low-opacity residual matte after resizing;
+        # the retained pixels still carry the source's own smooth linework.
+        return clear_alpha_noise(
+            contain_at_scale(source_frames[(facing, column)], ACTOR_FRAME_SIZE, scale),
+            cutoff=120,
         )
 
     for facing in facing_rows:
@@ -628,18 +703,21 @@ def build_props() -> None:
     seating_sheet = Image.open(
         SEATING_SOURCE / "furniture-sheet-transparent.png"
     ).convert("RGBA")
+    table_sheet = Image.open(
+        SEATING_SOURCE / "table-states-v2-transparent.png"
+    ).convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected furniture sheet size: {sheet.size}")
     if seating_sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected seating furniture sheet size: {seating_sheet.size}")
+    if table_sheet.size != (1536, 1024):
+        raise SystemExit(f"Unexpected table state sheet size: {table_sheet.size}")
 
     seating_sheet = clear_alpha_noise(seating_sheet)
     seating_boxes = authored_grid_boxes(seating_sheet, columns=4, rows=2)
+    table_sheet = clear_alpha_noise(table_sheet)
+    table_boxes = authored_grid_boxes(table_sheet, columns=4, rows=1)
     seating_cells = {
-        "table_2seat_unset": (0, 0),
-        "table_2seat": (1, 0),
-        "table_2seat_occupied": (2, 0),
-        "table_2seat_dirty": (3, 0),
         # Keep legacy texture keys; these assets are intentionally backless stools.
         "chair": (0, 1),
         "chair_back": (1, 1),
@@ -647,8 +725,18 @@ def build_props() -> None:
     }
     for name, (column, row) in seating_cells.items():
         cell = seating_sheet.crop(seating_boxes[row][column])
-        target = (96, 112) if name.startswith("table") else (72, 88)
-        sprite = contain(trim(cell, 2), target, bottom_pad=3)
+        sprite = contain(trim(cell, 2), (72, 88), bottom_pad=3)
+        save(sprite, PROP_OUT / f"{name}.png")
+
+    table_cells = {
+        "table_2seat_unset": 0,
+        "table_2seat": 1,
+        "table_2seat_occupied": 2,
+        "table_2seat_dirty": 3,
+    }
+    for name, column in table_cells.items():
+        cell = table_sheet.crop(table_boxes[0][column])
+        sprite = contain(trim(cell, 2), (96, 96), bottom_pad=3)
         save(sprite, PROP_OUT / f"{name}.png")
 
     boxes = {
@@ -683,6 +771,8 @@ def main() -> None:
             raise SystemExit(f"Missing coordinated guest sheet: {required}")
     if not (SEATING_SOURCE / "furniture-sheet-transparent.png").is_file():
         raise SystemExit("Missing coordinated seating furniture sheet")
+    if not (SEATING_SOURCE / "table-states-v2-transparent.png").is_file():
+        raise SystemExit("Missing corrected oval table state sheet")
     build_player()
     build_guests()
     validate_animation_frames()

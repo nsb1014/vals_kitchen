@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TILE_PX } from '../../canvas/coordinates.ts';
 import {
+  SEAT_NS_HIP_OFFSET_PX,
+  SEAT_SIDE_HIP_OFFSET_PX,
   SEAT_SIT_OFFSET_Y,
   seatChairWorldPosition,
   seatSitWorldPosition,
@@ -31,7 +33,7 @@ describe('seat sit anchors', () => {
     });
   });
 
-  it('plants stools and authored seated poses on one floor baseline', () => {
+  it('plants stools in their cells and shifts seated hips toward the table', () => {
     const seatW = {
       tablePlacementId: 't',
       slotIndex: 0,
@@ -54,7 +56,31 @@ describe('seat sit anchors', () => {
       y: 2 * TILE_PX + TILE_PX / 2,
     });
     expect(SEAT_SIT_OFFSET_Y).toBe(0);
-    expect(west).toEqual({ x: chairW.x, y: chairW.y + SEAT_SIT_OFFSET_Y });
-    expect(east).toEqual({ x: chairE.x, y: chairE.y + SEAT_SIT_OFFSET_Y });
+    expect(west).toEqual({ x: chairW.x + SEAT_SIDE_HIP_OFFSET_PX, y: chairW.y });
+    expect(east).toEqual({ x: chairE.x - SEAT_SIDE_HIP_OFFSET_PX, y: chairE.y });
+    expect(west.x).toBeGreaterThan(chairW.x);
+    expect(east.x).toBeLessThan(chairE.x);
+  });
+
+  it('shifts north+south seated hips toward the table', () => {
+    const northSeat = {
+      tablePlacementId: 't',
+      slotIndex: 0,
+      x: 2,
+      y: 1,
+      facing: 0 as const,
+    };
+    const southSeat = { ...northSeat, slotIndex: 1, y: 3, facing: 180 as const };
+    const northStool = seatChairWorldPosition(northSeat);
+    const southStool = seatChairWorldPosition(southSeat);
+
+    expect(seatSitWorldPosition(northSeat)).toEqual({
+      x: northStool.x,
+      y: northStool.y + SEAT_NS_HIP_OFFSET_PX,
+    });
+    expect(seatSitWorldPosition(southSeat)).toEqual({
+      x: southStool.x,
+      y: southStool.y - SEAT_NS_HIP_OFFSET_PX,
+    });
   });
 });

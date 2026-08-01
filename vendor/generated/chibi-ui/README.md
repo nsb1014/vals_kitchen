@@ -16,8 +16,10 @@ project. They are not attributed to a third-party artist or commercial pack.
   idle, two-contact walk, and authored seated poses generated together from the
   same master. The transparent copies are reproducible chroma-key extractions.
 - `source/seating-rework/furniture-sheet-{keyed,transparent}.png` — matching
-  table lifecycle states and small backless stools. Runtime `chair*` texture
-  keys are retained for save/code compatibility, but the visible art is stools.
+  small backless stools. Runtime `chair*` texture keys are retained for
+  save/code compatibility, but the visible art is stools.
+- `source/seating-rework/table-states-v2-{keyed,transparent}.png` — matching
+  corner-free oval table lifecycle states with left/right place settings.
 - `source/*-keyed.png` — reproducible chroma-key extractions retained so the
   runtime build does not depend on an external image service.
 - `guest-frames/` — runtime 128×160 frames derived from the coordinated sheets
