@@ -800,6 +800,14 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      const composePanel = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="compose-sheet"]',
+      );
+      const inspectorOpen = Boolean(state.flavorInspectorIngredientId);
+      if (composePanel && inspectorOpen) {
+        composePanel.inert = true;
+        composePanel.setAttribute('aria-hidden', 'true');
+      }
 
       let cancelActiveLongPress: (() => void) | null = null;
       const bindIngredientButtons = (root: HTMLElement) => {
@@ -963,7 +971,13 @@ export function mountServiceDayUi(
         { once: true },
       );
       queueMicrotask(() => {
-        if (!selectShowFloorCompose(useGameStore.getState())) return;
+        const current = useGameStore.getState();
+        if (
+          !selectShowFloorCompose(current) ||
+          current.flavorInspectorIngredientId
+        ) {
+          return;
+        }
         focusComposeIdentity(composeOpenedNow ? null : retainedComposeFocus);
       });
       return;

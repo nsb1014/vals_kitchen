@@ -45,6 +45,25 @@ async function expectFooterInsideSheet(
   );
 }
 
+async function expectExpandedFlavorFitsLandscape(page: Page): Promise<void> {
+  await page.getByTestId('compose-flavor-toggle').click();
+  const strip = page.locator('.compose-flavor-strip');
+  await expect(strip).toBeVisible();
+  const verticalFit = await strip.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(verticalFit.scrollHeight).toBeLessThanOrEqual(
+    verticalFit.clientHeight + 1,
+  );
+  const pantry = await page.getByTestId('compose-pantry').boundingBox();
+  const ingredient = await page.getByTestId('ingredient-chip').first().boundingBox();
+  expect(pantry).not.toBeNull();
+  expect(ingredient).not.toBeNull();
+  expect(ingredient!.height).toBeLessThanOrEqual(pantry!.height + 1);
+  await expectFooterInsideSheet(page);
+}
+
 test.describe('cook sheet responsive chrome', () => {
   for (const width of [320, 360, 390]) {
     test(`holds fixed regions with the full pantry at ${width}px`, async ({
@@ -207,6 +226,7 @@ test.describe('cook sheet responsive chrome', () => {
       path: 'test-results/cook-sheet-wide-landscape.png',
       animations: 'disabled',
     });
+    await expectExpandedFlavorFitsLandscape(page);
   });
 
   test('keeps the ingredient profile as the topmost modal focus scope', async ({
@@ -227,6 +247,12 @@ test.describe('cook sheet responsive chrome', () => {
       'aria-hidden',
       'true',
     );
+    await page.evaluate(() => window.dispatchEvent(new Event('food-atlas-ready')));
+    await expect(page.getByTestId('compose-sheet')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await expect(modalClose).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(modalBack).toBeFocused();
     await page.keyboard.press('Tab');
@@ -250,6 +276,7 @@ test.describe('cook sheet responsive chrome', () => {
       path: 'test-results/cook-sheet-short-landscape.png',
       animations: 'disabled',
     });
+    await expectExpandedFlavorFitsLandscape(page);
   });
 
   test('uses a dedicated desktop workspace beside the restaurant', async ({

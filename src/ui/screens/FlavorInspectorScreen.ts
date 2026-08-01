@@ -113,6 +113,7 @@ export function mountFlavorInspectorModal(
   modal.hidden = true;
   overlayMount.appendChild(modal);
   let focusReturn: HTMLElement | null = null;
+  let focusReturnAttributes: Array<{ name: string; value: string }> = [];
   const focusableSelector =
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -126,6 +127,23 @@ export function mountFlavorInspectorModal(
     else compose.removeAttribute('aria-hidden');
   };
 
+  const restoreFocus = () => {
+    const connected = focusReturn?.isConnected ? focusReturn : null;
+    const equivalent =
+      focusReturnAttributes.length > 0
+        ? Array.from(
+            overlayMount.querySelectorAll<HTMLElement>(focusableSelector),
+          ).find((element) =>
+            focusReturnAttributes.every(
+              ({ name, value }) => element.getAttribute(name) === value,
+            ),
+          )
+        : null;
+    (connected ?? equivalent)?.focus({ preventScroll: true });
+    focusReturn = null;
+    focusReturnAttributes = [];
+  };
+
   const render = () => {
     const state = useGameStore.getState();
     const ingredientId = state.flavorInspectorIngredientId;
@@ -133,10 +151,7 @@ export function mountFlavorInspectorModal(
       isolateCompose(false);
       modal.hidden = true;
       modal.innerHTML = '';
-      if (focusReturn?.isConnected) {
-        focusReturn.focus({ preventScroll: true });
-      }
-      focusReturn = null;
+      restoreFocus();
       return;
     }
 
@@ -145,6 +160,14 @@ export function mountFlavorInspectorModal(
         document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null;
+      focusReturnAttributes = focusReturn
+        ? ['data-testid', 'data-compose-ingredient-id', 'data-compose-axis', 'id'].flatMap(
+            (name) => {
+              const value = focusReturn?.getAttribute(name);
+              return value ? [{ name, value }] : [];
+            },
+          )
+        : [];
     }
     modal.hidden = false;
     isolateCompose(true);

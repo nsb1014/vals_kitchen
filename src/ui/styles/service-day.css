@@ -2174,7 +2174,25 @@
 
   .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    height: 32px;
+    height: 40px;
+  }
+
+  .compose-sheet-card:has(.compose-flavor-strip.expanded)
+    .compose-pantry
+    .ingredient-chip {
+    height: 46px;
+    min-height: 46px;
+    flex-direction: row;
+    padding-inline: 0.35rem;
+  }
+
+  .compose-sheet-card:has(.compose-flavor-strip.expanded)
+    .compose-pantry
+    .ingredient-chip
+    .food-icon {
+    width: 28px !important;
+    height: 28px !important;
+    flex-basis: 28px;
   }
 
   .compose-sheet-footer #plate-btn {
