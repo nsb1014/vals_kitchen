@@ -132,6 +132,18 @@ for (const viewport of VIEWPORT_MATRIX) {
     }
 
     await dismissInitialNotice(page);
+    const ticketsToggle = page.getByTestId('floor-tickets-toggle');
+    const ticketsToggleBox = await ticketsToggle.boundingBox();
+    expect(ticketsToggleBox).not.toBeNull();
+    expect(ticketsToggleBox!.width).toBeGreaterThanOrEqual(44);
+    expect(ticketsToggleBox!.height).toBeGreaterThanOrEqual(44);
+    await ticketsToggle.click();
+    const ticketsClose = page.getByTestId('floor-tickets-close');
+    const ticketsCloseBox = await ticketsClose.boundingBox();
+    expect(ticketsCloseBox).not.toBeNull();
+    expect(ticketsCloseBox!.width).toBeGreaterThanOrEqual(44);
+    expect(ticketsCloseBox!.height).toBeGreaterThanOrEqual(44);
+    await ticketsClose.click();
     const canvas = page.locator('#canvas-mount');
     const before = (await canvas.boundingBox())?.height;
     expect(before).toBeTruthy();
@@ -260,6 +272,82 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   await expect(notice).toHaveCount(0);
   await expect(celebration).toBeVisible();
   await expect(celebration).not.toHaveAttribute('aria-hidden', 'true');
+
+  const dismissHitBoxes = await page.evaluate(() => {
+    const celebrationDismiss = document.querySelector(
+      '.celebration-banner-dismiss',
+    ) as HTMLElement;
+    const rect = celebrationDismiss.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(dismissHitBoxes.width).toBeGreaterThanOrEqual(44);
+  expect(dismissHitBoxes.height).toBeGreaterThanOrEqual(44);
+});
+
+test('transient notices pause behind compose and review sheets, then resume', async ({
+  page,
+}) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  await dismissInitialNotice(page);
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  await page.evaluate(() => window.__E2E__!.openComposeSheet());
+  await expect(page.locator('[data-testid="compose-sheet"]')).toBeVisible();
+  await page.evaluate(() =>
+    window.__E2E__!.setFloorToast('Paused behind compose fixture'),
+  );
+
+  const host = page.locator('[data-testid="celebration-banner-host"]');
+  const composeNotice = page
+    .locator('[data-testid="notice-banner"]')
+    .filter({ hasText: 'Paused behind compose fixture' });
+  await expect(host).toBeHidden();
+  await expect(composeNotice).toBeHidden();
+  await page.waitForTimeout(2_750);
+  await expect(composeNotice).toHaveCount(1);
+
+  await page.locator('[data-testid="compose-close"]').click();
+  await expect(page.locator('[data-testid="compose-sheet"]')).toHaveCount(0);
+  await expect(composeNotice).toBeVisible();
+  const noticeDismissHitBox = await page
+    .getByRole('button', { name: 'Dismiss notice' })
+    .evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+  expect(noticeDismissHitBox.width).toBeGreaterThanOrEqual(44);
+  expect(noticeDismissHitBox.height).toBeGreaterThanOrEqual(44);
+  await expect(composeNotice).toHaveCount(0, { timeout: 3_500 });
+
+  await page.evaluate(async () => {
+    for (let guard = 0; guard < 80; guard += 1) {
+      const step = await window.__E2E__!.advanceFloorServiceOnce();
+      if (step === 'pending_review') return;
+      if (step === 'day_complete' || step === 'idle') {
+        throw new Error(`service reached ${step} before review`);
+      }
+    }
+    throw new Error('service did not reach review');
+  });
+  await expect(page.locator('[data-testid="review-sheet"]')).toBeVisible();
+  await page.evaluate(() =>
+    window.__E2E__!.setFloorToast('Paused behind review fixture'),
+  );
+
+  const reviewNotice = page
+    .locator('[data-testid="notice-banner"]')
+    .filter({ hasText: 'Paused behind review fixture' });
+  await expect(host).toBeHidden();
+  await expect(reviewNotice).toBeHidden();
+  await page.waitForTimeout(2_750);
+  await expect(reviewNotice).toHaveCount(1);
+
+  await page.locator('[data-testid="continue-service-btn"]').click();
+  await expect(page.locator('[data-testid="review-sheet"]')).toHaveCount(0);
+  await expect(reviewNotice).toBeVisible();
+  await expect(reviewNotice).toHaveCount(0, { timeout: 3_500 });
 });
 
 test('final floor action remains activatable at 200% page zoom', async ({

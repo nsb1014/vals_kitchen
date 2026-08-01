@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
+import { notificationSurfaceShouldRun } from '../../ui/components/CelebrationBanner.ts';
 import '../test-helpers.ts';
 
 describe('notification timer', () => {
@@ -85,6 +86,46 @@ describe('notification timer', () => {
     useGameStore.getState().setNotificationSurfaceActive(true);
     vi.advanceTimersByTime(1499);
     expect(useGameStore.getState().noticeActive?.body).toBe('Partial');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('does not let a page lifecycle resume bypass a blocking service sheet', () => {
+    let pageLifecycleActive = true;
+    let uiBlocked = false;
+    const syncSurface = () => {
+      useGameStore
+        .getState()
+        .setNotificationSurfaceActive(
+          notificationSurfaceShouldRun(pageLifecycleActive, uiBlocked),
+        );
+    };
+
+    useGameStore.getState().setFloorToast('Wait behind the sheet');
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(900);
+    vi.advanceTimersByTime(900);
+
+    uiBlocked = true;
+    syncSurface();
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(19_100);
+
+    pageLifecycleActive = false;
+    syncSurface();
+    pageLifecycleActive = true;
+    syncSurface();
+    vi.advanceTimersByTime(10_000);
+    expect(useGameStore.getState().noticeActive?.body).toBe(
+      'Wait behind the sheet',
+    );
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(30_000);
+    uiBlocked = false;
+    syncSurface();
+    vi.advanceTimersByTime(1599);
+    expect(useGameStore.getState().noticeActive?.body).toBe(
+      'Wait behind the sheet',
+    );
     vi.advanceTimersByTime(1);
     expect(useGameStore.getState().noticeActive).toBeNull();
   });

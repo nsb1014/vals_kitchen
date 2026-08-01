@@ -631,6 +631,7 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
+  min-height: 44px;
   cursor: pointer;
   touch-action: manipulation;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
@@ -727,6 +728,8 @@
 }
 
 .floor-tickets-close {
+  min-width: 44px;
+  min-height: 44px;
   padding: 0.2rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--vk-border);
@@ -1051,7 +1054,7 @@
   align-items: center;
   gap: 0.3rem;
   max-width: 11rem;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0.25rem 0.45rem;
   border: 1px solid color-mix(in srgb, var(--vk-accent-2) 65%, var(--vk-border));
   border-radius: 999px;
@@ -1203,6 +1206,10 @@
   background: var(--vk-accent-2);
 }
 
+.compose-order-mobile-legend {
+  display: none;
+}
+
 .compose-request-axis-list {
   display: grid;
   gap: 0.5rem;
@@ -1299,6 +1306,11 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+.compose-flavor-strip:focus-visible {
+  outline: 2px solid var(--vk-accent);
+  outline-offset: -2px;
 }
 
 .compose-flavor-mini {
@@ -1889,22 +1901,88 @@
     padding-block: 0.35rem;
   }
 
+  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+    display: none;
+  }
+
+  .compose-axis-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .compose-axis-row .filter-axis-chip {
+    width: 100%;
+    min-width: 0;
+  }
+
   .compose-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .compose-order-panel {
+    grid-row: 1;
     max-height: 7rem;
     border-top: 1px solid #694525;
     border-left: 0;
   }
 
+  .compose-order-panel-head {
+    display: none;
+  }
+
+  .compose-order-mobile-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+    color: var(--vk-text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .compose-order-mobile-legend i {
+    width: 0.75rem;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--vk-accent);
+  }
+
+  .compose-order-mobile-legend i:last-of-type {
+    margin-left: 0.25rem;
+    background: var(--vk-accent-2);
+  }
+
+  .compose-request-axis-list {
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    gap: 0.45rem;
+  }
+
+  .compose-request-axis {
+    min-width: 0;
+  }
+
+  .compose-request-axis-head {
+    margin-bottom: 0.15rem;
+    font-size: 10px;
+  }
+
+  .compose-request-axis-head span {
+    display: none;
+  }
+
+  .compose-pantry {
+    grid-row: 2;
+  }
+
   .compose-sheet-footer {
     grid-template-columns: minmax(0, 1fr) minmax(7.8rem, 36%);
-    grid-template-rows: auto 48px var(--vk-cta-h);
-    height: 9.6rem;
-    min-height: 9.6rem;
+    grid-template-rows: auto 48px auto;
+    height: auto;
+    min-height: 5.8rem;
     gap: 0.25rem 0.5rem;
     padding: 0.4rem 0.65rem 0.55rem;
   }
@@ -1915,20 +1993,34 @@
   }
 
   .compose-flavor-toggle {
-    display: none;
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 44px;
+    margin: 0;
+    border: 1px solid var(--vk-border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--vk-text-dim);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
   }
 
-  .compose-flavor-strip,
-  .compose-flavor-strip.expanded {
-    display: grid;
+  .compose-flavor-strip {
+    display: none;
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     grid-auto-flow: column;
     grid-auto-columns: 5.6rem;
     grid-template-rows: 1fr;
     height: 48px;
     gap: 0.45rem;
     overflow-x: auto;
+  }
+
+  .compose-flavor-strip.expanded {
+    display: grid;
   }
 
   .compose-flavor-mini {
@@ -1943,8 +2035,8 @@
   }
 
   .compose-sheet-footer #plate-btn {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -2061,20 +2153,46 @@
     padding-block: 0.2rem;
   }
 
+  .compose-order-panel {
+    padding-block: 0.2rem 0.25rem;
+  }
+
+  .compose-order-mobile-legend {
+    margin-bottom: 0.1rem;
+  }
+
   .compose-filter-summary {
     display: none;
   }
 
   .compose-sheet-footer {
-    height: 7.4rem;
-    min-height: 7.4rem;
-    grid-template-rows: auto 32px 44px;
+    height: auto;
+    min-height: 4.9rem;
+    grid-template-rows: auto 44px auto;
     padding-block: 0.25rem;
   }
 
   .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    height: 32px;
+    height: 40px;
+  }
+
+  .compose-sheet-card:has(.compose-flavor-strip.expanded)
+    .compose-pantry
+    .ingredient-chip {
+    height: 46px;
+    min-height: 46px;
+    flex-direction: row;
+    padding-inline: 0.35rem;
+  }
+
+  .compose-sheet-card:has(.compose-flavor-strip.expanded)
+    .compose-pantry
+    .ingredient-chip
+    .food-icon {
+    width: 28px !important;
+    height: 28px !important;
+    flex-basis: 28px;
   }
 
   .compose-sheet-footer #plate-btn {

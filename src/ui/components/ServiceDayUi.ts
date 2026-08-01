@@ -77,7 +77,7 @@ export function mountServiceDayUi(
   getRestaurantApp: () => RestaurantApp | null,
   chromeMount: HTMLElement,
   statusMount: HTMLElement,
-  _canvasMount: HTMLElement,
+  canvasMount: HTMLElement,
 ): () => void {
   statusMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
@@ -126,6 +126,62 @@ export function mountServiceDayUi(
   let composeFlavorDetailsOpen = false;
   let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
+
+  type ComposeFocusIdentity = {
+    attributes: Array<{
+      name: 'data-testid' | 'data-compose-ingredient-id' | 'data-compose-axis' | 'id';
+      value: string;
+    }>;
+  };
+
+  const composeFocusableSelector =
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  const composeFocusIdentity = (): ComposeFocusIdentity | null => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !serviceOverlay.contains(active)) return null;
+    const attributes = [
+      'data-testid',
+      'data-compose-ingredient-id',
+      'data-compose-axis',
+      'id',
+    ] as const;
+    const values = attributes.flatMap((name) => {
+      const value = active.getAttribute(name);
+      return value ? [{ name, value }] : [];
+    });
+    return values.length > 0 ? { attributes: values } : null;
+  };
+
+  const focusComposeIdentity = (identity: ComposeFocusIdentity | null) => {
+    const panel = serviceOverlay.querySelector<HTMLElement>('[data-testid="compose-sheet"]');
+    if (!panel) return;
+    const match = identity
+      ? Array.from(panel.querySelectorAll<HTMLElement>(composeFocusableSelector)).find(
+          (element) =>
+            identity.attributes.every(
+              ({ name, value }) => element.getAttribute(name) === value,
+            ),
+        )
+      : null;
+    const target =
+      match ??
+      panel.querySelector<HTMLElement>('[data-testid="compose-close"]') ??
+      panel.querySelector<HTMLElement>(composeFocusableSelector);
+    target?.focus({ preventScroll: true });
+  };
+
+  const setComposeBackgroundIsolation = (active: boolean) => {
+    const floorTickets = overlayMount.querySelector<HTMLElement>(
+      '[data-testid="floor-tickets-dock"]',
+    );
+    for (const element of [statusMount, chromeMount, bubbleMount, canvasMount, floorTickets]) {
+      if (!element) continue;
+      element.inert = active;
+      if (active) element.setAttribute('aria-hidden', 'true');
+      else element.removeAttribute('aria-hidden');
+    }
+  };
 
   const resetComposeUi = () => {
     composeFlavorDetailsOpen = false;
@@ -325,6 +381,8 @@ export function mountServiceDayUi(
     const state = useGameStore.getState();
     const composeVisible = selectShowFloorCompose(state);
     const composeOpenedNow = composeVisible && !composeWasVisible;
+    const retainedComposeFocus =
+      composeVisible && !composeOpenedNow ? composeFocusIdentity() : null;
     const nextComposeTicketId = composeVisible
       ? (selectFloorComposeTicket(state)?.id ?? null)
       : null;
@@ -347,6 +405,7 @@ export function mountServiceDayUi(
     }
     composeWasVisible = composeVisible;
     composeTicketId = nextComposeTicketId;
+    setComposeBackgroundIsolation(composeVisible);
 
     if (!selectShowServiceDayOverlay(state)) {
       serviceOverlay.hidden = true;
@@ -675,10 +734,10 @@ export function mountServiceDayUi(
                   <span>${currentValue.toFixed(1)} dish · ${targetValue.toFixed(1)} target</span>
                 </div>
                 <div class="compose-request-bars">
-                  <span class="compose-request-bar target" title="Achievable target ${targetValue.toFixed(1)}">
+                  <span class="compose-request-bar target" role="meter" aria-label="${escapeHtml(`${AXIS_LABELS[axis]} target ${targetValue.toFixed(1)} out of 10`)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${targetValue.toFixed(1)}" title="Achievable target ${targetValue.toFixed(1)}">
                     <span style="width:${Math.min(100, Math.max(0, targetValue * 10)).toFixed(1)}%"></span>
                   </span>
-                  <span class="compose-request-bar current" title="Current dish ${currentValue.toFixed(1)}">
+                  <span class="compose-request-bar current" role="meter" aria-label="${escapeHtml(`${AXIS_LABELS[axis]} current dish ${currentValue.toFixed(1)} out of 10`)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${currentValue.toFixed(1)}" title="Current dish ${currentValue.toFixed(1)}">
                     <span style="width:${Math.min(100, Math.max(0, currentValue * 10)).toFixed(1)}%"></span>
                   </span>
                 </div>
@@ -693,6 +752,7 @@ export function mountServiceDayUi(
               </div>
               <span class="compose-order-legend"><i></i> target <i></i> dish</span>
             </div>
+            <span class="compose-order-mobile-legend"><i></i> target <i></i> dish</span>
             <div class="compose-request-axis-list">${requestRows}</div>
           </aside>`;
         }
@@ -700,7 +760,7 @@ export function mountServiceDayUi(
 
       serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-labelledby="compose-title">
+        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
           <div class="service-card sheet-card-layout compose-sheet-card">
             <header class="sheet-header compose-sheet-header">
               <div>
@@ -734,12 +794,20 @@ export function mountServiceDayUi(
                 <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
-              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview">${flavorPreview}</div>
+              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </footer>
           </div>
         </div>
       `;
+      const composePanel = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="compose-sheet"]',
+      );
+      const inspectorOpen = Boolean(state.flavorInspectorIngredientId);
+      if (composePanel && inspectorOpen) {
+        composePanel.inert = true;
+        composePanel.setAttribute('aria-hidden', 'true');
+      }
 
       let cancelActiveLongPress: (() => void) | null = null;
       const bindIngredientButtons = (root: HTMLElement) => {
@@ -852,8 +920,13 @@ export function mountServiceDayUi(
             ? 'Hide flavor details'
             : 'Flavor details';
           serviceOverlay
-            .querySelector('.compose-flavor-strip')
+            .querySelector<HTMLElement>('.compose-flavor-strip')
             ?.classList.toggle('expanded', composeFlavorDetailsOpen);
+          const flavorStrip = serviceOverlay.querySelector<HTMLElement>(
+            '.compose-flavor-strip',
+          );
+          if (composeFlavorDetailsOpen) flavorStrip?.setAttribute('tabindex', '0');
+          else flavorStrip?.removeAttribute('tabindex');
         });
       serviceOverlay
         .querySelector('[data-testid="compose-pantry"]')
@@ -897,6 +970,16 @@ export function mountServiceDayUi(
         },
         { once: true },
       );
+      queueMicrotask(() => {
+        const current = useGameStore.getState();
+        if (
+          !selectShowFloorCompose(current) ||
+          current.flavorInspectorIngredientId
+        ) {
+          return;
+        }
+        focusComposeIdentity(composeOpenedNow ? null : retainedComposeFocus);
+      });
       return;
     }
 
@@ -1003,13 +1086,35 @@ export function mountServiceDayUi(
   };
 
   const onComposeKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
     const state = useGameStore.getState();
     if (state.flavorInspectorIngredientId || !selectShowFloorCompose(state)) {
       return;
     }
-    event.preventDefault();
-    state.closeComposeSheet();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      state.closeComposeSheet();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const panel = serviceOverlay.querySelector<HTMLElement>('[data-testid="compose-sheet"]');
+    if (!panel) return;
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>(composeFocusableSelector),
+    ).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (!panel.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -1067,6 +1172,7 @@ export function mountServiceDayUi(
     document.removeEventListener('keydown', onComposeKeydown);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+    setComposeBackgroundIsolation(false);
     bubbleEl?.remove();
     statusMount.innerHTML = '';
     overlayMount.innerHTML = '';

@@ -279,8 +279,8 @@ body {
 .celebration-banner-dismiss,
 .notice-banner-dismiss {
   flex: 0 0 auto;
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 999px;
   background: rgba(30, 23, 20, 0.45);

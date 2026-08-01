@@ -1,4 +1,8 @@
-import { useGameStore } from '../../store/game-store.ts';
+import {
+  useGameStore,
+  type GameStore,
+} from '../../store/game-store.ts';
+import { selectShowFloorCompose } from '../../store/selectors/service-day.ts';
 import {
   achievementBadgeUrl,
   getAchievement,
@@ -14,6 +18,27 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Full service sheets own the user's attention and cover the banner position.
+ * Ceremonies remain blocking even if a future flow displays one off the floor.
+ */
+export function selectNotificationUiBlocked(state: GameStore): boolean {
+  return (
+    Boolean(state.ceremony) ||
+    (state.screen === 'restaurant' &&
+      (selectShowFloorCompose(state) ||
+        Boolean(state.pendingReview) ||
+        Boolean(state.daySummary)))
+  );
+}
+
+export function notificationSurfaceShouldRun(
+  pageLifecycleActive: boolean,
+  uiBlocked: boolean,
+): boolean {
+  return pageLifecycleActive && !uiBlocked;
+}
+
 export function mountCelebrationBanner(mount: HTMLElement): () => void {
   const host = document.createElement('div');
   host.className = 'celebration-banner-host';
@@ -22,11 +47,28 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   host.setAttribute('aria-atomic', 'true');
   mount.appendChild(host);
 
+  let pageLifecycleActive = false;
+  let uiBlocked = selectNotificationUiBlocked(useGameStore.getState());
+
+  const syncNotificationSurface = () => {
+    useGameStore
+      .getState()
+      .setNotificationSurfaceActive(
+        notificationSurfaceShouldRun(pageLifecycleActive, uiBlocked),
+      );
+  };
+
+  const syncHostVisibility = () => {
+    const state = useGameStore.getState();
+    host.hidden =
+      uiBlocked || (!state.noticeActive && !state.celebrationQueue[0]);
+  };
+
   const render = () => {
     const state = useGameStore.getState();
     const notice = state.noticeActive;
     const celebration = state.celebrationQueue[0];
-    host.hidden = !notice && !celebration;
+    host.hidden = uiBlocked || (!notice && !celebration);
     if (!notice && !celebration) {
       host.innerHTML = '';
       return;
@@ -90,6 +132,12 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   };
 
   const unsubscribe = useGameStore.subscribe((state, previous) => {
+    const nextUiBlocked = selectNotificationUiBlocked(state);
+    if (nextUiBlocked !== uiBlocked) {
+      uiBlocked = nextUiBlocked;
+      syncHostVisibility();
+      syncNotificationSurface();
+    }
     if (
       state.noticeActive !== previous.noticeActive ||
       state.celebrationQueue !== previous.celebrationQueue
@@ -97,13 +145,12 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       render();
     }
   });
-  const setSurfaceActive = (active: boolean) => {
-    useGameStore.getState().setNotificationSurfaceActive(active);
-  };
-  setSurfaceActive(true);
   const unbindSurfaceLifecycle = bindNotificationSurfaceLifecycle({
     isHostConnected: () => host.isConnected,
-    setActive: setSurfaceActive,
+    setActive: (active) => {
+      pageLifecycleActive = active;
+      syncNotificationSurface();
+    },
   });
   window.addEventListener('food-atlas-ready', render);
   render();
@@ -111,7 +158,8 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   return () => {
     unsubscribe();
     unbindSurfaceLifecycle();
-    setSurfaceActive(false);
+    pageLifecycleActive = false;
+    syncNotificationSurface();
     window.removeEventListener('food-atlas-ready', render);
     host.remove();
   };

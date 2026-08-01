@@ -47,7 +47,6 @@ async function bootstrap(): Promise<void> {
     mountRecipeBookScreen(screensMount),
     mountSettingsScreen(screensMount),
   ];
-  const teardownFlavorModal = mountFlavorInspectorModal(overlayMount);
 
   preloadDeferredContent();
 
@@ -60,6 +59,9 @@ async function bootstrap(): Promise<void> {
     statusMount,
     canvasMount,
   );
+  // Service UI initializes the shared overlay mount. Add the inspector after
+  // that initialization so its modal is not discarded by the mount reset.
+  const teardownFlavorModal = mountFlavorInspectorModal(overlayMount);
 
   const unsubscribeScreen = subscribeScreenFromStore(
     useGameStore.subscribe,
