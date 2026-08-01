@@ -53,6 +53,7 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   openComposeSheet: () => void;
+  openFlavorInspector: (ingredientId: string) => void;
   /** Debug: live actor sprite sizes after floor sync (Playwright visual QA). */
   getActorSpriteMetrics: () => Array<{
     kind: string;
@@ -289,6 +290,10 @@ export function installE2eBridge(
 
     openComposeSheet() {
       useGameStore.getState().openComposeSheet();
+    },
+
+    openFlavorInspector(ingredientId) {
+      useGameStore.getState().openFlavorInspector(ingredientId);
     },
 
     setFloorToast(message) {

@@ -1054,7 +1054,7 @@
   align-items: center;
   gap: 0.3rem;
   max-width: 11rem;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0.25rem 0.45rem;
   border: 1px solid color-mix(in srgb, var(--vk-accent-2) 65%, var(--vk-border));
   border-radius: 999px;
@@ -1206,6 +1206,10 @@
   background: var(--vk-accent-2);
 }
 
+.compose-order-mobile-legend {
+  display: none;
+}
+
 .compose-request-axis-list {
   display: grid;
   gap: 0.5rem;
@@ -1302,6 +1306,11 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+.compose-flavor-strip:focus-visible {
+  outline: 2px solid var(--vk-accent);
+  outline-offset: -2px;
 }
 
 .compose-flavor-mini {
@@ -1892,6 +1901,10 @@
     padding-block: 0.35rem;
   }
 
+  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+    display: none;
+  }
+
   .compose-axis-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
@@ -1914,6 +1927,51 @@
     max-height: 7rem;
     border-top: 1px solid #694525;
     border-left: 0;
+  }
+
+  .compose-order-panel-head {
+    display: none;
+  }
+
+  .compose-order-mobile-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+    color: var(--vk-text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .compose-order-mobile-legend i {
+    width: 0.75rem;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--vk-accent);
+  }
+
+  .compose-order-mobile-legend i:last-of-type {
+    margin-left: 0.25rem;
+    background: var(--vk-accent-2);
+  }
+
+  .compose-request-axis-list {
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    gap: 0.45rem;
+  }
+
+  .compose-request-axis {
+    min-width: 0;
+  }
+
+  .compose-request-axis-head {
+    margin-bottom: 0.15rem;
+    font-size: 10px;
+  }
+
+  .compose-request-axis-head span {
+    display: none;
   }
 
   .compose-pantry {
@@ -2093,6 +2151,14 @@
 
   .compose-filters {
     padding-block: 0.2rem;
+  }
+
+  .compose-order-panel {
+    padding-block: 0.2rem 0.25rem;
+  }
+
+  .compose-order-mobile-legend {
+    margin-bottom: 0.1rem;
   }
 
   .compose-filter-summary {

@@ -113,11 +113,24 @@ export function mountFlavorInspectorModal(
   modal.hidden = true;
   overlayMount.appendChild(modal);
   let focusReturn: HTMLElement | null = null;
+  const focusableSelector =
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  const isolateCompose = (active: boolean) => {
+    const compose = overlayMount.querySelector<HTMLElement>(
+      '[data-testid="compose-sheet"]',
+    );
+    if (!compose) return;
+    compose.inert = active;
+    if (active) compose.setAttribute('aria-hidden', 'true');
+    else compose.removeAttribute('aria-hidden');
+  };
 
   const render = () => {
     const state = useGameStore.getState();
     const ingredientId = state.flavorInspectorIngredientId;
     if (!ingredientId) {
+      isolateCompose(false);
       modal.hidden = true;
       modal.innerHTML = '';
       if (focusReturn?.isConnected) {
@@ -134,6 +147,7 @@ export function mountFlavorInspectorModal(
           : null;
     }
     modal.hidden = false;
+    isolateCompose(true);
     modal.innerHTML = `
       <div class="modal-card flavor-modal-card" role="dialog" aria-modal="true" aria-labelledby="flavor-modal-title">
         <div class="modal-card-header">
@@ -175,12 +189,31 @@ export function mountFlavorInspectorModal(
   });
 
   const onKeydown = (event: KeyboardEvent) => {
-    if (
-      event.key === 'Escape' &&
-      useGameStore.getState().flavorInspectorIngredientId
-    ) {
+    if (!useGameStore.getState().flavorInspectorIngredientId) return;
+    if (event.key === 'Escape') {
       event.preventDefault();
       useGameStore.getState().closeFlavorInspector();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const dialog = modal.querySelector<HTMLElement>('[role="dialog"]');
+    if (!dialog) return;
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(focusableSelector),
+    ).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (!dialog.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
     }
   };
   document.addEventListener('keydown', onKeydown);
@@ -190,6 +223,7 @@ export function mountFlavorInspectorModal(
   return () => {
     unsubscribe();
     document.removeEventListener('keydown', onKeydown);
+    isolateCompose(false);
     modal.remove();
   };
 }

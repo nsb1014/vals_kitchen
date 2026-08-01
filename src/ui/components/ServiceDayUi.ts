@@ -734,10 +734,10 @@ export function mountServiceDayUi(
                   <span>${currentValue.toFixed(1)} dish · ${targetValue.toFixed(1)} target</span>
                 </div>
                 <div class="compose-request-bars">
-                  <span class="compose-request-bar target" title="Achievable target ${targetValue.toFixed(1)}">
+                  <span class="compose-request-bar target" role="meter" aria-label="${escapeHtml(`${AXIS_LABELS[axis]} target ${targetValue.toFixed(1)} out of 10`)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${targetValue.toFixed(1)}" title="Achievable target ${targetValue.toFixed(1)}">
                     <span style="width:${Math.min(100, Math.max(0, targetValue * 10)).toFixed(1)}%"></span>
                   </span>
-                  <span class="compose-request-bar current" title="Current dish ${currentValue.toFixed(1)}">
+                  <span class="compose-request-bar current" role="meter" aria-label="${escapeHtml(`${AXIS_LABELS[axis]} current dish ${currentValue.toFixed(1)} out of 10`)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${currentValue.toFixed(1)}" title="Current dish ${currentValue.toFixed(1)}">
                     <span style="width:${Math.min(100, Math.max(0, currentValue * 10)).toFixed(1)}%"></span>
                   </span>
                 </div>
@@ -752,6 +752,7 @@ export function mountServiceDayUi(
               </div>
               <span class="compose-order-legend"><i></i> target <i></i> dish</span>
             </div>
+            <span class="compose-order-mobile-legend"><i></i> target <i></i> dish</span>
             <div class="compose-request-axis-list">${requestRows}</div>
           </aside>`;
         }
@@ -793,7 +794,7 @@ export function mountServiceDayUi(
                 <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
-              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview">${flavorPreview}</div>
+              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </footer>
           </div>
@@ -911,8 +912,13 @@ export function mountServiceDayUi(
             ? 'Hide flavor details'
             : 'Flavor details';
           serviceOverlay
-            .querySelector('.compose-flavor-strip')
+            .querySelector<HTMLElement>('.compose-flavor-strip')
             ?.classList.toggle('expanded', composeFlavorDetailsOpen);
+          const flavorStrip = serviceOverlay.querySelector<HTMLElement>(
+            '.compose-flavor-strip',
+          );
+          if (composeFlavorDetailsOpen) flavorStrip?.setAttribute('tabindex', '0');
+          else flavorStrip?.removeAttribute('tabindex');
         });
       serviceOverlay
         .querySelector('[data-testid="compose-pantry"]')

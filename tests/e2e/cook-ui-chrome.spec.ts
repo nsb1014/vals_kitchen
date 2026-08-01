@@ -60,6 +60,8 @@ test.describe('cook sheet responsive chrome', () => {
       ).toBeVisible();
       await expect(page.getByTestId('compose-search')).toHaveCount(0);
       await expect(page.locator('.compose-filters')).toBeVisible();
+      await expect(page.locator('.compose-order-mobile-legend')).toBeVisible();
+      await expect(page.locator('.compose-request-bar[role="meter"]')).not.toHaveCount(0);
       await expectFooterInsideSheet(page);
       const pantry = await page.getByTestId('compose-pantry').boundingBox();
       const orderPanel = await page.getByTestId('compose-order-panel').boundingBox();
@@ -129,7 +131,14 @@ test.describe('cook sheet responsive chrome', () => {
     await expect(page.locator('.compose-flavor-mini').first()).toBeHidden();
     await flavorToggle.click();
     await expect(flavorToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.compose-flavor-strip')).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
     await expect(page.locator('.compose-flavor-mini').last()).toBeVisible();
+    await flavorToggle.focus();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.compose-flavor-strip')).toBeFocused();
     await page.locator('.compose-flavor-strip').evaluate((element) => {
       element.scrollLeft = element.scrollWidth;
     });
@@ -159,6 +168,10 @@ test.describe('cook sheet responsive chrome', () => {
     await expect(ingredient).toBeFocused();
     await ingredient.click();
     await expect(ingredient).toBeFocused();
+    const selectedChip = page.locator('.compose-selected-chip').first();
+    const selectedChipBox = await selectedChip.boundingBox();
+    expect(selectedChipBox).not.toBeNull();
+    expect(selectedChipBox!.height).toBeGreaterThanOrEqual(44);
     await page.keyboard.press('Shift+Tab');
     await expect
       .poll(() =>
@@ -176,6 +189,55 @@ test.describe('cook sheet responsive chrome', () => {
       'aria-hidden',
       'true',
     );
+  });
+
+  test('keeps a usable pantry across the upper mobile landscape breakpoint', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await openCookFixture(page);
+    await expect(
+      page.locator('.filter-axis-chip:not(.requested):visible'),
+    ).toHaveCount(0);
+    const pantry = await page.getByTestId('compose-pantry').boundingBox();
+    expect(pantry).not.toBeNull();
+    expect(pantry!.height).toBeGreaterThan(80);
+    await expectFooterInsideSheet(page);
+    await page.screenshot({
+      path: 'test-results/cook-sheet-wide-landscape.png',
+      animations: 'disabled',
+    });
+  });
+
+  test('keeps the ingredient profile as the topmost modal focus scope', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openCookFixture(page);
+    const ingredient = page.getByTestId('ingredient-chip').first();
+    await ingredient.focus();
+    await page.evaluate(() => window.__E2E__!.openFlavorInspector('almond'));
+
+    const modal = page.locator('#flavor-inspector-modal [role="dialog"]');
+    const modalClose = page.locator('#close-flavor-modal');
+    const modalBack = page.locator('#close-flavor-modal-bottom');
+    await expect(modal).toBeVisible();
+    await expect(modalClose).toBeFocused();
+    await expect(page.getByTestId('compose-sheet')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await page.keyboard.press('Shift+Tab');
+    await expect(modalBack).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(modalClose).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(modal).toHaveCount(0);
+    await expect(page.getByTestId('compose-sheet')).not.toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await expect(ingredient).toBeFocused();
   });
 
   test('keeps Plate in view in a short landscape viewport', async ({
