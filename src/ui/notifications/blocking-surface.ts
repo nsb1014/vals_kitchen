@@ -5,7 +5,11 @@ export const NOTIFICATION_BLOCKING_SURFACE_CHANGE =
 export function hasLocalNotificationBlockingSurface(
   doc: Document = document,
 ): boolean {
-  return Boolean(doc.querySelector('#floor-tickets-menu:not([hidden])'));
+  return Boolean(
+    doc.querySelector(
+      '#floor-tickets-menu:not([hidden]), #layout-catalog-sheet:not([hidden])',
+    ),
+  );
 }
 
 export function notifyNotificationBlockingSurfaceChanged(

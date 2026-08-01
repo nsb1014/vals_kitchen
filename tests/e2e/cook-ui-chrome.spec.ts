@@ -407,7 +407,6 @@ test.describe('consolidated mobile navigation', () => {
     expect(after.width).toBe(before.width);
     expect(after.height).toBe(before.height);
 
-    await page.getByTestId('open-layout-catalog').click();
     const catalog = page.getByTestId('layout-catalog-sheet');
     await expect(catalog.getByRole('tab', { name: 'Ingredients' })).toHaveAttribute(
       'aria-selected',

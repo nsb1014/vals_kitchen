@@ -373,6 +373,8 @@ function buildDaySummary(
     }
   }
   return buildDaySummaryDisplay({
+    completedDay: before.day,
+    nextDay: after.day,
     dayEarnings: activeDay.dayEarnings,
     dayBonus,
     volumeBonus,

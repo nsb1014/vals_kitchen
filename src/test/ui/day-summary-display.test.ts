@@ -7,6 +7,8 @@ import {
 describe('day summary display', () => {
   it('formats earnings, rating, and unlock lines', () => {
     const display = buildDaySummaryDisplay({
+      completedDay: 1,
+      nextDay: 2,
       dayEarnings: 200,
       dayBonus: 40,
       volumeBonus: 20,
@@ -18,6 +20,8 @@ describe('day summary display', () => {
       unlockCount: 8,
       totalIngredients: 40,
     });
+    expect(display.completedDay).toBe(1);
+    expect(display.nextDay).toBe(2);
     expect(display.earningsLine).toBe("Today's earnings: $260");
     expect(display.bonusLine).toBe('Day bonus (avg match ≥7): +$40');
     expect(display.volumeBonusLine).toBe('Volume bonus (5/8 seats): +$20');
@@ -30,6 +34,8 @@ describe('day summary display', () => {
 
   it('omits bonus lines when bonuses are zero', () => {
     const display = buildDaySummaryDisplay({
+      completedDay: 1,
+      nextDay: 2,
       dayEarnings: 10,
       dayBonus: 0,
       volumeBonus: 0,
@@ -50,6 +56,8 @@ describe('day summary display', () => {
     expect(formatMasterySummaryLine([])).toBeNull();
     expect(
       buildDaySummaryDisplay({
+        completedDay: 1,
+        nextDay: 2,
         dayEarnings: 10,
         dayBonus: 0,
         volumeBonus: 0,
@@ -70,6 +78,8 @@ describe('day summary display', () => {
       'Recipe mastery: Tomato Soup → Lv.2',
     );
     const display = buildDaySummaryDisplay({
+      completedDay: 1,
+      nextDay: 2,
       dayEarnings: 10,
       dayBonus: 0,
       volumeBonus: 1,
@@ -90,6 +100,8 @@ describe('day summary display', () => {
 
   it('reports a non-zero rating change when start and end differ', () => {
     const display = buildDaySummaryDisplay({
+      completedDay: 1,
+      nextDay: 2,
       dayEarnings: 100,
       dayBonus: 0,
       volumeBonus: 0,
@@ -107,6 +119,8 @@ describe('day summary display', () => {
 
   it('reports review gains without treating a prestige reset as a loss', () => {
     const display = buildDaySummaryDisplay({
+      completedDay: 1,
+      nextDay: 2,
       dayEarnings: 300,
       dayBonus: 20,
       volumeBonus: 20,

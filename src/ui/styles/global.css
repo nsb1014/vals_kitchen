@@ -280,7 +280,7 @@ body {
 .notice-banner-dismiss {
   flex: 0 0 auto;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 45px;
   border: 0;
   border-radius: 999px;
   background: rgba(30, 23, 20, 0.45);
@@ -329,6 +329,10 @@ body {
   contain: layout style;
 }
 
+.layout-hud.layout-catalog-open {
+  contain: style;
+}
+
 .layout-toolbar {
   display: flex;
   align-items: center;
@@ -357,9 +361,9 @@ body {
 
 .layout-catalog-plus {
   padding-inline: 0.75rem;
-  font-size: 1.5rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .boot-error {

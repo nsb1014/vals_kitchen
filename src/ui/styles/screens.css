@@ -1012,6 +1012,7 @@
 }
 
 .layout-shop-tabs .recipe-book-tab {
+  min-height: 44px;
   padding-inline: 0.35rem;
   font-size: 0.78rem;
   line-height: 1.15;
@@ -1057,6 +1058,10 @@
   padding: 0 0.75rem 0.75rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.layout-catalog-scroll[hidden] {
+  display: none;
 }
 
 .layout-catalog-group {
@@ -1142,20 +1147,126 @@
 }
 
 .placement-hint {
-  margin: 0.35rem 0 0;
+  min-width: 0;
+  margin: 0;
   font-size: 13px;
   color: var(--vk-accent);
 }
 
+.placement-guidance {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.placement-guidance[hidden] {
+  display: none;
+}
+
+.placement-cancel {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0.45rem 0.65rem;
+  font-size: 13px;
+}
+
 @media (max-width: 420px) {
+  .layout-catalog-sheet {
+    position: fixed;
+    z-index: 95;
+    inset: 0;
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    display: flex;
+    max-height: none;
+    flex-direction: column;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .layout-catalog-sheet[hidden] {
+    display: none;
+  }
+
+  .layout-catalog-header,
+  .layout-shop-tabs {
+    flex: 0 0 auto;
+  }
+
+  .layout-shop-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .layout-shop-tabs .recipe-book-tab {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .layout-catalog-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    max-height: none;
+    overflow-x: hidden;
+  }
+
+  .layout-catalog-row {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .placement-guidance {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .layout-stats {
-    gap: 0.35rem;
-    font-size: 12px;
+    display: none;
   }
 
   .layout-btn {
     padding-inline: 0.65rem;
     font-size: 14px;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true'] .layout-catalog-header {
+    gap: 0.25rem;
+    padding: 0.375rem;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true'] .layout-catalog-close {
+    min-width: 22px;
+    min-height: 22px;
+    font-size: 14px;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true'] .layout-shop-tabs {
+    padding: 0.3rem 0.375rem 0;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true']
+    .layout-shop-tabs
+    .recipe-book-tab {
+    min-height: 22px;
+    padding: 0.2rem;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true']
+    .layout-catalog-scroll {
+    padding: 0 0.375rem 0.375rem;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true'] .layout-catalog-group {
+    padding-top: 0.375rem;
+  }
+
+  .layout-catalog-sheet[data-zoom-compensated='true'] .layout-catalog-row {
+    min-height: 24px;
+    margin-top: 0.175rem;
+    padding: 0.25rem 0.3125rem;
   }
 }
 

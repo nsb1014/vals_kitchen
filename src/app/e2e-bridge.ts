@@ -34,6 +34,7 @@ export interface E2eBridge {
     activeDay: { queueIndex: number; customerCount: number } | null;
     composeDraftIngredientIds: string[];
     composeSheetOpen: boolean;
+    pendingPlacementItemKey: string | null;
     screen: string;
     floorPlayerGrid: { x: number; y: number } | null;
   };
@@ -113,6 +114,7 @@ export function installE2eBridge(
           : null,
         composeDraftIngredientIds: s.composeDraftIngredientIds ?? [],
         composeSheetOpen: s.composeSheetOpen,
+        pendingPlacementItemKey: s.pendingPlacementItemKey,
         screen: s.screen,
         floorPlayerGrid: s.floorPlayerGrid,
       };

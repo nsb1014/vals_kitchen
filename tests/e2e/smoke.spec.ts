@@ -66,6 +66,7 @@ test.describe('layout editing', () => {
       'aria-pressed',
       'true',
     );
+    await page.getByRole('button', { name: 'Close restaurant shop' }).click();
 
     const before = await page.evaluate(() => window.__E2E__!.getPlacements());
     const table = before.find((item) => item.id === 'table_1');
@@ -112,7 +113,6 @@ test.describe('screen navigation', () => {
 
     await navigateToScreen(page, 'restaurant');
     await page.getByTestId('edit-restaurant-btn').click();
-    await page.getByTestId('open-layout-catalog').click();
     await expect(page.getByTestId('layout-catalog-sheet')).toBeVisible();
     await expect(
       page.getByRole('tab', { name: 'Ingredients' }),
@@ -121,7 +121,7 @@ test.describe('screen navigation', () => {
       page.getByRole('tab', { name: 'Kitchen Equipment' }),
     ).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Layout' })).toBeVisible();
-    await page.getByRole('button', { name: 'Close furniture catalog' }).click();
+    await page.getByRole('button', { name: 'Close restaurant shop' }).click();
     await page.getByTestId('toggle-edit-layout').click();
 
     await page

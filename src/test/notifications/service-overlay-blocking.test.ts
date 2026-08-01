@@ -51,15 +51,21 @@ describe('notification service-overlay blocking', () => {
     ).toBe(true);
   });
 
-  it('derives ticket blocking from the actually rendered open menu', () => {
+  it('derives local blocking from the actually rendered ticket or shop surface', () => {
+    let selector = '';
     const openMenuDocument = {
-      querySelector: () => ({ id: 'floor-tickets-menu' }),
+      querySelector: (value: string) => {
+        selector = value;
+        return { id: 'floor-tickets-menu' };
+      },
     } as unknown as Document;
     const closedMenuDocument = {
       querySelector: () => null,
     } as unknown as Document;
 
     expect(hasLocalNotificationBlockingSurface(openMenuDocument)).toBe(true);
+    expect(selector).toContain('#floor-tickets-menu:not([hidden])');
+    expect(selector).toContain('#layout-catalog-sheet:not([hidden])');
     expect(hasLocalNotificationBlockingSurface(closedMenuDocument)).toBe(false);
   });
 });
