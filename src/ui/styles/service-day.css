@@ -631,6 +631,7 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
+  min-height: 44px;
   cursor: pointer;
   touch-action: manipulation;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
@@ -727,6 +728,8 @@
 }
 
 .floor-tickets-close {
+  min-width: 44px;
+  min-height: 44px;
   padding: 0.2rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--vk-border);
@@ -1889,22 +1892,39 @@
     padding-block: 0.35rem;
   }
 
+  .compose-axis-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .compose-axis-row .filter-axis-chip {
+    width: 100%;
+    min-width: 0;
+  }
+
   .compose-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .compose-order-panel {
+    grid-row: 1;
     max-height: 7rem;
     border-top: 1px solid #694525;
     border-left: 0;
   }
 
+  .compose-pantry {
+    grid-row: 2;
+  }
+
   .compose-sheet-footer {
     grid-template-columns: minmax(0, 1fr) minmax(7.8rem, 36%);
-    grid-template-rows: auto 48px var(--vk-cta-h);
-    height: 9.6rem;
-    min-height: 9.6rem;
+    grid-template-rows: auto 48px auto;
+    height: auto;
+    min-height: 5.8rem;
     gap: 0.25rem 0.5rem;
     padding: 0.4rem 0.65rem 0.55rem;
   }
@@ -1915,20 +1935,34 @@
   }
 
   .compose-flavor-toggle {
-    display: none;
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 44px;
+    margin: 0;
+    border: 1px solid var(--vk-border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--vk-text-dim);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
   }
 
-  .compose-flavor-strip,
-  .compose-flavor-strip.expanded {
-    display: grid;
+  .compose-flavor-strip {
+    display: none;
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     grid-auto-flow: column;
     grid-auto-columns: 5.6rem;
     grid-template-rows: 1fr;
     height: 48px;
     gap: 0.45rem;
     overflow-x: auto;
+  }
+
+  .compose-flavor-strip.expanded {
+    display: grid;
   }
 
   .compose-flavor-mini {
@@ -1943,8 +1977,8 @@
   }
 
   .compose-sheet-footer #plate-btn {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -2066,9 +2100,9 @@
   }
 
   .compose-sheet-footer {
-    height: 7.4rem;
-    min-height: 7.4rem;
-    grid-template-rows: auto 32px 44px;
+    height: auto;
+    min-height: 4.9rem;
+    grid-template-rows: auto 44px auto;
     padding-block: 0.25rem;
   }
 

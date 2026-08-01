@@ -102,6 +102,7 @@
 | 2026-07-30 | Guest scale matched to chef; chairs grown to fit; diners sink onto cushion (chair stays planted) |
 | 2026-08-01 | Rebuilt seating art as one coordinated high-resolution chibi system: Val-preserving 128×160 player frames, five guest walk/sit sheets, dedicated ticket portraits, proportion-matched table states and backless stools, content-aware gutter slicing, fixed actor scale, shared stool/feet baseline, and separated south-door spawn lanes; food art intentionally deferred |
 | 2026-08-01 | Corrected seating composition with corner-free oval tables and side-centered place settings, shifted seated hips from stool centers toward the table, and replaced Val's global white key with border-connected matte removal and fringe cleanup |
+| 2026-08-01 | UX loop 1: deferred notifications behind service sheets without losing timer state, restored a legible mobile request → pantry → Plate hierarchy, and added compose focus isolation plus 44px popup targets |
 | 2026-07-30 | UI: fixed compose food-icon bleed (24→32); removed duplicate floor ticket strip; tickets menu fixed height + single scroll; Order/Ideal share shell |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |

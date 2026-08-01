@@ -62,8 +62,27 @@ test.describe('cook sheet responsive chrome', () => {
       await expect(page.locator('.compose-filters')).toBeVisible();
       await expectFooterInsideSheet(page);
       const pantry = await page.getByTestId('compose-pantry').boundingBox();
+      const orderPanel = await page.getByTestId('compose-order-panel').boundingBox();
+      const close = await page.getByTestId('compose-close').boundingBox();
       expect(pantry).not.toBeNull();
+      expect(orderPanel).not.toBeNull();
+      expect(close).not.toBeNull();
       expect(pantry!.height).toBeGreaterThan(150);
+      expect(orderPanel!.y + orderPanel!.height).toBeLessThanOrEqual(pantry!.y + 1);
+      expect(close!.width).toBeGreaterThanOrEqual(44);
+      expect(close!.height).toBeGreaterThanOrEqual(44);
+      const filterBounds = await page.locator('.compose-axis-row').boundingBox();
+      expect(filterBounds).not.toBeNull();
+      for (const chip of await page
+        .locator('.filter-axis-chip.requested:visible')
+        .all()) {
+        const chipBounds = await chip.boundingBox();
+        expect(chipBounds).not.toBeNull();
+        expect(chipBounds!.x).toBeGreaterThanOrEqual(filterBounds!.x - 1);
+        expect(chipBounds!.x + chipBounds!.width).toBeLessThanOrEqual(
+          filterBounds!.x + filterBounds!.width + 1,
+        );
+      }
       await page.screenshot({
         path: `test-results/cook-sheet-${width}.png`,
         animations: 'disabled',
@@ -105,14 +124,58 @@ test.describe('cook sheet responsive chrome', () => {
     await openCookFixture(page);
     await expect(page.locator('.compose-flavor-mini')).toHaveCount(15);
     await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(15);
-    await expect(page.locator('.compose-flavor-mini').first()).toBeVisible();
     const flavorToggle = page.getByTestId('compose-flavor-toggle');
-    await expect(flavorToggle).toBeHidden();
+    await expect(flavorToggle).toBeVisible();
+    await expect(page.locator('.compose-flavor-mini').first()).toBeHidden();
+    await flavorToggle.click();
+    await expect(flavorToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.compose-flavor-mini').last()).toBeVisible();
+    await page.locator('.compose-flavor-strip').evaluate((element) => {
+      element.scrollLeft = element.scrollWidth;
+    });
     const flavorStrip = await page.locator('.compose-flavor-strip').boundingBox();
     const plate = await page.getByTestId('plate-btn').boundingBox();
     expect(flavorStrip).not.toBeNull();
     expect(plate).not.toBeNull();
-    expect(flavorStrip!.y + flavorStrip!.height).toBeLessThanOrEqual(plate!.y + 1);
+    expect(flavorStrip!.y).toBeGreaterThanOrEqual(plate!.y + plate!.height - 1);
+  });
+
+  test('isolates focus inside compose and preserves it across selection renders', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openCookFixture(page);
+    const sheet = page.getByTestId('compose-sheet');
+    const close = page.getByTestId('compose-close');
+    await expect(close).toBeFocused();
+    await expect(sheet).toHaveAttribute('aria-modal', 'true');
+    await expect(page.locator('.canvas-mount')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+
+    const ingredient = page.getByTestId('ingredient-chip').first();
+    await ingredient.focus();
+    await expect(ingredient).toBeFocused();
+    await ingredient.click();
+    await expect(ingredient).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Boolean(
+            document.activeElement?.closest('[data-testid="compose-sheet"]'),
+          ),
+        ),
+      )
+      .toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    await expect(page.locator('.canvas-mount')).not.toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
   });
 
   test('keeps Plate in view in a short landscape viewport', async ({
