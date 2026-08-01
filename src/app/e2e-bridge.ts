@@ -331,8 +331,10 @@ export function installE2eBridge(
             ),
             tickets,
             carriedTicketId,
-            selectedTicketId:
-              tickets.find((ticket) => ticket.status === 'open')?.id ?? null,
+            selectedTicketId: carrying
+              ? null
+              : (tickets.find((ticket) => ticket.status === 'open')?.id ??
+                null),
           },
         },
       });

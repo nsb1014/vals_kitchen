@@ -23,7 +23,7 @@ const guestLabels = {
 };
 
 describe('floor ticket panel view model', () => {
-  it('uses selected open, carried plated, then first open as the Ideal subject', () => {
+  it('uses carried plated, selected open, then first open as the Ideal subject', () => {
     const tickets = [
       ticket('open-first', 'c1', 'open'),
       ticket('carried', 'c2', 'plated'),
@@ -38,15 +38,15 @@ describe('floor ticket panel view model', () => {
         carriedTicketId: 'carried',
         guestLabelByCustomerId: guestLabels,
       }).subjectTicketId,
-    ).toBe('selected');
+    ).toBe('carried');
     expect(
       buildFloorTicketPanelViewModel({
-        tickets,
-        selectedTicketId: 'done',
-        carriedTicketId: 'carried',
+        tickets: tickets.filter((row) => row.id !== 'carried'),
+        selectedTicketId: 'selected',
+        carriedTicketId: null,
         guestLabelByCustomerId: guestLabels,
       }).subjectTicketId,
-    ).toBe('carried');
+    ).toBe('selected');
     expect(
       buildFloorTicketPanelViewModel({
         tickets: tickets.filter((row) => row.id !== 'carried'),

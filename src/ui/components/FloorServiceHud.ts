@@ -22,6 +22,7 @@ import {
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
+import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -117,6 +118,7 @@ export function mountFloorServiceHud(
     const toggle = dock.querySelector<HTMLElement>('#floor-tickets-toggle');
     if (menu) menu.hidden = true;
     toggle?.setAttribute('aria-expanded', 'false');
+    notifyNotificationBlockingSurfaceChanged();
   };
 
   const onDocumentKeydown = (event: KeyboardEvent) => {
@@ -144,6 +146,7 @@ export function mountFloorServiceHud(
       dock.innerHTML = '';
       ticketsMenuOpen = false;
       ticketsPanelView = 'order';
+      notifyNotificationBlockingSurfaceChanged();
       return;
     }
 
@@ -162,6 +165,7 @@ export function mountFloorServiceHud(
       dock.hidden = true;
       dock.innerHTML = '';
       ticketsMenuOpen = false;
+      notifyNotificationBlockingSurfaceChanged();
       return;
     }
     const initialGuestArriving =
@@ -395,7 +399,16 @@ export function mountFloorServiceHud(
       const currentFloor = current.activeDay?.floor;
       // Defense in depth: the presentation renders static rows while carrying,
       // and the handler independently refuses a stale programmatic click.
-      if (!currentFloor || currentFloor.carriedTicketId) return;
+      if (
+        !currentFloor ||
+        currentFloor.tickets.some(
+          (ticket) =>
+            ticket.id === currentFloor.carriedTicketId &&
+            ticket.status === 'plated',
+        )
+      ) {
+        return;
+      }
       const ticket = currentFloor.tickets.find((t) => t.id === ticketId);
       if (ticket?.status === 'open') {
         current.setFloorSelectedTicket(ticketId);
@@ -457,6 +470,7 @@ export function mountFloorServiceHud(
       });
 
     restoreDockFocus(focusIdentity);
+    notifyNotificationBlockingSurfaceChanged();
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -504,5 +518,6 @@ export function mountFloorServiceHud(
     arrivalTimers.clear();
     chromeMount.innerHTML = '';
     dock.remove();
+    notifyNotificationBlockingSurfaceChanged();
   };
 }

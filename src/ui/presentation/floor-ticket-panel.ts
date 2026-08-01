@@ -52,8 +52,8 @@ export function buildFloorTicketPanelViewModel(
       ticket.id === input.carriedTicketId && ticket.status === 'plated',
   );
   const subjectTicket =
-    selectedTicket ??
     carriedTicket ??
+    selectedTicket ??
     activeTickets.find((ticket) => ticket.status === 'open') ??
     null;
   const carryingGuestLabel = carriedTicket
@@ -94,7 +94,7 @@ export function buildFloorTicketPanelViewModel(
         carrying,
         // A carried dish blocks cooking in the domain. Keep all order rows
         // informational until it is delivered instead of promising a next pick.
-        selectable: ticket.status === 'open' && !input.carriedTicketId,
+        selectable: ticket.status === 'open' && !carriedTicket,
       };
     }),
   };
