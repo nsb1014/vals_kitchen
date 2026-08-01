@@ -103,4 +103,36 @@ describe('floor sim', () => {
     expect(day.pool.find((guest) => guest.id === 'c1')?.stage).toBe('ordered');
     expect(day.pool.find((guest) => guest.id === 'c2')?.stage).toBe('seated');
   });
+
+  it('leaves the fifth nearby order untouched when four tickets are active', () => {
+    const tables = tablesFromPlacements(placements).map(setTable);
+    const seats = seatsFromPlacements(placements);
+    const fifthCustomer = customer('c5');
+    const created = createFloorDayFromCustomers([fifthCustomer], tables, seats);
+    const seat = seats[0]!;
+    const day = {
+      ...created,
+      playerPosition: { x: seat.x, y: seat.y },
+      pool: [
+        {
+          ...created.pool[0]!,
+          stage: 'seated' as const,
+          seat,
+        },
+      ],
+      tickets: [1, 2, 3, 4].map((number) => ({
+        id: `ticket_c${number}`,
+        customerId: `c${number}`,
+        ingredientIds: [],
+        status: 'open' as const,
+      })),
+      selectedTicketId: 'ticket_c1',
+    };
+
+    const result = takeOrdersForSeated(day, [fifthCustomer.id]);
+
+    expect(result).toBe(day);
+    expect(result.tickets).toHaveLength(4);
+    expect(result.pool[0]!.stage).toBe('seated');
+  });
 });

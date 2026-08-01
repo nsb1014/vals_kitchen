@@ -52,6 +52,10 @@ export interface E2eBridge {
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
+  prepareTicketPanelFixture: (
+    ticketCount: number,
+    carrying?: boolean,
+  ) => Promise<void>;
   openComposeSheet: () => void;
   openFlavorInspector: (ingredientId: string) => void;
   /** Debug: live actor sprite sizes after floor sync (Playwright visual QA). */
@@ -286,6 +290,52 @@ export function installE2eBridge(
       restaurantApp?.app.stop();
       restaurantApp?.nav.snapTo(cookPosition);
       useGameStore.getState().setFloorNavPosition(cookPosition);
+    },
+
+    async prepareTicketPanelFixture(ticketCount, carrying = false) {
+      if (
+        !Number.isInteger(ticketCount) ||
+        ticketCount < 0 ||
+        ticketCount > 4
+      ) {
+        throw new Error('ticket panel fixture count must be between 0 and 4');
+      }
+      if (!useGameStore.getState().activeDay) {
+        await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }
+      useGameStore.getState().dismissModifier();
+
+      const activeDay = useGameStore.getState().activeDay!;
+      const floor = activeDay.floor!;
+      const customers = activeDay.customers.slice(0, ticketCount);
+      if (customers.length !== ticketCount) {
+        throw new Error('ticket panel fixture does not have enough customers');
+      }
+      const tickets = customers.map((customer, index) => ({
+        id: `ticket_${customer.id}`,
+        customerId: customer.id,
+        ingredientIds: [],
+        status:
+          carrying && index === 0 ? ('plated' as const) : ('open' as const),
+      }));
+      const carriedTicketId = carrying ? (tickets[0]?.id ?? null) : null;
+      useGameStore.setState({
+        activeDay: {
+          ...activeDay,
+          floor: {
+            ...floor,
+            pool: floor.pool.map((guest) =>
+              customers.some((customer) => customer.id === guest.customer.id)
+                ? { ...guest, stage: 'ordered' as const }
+                : guest,
+            ),
+            tickets,
+            carriedTicketId,
+            selectedTicketId:
+              tickets.find((ticket) => ticket.status === 'open')?.id ?? null,
+          },
+        },
+      });
     },
 
     openComposeSheet() {
