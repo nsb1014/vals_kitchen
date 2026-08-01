@@ -111,9 +111,12 @@ export function mountFloorServiceHud(
     const target = event.target as Node | null;
     if (target && dock.contains(target)) return;
     ticketsMenuOpen = false;
-    // Let the pointer continue to its outside target without restoring focus
-    // to an element in the dock that the user just dismissed.
-    render(null);
+    // Close in place during the capture phase. Rebuilding chrome here would
+    // remove an outside floor-action target before its click can fire.
+    const menu = dock.querySelector<HTMLElement>('#floor-tickets-menu');
+    const toggle = dock.querySelector<HTMLElement>('#floor-tickets-toggle');
+    if (menu) menu.hidden = true;
+    toggle?.setAttribute('aria-expanded', 'false');
   };
 
   const onDocumentKeydown = (event: KeyboardEvent) => {
