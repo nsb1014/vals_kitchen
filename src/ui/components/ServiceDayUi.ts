@@ -4,7 +4,7 @@ import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
-import { AXIS_KEYS } from '../../domain/types.ts';
+import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
 import {
   AXIS_LABELS,
   emptyFlavorProfile,
@@ -48,7 +48,11 @@ import {
 } from '../presentation/rating-display.ts';
 import {
   bandLabel,
+  composePantrySummary,
   type ComposeAxisBands,
+  emptyComposePantryFilters,
+  filterComposePantry,
+  toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
@@ -120,10 +124,12 @@ export function mountServiceDayUi(
   let composeTicketId: string | null = null;
   let composeFocusReturn: HTMLElement | null = null;
   let composeFlavorDetailsOpen = false;
+  let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
 
   const resetComposeUi = () => {
     composeFlavorDetailsOpen = false;
+    composeFilters = emptyComposePantryFilters();
   };
 
   const focusFloorAfterCompose = () => {
@@ -575,7 +581,15 @@ export function mountServiceDayUi(
 
       const renderIngredientButtons = (): string => {
         const currentDraft = selectComposeDraftIds(useGameStore.getState());
-        return unlocked
+        const matches = filterComposePantry(
+          unlocked,
+          composeFilters,
+          requestedBands,
+        );
+        if (matches.length === 0) {
+          return '<p class="compose-empty" data-testid="compose-empty">No ingredients match this flavor.</p>';
+        }
+        return matches
           .map((item) => {
             const selected = currentDraft.includes(item.id);
             const toggle = canToggleIngredient(item.id, currentDraft);
@@ -596,6 +610,26 @@ export function mountServiceDayUi(
                 return `<button type="button" class="compose-selected-chip" data-compose-ingredient-id="${id}" aria-label="Remove ${name}" title="${name}">${renderFoodIconHtml(id, 20)}<span>${name}</span><span aria-hidden="true">×</span></button>`;
               })
               .join('');
+
+      const orderedFilterAxes = [
+        ...requestedAxes,
+        ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
+      ];
+      const axisChips = orderedFilterAxes
+        .map((axis) => {
+          const selected = composeFilters.selectedAxis === axis;
+          const band = requestedBands[axis];
+          const label = band
+            ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
+            : AXIS_LABELS[axis];
+          return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
+        })
+        .join('');
+      const matchingCount = filterComposePantry(
+        unlocked,
+        composeFilters,
+        requestedBands,
+      ).length;
 
       const flavorPreview = buildFlavorBarsViewModel(
         preview.profile ?? emptyFlavorProfile(),
@@ -682,6 +716,12 @@ export function mountServiceDayUi(
               </div>
               <div class="compose-selected-strip">${selectedStrip}</div>
             </section>
+            <section class="compose-filters" aria-label="Pantry filters">
+              <div class="compose-axis-row" role="group" aria-label="Filter ingredients by one flavor">
+                ${axisChips}
+              </div>
+              <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount, requestedBands))}</p>
+            </section>
             <div class="compose-workspace">
               <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
                 <div class="ingredient-grid" role="group" aria-label="Unlocked ingredients">${renderIngredientButtons()}</div>
@@ -762,6 +802,40 @@ export function mountServiceDayUi(
           });
       };
 
+      const updateFilterUi = () => {
+        const pantry = serviceOverlay.querySelector<HTMLElement>(
+          '[data-testid="compose-pantry"] .ingredient-grid',
+        );
+        if (pantry) {
+          pantry.innerHTML = renderIngredientButtons();
+          bindIngredientButtons(pantry);
+        }
+        const count = filterComposePantry(
+          unlocked,
+          composeFilters,
+          requestedBands,
+        ).length;
+        const summary = serviceOverlay.querySelector(
+          '[data-testid="compose-filter-summary"]',
+        );
+        if (summary) {
+          summary.textContent = composePantrySummary(
+            composeFilters,
+            count,
+            requestedBands,
+          );
+        }
+        serviceOverlay
+          .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
+          .forEach((button) => {
+            const selected =
+              composeFilters.selectedAxis ===
+              (button.dataset.composeAxis as AxisKey);
+            button.classList.toggle('selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+          });
+      };
+
       bindIngredientButtons(serviceOverlay);
       serviceOverlay
         .querySelector<HTMLButtonElement>(
@@ -795,6 +869,17 @@ export function mountServiceDayUi(
           { once: true },
         );
 
+      serviceOverlay
+        .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            composeFilters = toggleComposeAxis(
+              composeFilters,
+              button.dataset.composeAxis as AxisKey,
+            );
+            updateFilterUi();
+          });
+        });
       serviceOverlay.querySelector('#plate-btn')?.addEventListener(
         'click',
         () => {
