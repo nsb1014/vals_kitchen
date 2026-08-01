@@ -82,6 +82,23 @@ test.describe('ticket planning panel', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('floor-tickets-menu')).toBeHidden();
     await expect(toggle).toBeFocused();
+
+    await toggle.click();
+    await page.evaluate(() => {
+      const button = document.querySelector<HTMLButtonElement>(
+        '[data-testid="floor-take-orders"]',
+      )!;
+      button.disabled = false;
+      button.addEventListener('click', () => {
+        document.documentElement.dataset.outsideTicketAction = 'clicked';
+      });
+    });
+    await page.getByTestId('floor-take-orders').click();
+    await expect(page.getByTestId('floor-tickets-menu')).toBeHidden();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-outside-ticket-action',
+      'clicked',
+    );
     expect(pageErrors).toEqual([]);
   });
 
