@@ -1,10 +1,7 @@
 import { guestVariant } from '../../canvas/world/character-frames.ts';
 
-/**
- * Uses the same stable guest variant as the restaurant actor. CSS crops the
- * face from that variant's down-facing frame in the shared character atlas.
- */
+/** Uses a dedicated head crop from the same source frame as the floor actor. */
 export function renderGuestPortraitHtml(guestId: string): string {
   const variant = guestVariant(guestId);
-  return `<span class="guest-portrait guest-portrait-${variant}" data-testid="guest-portrait" aria-hidden="true"></span>`;
+  return `<img class="guest-portrait" src="/assets/portraits/guest_${variant}.png" alt="" data-testid="guest-portrait" aria-hidden="true">`;
 }

@@ -145,8 +145,9 @@ export function connectingDoorInterior(
 }
 
 /**
- * Cook spawn for a new service day: one tile north of the waiting line so Val
- * does not start stacked on north-wall table seats (starter tables at y=2).
+ * Cook spawn for a new service day: one tile north and one tile east of the
+ * waiting line. The horizontal lane separation keeps two full-height chibi
+ * silhouettes from overlapping at the south door.
  */
 export function servicePlayerSpawn(
   gridW: number,
@@ -154,7 +155,10 @@ export function servicePlayerSpawn(
 ): { x: number; y: number } {
   const door = doorForGrid(gridW, gridH);
   const waitY = Math.max(0, door.y - 1);
-  return { x: door.x, y: Math.max(1, waitY - 1) };
+  return {
+    x: Math.min(gridW - 2, door.x + 1),
+    y: Math.max(1, waitY - 1),
+  };
 }
 
 /**

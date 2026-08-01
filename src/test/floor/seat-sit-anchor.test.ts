@@ -31,7 +31,7 @@ describe('seat sit anchors', () => {
     });
   });
 
-  it('plants chairs on the seat-cell floor and offsets diners onto the cushion', () => {
+  it('plants stools and authored seated poses on one floor baseline', () => {
     const seatW = {
       tablePlacementId: 't',
       slotIndex: 0,
@@ -53,7 +53,7 @@ describe('seat sit anchors', () => {
       x: 3 * TILE_PX + TILE_PX / 2,
       y: 2 * TILE_PX + TILE_PX / 2,
     });
-    expect(SEAT_SIT_OFFSET_Y).toBeLessThan(0);
+    expect(SEAT_SIT_OFFSET_Y).toBe(0);
     expect(west).toEqual({ x: chairW.x, y: chairW.y + SEAT_SIT_OFFSET_Y });
     expect(east).toEqual({ x: chairE.x, y: chairE.y + SEAT_SIT_OFFSET_Y });
   });

@@ -4,8 +4,12 @@
  */
 export const PLAYER_DISPLAY_HEIGHT = 60;
 export const GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT;
-export const SEATED_GUEST_DISPLAY_HEIGHT = 66;
+export const SEATED_GUEST_DISPLAY_HEIGHT = PLAYER_DISPLAY_HEIGHT;
 
-export const PLAYER_CONTENT_HEIGHT_PX = 90;
-export const GUEST_WALK_CONTENT_HEIGHT_PX = 167;
-export const GUEST_SIT_CONTENT_HEIGHT_PX = 148;
+/**
+ * Every authored actor pose uses the same 128×160 frame and runtime scale.
+ * Seated bodies stay naturally shorter without enlarging their heads.
+ */
+export const PLAYER_CONTENT_HEIGHT_PX = 160;
+export const GUEST_WALK_CONTENT_HEIGHT_PX = 160;
+export const GUEST_SIT_CONTENT_HEIGHT_PX = 160;

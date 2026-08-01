@@ -17,10 +17,15 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "vendor" / "generated" / "chibi-ui" / "source"
 OUT = ROOT / "vendor" / "generated" / "chibi-ui"
+SEATING_SOURCE = SOURCE / "seating-rework"
 PLAYER_OUT = OUT / "player-frames"
 GUEST_OUT = OUT / "guest-frames"
+PORTRAIT_OUT = OUT / "guest-portraits"
 TILE_OUT = OUT / "restaurant-tiles"
 PROP_OUT = OUT / "restaurant-props"
+
+ACTOR_FRAME_SIZE = (128, 160)
+PORTRAIT_SIZE = (96, 96)
 
 
 def chroma_alpha(image: Image.Image) -> Image.Image:
@@ -96,6 +101,29 @@ def contain(image: Image.Image, size: tuple[int, int], bottom_pad: int = 2) -> I
     return canvas
 
 
+def contain_at_scale(
+    image: Image.Image,
+    size: tuple[int, int],
+    scale: float,
+    bottom_pad: int = 4,
+) -> Image.Image:
+    """Place a sprite at a shared authored scale and a shared feet baseline."""
+    target_w, target_h = size
+    resized = image.resize(
+        (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    if resized.width > target_w or resized.height + bottom_pad > target_h:
+        raise ValueError(
+            f"Shared actor scale does not fit {size}: {resized.size} at {scale:.4f}"
+        )
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    x = (target_w - resized.width) // 2
+    y = target_h - bottom_pad - resized.height
+    canvas.alpha_composite(resized, (x, y))
+    return canvas
+
+
 def resize_exact(image: Image.Image, size: tuple[int, int]) -> Image.Image:
     """Fill an architectural tile edge-to-edge; seams are worse than mild distortion."""
     return image.resize(size, Image.Resampling.LANCZOS)
@@ -107,6 +135,61 @@ def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     alpha = rgba.getchannel("A").point(lambda value: 0 if value < cutoff else value)
     rgba.putalpha(alpha)
     return rgba
+
+
+def alpha_content_runs(
+    image: Image.Image,
+    axis: str,
+    cutoff: int = 20,
+) -> list[tuple[int, int]]:
+    """Find real transparent gutters instead of assuming generated grid cuts."""
+    alpha = image.getchannel("A").point(lambda value: 255 if value >= cutoff else 0)
+    length = image.height if axis == "rows" else image.width
+    occupied: list[int] = []
+    for index in range(length):
+        band = (
+            alpha.crop((0, index, image.width, index + 1))
+            if axis == "rows"
+            else alpha.crop((index, 0, index + 1, image.height))
+        )
+        if band.getbbox() is not None:
+            occupied.append(index)
+
+    runs: list[list[int]] = []
+    for index in occupied:
+        if not runs or index > runs[-1][1] + 1:
+            runs.append([index, index])
+        else:
+            runs[-1][1] = index
+    return [(start, end + 1) for start, end in runs]
+
+
+def authored_grid_boxes(
+    image: Image.Image,
+    columns: int,
+    rows: int,
+    padding: int = 4,
+) -> list[list[tuple[int, int, int, int]]]:
+    """Return content-aware boxes for an evenly arranged generated asset board."""
+    column_runs = alpha_content_runs(image, "cols")
+    row_runs = alpha_content_runs(image, "rows")
+    if len(column_runs) != columns or len(row_runs) != rows:
+        raise ValueError(
+            f"Expected {columns}x{rows} authored grid, found "
+            f"{len(column_runs)}x{len(row_runs)}"
+        )
+    return [
+        [
+            (
+                max(0, x0 - padding),
+                max(0, y0 - padding),
+                min(image.width, x1 + padding),
+                min(image.height, y1 + padding),
+            )
+            for x0, x1 in column_runs
+        ]
+        for y0, y1 in row_runs
+    ]
 
 
 def harden_sprite_alpha(image: Image.Image, solid_cutoff: int = 40) -> Image.Image:
@@ -142,7 +225,7 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
         raise ValueError(f"Player frame is empty: {name}")
     visible_height = bounds[3] - bounds[1]
     bottom_gap = image.height - bounds[3]
-    if visible_height < 84 or not 1 <= bottom_gap <= 4:
+    if visible_height < 138 or not 4 <= bottom_gap <= 8:
         raise ValueError(
             f"Player frame is not feet-normalized: {name} "
             f"(bounds={bounds}, visible_height={visible_height}, bottom_gap={bottom_gap})"
@@ -178,26 +261,27 @@ def validate_animation_frames() -> None:
                     image.width - bounds[2],
                     image.height - bounds[3],
                 )
-                if min(margins) < 6:
+                if min(margins) < 4:
                     raise ValueError(f"Guest animation frame is clipped: {name} margins={margins}")
-                if facing == "up" and top_row_fill_ratio(image) > 0.55:
-                    raise ValueError(
-                        f"Guest up-facing frame still has a flat clipped crown: {name} "
-                        f"fill={top_row_fill_ratio(image):.2f}"
-                    )
                 heights.append(bounds[3] - bounds[1])
-            if max(heights) - min(heights) > 3:
+            if max(heights) - min(heights) > 10:
                 raise ValueError(
                     f"Guest walk cycle changes crop height: {variant} {facing} {heights}"
                 )
-        sit_up = GUEST_OUT / f"guest_{variant}_sit_up.png"
-        if sit_up.is_file():
-            image = Image.open(sit_up).convert("RGBA")
-            if top_row_fill_ratio(image) > 0.55:
-                raise ValueError(
-                    f"Guest sit-up frame still has a flat clipped crown: {sit_up.name} "
-                    f"fill={top_row_fill_ratio(image):.2f}"
-                )
+        for facing in ("down", "right", "left", "up"):
+            sit_path = GUEST_OUT / f"guest_{variant}_sit_{facing}.png"
+            image = Image.open(sit_path).convert("RGBA")
+            bounds = image.getchannel("A").getbbox()
+            if bounds is None:
+                raise ValueError(f"Guest sit frame is empty: {sit_path.name}")
+            margins = (
+                bounds[0],
+                bounds[1],
+                image.width - bounds[2],
+                image.height - bounds[3],
+            )
+            if min(margins) < 4:
+                raise ValueError(f"Guest sit frame is clipped: {sit_path.name} margins={margins}")
 
 
 def sample_hair_color(image: Image.Image, bounds: tuple[int, int, int, int]) -> tuple[int, int, int]:
@@ -390,11 +474,28 @@ def build_player() -> None:
         "up": (723, 1024),
     }
 
-    def player_frame(column: int, facing: str) -> Image.Image:
+    def player_source_frame(column: int, facing: str) -> Image.Image:
         x0, x1 = column_bounds[column]
         y0, y1 = facing_rows[facing]
         keyed = white_alpha(sheet.crop((x0, y0, x1, y1)))
-        return harden_sprite_alpha(clear_alpha_noise(contain(trim(keyed, 3), (80, 96))))
+        return trim(clear_alpha_noise(keyed), 3)
+
+    source_frames = {
+        (facing, column): player_source_frame(column, facing)
+        for facing in facing_rows
+        for column in (0, 1, 2, 4)
+    }
+    max_w = max(frame.width for frame in source_frames.values())
+    max_h = max(frame.height for frame in source_frames.values())
+    scale = min(
+        (ACTOR_FRAME_SIZE[0] - 8) / max_w,
+        (ACTOR_FRAME_SIZE[1] - 8) / max_h,
+    )
+
+    def player_frame(column: int, facing: str) -> Image.Image:
+        return harden_sprite_alpha(
+            contain_at_scale(source_frames[(facing, column)], ACTOR_FRAME_SIZE, scale)
+        )
 
     for facing in facing_rows:
         for frame in range(3):
@@ -411,6 +512,54 @@ def build_player() -> None:
     # Stable compatibility keys used while atlases are loading.
     save(Image.open(PLAYER_OUT / "player_down_0.png"), PLAYER_OUT / "player.png")
     save(Image.open(PLAYER_OUT / "player_down_1.png"), PLAYER_OUT / "player_walk.png")
+
+
+def build_guests() -> None:
+    """Crop the coordinated cast sheets without changing scale between poses."""
+    row_facings = ("down", "right", "left", "up")
+    for variant in ("a", "b", "c", "d", "e"):
+        sheet_path = SEATING_SOURCE / f"guest-{variant}-sheet-transparent.png"
+        sheet = clear_alpha_noise(Image.open(sheet_path).convert("RGBA"))
+        if sheet.size != (1536, 1024):
+            raise SystemExit(f"Unexpected guest sheet size: {sheet_path} {sheet.size}")
+        boxes = authored_grid_boxes(sheet, columns=4, rows=4)
+
+        sources: dict[tuple[str, int], Image.Image] = {}
+        for row, facing in enumerate(row_facings):
+            for column in range(4):
+                cell = sheet.crop(boxes[row][column])
+                sources[(facing, column)] = trim(cell, 3)
+
+        standing = [
+            source
+            for (facing, column), source in sources.items()
+            if column < 3
+        ]
+        max_w = max(frame.width for frame in standing)
+        max_h = max(frame.height for frame in standing)
+        scale = min(
+            (ACTOR_FRAME_SIZE[0] - 8) / max_w,
+            (ACTOR_FRAME_SIZE[1] - 8) / max_h,
+        )
+
+        for facing in row_facings:
+            for frame in range(3):
+                sprite = contain_at_scale(sources[(facing, frame)], ACTOR_FRAME_SIZE, scale)
+                save(sprite, GUEST_OUT / f"guest_{variant}_{facing}_{frame}.png")
+            seated = contain_at_scale(sources[(facing, 3)], ACTOR_FRAME_SIZE, scale)
+            save(seated, GUEST_OUT / f"guest_{variant}_sit_{facing}.png")
+
+        down = Image.open(GUEST_OUT / f"guest_{variant}_down_0.png").convert("RGBA")
+        bounds = down.getchannel("A").getbbox()
+        if bounds is None:
+            raise ValueError(f"Guest portrait source is empty: {variant}")
+        left, top, right, bottom = bounds
+        head_bottom = min(bottom, top + round((bottom - top) * 0.56))
+        head = down.crop((left, top, right, head_bottom))
+        save(contain(head, PORTRAIT_SIZE, bottom_pad=4), PORTRAIT_OUT / f"guest_{variant}.png")
+
+    save(Image.open(GUEST_OUT / "guest_a_down_0.png"), GUEST_OUT / "customer.png")
+    save(Image.open(GUEST_OUT / "guest_b_down_0.png"), GUEST_OUT / "customer_b.png")
 
 
 def seamless_surface(image: Image.Image) -> Image.Image:
@@ -476,28 +625,33 @@ def build_surfaces() -> None:
 
 def build_props() -> None:
     sheet = Image.open(SOURCE / "furniture-sheet-keyed.png").convert("RGBA")
-    table_sheet = Image.open(SOURCE / "furniture-sheet-v2-keyed.png").convert("RGBA")
+    seating_sheet = Image.open(
+        SEATING_SOURCE / "furniture-sheet-transparent.png"
+    ).convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected furniture sheet size: {sheet.size}")
-    if table_sheet.size != (1536, 1024):
-        raise SystemExit(f"Unexpected corrected table sheet size: {table_sheet.size}")
+    if seating_sheet.size != (1536, 1024):
+        raise SystemExit(f"Unexpected seating furniture sheet size: {seating_sheet.size}")
 
-    # The corrected source contains clean table surfaces without an embedded
-    # third chair. Keep the original source for every other prop so the edit is
-    # tightly scoped and cannot drift the station art.
-    table_boxes = {
-        "table_2seat": (138, 75, 305, 266),
-        "table_2seat_unset": (410, 75, 580, 266),
-        "table_2seat_dirty": (677, 74, 868, 266),
+    seating_sheet = clear_alpha_noise(seating_sheet)
+    seating_boxes = authored_grid_boxes(seating_sheet, columns=4, rows=2)
+    seating_cells = {
+        "table_2seat_unset": (0, 0),
+        "table_2seat": (1, 0),
+        "table_2seat_occupied": (2, 0),
+        "table_2seat_dirty": (3, 0),
+        # Keep legacy texture keys; these assets are intentionally backless stools.
+        "chair": (0, 1),
+        "chair_back": (1, 1),
+        "chair_side": (2, 1),
     }
-    for name, box in table_boxes.items():
-        sprite = contain(trim(table_sheet.crop(box), 2), (64, 96))
+    for name, (column, row) in seating_cells.items():
+        cell = seating_sheet.crop(seating_boxes[row][column])
+        target = (96, 112) if name.startswith("table") else (72, 88)
+        sprite = contain(trim(cell, 2), target, bottom_pad=3)
         save(sprite, PROP_OUT / f"{name}.png")
 
     boxes = {
-        "chair": (1004, 83, 1097, 294),
-        "chair_back": (1175, 83, 1287, 294),
-        "chair_side": (1342, 96, 1454, 289),
         "prep_station": (86, 350, 314, 638),
         "oven": (401, 351, 583, 638),
         "grill": (677, 351, 866, 638),
@@ -523,16 +677,21 @@ def main() -> None:
     ):
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")
+    for variant in ("a", "b", "c", "d", "e"):
+        required = SEATING_SOURCE / f"guest-{variant}-sheet-transparent.png"
+        if not required.is_file():
+            raise SystemExit(f"Missing coordinated guest sheet: {required}")
+    if not (SEATING_SOURCE / "furniture-sheet-transparent.png").is_file():
+        raise SystemExit("Missing coordinated seating furniture sheet")
     build_player()
-    repaired = repair_guest_crowns()
-    hardened = harden_guest_frames()
+    build_guests()
     validate_animation_frames()
     build_surfaces()
     build_props()
     print("Built chibi UI assets:")
     print(f"  player frames: {len(list(PLAYER_OUT.glob('*.png')))}")
-    print(f"  guest crowns repaired: {repaired}")
-    print(f"  guest frames alpha-hardened: {hardened}")
+    print(f"  coordinated guest frames: {len(list(GUEST_OUT.glob('guest_*.png')))}")
+    print(f"  guest portraits: {len(list(PORTRAIT_OUT.glob('*.png')))}")
     print(f"  surfaces: {len(list(TILE_OUT.glob('*.png')))}")
     print(f"  furniture: {len(list(PROP_OUT.glob('*.png')))}")
 

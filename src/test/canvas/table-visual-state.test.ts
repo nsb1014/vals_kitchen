@@ -11,9 +11,9 @@ describe('table visual state mapping', () => {
     expect(spriteNameForItemKey('table_2seat', 'unset')).toBe('table_2seat_unset');
   });
 
-  it('maps ready and occupied to set place-setting art', () => {
+  it('maps ready and occupied to their authored table states', () => {
     expect(spriteNameForTableState('ready')).toBe('table_2seat');
-    expect(spriteNameForTableState('occupied')).toBe('table_2seat');
+    expect(spriteNameForTableState('occupied')).toBe('table_2seat_occupied');
   });
 
   it('maps dirty to dirty-table art', () => {
@@ -36,7 +36,12 @@ describe('table visual state mapping', () => {
     const states: TableSurfaceState[] = ['unset', 'ready', 'occupied', 'dirty'];
     const sprites = new Set(states.map(spriteNameForTableState));
     expect(sprites).toEqual(
-      new Set(['table_2seat_unset', 'table_2seat', 'table_2seat_dirty']),
+      new Set([
+        'table_2seat_unset',
+        'table_2seat',
+        'table_2seat_occupied',
+        'table_2seat_dirty',
+      ]),
     );
   });
 });

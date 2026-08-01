@@ -570,30 +570,9 @@
   border: 1px solid color-mix(in srgb, var(--vk-accent) 45%, var(--vk-border));
   border-radius: 50%;
   background-color: var(--vk-bg-deep);
-  background-image: url('/assets/atlases/characters.png');
-  background-repeat: no-repeat;
-  background-size: 640px 640px;
-  image-rendering: pixelated;
-}
-
-.guest-portrait-a {
-  background-position: -208px -68px;
-}
-
-.guest-portrait-b {
-  background-position: -336px -132px;
-}
-
-.guest-portrait-c {
-  background-position: -464px -196px;
-}
-
-.guest-portrait-d {
-  background-position: -592px -260px;
-}
-
-.guest-portrait-e {
-  background-position: -80px -388px;
+  object-fit: contain;
+  object-position: center;
+  image-rendering: auto;
 }
 
 .floor-ticket-guest {
@@ -1708,16 +1687,10 @@
   flex-basis: 36px;
   border: 2px solid #b78246;
   background-color: #21140d;
-  background-size: 454.74px 454.74px;
+  object-fit: contain;
   image-rendering: auto;
   box-shadow: inset 0 0 0 1px #2a170c;
 }
-
-.guest-portrait-a { background-position: -90.95px -90.95px; }
-.guest-portrait-b { background-position: -363.79px -136.42px; }
-.guest-portrait-c { background-position: -181.89px -227.37px; }
-.guest-portrait-d { background-position: 0 -318.32px; }
-.guest-portrait-e { background-position: -272.84px -363.79px; }
 
 .open-service-panel {
   padding: 0.75rem;

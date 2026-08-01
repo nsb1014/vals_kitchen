@@ -12,7 +12,8 @@ const DECOR_SPRITES: Readonly<Record<string, string>> = {
 /** Maps domain table surface state to furniture atlas sprite. */
 export function spriteNameForTableState(state: TableSurfaceState | null | undefined): string {
   if (state === 'dirty') return 'table_2seat_dirty';
-  if (state === 'ready' || state === 'occupied') return 'table_2seat';
+  if (state === 'occupied') return 'table_2seat_occupied';
+  if (state === 'ready') return 'table_2seat';
   return 'table_2seat_unset';
 }
 

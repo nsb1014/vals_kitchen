@@ -100,6 +100,7 @@
 | 2026-07-30 | Seating composition: camera-biased sit anchors beside top-down tables; chair cells block player walks; guests may still path onto seats; rebalanced actor/furniture scale; richer E/W wall tiles |
 | 2026-07-30 | Seating architecture (no tuck dials): seat-cell centers beside tables; flat tables sort under actors; seated scale matches chair; nearest atlas filtering + hardened guest alpha; continuous E/W wall columns |
 | 2026-07-30 | Guest scale matched to chef; chairs grown to fit; diners sink onto cushion (chair stays planted) |
+| 2026-08-01 | Rebuilt seating art as one coordinated high-resolution chibi system: Val-preserving 128×160 player frames, five guest walk/sit sheets, dedicated ticket portraits, proportion-matched table states and backless stools, content-aware gutter slicing, fixed actor scale, shared stool/feet baseline, and separated south-door spawn lanes; food art intentionally deferred |
 | 2026-07-30 | UI: fixed compose food-icon bleed (24→32); removed duplicate floor ticket strip; tickets menu fixed height + single scroll; Order/Ideal share shell |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |

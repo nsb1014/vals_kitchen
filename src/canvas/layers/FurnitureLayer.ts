@@ -135,13 +135,13 @@ export class FurnitureLayer {
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
-    // Chair stays on the seat-cell floor; guests may be offset onto the cushion.
+    // Backless stool and authored seated pose share the seat-cell floor baseline.
     const chair = seatChairWorldPosition(seat);
     const sit = seatSitWorldPosition(seat);
     const chairFeetY = chair.y + TILE_PX / 2 - 2;
     const guestFeetY = sit.y + TILE_PX / 2 - 2;
     sprite.root.position.set(chair.x - TILE_PX / 2, chairFeetY - TILE_PX);
-    // Always sort behind the diner — even when the sit offset raises them north of the chair feet.
+    // Always sort the stool behind the diner so legs remain readable.
     sprite.root.zIndex = chairDepthY(guestFeetY);
     sprite.body.clear();
     const sideFacing = seat.facing === 90 || seat.facing === 270;
@@ -161,7 +161,7 @@ export class FurnitureLayer {
       spr.scale.set(1, 1);
       spr.width = fit.w;
       spr.height = fit.h;
-      // chair_side faces right (west seat → table); flip for east seats facing left.
+      // Side stool art is nearly symmetric; mirror it to preserve lighting direction.
       if (seat.facing === 270) {
         spr.scale.x = -Math.abs(spr.scale.x);
       }

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-07-30T02:27:49.312Z",
+  "generatedAt": "2026-08-01T17:39:22.475Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [
@@ -352,6 +352,18 @@
         "canvas:FurnitureLayer (table_2seat)"
       ],
       "sourceFile": "table_2seat.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#table_2seat_occupied",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:FurnitureLayer (table_2seat_occupied)"
+      ],
+      "sourceFile": "table_2seat_occupied.png",
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
@@ -798,6 +810,66 @@
       ],
       "sourceFile": "prestiges-5.png",
       "approximationNote": "Purpose-made 48×48 diner-themed pixel badges generated for this project; dedicated to CC0."
+    },
+    {
+      "path": "portraits/guest_a.png",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:order-ticket guest identity"
+      ],
+      "sourceFile": "guest_a.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "portraits/guest_b.png",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:order-ticket guest identity"
+      ],
+      "sourceFile": "guest_b.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "portraits/guest_c.png",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:order-ticket guest identity"
+      ],
+      "sourceFile": "guest_c.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "portraits/guest_d.png",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:order-ticket guest identity"
+      ],
+      "sourceFile": "guest_d.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "portraits/guest_e.png",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "ui:order-ticket guest identity"
+      ],
+      "sourceFile": "guest_e.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/characters.json#player",
@@ -3575,6 +3647,11 @@
     "atlases/tiles.json",
     "atlases/tiles.png",
     "music/restaurant-loop.ogg",
+    "portraits/guest_a.png",
+    "portraits/guest_b.png",
+    "portraits/guest_c.png",
+    "portraits/guest_d.png",
+    "portraits/guest_e.png",
     "sfx/day-close.ogg",
     "sfx/day-open.ogg",
     "sfx/placement.ogg",

@@ -1,15 +1,12 @@
 import { TILE_PX } from './coordinates.ts';
 
-/**
- * Max chair overhang above the seat-cell top.
- * Chairs stay slightly under seated guest height so diners fill the seat.
- */
-export const CHAIR_MAX_OVERHANG_PX = 28;
-export const CHAIR_DRAW_WIDTH_PX = 36;
-export const CHAIR_DRAW_HEIGHT_PX = 58;
-/** Flat top-down tabletop width; height is capped so art does not swallow neighbors. */
-export const TABLE_DRAW_WIDTH_PX = 30;
-export const TABLE_MAX_HEIGHT_PX = TILE_PX + 10;
+/** Legacy chair names now size the small backless stool artwork. */
+export const CHAIR_MAX_OVERHANG_PX = 0;
+export const CHAIR_DRAW_WIDTH_PX = 24;
+export const CHAIR_DRAW_HEIGHT_PX = 22;
+/** Table width is authored against the shared actor scale. */
+export const TABLE_DRAW_WIDTH_PX = 44;
+export const TABLE_MAX_HEIGHT_PX = 56;
 /** Kitchen stations keep taller ¾ silhouettes. */
 export const STATION_DRAW_WIDTH_PX = 34;
 
@@ -54,7 +51,7 @@ export function seatedActorDepthY(seatedFeetY: number): number {
   return seatedFeetY;
 }
 
-/** Keep chairs matched to player-scale seated guests. */
+/** Keep backless stools below the authored seated hip line. */
 export function chairDrawFit(texture: { width: number; height: number }): {
   w: number;
   h: number;
