@@ -1,7 +1,7 @@
 import type { Customer } from '../day/types.ts';
 import { markDirty, occupyTable } from './tables.ts';
 import { assignPartyToTable } from './seats.ts';
-import { enqueueTickets } from './tickets.ts';
+import { canEnqueue, enqueueTickets } from './tickets.ts';
 import { waitingAreaOccupied } from './entry.ts';
 import { playerNearGuestSeat } from './interact.ts';
 import type { FloorDay, FloorGuest, FloorTable, FloorTicket, SeatSlot } from './types.ts';
@@ -128,6 +128,7 @@ export function takeOrdersForSeated(day: FloorDay, customerIds: string[]): Floor
     ),
   );
   if (!customerId) return day;
+  if (!canEnqueue(day.tickets, 1)) return day;
   const newTickets: FloorTicket[] = [];
   const pool = day.pool.map((g) => {
     if (g.customer.id !== customerId || g.stage !== 'seated') return g;

@@ -5,6 +5,7 @@ import {
   type ServeReview,
 } from '../../store/game-store.ts';
 import { selectNotificationUiBlocked } from '../../ui/components/CelebrationBanner.ts';
+import { hasLocalNotificationBlockingSurface } from '../../ui/notifications/blocking-surface.ts';
 import '../test-helpers.ts';
 
 function stateWith(overrides: Partial<GameStore>): GameStore {
@@ -48,5 +49,17 @@ describe('notification service-overlay blocking', () => {
         stateWith({ screen: 'settings', ceremony: 'soft_reset' }),
       ),
     ).toBe(true);
+  });
+
+  it('derives ticket blocking from the actually rendered open menu', () => {
+    const openMenuDocument = {
+      querySelector: () => ({ id: 'floor-tickets-menu' }),
+    } as unknown as Document;
+    const closedMenuDocument = {
+      querySelector: () => null,
+    } as unknown as Document;
+
+    expect(hasLocalNotificationBlockingSurface(openMenuDocument)).toBe(true);
+    expect(hasLocalNotificationBlockingSurface(closedMenuDocument)).toBe(false);
   });
 });

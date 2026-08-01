@@ -8,6 +8,10 @@ import {
   getAchievement,
 } from '../../domain/achievements/catalog.ts';
 import { bindNotificationSurfaceLifecycle } from '../notifications/surface-lifecycle.ts';
+import {
+  hasLocalNotificationBlockingSurface,
+  NOTIFICATION_BLOCKING_SURFACE_CHANGE,
+} from '../notifications/blocking-surface.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 
 function escapeHtml(text: string): string {
@@ -48,7 +52,10 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   mount.appendChild(host);
 
   let pageLifecycleActive = false;
-  let uiBlocked = selectNotificationUiBlocked(useGameStore.getState());
+  const computeUiBlocked = () =>
+    selectNotificationUiBlocked(useGameStore.getState()) ||
+    hasLocalNotificationBlockingSurface();
+  let uiBlocked = computeUiBlocked();
 
   const syncNotificationSurface = () => {
     useGameStore
@@ -131,8 +138,18 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       );
   };
 
+  const syncLocalBlockingSurface = () => {
+    const nextUiBlocked = computeUiBlocked();
+    if (nextUiBlocked === uiBlocked) return;
+    uiBlocked = nextUiBlocked;
+    syncHostVisibility();
+    syncNotificationSurface();
+  };
+
   const unsubscribe = useGameStore.subscribe((state, previous) => {
-    const nextUiBlocked = selectNotificationUiBlocked(state);
+    const nextUiBlocked =
+      selectNotificationUiBlocked(state) ||
+      hasLocalNotificationBlockingSurface();
     if (nextUiBlocked !== uiBlocked) {
       uiBlocked = nextUiBlocked;
       syncHostVisibility();
@@ -145,6 +162,10 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       render();
     }
   });
+  window.addEventListener(
+    NOTIFICATION_BLOCKING_SURFACE_CHANGE,
+    syncLocalBlockingSurface,
+  );
   const unbindSurfaceLifecycle = bindNotificationSurfaceLifecycle({
     isHostConnected: () => host.isConnected,
     setActive: (active) => {
@@ -161,6 +182,10 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     pageLifecycleActive = false;
     syncNotificationSurface();
     window.removeEventListener('food-atlas-ready', render);
+    window.removeEventListener(
+      NOTIFICATION_BLOCKING_SURFACE_CHANGE,
+      syncLocalBlockingSurface,
+    );
     host.remove();
   };
 }

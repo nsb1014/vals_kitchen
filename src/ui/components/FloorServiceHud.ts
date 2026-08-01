@@ -1,4 +1,7 @@
-import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
+import {
+  nextTutorialStep,
+  tutorialPrompt,
+} from '../../domain/floor/tutorial.ts';
 import { getDomainContext } from '../../app/content-loader.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
@@ -11,11 +14,15 @@ import {
   selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
-import {
-  formatFloorTicketLabel,
-  visibleFloorTickets,
-} from '../presentation/floor-ticket.ts';
+import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
+import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
+import {
+  buildFlavorBarsViewModel,
+  renderFlavorBarsHtml,
+} from '../presentation/flavor-profile.ts';
+import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
+import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -25,15 +32,30 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+type TicketsPanelView = 'order' | 'ideal';
+
+type DockFocusIdentity =
+  | { kind: 'toggle' }
+  | { kind: 'close' }
+  | { kind: 'tab'; view: TicketsPanelView }
+  | { kind: 'ticket'; ticketId: string };
+
+const ORDER_TAB_ID = 'floor-tickets-tab-order';
+const IDEAL_TAB_ID = 'floor-tickets-tab-ideal';
+const ORDER_PANEL_ID = 'floor-tickets-panel-order';
+const IDEAL_PANEL_ID = 'floor-tickets-panel-ideal';
+
 export function mountFloorServiceHud(
   chromeMount: HTMLElement,
   /** Host above the cooking overlay stacking context (typically overlay-mount). */
   ticketsHost: HTMLElement,
 ): () => void {
   let ticketsMenuOpen = false;
+  let ticketsPanelView: TicketsPanelView = 'order';
   let knownTicketIds = new Set(
-    useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
-      [],
+    useGameStore
+      .getState()
+      .activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
   );
   const arrivingTicketIds = new Set<string>();
   const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -44,24 +66,74 @@ export function mountFloorServiceHud(
   dock.hidden = true;
   ticketsHost.appendChild(dock);
 
+  const captureDockFocus = (): DockFocusIdentity | null => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !dock.contains(active)) return null;
+    if (active.matches('[data-testid="floor-tickets-toggle"]')) {
+      return { kind: 'toggle' };
+    }
+    if (active.matches('[data-testid="floor-tickets-close"]')) {
+      return { kind: 'close' };
+    }
+    const tabView = active.dataset.ticketsView;
+    if (tabView === 'order' || tabView === 'ideal') {
+      return { kind: 'tab', view: tabView };
+    }
+    const ticketId = active.dataset.menuTicketId;
+    return ticketId ? { kind: 'ticket', ticketId } : null;
+  };
+
+  const restoreDockFocus = (identity: DockFocusIdentity | null) => {
+    if (!identity) return;
+    const target =
+      identity.kind === 'toggle'
+        ? dock.querySelector<HTMLElement>(
+            '[data-testid="floor-tickets-toggle"]',
+          )
+        : identity.kind === 'close'
+          ? dock.querySelector<HTMLElement>(
+              '[data-testid="floor-tickets-close"]',
+            )
+          : identity.kind === 'tab'
+            ? dock.querySelector<HTMLElement>(
+                `[data-tickets-view="${identity.view}"]`,
+              )
+            : dock.querySelector<HTMLElement>(
+                `[data-menu-ticket-id="${CSS.escape(identity.ticketId)}"]`,
+              );
+    (
+      target ??
+      dock.querySelector<HTMLElement>('[data-testid="floor-tickets-toggle"]')
+    )?.focus({ preventScroll: true });
+  };
+
   const onDocumentPointer = (event: PointerEvent) => {
     if (!ticketsMenuOpen) return;
     const target = event.target as Node | null;
     if (target && dock.contains(target)) return;
     ticketsMenuOpen = false;
-    render();
+    // Close in place during the capture phase. Rebuilding chrome here would
+    // remove an outside floor-action target before its click can fire.
+    const menu = dock.querySelector<HTMLElement>('#floor-tickets-menu');
+    const toggle = dock.querySelector<HTMLElement>('#floor-tickets-toggle');
+    if (menu) menu.hidden = true;
+    toggle?.setAttribute('aria-expanded', 'false');
+    notifyNotificationBlockingSurfaceChanged();
   };
 
   const onDocumentKeydown = (event: KeyboardEvent) => {
     if (!ticketsMenuOpen || event.key !== 'Escape') return;
+    event.preventDefault();
     ticketsMenuOpen = false;
-    render();
+    render({ kind: 'toggle' });
   };
 
   document.addEventListener('pointerdown', onDocumentPointer, true);
   document.addEventListener('keydown', onDocumentKeydown);
 
-  const render = () => {
+  const render = (focusAfter?: DockFocusIdentity | null) => {
+    const focusIdentity =
+      focusAfter === undefined ? captureDockFocus() : focusAfter;
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
     // Keep the chrome strip mounted for the whole floor day (including review /
@@ -73,6 +145,8 @@ export function mountFloorServiceHud(
       dock.hidden = true;
       dock.innerHTML = '';
       ticketsMenuOpen = false;
+      ticketsPanelView = 'order';
+      notifyNotificationBlockingSurfaceChanged();
       return;
     }
 
@@ -91,6 +165,7 @@ export function mountFloorServiceHud(
       dock.hidden = true;
       dock.innerHTML = '';
       ticketsMenuOpen = false;
+      notifyNotificationBlockingSurfaceChanged();
       return;
     }
     const initialGuestArriving =
@@ -136,7 +211,8 @@ export function mountFloorServiceHud(
     state.syncFloorNoticesFromHud({ sticky, pacing });
 
     const ctx = getDomainContext();
-    const ticketMeta = visibleFloorTickets(floor.tickets).map((t) => {
+    const guestLabelByCustomerId: Record<string, string> = {};
+    const ticketMeta = floor.tickets.map((t) => {
       const isOpen = t.status === 'open';
       const selected = isOpen && selectedTicketId === t.id;
       const guest = floor.pool.find((g) => g.customer.id === t.customerId);
@@ -149,6 +225,7 @@ export function mountFloorServiceHud(
         archetypeName,
         selected,
       });
+      guestLabelByCustomerId[t.customerId] = label.guestLabel;
       return {
         ticket: t,
         isOpen,
@@ -158,6 +235,16 @@ export function mountFloorServiceHud(
         guestId: guest?.id,
       };
     });
+    const ticketPanel = buildFloorTicketPanelViewModel({
+      tickets: floor.tickets,
+      selectedTicketId,
+      carriedTicketId: floor.carriedTicketId,
+      guestLabelByCustomerId,
+    });
+    const ticketMetaById = new Map(
+      ticketMeta.map((row) => [row.ticket.id, row] as const),
+    );
+    const capacityHelpId = 'floor-ticket-capacity-help';
 
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
@@ -165,36 +252,58 @@ export function mountFloorServiceHud(
           <div class="floor-actions">
             <button type="button" class="service-btn${canSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
             <button type="button" class="service-btn${canSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
-            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'}><span class="floor-action-label">Take orders</span></button>
+            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
             <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
             <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}><span class="floor-action-label">Close Day</span></button>
           </div>
         </div>
+        ${ticketPanel.capacityMessage ? `<p class="sr-only" id="${capacityHelpId}">${ticketPanel.capacityMessage}</p>` : ''}
       </div>
     `;
 
-    const count = ticketMeta.length;
-    const countLabel = count === 0 ? 'Tickets' : `Tickets (${count})`;
     const orderItems =
-      ticketMeta.length === 0
+      ticketPanel.rows.length === 0
         ? `<li class="floor-tickets-empty" data-testid="floor-tickets-empty">No active tickets</li>`
-        : ticketMeta
-            .map(({ ticket: t, isOpen, selected, label, guestId }) => {
+        : ticketPanel.rows
+            .map((row) => {
+              const meta = ticketMetaById.get(row.ticketId)!;
+              const { ticket: t, label, guestId } = meta;
               const wants = label.preferenceFull
                 ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
                 : '';
               const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
-              return `<li class="floor-tickets-item${selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-tickets-item">
-                <button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" ${isOpen ? '' : 'disabled'} aria-label="${escapeHtml(`${label.guestLabel}, ${label.statusLabel}`)}">
+              const rowBody = `
                   <span class="floor-tickets-item-head">
                     <span class="floor-tickets-item-identity">${portrait}<span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span></span>
-                    <span class="floor-tickets-item-status">${escapeHtml(label.statusLabel)}</span>
+                    <span class="floor-tickets-item-status">${escapeHtml(row.statusLabel)}</span>
                   </span>
-                  ${wants}
-                </button>
+                  ${wants}`;
+              const rowControl = row.selectable
+                ? `<button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" aria-label="${escapeHtml(`${label.guestLabel}, ${row.statusLabel}`)}" aria-pressed="${row.selected}">${rowBody}</button>`
+                : `<div class="floor-tickets-item-btn" data-static-ticket-id="${t.id}">${rowBody}</div>`;
+              return `<li class="floor-tickets-item${row.selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${row.carrying ? ' carrying' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-tickets-item">
+                ${rowControl}
               </li>`;
             })
             .join('');
+
+    const idealTicket = ticketPanel.subjectTicketId
+      ? ticketMetaById.get(ticketPanel.subjectTicketId)
+      : undefined;
+    let idealBody: string;
+    if (!idealTicket?.customer) {
+      idealBody = `<p class="floor-tickets-empty" data-testid="floor-tickets-ideal-empty">No active order</p>`;
+    } else {
+      const ideal = resolveIdealFlavorProfile(idealTicket.customer.preference);
+      const bars = renderFlavorBarsHtml(
+        buildFlavorBarsViewModel(ideal, {
+          title: idealTicket.label.guestLabel,
+          subtitle: 'Ideal flavor profile',
+        }),
+        { showValues: true, showTemp: false, showZeroValues: true },
+      );
+      idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
+    }
 
     dock.innerHTML = `
       <button
@@ -205,7 +314,8 @@ export function mountFloorServiceHud(
         aria-expanded="${ticketsMenuOpen ? 'true' : 'false'}"
         aria-controls="floor-tickets-menu"
         aria-haspopup="true"
-      >${escapeHtml(countLabel)}</button>
+        aria-label="${escapeHtml(ticketPanel.toggleAriaLabel)}"
+      >${escapeHtml(ticketPanel.toggleText)}</button>
       <div
         class="floor-tickets-menu"
         id="floor-tickets-menu"
@@ -215,80 +325,152 @@ export function mountFloorServiceHud(
         ${ticketsMenuOpen ? '' : 'hidden'}
       >
         <div class="floor-tickets-menu-header">
-          <strong class="floor-tickets-menu-title">Orders</strong>
+          <div class="floor-tickets-view-tabs" role="tablist" aria-label="Ticket views">
+            <button type="button" id="${ORDER_TAB_ID}" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'order' ? ' active' : ''}" data-testid="tickets-view-order" data-tickets-view="order" aria-selected="${ticketsPanelView === 'order'}" aria-controls="${ORDER_PANEL_ID}" tabindex="${ticketsPanelView === 'order' ? '0' : '-1'}">Order</button>
+            <button type="button" id="${IDEAL_TAB_ID}" role="tab" class="floor-tickets-view-tab${ticketsPanelView === 'ideal' ? ' active' : ''}" data-testid="tickets-view-ideal" data-tickets-view="ideal" aria-selected="${ticketsPanelView === 'ideal'}" aria-controls="${IDEAL_PANEL_ID}" tabindex="${ticketsPanelView === 'ideal' ? '0' : '-1'}">Ideal</button>
+          </div>
           <button type="button" class="floor-tickets-close" data-testid="floor-tickets-close" aria-label="Close tickets menu">Close</button>
         </div>
-        <div class="floor-tickets-panel-body" data-testid="floor-tickets-panel">
+        ${ticketPanel.capacityMessage ? `<p class="floor-tickets-capacity" data-testid="floor-tickets-capacity">${ticketPanel.capacityMessage}</p>` : ''}
+        <div class="floor-tickets-panel-body" id="${ORDER_PANEL_ID}" role="tabpanel" aria-labelledby="${ORDER_TAB_ID}" ${ticketsPanelView === 'order' ? 'data-testid="floor-tickets-panel"' : 'hidden'}>
           <ul class="floor-tickets-list" data-testid="floor-tickets-list">${orderItems}</ul>
+        </div>
+        <div class="floor-tickets-panel-body" id="${IDEAL_PANEL_ID}" role="tabpanel" aria-labelledby="${IDEAL_TAB_ID}" ${ticketsPanelView === 'ideal' ? 'data-testid="floor-tickets-panel"' : 'hidden'}>
+          ${idealBody}
         </div>
       </div>
     `;
 
-    chromeMount.querySelector('#floor-set-table')?.addEventListener('click', () => {
-      const placementIds = selectAdjacentUnsetTablePlacementIds(useGameStore.getState());
-      for (const placementId of placementIds) {
-        void useGameStore.getState().dispatch({
-          type: 'FLOOR_SET_TABLE',
-          placementId,
-        });
-      }
-    });
-
-    chromeMount.querySelector('#floor-seat-next')?.addEventListener('click', () => {
-      void useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
-    });
-
-    chromeMount.querySelector('#floor-take-orders')?.addEventListener('click', () => {
-      const customerIds = selectAdjacentSeatedCustomerIds(useGameStore.getState());
-      if (customerIds.length === 0) return;
-      void useGameStore.getState().dispatch({
-        type: 'FLOOR_TAKE_ORDERS',
-        customerIds: [customerIds[0]!],
+    chromeMount
+      .querySelector('#floor-set-table')
+      ?.addEventListener('click', () => {
+        const placementIds = selectAdjacentUnsetTablePlacementIds(
+          useGameStore.getState(),
+        );
+        for (const placementId of placementIds) {
+          void useGameStore.getState().dispatch({
+            type: 'FLOOR_SET_TABLE',
+            placementId,
+          });
+        }
       });
-    });
 
-    chromeMount.querySelector('#floor-clear-table')?.addEventListener('click', () => {
-      const placementIds = selectAdjacentDirtyTablePlacementIds(useGameStore.getState());
-      for (const placementId of placementIds) {
+    chromeMount
+      .querySelector('#floor-seat-next')
+      ?.addEventListener('click', () => {
+        void useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      });
+
+    chromeMount
+      .querySelector('#floor-take-orders')
+      ?.addEventListener('click', () => {
+        const customerIds = selectAdjacentSeatedCustomerIds(
+          useGameStore.getState(),
+        );
+        if (customerIds.length === 0) return;
         void useGameStore.getState().dispatch({
-          type: 'FLOOR_CLEAR_TABLE',
-          placementId,
+          type: 'FLOOR_TAKE_ORDERS',
+          customerIds: [customerIds[0]!],
         });
-      }
-    });
+      });
 
-    chromeMount.querySelector('#floor-close-day')?.addEventListener('click', () => {
-      void useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
-    });
+    chromeMount
+      .querySelector('#floor-clear-table')
+      ?.addEventListener('click', () => {
+        const placementIds = selectAdjacentDirtyTablePlacementIds(
+          useGameStore.getState(),
+        );
+        for (const placementId of placementIds) {
+          void useGameStore.getState().dispatch({
+            type: 'FLOOR_CLEAR_TABLE',
+            placementId,
+          });
+        }
+      });
+
+    chromeMount
+      .querySelector('#floor-close-day')
+      ?.addEventListener('click', () => {
+        void useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+      });
 
     const selectOpenTicket = (ticketId: string) => {
-      const ticket = useGameStore.getState().activeDay?.floor?.tickets.find((t) => t.id === ticketId);
+      const current = useGameStore.getState();
+      const currentFloor = current.activeDay?.floor;
+      // Defense in depth: the presentation renders static rows while carrying,
+      // and the handler independently refuses a stale programmatic click.
+      if (
+        !currentFloor ||
+        currentFloor.tickets.some(
+          (ticket) =>
+            ticket.id === currentFloor.carriedTicketId &&
+            ticket.status === 'plated',
+        )
+      ) {
+        return;
+      }
+      const ticket = currentFloor.tickets.find((t) => t.id === ticketId);
       if (ticket?.status === 'open') {
-        useGameStore.getState().setFloorSelectedTicket(ticketId);
-      } else {
-        useGameStore.getState().setFloorSelectedTicket(null);
+        current.setFloorSelectedTicket(ticketId);
       }
     };
 
-    dock.querySelector('#floor-tickets-toggle')?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      ticketsMenuOpen = !ticketsMenuOpen;
-      render();
-    });
-
-    dock.querySelector('[data-testid="floor-tickets-close"]')?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      ticketsMenuOpen = false;
-      render();
-    });
-
-    dock.querySelectorAll<HTMLButtonElement>('[data-menu-ticket-id]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const ticketId = button.dataset.menuTicketId;
-        if (!ticketId) return;
-        selectOpenTicket(ticketId);
+    dock
+      .querySelector('#floor-tickets-toggle')
+      ?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        ticketsMenuOpen = !ticketsMenuOpen;
+        render();
       });
-    });
+
+    dock
+      .querySelector('[data-testid="floor-tickets-close"]')
+      ?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        ticketsMenuOpen = false;
+        render({ kind: 'toggle' });
+      });
+
+    dock
+      .querySelectorAll<HTMLButtonElement>('[data-tickets-view]')
+      .forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const view = button.dataset.ticketsView;
+          if (view !== 'order' && view !== 'ideal') return;
+          ticketsPanelView = view;
+          render({ kind: 'tab', view });
+        });
+        button.addEventListener('keydown', (event) => {
+          const view = button.dataset.ticketsView;
+          if (view !== 'order' && view !== 'ideal') return;
+          let nextView: TicketsPanelView | null = null;
+          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            nextView = view === 'order' ? 'ideal' : 'order';
+          } else if (event.key === 'Home') {
+            nextView = 'order';
+          } else if (event.key === 'End') {
+            nextView = 'ideal';
+          }
+          if (!nextView) return;
+          event.preventDefault();
+          ticketsPanelView = nextView;
+          render({ kind: 'tab', view: nextView });
+        });
+      });
+
+    dock
+      .querySelectorAll<HTMLButtonElement>('[data-menu-ticket-id]')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          const ticketId = button.dataset.menuTicketId;
+          if (!ticketId) return;
+          selectOpenTicket(ticketId);
+        });
+      });
+
+    restoreDockFocus(focusIdentity);
+    notifyNotificationBlockingSurfaceChanged();
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -318,7 +500,8 @@ export function mountFloorServiceHud(
       state.daySummary !== prev.daySummary ||
       state.pendingReview !== prev.pendingReview ||
       state.ceremony !== prev.ceremony ||
-      state.activeDay?.floor?.selectedTicketId !== prev.activeDay?.floor?.selectedTicketId ||
+      state.activeDay?.floor?.selectedTicketId !==
+        prev.activeDay?.floor?.selectedTicketId ||
       state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets
     ) {
       render();
@@ -335,5 +518,6 @@ export function mountFloorServiceHud(
     arrivalTimers.clear();
     chromeMount.innerHTML = '';
     dock.remove();
+    notifyNotificationBlockingSurfaceChanged();
   };
 }
