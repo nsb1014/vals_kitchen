@@ -79,6 +79,9 @@ describe('service day store flow', () => {
     expect(state.activeDay).toBeNull();
     expect(state.daySummary).not.toBeNull();
     expect(state.day).toBe(before.day + 1);
+    expect(before.day).toBe(1);
+    expect(state.daySummary!.completedDay).toBe(1);
+    expect(state.daySummary!.nextDay).toBe(2);
     expect(state.cash).toBeGreaterThanOrEqual(cashBeforeClose);
     expect(state.daySummary!.customersServedText).toMatch(/Customers served: \d+/);
     // Rating moves during serves; summary must compare day-start → close, not close → close.

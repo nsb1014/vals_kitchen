@@ -20,7 +20,7 @@
 | Implementation Phase 6 — UI screens | **Done** |
 | Implementation Phase 7 — CC0 art + audio | **Done** — project-CC0 chibi chef/guests/restaurant + generated ingredient icons + Kenney audio |
 | Implementation Phase 8 — balance tuning | **Partial** — analytic proxy / prestige pacing shipped; live retune still open |
-| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (43 tests) green; real iPhone QA not done |
+| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (47 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
 | Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
 | Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
@@ -104,6 +104,7 @@
 | 2026-08-01 | Corrected seating composition with corner-free oval tables and side-centered place settings, shifted seated hips from stool centers toward the table, and replaced Val's global white key with border-connected matte removal and fringe cleanup |
 | 2026-08-01 | UX loop 1: deferred notifications behind service sheets without losing timer state, restored a legible mobile request → pantry → Plate hierarchy, and added compose focus isolation plus 44px popup targets |
 | 2026-08-01 | UX loop 2: restored required Order/Ideal ticket planning with all 15 numeric flavor axes, exposed live 0/4–4/4 capacity and carried-dish state, rejected over-capacity orders before guest mutation, and added keyboard/focus-safe responsive ticket controls; gameplay rules unchanged |
+| 2026-08-01 | UX loop 3: made Shop & Edit a named pre-day and post-day path, sorted purchases by immediate actionability, kept ingredient shopping in context, made physical purchases flow directly into named/cancellable placement, clarified completed/next-day summary labels, and hardened shop keyboard, 320px, and 200% zoom behavior; gameplay rules and prices unchanged |
 | 2026-07-30 | UI: fixed compose food-icon bleed (24→32); removed duplicate floor ticket strip; tickets menu fixed height + single scroll; Order/Ideal share shell |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |

@@ -55,6 +55,7 @@ import {
   toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
+import { requestRestaurantShopOpen } from '../events/restaurant-shop.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
@@ -421,7 +422,7 @@ export function mountServiceDayUi(
         <div class="service-panel sheet-tier-near-full" data-testid="day-summary-sheet">
           <div class="service-card sheet-card-layout">
             <header class="sheet-header">
-              <h2 class="service-title" data-testid="day-summary-title">Day Summary</h2>
+              <h2 class="service-title" data-testid="day-summary-title">Day ${state.daySummary.completedDay} Summary</h2>
             </header>
             <div class="sheet-body-scroll">
             <p class="review-detail">${state.daySummary.earningsLine}</p>
@@ -434,8 +435,8 @@ export function mountServiceDayUi(
             ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
             </div>
             <footer class="sheet-footer service-actions day-summary-actions">
-              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Back to floor</button>
-              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Edit Restaurant</button>
+              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Continue to Day ${state.daySummary.nextDay}</button>
+              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Shop &amp; Edit</button>
             </footer>
           </div>
         </div>
@@ -456,6 +457,7 @@ export function mountServiceDayUi(
           store.dismissDaySummary();
           store.navigateTo('restaurant');
           if (!store.editLayoutMode) store.toggleEditLayout();
+          requestRestaurantShopOpen();
         },
         { once: true },
       );
@@ -471,7 +473,7 @@ export function mountServiceDayUi(
             <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="open-day-btn" data-testid="open-day-btn">Open Restaurant</button>
-              <button type="button" class="service-btn" id="edit-restaurant-btn" data-testid="edit-restaurant-btn">Edit Restaurant</button>
+              <button type="button" class="service-btn" id="edit-restaurant-btn" data-testid="edit-restaurant-btn">Shop &amp; Edit</button>
             </div>
           </div>
         </div>
@@ -488,6 +490,7 @@ export function mountServiceDayUi(
         () => {
           const store = useGameStore.getState();
           if (!store.editLayoutMode) store.toggleEditLayout();
+          requestRestaurantShopOpen();
         },
         { once: true },
       );

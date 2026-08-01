@@ -1,6 +1,8 @@
 import { formatCurrency, formatRatingDelta } from './review-display.ts';
 
 export interface DaySummaryDisplayInput {
+  completedDay: number;
+  nextDay: number;
   dayEarnings: number;
   dayBonus: number;
   volumeBonus: number;
@@ -19,6 +21,8 @@ export interface DaySummaryDisplayInput {
 }
 
 export interface DaySummaryDisplay {
+  completedDay: number;
+  nextDay: number;
   earningsLine: string;
   bonusLine: string | null;
   volumeBonusLine: string | null;
@@ -40,6 +44,8 @@ export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummar
   const ratingDelta = input.ratingDelta ?? input.ratingEnd - input.ratingStart;
   const capacity = Math.max(1, input.seatingCapacity);
   return {
+    completedDay: input.completedDay,
+    nextDay: input.nextDay,
     earningsLine: `Today's earnings: ${formatCurrency(totalEarnings)}`,
     bonusLine:
       input.dayBonus > 0
