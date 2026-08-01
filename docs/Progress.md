@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-01
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -70,7 +70,7 @@
 | 4 | PixiJS restaurant canvas | Done | Grid + furniture DnD + camera fit; see Overall Status |
 | 5 | Service-day loop | Done | Queue serve UI + customer sprite + chat bubble |
 | 6 | UI screens | Done | Floor / Shop / Flavors / Recipes / Rating / Settings + nav |
-| 7 | CC0 assets | Done | Project-CC0 chibi chef/guests/surfaces/furniture + generated ingredient icons + Kenney audio; CREDITS.json + audit:assets; lazy atlases 2,072,104 B |
+| 7 | CC0 assets | Done | Project-CC0 chibi chef/guests/surfaces/furniture + generated ingredient icons + Kenney audio; CREDITS.json + audit:assets; lazy atlases 2,138,896 B |
 | 8 | Balance/tuning | Partial | Analytic proxy / prestige pacing shipped; early-game match-score retune landed 2026-07-25; long-horizon deep sim retired 2026-07-28; further live balance open |
 | 9 | iPhone 17 QA | Not started | |
 | 10 | Production deploy | Done | Workers Static Assets via `wrangler.toml` (`vals-kitchen`); no `_redirects` catch-all |
@@ -101,6 +101,7 @@
 | 2026-07-30 | Seating architecture (no tuck dials): seat-cell centers beside tables; flat tables sort under actors; seated scale matches chair; nearest atlas filtering + hardened guest alpha; continuous E/W wall columns |
 | 2026-07-30 | Guest scale matched to chef; chairs grown to fit; diners sink onto cushion (chair stays planted) |
 | 2026-08-01 | Rebuilt seating art as one coordinated high-resolution chibi system: Val-preserving 128×160 player frames, five guest walk/sit sheets, dedicated ticket portraits, proportion-matched table states and backless stools, content-aware gutter slicing, fixed actor scale, shared stool/feet baseline, and separated south-door spawn lanes; food art intentionally deferred |
+| 2026-08-01 | Corrected seating composition with corner-free oval tables and side-centered place settings, shifted seated hips from stool centers toward the table, and replaced Val's global white key with border-connected matte removal and fringe cleanup |
 | 2026-07-30 | UI: fixed compose food-icon bleed (24→32); removed duplicate floor ticket strip; tickets menu fixed height + single scroll; Order/Ideal share shell |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |

@@ -5,8 +5,9 @@ import type { SeatSlot } from '../../domain/floor/types.ts';
  * ¾-view seating model (compact tables, separate backless-stool cells):
  *
  * 1. Seats live in adjacent grid cells — never on the table cell.
- * 2. Stool and authored sit-pose feet share one floor baseline. The pose owns
- *    the hip/leg geometry; runtime never tucks or stretches the diner.
+ * 2. The stool stays centered in its cell. The authored sit-pose root shifts
+ *    toward the table so the hips land on the inner half of the seat while
+ *    the legs occupy the intentional gap beside the tabletop.
  * 3. Draw order: table (floor prop) → stool → guest.
  * 4. Guests match the chef’s silhouette height (content-based scale).
  *
@@ -21,6 +22,8 @@ export const SEAT_CAMERA_BIAS_PX = 0;
  * Chair Y-sort always uses the diner’s feet so the chair stays behind them.
  */
 export const SEAT_SIT_OFFSET_Y = 0;
+export const SEAT_SIDE_HIP_OFFSET_PX = 10;
+export const SEAT_NS_HIP_OFFSET_PX = 8;
 
 function seatCellCenter(seat: SeatSlot): { x: number; y: number } {
   const { x: gx, y: gy } = gridToWorld(seat.x, seat.y);
@@ -41,6 +44,10 @@ export function seatChairWorldPosition(seat: SeatSlot): { x: number; y: number }
  */
 export function seatSitWorldPosition(seat: SeatSlot): { x: number; y: number } {
   const center = seatCellCenter(seat);
+  if (seat.facing === 90) return { x: center.x + SEAT_SIDE_HIP_OFFSET_PX, y: center.y };
+  if (seat.facing === 270) return { x: center.x - SEAT_SIDE_HIP_OFFSET_PX, y: center.y };
+  if (seat.facing === 0) return { x: center.x, y: center.y + SEAT_NS_HIP_OFFSET_PX };
+  if (seat.facing === 180) return { x: center.x, y: center.y - SEAT_NS_HIP_OFFSET_PX };
   return {
     x: center.x,
     y: center.y + SEAT_SIT_OFFSET_Y,

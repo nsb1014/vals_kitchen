@@ -70,3 +70,20 @@ the game's seat spacing. Match the approved warm, softly inked, clean-cel-shaded
 text, borders, watermark, people, full meals, chairs, chair backs, duplicate
 legs, overlap, or cropping.
 ```
+
+## Oval table correction
+
+```text
+Create a single-row production sprite sheet of exactly four matching compact
+two-person restaurant pedestal tables, using the supplied coordinated chibi
+restaurant art as the style and proportion reference. Each tabletop must be a
+wide horizontal oval with a smooth continuous edge—no square silhouette and no
+corners aimed at the diners. States from left to right: bare/unset; ready with
+two cream place settings and napkins centered on the left and right dining
+positions; occupied with two covered bowls at those same positions; dirty with
+two used plates, cups, and a few crumbs. Keep the same warm walnut, slim top,
+central pedestal, and softly inked clean-cel-shaded high-resolution chibi style.
+Use one consistent scale and generous transparent-safe gutters. Use a perfectly
+flat #ff00ff background with no people, stools, chairs, floor, shadows, text,
+borders, watermark, overlap, cropping, or food outside the table states.
+```
