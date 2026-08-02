@@ -63,6 +63,15 @@ import { computeChatBubblePlacement } from '../presentation/chat-bubble-placemen
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
+const SERVICE_PANEL_ENTER_MS = 180;
+
+type ServicePanelKind =
+  | 'open-service'
+  | 'modifier'
+  | 'review'
+  | 'day-summary'
+  | 'floor-compose'
+  | 'queue-compose';
 
 type RequestBandPosition = 'below' | 'in-range' | 'above';
 
@@ -143,6 +152,34 @@ export function mountServiceDayUi(
   let composeFlavorDetailsOpen = false;
   let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
+  let servicePanelKind: ServicePanelKind | null = null;
+  let servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
+
+  const revealServicePanel = (kind: ServicePanelKind) => {
+    const now = performance.now();
+    if (servicePanelKind !== kind) servicePanelEnteredAt = now;
+    servicePanelKind = kind;
+    serviceOverlay.hidden = false;
+    const panel = serviceOverlay.firstElementChild;
+    const entryElapsed = now - servicePanelEnteredAt;
+    if (
+      entryElapsed < SERVICE_PANEL_ENTER_MS &&
+      panel instanceof HTMLElement
+    ) {
+      panel.dataset.panelEntering = '';
+      panel.style.setProperty(
+        '--vk-service-panel-enter-delay',
+        `${-Math.max(0, entryElapsed)}ms`,
+      );
+    }
+  };
+
+  const hideServicePanel = () => {
+    servicePanelKind = null;
+    servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
+    serviceOverlay.hidden = true;
+    serviceOverlay.innerHTML = '';
+  };
 
   type ComposeFocusIdentity = {
     attributes: Array<{
@@ -454,15 +491,13 @@ export function mountServiceDayUi(
     setComposeBackgroundIsolation(composeVisible);
 
     if (!selectShowServiceDayOverlay(state)) {
-      serviceOverlay.hidden = true;
-      serviceOverlay.innerHTML = '';
+      hideServicePanel();
       return;
     }
 
     if (state.daySummary) {
       const masteryLine =
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-near-full" data-testid="day-summary-sheet">
           <div class="service-card sheet-card-layout">
@@ -486,6 +521,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('day-summary');
       serviceOverlay.querySelector('#summary-back-floor')?.addEventListener(
         'click',
         () => {
@@ -512,7 +548,6 @@ export function mountServiceDayUi(
     }
 
     if (selectShowOpenForService(state)) {
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel open-service-panel" data-testid="open-service-sheet">
           <div class="service-card">
@@ -525,6 +560,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('open-service');
       serviceOverlay.querySelector('#open-day-btn')?.addEventListener(
         'click',
         () => {
@@ -545,14 +581,12 @@ export function mountServiceDayUi(
     }
 
     if (!state.activeDay) {
-      serviceOverlay.hidden = true;
-      serviceOverlay.innerHTML = '';
+      hideServicePanel();
       return;
     }
 
     if (!state.modifierDismissed) {
       const modifier = selectActiveModifier(state);
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid" data-testid="modifier-sheet">
           <div class="service-card">
@@ -566,6 +600,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('modifier');
       serviceOverlay.querySelector('#start-service-btn')?.addEventListener(
         'click',
         () => {
@@ -612,7 +647,6 @@ export function mountServiceDayUi(
       const canAdvance =
         selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid" data-testid="review-sheet">
           <div class="service-card sheet-card-layout">
@@ -641,6 +675,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('review');
       serviceOverlay.querySelector('#next-customer-btn')?.addEventListener(
         'click',
         () => {
@@ -827,7 +862,6 @@ export function mountServiceDayUi(
         }
       }
 
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
           <div class="service-card sheet-card-layout compose-sheet-card">
@@ -869,6 +903,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('floor-compose');
       const composePanel = serviceOverlay.querySelector<HTMLElement>(
         '[data-testid="compose-sheet"]',
       );
@@ -1086,7 +1121,6 @@ export function mountServiceDayUi(
           )}</div>`
         : '';
 
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
@@ -1101,6 +1135,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('queue-compose');
 
       serviceOverlay
         .querySelectorAll<HTMLButtonElement>('[data-ingredient-id]')
@@ -1153,8 +1188,7 @@ export function mountServiceDayUi(
       return;
     }
 
-    serviceOverlay.hidden = true;
-    serviceOverlay.innerHTML = '';
+    hideServicePanel();
   };
 
   const sync = () => {

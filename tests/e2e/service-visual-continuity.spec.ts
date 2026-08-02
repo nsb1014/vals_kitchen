@@ -30,6 +30,83 @@ async function finishFloorWithoutClosing(page: Page): Promise<void> {
 }
 
 test.describe('service visual continuity', () => {
+  test('eases between service sheets without replaying on compose updates', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+
+    const modifier = page.getByTestId('modifier-sheet');
+    await expect(modifier).toBeVisible();
+    await expect(modifier).toHaveAttribute('data-panel-entering', '');
+    expect(
+      await modifier.evaluate((element) =>
+        element
+          .getAnimations()
+          .some(
+            (animation) =>
+              animation instanceof CSSAnimation &&
+              animation.animationName === 'service-panel-enter',
+          ),
+      ),
+    ).toBe(true);
+
+    await page.getByTestId('start-service-btn').click();
+    await page.evaluate(async () => {
+      await window.__E2E__!.prepareCookUiFixture();
+      window.__E2E__!.openComposeSheet();
+    });
+    const compose = page.getByTestId('compose-sheet');
+    await expect(compose).toBeVisible();
+    await expect(compose).toHaveAttribute('data-panel-entering', '');
+    await compose.evaluate(async (element) => {
+      await Promise.all(element.getAnimations().map((animation) => animation.finished));
+    });
+
+    await compose.getByTestId('ingredient-chip').first().click();
+    const rerenderedCompose = page.getByTestId('compose-sheet');
+    await expect(rerenderedCompose).toBeVisible();
+    await expect(rerenderedCompose).not.toHaveAttribute(
+      'data-panel-entering',
+      '',
+    );
+    expect(
+      await rerenderedCompose.evaluate((element) =>
+        element
+          .getAnimations()
+          .some(
+            (animation) =>
+              animation instanceof CSSAnimation &&
+              animation.animationName === 'service-panel-enter',
+          ),
+      ),
+    ).toBe(false);
+  });
+
+  test('keeps service sheet changes immediate with reduced motion', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+
+    const modifier = page.getByTestId('modifier-sheet');
+    await expect(modifier).toBeVisible();
+    expect(
+      await modifier.evaluate((element) =>
+        element
+          .getAnimations()
+          .some(
+            (animation) =>
+              animation instanceof CSSAnimation &&
+              animation.animationName === 'service-panel-enter',
+          ),
+      ),
+    ).toBe(false);
+  });
+
   test('carries the served guest identity into review without reframing the restaurant', async ({
     page,
   }) => {
