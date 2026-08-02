@@ -46,7 +46,11 @@ def chroma_alpha(image: Image.Image) -> Image.Image:
     return rgba
 
 
-def flood_remove_white_background(image: Image.Image) -> Image.Image:
+def flood_remove_white_background(
+    image: Image.Image,
+    *,
+    include_gray_spill: bool = True,
+) -> Image.Image:
     """Remove only border-connected white matte and decontaminate its edge.
 
     Global white chroma-keying damages Val's pale skin and floral dress. The
@@ -67,7 +71,18 @@ def flood_remove_white_background(image: Image.Image) -> Image.Image:
             + (green - background[1]) ** 2
             + (blue - background[2]) ** 2
         ) ** 0.5
-        return min(red, green, blue) >= 190 and distance <= 82
+        channel_min = min(red, green, blue)
+        channel_spread = max(red, green, blue) - channel_min
+        near_white = channel_min >= 190 and distance <= 82
+        # The supplied white matte was resampled before delivery. Its outer
+        # edge therefore contains a connected gray, low-chroma band that is
+        # darker than the near-white key above. Remove that band only while it
+        # remains connected to the crop border; Val's authored dark outline
+        # encloses and protects the hair, skin, dress, hands, and shoes.
+        gray_spill = (
+            include_gray_spill and channel_min >= 110 and channel_spread <= 38
+        )
+        return near_white or gray_spill
 
     matte = [[False] * width for _ in range(height)]
     queue: deque[tuple[int, int]] = deque()
@@ -129,6 +144,26 @@ def trim(image: Image.Image, padding: int = 0) -> Image.Image:
     if bbox is None:
         raise ValueError("Sprite crop contains no visible pixels")
     left, top, right, bottom = bbox
+    return image.crop(
+        (
+            max(0, left - padding),
+            max(0, top - padding),
+            min(image.width, right + padding),
+            min(image.height, bottom + padding),
+        )
+    )
+
+
+def trim_to_reference(
+    image: Image.Image,
+    reference: Image.Image,
+    padding: int = 0,
+) -> Image.Image:
+    """Crop cleaned pixels without letting cleanup change authored scale/alignment."""
+    bounds = reference.getchannel("A").getbbox()
+    if bounds is None:
+        raise ValueError("Reference sprite crop contains no visible pixels")
+    left, top, right, bottom = bounds
     return image.crop(
         (
             max(0, left - padding),
@@ -283,11 +318,14 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
             f"Player frame is not feet-normalized: {name} "
             f"(bounds={bounds}, visible_height={visible_height}, bottom_gap={bottom_gap})"
         )
-    white_fringe = 0
+    neutral_matte_fringe = 0
     for y in range(image.height):
         for x in range(image.width):
             red, green, blue, alpha = image.getpixel((x, y))
-            if alpha == 0 or min(red, green, blue) <= 200:
+            # The resampled source matte includes a medium-gray connected band,
+            # not just near-white pixels. Check the full neutral spill range
+            # that is visible against the restaurant's dark wood floor.
+            if alpha == 0 or min(red, green, blue) <= 160:
                 continue
             if max(red, green, blue) - min(red, green, blue) >= 45:
                 continue
@@ -296,11 +334,14 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
                 for nx in range(max(0, x - 1), min(image.width, x + 2))
                 for ny in range(max(0, y - 1), min(image.height, y + 2))
             ):
-                white_fringe += 1
+                neutral_matte_fringe += 1
     # A carried white plate can contribute an isolated legitimate edge pixel;
     # the failed source matte appears as a continuous multi-pixel halo.
-    if white_fringe > 3:
-        raise ValueError(f"Player frame retains a white matte fringe: {name} ({white_fringe}px)")
+    if neutral_matte_fringe > 3:
+        raise ValueError(
+            f"Player frame retains a neutral matte fringe: "
+            f"{name} ({neutral_matte_fringe}px)"
+        )
 
 
 def top_row_fill_ratio(image: Image.Image) -> float:
@@ -548,8 +589,15 @@ def build_player() -> None:
     def player_source_frame(column: int, facing: str) -> Image.Image:
         x0, x1 = column_bounds[column]
         y0, y1 = facing_rows[facing]
-        keyed = flood_remove_white_background(sheet.crop((x0, y0, x1, y1)))
-        return trim(clear_alpha_noise(keyed), 3)
+        source = sheet.crop((x0, y0, x1, y1))
+        keyed = clear_alpha_noise(flood_remove_white_background(source))
+        # The stronger spill cleanup must not change frame dimensions, shared
+        # actor scale, or feet alignment. Use the former near-white-only matte
+        # as the layout reference, then crop the cleaned pixels to that box.
+        layout_reference = clear_alpha_noise(
+            flood_remove_white_background(source, include_gray_spill=False)
+        )
+        return trim_to_reference(keyed, layout_reference, 3)
 
     source_frames = {
         (facing, column): player_source_frame(column, facing)

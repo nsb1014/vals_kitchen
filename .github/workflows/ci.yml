@@ -57,7 +57,7 @@ jobs:
             echo 'content=false' >> "$GITHUB_OUTPUT"
           fi
 
-          if grep -Eq '^(vendor/|public/assets/|requirements\.txt$|scripts/(build-assets\.ts|audit-assets\.ts|pack-atlas\.py|build-ingredient-icons\.py|build-achievement-badges\.py)|src/data/ingredients\.json$)' <<< "$changed_files"; then
+          if grep -Eq '^(vendor/|public/assets/|requirements\.txt$|scripts/(build-assets\.ts|audit-assets\.ts|pack-atlas\.py|build-ingredient-icons\.py|build-achievement-badges\.py|build-chibi-ui-assets\.py|test-chibi-assets\.py)|src/data/ingredients\.json$)' <<< "$changed_files"; then
             echo 'assets=true' >> "$GITHUB_OUTPUT"
           else
             echo 'assets=false' >> "$GITHUB_OUTPUT"
@@ -111,9 +111,23 @@ jobs:
         if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         run: pip install -r requirements.txt
 
+      - name: Test committed character assets
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
+        run: npm run test:assets
+
       - name: Build CC0 atlases and audio
         if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
         run: npm run build:assets
+
+      - name: Verify regenerated character assets are committed
+        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
+        run: |
+          npm run test:assets
+          git diff --exit-code -- \
+            vendor/generated/chibi-ui/player-frames \
+            vendor/generated/chibi-ui/guest-frames \
+            public/assets/atlases/characters.png \
+            public/assets/atlases/characters.json
 
       - name: Asset CC0 audit
         if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
