@@ -186,7 +186,7 @@
 .chat-bubble::after {
   content: '';
   position: absolute;
-  left: 50%;
+  left: calc(50% + var(--vk-bubble-tail-offset-x, 0px));
   bottom: -8px;
   width: 14px;
   height: 14px;

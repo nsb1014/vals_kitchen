@@ -35,16 +35,6 @@ export {
   SEATED_GUEST_DISPLAY_HEIGHT,
 } from './actor-metrics.ts';
 
-const GUEST_STAGE_CUE: Record<string, number> = {
-  entering: 0xffc857,
-  waiting: 0xffc857,
-  seating: 0x4a90d9,
-  seated: 0x4a90d9,
-  ordered: 0x9b59b6,
-  eating: 0xe67e22,
-  leaving: 0x95a5a6,
-};
-
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
@@ -312,12 +302,8 @@ export class ActorLayer {
       // Natural feet Y-sort; flat tables sort under this band (see furnitureDepthY).
       entry.root.zIndex = entry.root.y;
       entry.cue.clear();
-      const cueColor = GUEST_STAGE_CUE[guest.stage];
-      if (cueColor !== undefined) {
-        entry.cue.circle(0, 3, 2).fill({ color: cueColor, alpha: 0.9 });
-      }
       if (!entry.sprite.visible) {
-        entry.cue.circle(0, -8, 8).fill(cueColor ?? FALLBACK_GUEST_COLOR);
+        entry.cue.circle(0, -8, 8).fill(FALLBACK_GUEST_COLOR);
       }
     }
 
