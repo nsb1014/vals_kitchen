@@ -284,6 +284,26 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   expect(dismissHitBoxes.height).toBeGreaterThanOrEqual(44);
 });
 
+test('an elapsed tutorial cue does not replay after compose closes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  await dismissInitialNotice(page);
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  const notice = page.getByTestId('notice-banner');
+  await expect(notice).toContainText('Plate a ticket');
+  await expect(notice).toHaveCount(0, { timeout: 5000 });
+
+  await page.evaluate(() => window.__E2E__!.openComposeSheet());
+  await expect(page.getByTestId('compose-sheet')).toBeVisible();
+  await page.getByTestId('compose-close').click();
+  await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
+  await page.waitForTimeout(250);
+  await expect(notice).toHaveCount(0);
+});
+
 test('transient notices pause behind compose and review sheets, then resume', async ({
   page,
 }) => {

@@ -182,7 +182,9 @@ export function mountFloorServiceHud(
       !state.ceremony;
 
     if (!interactive) {
-      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
+      // Blocking sheets pause the shared notice surface. Keep the last HUD
+      // pacing identity so closing a temporary sheet does not replay a cue
+      // that already completed for the same gameplay state.
       reserveChrome();
       return;
     }
