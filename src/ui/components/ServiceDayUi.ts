@@ -362,6 +362,10 @@ export function mountServiceDayUi(
 
   const positionChatBubble = () => {
     if (!bubbleEl) return;
+    if (!serviceOverlay.hidden) {
+      bubbleEl.hidden = true;
+      return;
+    }
     const app = getRestaurantApp();
     if (!app) return;
     const anchor = orderBubbleGuestId
@@ -388,6 +392,12 @@ export function mountServiceDayUi(
 
   const renderChatBubble = () => {
     const state = useGameStore.getState();
+    // A service sheet owns the current conversation. Keep older order speech
+    // from competing visually with modifiers, cooking, reviews, or summaries.
+    if (!serviceOverlay.hidden) {
+      if (bubbleEl) bubbleEl.hidden = true;
+      return;
+    }
     const customer = selectCurrentCustomer(state);
     const orderGuest = orderBubbleGuestId
       ? state.activeDay?.floor?.pool.find(
@@ -648,7 +658,7 @@ export function mountServiceDayUi(
         selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-mid" data-testid="review-sheet">
+        <div class="service-panel sheet-tier-mid review-service-panel" data-testid="review-sheet">
           <div class="service-card sheet-card-layout">
             ${reviewIdentity}
             <div class="sheet-body-scroll">

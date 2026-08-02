@@ -535,20 +535,52 @@ test.describe('service sheet tiers', () => {
     });
   });
 
-  test('uses a bounded mid sheet for customer review', async ({ page }) => {
+  test('keeps customer review compact while retaining a bounded scroll area', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 720 });
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
     await serveCurrentCustomer(page);
-    const sheet = await page.getByTestId('review-sheet').boundingBox();
+    const reviewSheet = page.getByTestId('review-sheet');
+    const sheet = await reviewSheet.boundingBox();
+    const card = await reviewSheet.locator('.service-card').boundingBox();
     expect(sheet).not.toBeNull();
-    expect(sheet!.height / 720).toBeGreaterThan(0.48);
-    expect(sheet!.height / 720).toBeLessThan(0.56);
+    expect(card).not.toBeNull();
+    expect(sheet!.height).toBeLessThanOrEqual(card!.height + 27);
+    expect(sheet!.height / 720).toBeLessThan(0.48);
+    expect(sheet!.y / 720).toBeGreaterThan(0.5);
+    await expectFooterInsideSheet(
+      page,
+      'review-sheet',
+      '[data-testid="review-sheet"] .sheet-footer',
+      'continue-service-btn',
+    );
     await page.screenshot({
-      path: 'test-results/customer-review-mid.png',
+      path: 'test-results/customer-review-compact.png',
       animations: 'disabled',
     });
+  });
+
+  test('keeps the review action reachable in a short mobile viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 480 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId('start-service-btn').click();
+    await serveCurrentCustomer(page);
+
+    const sheet = await page.getByTestId('review-sheet').boundingBox();
+    expect(sheet).not.toBeNull();
+    expect(sheet!.height).toBeLessThanOrEqual(480 * 0.72 + 1);
+    await expectFooterInsideSheet(
+      page,
+      'review-sheet',
+      '[data-testid="review-sheet"] .sheet-footer',
+      'continue-service-btn',
+    );
   });
 
   test('pins day-summary actions in a near-full sheet', async ({ page }) => {

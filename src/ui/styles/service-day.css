@@ -265,6 +265,13 @@
   max-height: var(--vk-sheet-mid-h);
 }
 
+/* Reviews are a brief service beat, not a workspace. Let the mobile sheet hug
+ * its result card while retaining the mid-tier cap for unusually long modifier,
+ * recipe, or mastery copy. Desktop deliberately restores the full side panel. */
+.service-panel.review-service-panel {
+  height: auto;
+}
+
 .service-panel.sheet-tier-near-full {
   height: var(--vk-sheet-near-h);
   max-height: var(--vk-sheet-near-h);

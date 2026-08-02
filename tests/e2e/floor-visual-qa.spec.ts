@@ -124,6 +124,13 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     await page.evaluate(() => window.__E2E__!.advanceFloorServiceOnce()),
   ).toBe('pending_review');
   await expect(page.getByTestId('review-sheet')).toBeVisible();
+  await expect(page.getByTestId('chat-bubble')).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await expect(page.getByTestId('chat-bubble')).toBeHidden();
+  await page.screenshot({
+    path: 'test-results/floor-review-full-qa.png',
+    animations: 'disabled',
+  });
   await page.waitForTimeout(2_500);
   await page.evaluate(() => window.__E2E__!.dismissPendingReview());
   await expect
