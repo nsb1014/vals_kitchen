@@ -91,6 +91,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-08-02 | Visual continuity: kept the desktop restaurant canvas and world projection fixed through modifier, review, Continue, and day-summary overlays while preserving the dedicated side workspace for active cooking |
 | 2026-08-02 | Visual cohesion: removed Val's border-connected gray/white source matte without changing her supplied source, identity, 128×160 frame canvases, scale, or feet alignment; repacked the shipped character atlas and added pre-build matte/artifact integrity coverage |
 | 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
 | 2026-07-28 | Cooking UI + shared chrome Done: explicit station-tap compose, 100-item flavor/search pantry, fixed responsive sheet regions, shared meta panels; fast suite 297 |

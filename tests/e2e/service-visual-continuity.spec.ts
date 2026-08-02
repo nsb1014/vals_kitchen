@@ -12,6 +12,143 @@ async function rect(locator: Locator) {
   return box;
 }
 
+type ElementRect = Awaited<ReturnType<typeof rect>>;
+type GridProjection = { x: number; y: number };
+type ServiceGeometry = {
+  canvas: ElementRect;
+  mount: ElementRect;
+  hud: ElementRect;
+  chrome: ElementRect;
+  projection: GridProjection;
+};
+
+const GEOMETRY_TOLERANCE_PX = 0.5;
+const CONTINUITY_GRID_CELL = { x: 4, y: 4 } as const;
+
+async function nextAnimationFrame(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+}
+
+async function gridProjection(page: Page): Promise<GridProjection> {
+  return page.evaluate(
+    ({ x, y }) => window.__E2E__!.gridCellToScreen(x, y),
+    CONTINUITY_GRID_CELL,
+  );
+}
+
+async function captureServiceGeometry(page: Page): Promise<ServiceGeometry> {
+  await nextAnimationFrame(page);
+  return {
+    canvas: await rect(page.getByTestId('restaurant-canvas')),
+    mount: await rect(page.locator('.canvas-mount')),
+    hud: await rect(page.getByTestId('game-hud')),
+    chrome: await rect(page.getByTestId('chrome-mount')),
+    projection: await gridProjection(page),
+  };
+}
+
+function maxRectDelta(actual: ElementRect, expected: ElementRect): number {
+  return Math.max(
+    Math.abs(actual.x - expected.x),
+    Math.abs(actual.y - expected.y),
+    Math.abs(actual.width - expected.width),
+    Math.abs(actual.height - expected.height),
+  );
+}
+
+function maxProjectionDelta(
+  actual: GridProjection,
+  expected: GridProjection,
+): number {
+  return Math.max(
+    Math.abs(actual.x - expected.x),
+    Math.abs(actual.y - expected.y),
+  );
+}
+
+async function expectRectStable(
+  locator: Locator,
+  expected: ElementRect,
+  label: string,
+): Promise<void> {
+  await expect
+    .poll(async () => maxRectDelta(await rect(locator), expected), {
+      message: `${label} must remain within ${GEOMETRY_TOLERANCE_PX}px`,
+    })
+    .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+}
+
+async function expectProjectionStable(
+  page: Page,
+  expected: GridProjection,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => maxProjectionDelta(await gridProjection(page), expected),
+      {
+        message: `grid cell (${CONTINUITY_GRID_CELL.x}, ${CONTINUITY_GRID_CELL.y}) must remain within ${GEOMETRY_TOLERANCE_PX}px`,
+      },
+    )
+    .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+}
+
+async function expectServiceGeometryStable(
+  page: Page,
+  expected: ServiceGeometry,
+): Promise<void> {
+  await expectRectStable(
+    page.getByTestId('restaurant-canvas'),
+    expected.canvas,
+    'restaurant canvas rect',
+  );
+  await expectRectStable(
+    page.locator('.canvas-mount'),
+    expected.mount,
+    'canvas mount rect',
+  );
+  await expectRectStable(
+    page.getByTestId('game-hud'),
+    expected.hud,
+    'status HUD rect',
+  );
+  await expectRectStable(
+    page.getByTestId('chrome-mount'),
+    expected.chrome,
+    'service chrome rect',
+  );
+  await expectProjectionStable(page, expected.projection);
+}
+
+async function expectInsideViewport(
+  locator: Locator,
+  viewport: { width: number; height: number },
+  label: string,
+): Promise<ElementRect> {
+  await expect(locator, `${label} should be visible`).toBeVisible();
+  const bounds = await rect(locator);
+  expect(bounds.x, `${label} left edge`).toBeGreaterThanOrEqual(0);
+  expect(bounds.y, `${label} top edge`).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width, `${label} right edge`).toBeLessThanOrEqual(
+    viewport.width + GEOMETRY_TOLERANCE_PX,
+  );
+  expect(bounds.y + bounds.height, `${label} bottom edge`).toBeLessThanOrEqual(
+    viewport.height + GEOMETRY_TOLERANCE_PX,
+  );
+  return bounds;
+}
+
+function expectPanelBelowHud(
+  panel: ElementRect,
+  hud: ElementRect,
+  label: string,
+): void {
+  expect(panel.y, `${label} should begin below the status HUD`).toBeGreaterThanOrEqual(
+    hud.y + hud.height - GEOMETRY_TOLERANCE_PX,
+  );
+}
+
 async function finishFloorWithoutClosing(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const bridge = window.__E2E__!;
@@ -209,24 +346,29 @@ test.describe('service visual continuity', () => {
       await page.getByTestId('open-day-btn').click();
       await expect(page.getByTestId('modifier-sheet')).toBeVisible();
 
-      const reserve = {
-        canvas: await rect(page.getByTestId('restaurant-canvas')),
-        mount: await rect(page.locator('.canvas-mount')),
-        chrome: await rect(page.getByTestId('chrome-mount')),
-      };
+      const reserve = await captureServiceGeometry(page);
+      if (viewport.width >= 900) {
+        const panel = await expectInsideViewport(
+          page.getByTestId('modifier-sheet'),
+          viewport,
+          'modifier panel',
+        );
+        const start = await expectInsideViewport(
+          page.getByTestId('start-service-btn'),
+          viewport,
+          'Start Service button',
+        );
+        expectPanelBelowHud(panel, reserve.hud, 'modifier panel');
+        expect(start.x).toBeGreaterThanOrEqual(panel.x);
+        expect(start.x + start.width).toBeLessThanOrEqual(
+          panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
+        );
+      }
 
       await page.getByTestId('start-service-btn').click();
       await expect(page.getByTestId('modifier-sheet')).toBeHidden();
       await expect(page.getByTestId('floor-service-panel')).toBeVisible();
-
-      const active = {
-        canvas: await rect(page.getByTestId('restaurant-canvas')),
-        mount: await rect(page.locator('.canvas-mount')),
-        chrome: await rect(page.getByTestId('chrome-mount')),
-      };
-      expect(active.canvas.height).toBeCloseTo(reserve.canvas.height, 0);
-      expect(active.mount.height).toBeCloseTo(reserve.mount.height, 0);
-      expect(active.chrome.height).toBeCloseTo(reserve.chrome.height, 0);
+      await expectServiceGeometryStable(page, reserve);
 
       const controls = await page.locator('.floor-actions .service-btn:visible').evaluateAll(
         (buttons) => ({
@@ -254,71 +396,199 @@ test.describe('service visual continuity', () => {
   test('carries the served guest identity into review without reframing the restaurant', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 720 });
-    await gotoFreshGame(page);
-    await page.getByTestId('open-day-btn').click();
-    await page.getByTestId('start-service-btn').click();
-    // Start Service is a durable async boundary. The bridge intentionally
-    // bypasses pointer blocking, so wait for the save curtain to finish before
-    // advancing the floor simulation behind it.
-    await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+    const viewports = [
+      { width: 390, height: 720 },
+      { width: 1280, height: 800 },
+    ];
 
-    const checkpoint = await page.evaluate(async () => {
-      const bridge = window.__E2E__!;
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await gotoFreshGame(page);
+      await page.getByTestId('open-day-btn').click();
+      await page.getByTestId('start-service-btn').click();
+      // Start Service is a durable async boundary. The bridge intentionally
+      // bypasses pointer blocking, so wait for the save curtain to finish before
+      // advancing the floor simulation behind it.
+      await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+
+      let checkpoint:
+        | { guestId: string; geometry: ServiceGeometry }
+        | undefined;
       for (let guard = 0; guard < 80; guard += 1) {
-        const canvas = document.querySelector<HTMLCanvasElement>(
-          '[data-testid="restaurant-canvas"]',
+        const geometry = await captureServiceGeometry(page);
+        const step = await page.evaluate(() =>
+          window.__E2E__!.advanceFloorServiceOnce(),
         );
-        const canvasRect = canvas?.getBoundingClientRect();
-        const step = await bridge.advanceFloorServiceOnce();
         if (step !== 'pending_review') continue;
-        const guest = bridge
-          .getGameState()
-          .activeDay!.floor!.pool.find((candidate) => candidate.stage === 'eating');
-        if (!guest) throw new Error('review opened without an eating guest');
-        return {
-          guestId: guest.id,
-          canvasHeightBeforeReview: canvasRect?.height ?? null,
-        };
+        const guestId = await page.evaluate(() => {
+          const guest = window.__E2E__!
+            .getGameState()
+            .activeDay!.floor!.pool.find(
+              (candidate) => candidate.stage === 'eating',
+            );
+          if (!guest) throw new Error('review opened without an eating guest');
+          return guest.id;
+        });
+        checkpoint = { guestId, geometry };
+        break;
       }
-      throw new Error('customer review did not open');
-    });
-    await expect(page.getByTestId('review-sheet')).toBeVisible();
-    await page.waitForTimeout(100);
+      if (!checkpoint) throw new Error('customer review did not open');
 
-    const canvas = await rect(page.getByTestId('restaurant-canvas'));
-    expect(checkpoint.canvasHeightBeforeReview).not.toBeNull();
-    expect(canvas.height).toBeCloseTo(checkpoint.canvasHeightBeforeReview!, 0);
-    await expect(page.getByTestId('review-guest-identity')).toBeVisible();
-    await expect(page.getByTestId('review-guest-name')).not.toHaveText('Customer');
-    const portrait = page
-      .getByTestId('review-guest-identity')
-      .getByTestId('guest-portrait');
-    await expect(portrait).toBeVisible();
-    await expect(portrait).toHaveAttribute(
-      'src',
-      `/assets/portraits/guest_${guestVariant(checkpoint.guestId)}.png`,
-    );
+      const review = page.getByTestId('review-sheet');
+      await expect(review).toBeVisible();
+      await expectServiceGeometryStable(page, checkpoint.geometry);
+      const continueButton = page.getByTestId('continue-service-btn');
+      if (viewport.width >= 900) {
+        const panel = await expectInsideViewport(
+          review,
+          viewport,
+          'review panel',
+        );
+        const action = await expectInsideViewport(
+          continueButton,
+          viewport,
+          'Continue service button',
+        );
+        expectPanelBelowHud(panel, checkpoint.geometry.hud, 'review panel');
+        expect(action.x).toBeGreaterThanOrEqual(panel.x);
+        expect(action.x + action.width).toBeLessThanOrEqual(
+          panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
+        );
+      }
+      await expect(page.getByTestId('review-guest-identity')).toBeVisible();
+      await expect(page.getByTestId('review-guest-name')).not.toHaveText('Customer');
+      const portrait = page
+        .getByTestId('review-guest-identity')
+        .getByTestId('guest-portrait');
+      await expect(portrait).toBeVisible();
+      await expect(portrait).toHaveAttribute(
+        'src',
+        `/assets/portraits/guest_${guestVariant(checkpoint.guestId)}.png`,
+      );
+
+      await continueButton.click();
+      await expect(review).toBeHidden();
+      await expectServiceGeometryStable(page, checkpoint.geometry);
+    }
   });
 
   test('keeps the restaurant framing fixed behind the day-summary transition', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    const viewports = [
+      { width: 390, height: 844 },
+      { width: 1280, height: 800 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await gotoFreshGame(page);
+      await page.getByTestId('open-day-btn').click();
+      await page.getByTestId('start-service-btn').click();
+      await finishFloorWithoutClosing(page);
+
+      const before = await captureServiceGeometry(page);
+      await page.evaluate(() => window.__E2E__!.dispatch({ type: 'CLOSE_DAY' }));
+      const summary = page.getByTestId('day-summary-sheet');
+      await expect(summary).toBeVisible();
+      await expectServiceGeometryStable(page, before);
+      if (viewport.width >= 900) {
+        const panel = await expectInsideViewport(
+          summary,
+          viewport,
+          'day summary panel',
+        );
+        const continueButton = await expectInsideViewport(
+          page.getByTestId('summary-back-floor'),
+          viewport,
+          'summary Continue button',
+        );
+        const editButton = await expectInsideViewport(
+          page.getByTestId('summary-edit-restaurant'),
+          viewport,
+          'summary Shop and Edit button',
+        );
+        expectPanelBelowHud(panel, before.hud, 'day summary panel');
+        for (const action of [continueButton, editButton]) {
+          expect(action.x).toBeGreaterThanOrEqual(panel.x);
+          expect(action.x + action.width).toBeLessThanOrEqual(
+            panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
+          );
+        }
+      }
+    }
+  });
+
+  test('reserves and restores the expected desktop cooking workspace', async ({
+    page,
+  }) => {
+    const viewport = { width: 1280, height: 800 };
+    const expectedWorkspaceWidth = Math.min(600, viewport.width * 0.46);
+    await page.setViewportSize(viewport);
     await gotoFreshGame(page);
-    await page.getByTestId('open-day-btn').click();
-    await page.getByTestId('start-service-btn').click();
-    await finishFloorWithoutClosing(page);
+    await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+    await expect(page.getByTestId('floor-service-panel')).toBeVisible();
 
-    const canvas = page.getByTestId('restaurant-canvas');
-    const before = await rect(canvas);
-    await page.evaluate(() => window.__E2E__!.dispatch({ type: 'CLOSE_DAY' }));
-    await expect(page.getByTestId('day-summary-sheet')).toBeVisible();
-    const after = await rect(canvas);
+    const before = await captureServiceGeometry(page);
+    await page.evaluate(() => window.__E2E__!.openComposeSheet());
 
-    expect(after.x).toBeCloseTo(before.x, 0);
-    expect(after.y).toBeCloseTo(before.y, 0);
-    expect(after.width).toBeCloseTo(before.width, 0);
-    expect(after.height).toBeCloseTo(before.height, 0);
+    const compose = page.getByTestId('compose-sheet');
+    const workspaceLocators = [
+      { label: 'restaurant canvas', locator: page.getByTestId('restaurant-canvas'), before: before.canvas },
+      { label: 'canvas mount', locator: page.locator('.canvas-mount'), before: before.mount },
+      { label: 'status HUD', locator: page.getByTestId('game-hud'), before: before.hud },
+      { label: 'service chrome', locator: page.getByTestId('chrome-mount'), before: before.chrome },
+    ];
+    await expect(compose).toBeVisible();
+    for (const workspace of workspaceLocators) {
+      await expect
+        .poll(async () => {
+          const narrowed = await rect(workspace.locator);
+          return Math.abs(
+            workspace.before.width - narrowed.width - expectedWorkspaceWidth,
+          );
+        }, {
+          message: `${workspace.label} should reserve the authored desktop side workspace`,
+        })
+        .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+    }
+
+    const panel = await expectInsideViewport(compose, viewport, 'compose panel');
+    const footer = await expectInsideViewport(
+      page.locator('.compose-sheet-footer'),
+      viewport,
+      'compose footer',
+    );
+    const close = await expectInsideViewport(
+      page.getByTestId('compose-close'),
+      viewport,
+      'compose close button',
+    );
+    const overlay = await rect(page.locator('.service-overlay'));
+    expect(
+      Math.abs(panel.width - expectedWorkspaceWidth),
+      'compose panel should match the authored desktop side workspace',
+    ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+    expect(
+      Math.abs(panel.x + panel.width - (overlay.x + overlay.width)),
+      'compose panel should be right-aligned in the service overlay',
+    ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+    for (const workspace of workspaceLocators) {
+      const narrowed = await rect(workspace.locator);
+      expect(
+        narrowed.x + narrowed.width,
+        `${workspace.label} should not overlap the compose panel`,
+      ).toBeLessThanOrEqual(panel.x + GEOMETRY_TOLERANCE_PX);
+    }
+    expect(footer.y + footer.height).toBeLessThanOrEqual(
+      panel.y + panel.height + GEOMETRY_TOLERANCE_PX,
+    );
+    expect(close.x + close.width).toBeLessThanOrEqual(
+      panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
+    );
+
+    await page.getByTestId('compose-close').click();
+    await expect(compose).toBeHidden();
+    await expectServiceGeometryStable(page, before);
   });
 });

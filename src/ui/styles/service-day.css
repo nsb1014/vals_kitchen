@@ -2211,22 +2211,23 @@
 }
 
 @media (min-width: 900px) {
-  /* Desktop sheets occupy a real side workspace. Shrink the canvas instead of
-   * painting over the kitchen half of the room. RestaurantApp observes this
-   * mount and recomputes its renderer/camera when the workspace opens. */
-  .game-surface:has(
-      .service-panel.sheet-tier-compact,
-      .service-panel.sheet-tier-mid,
-      .service-panel.sheet-tier-near-full
-    )
-    .canvas-mount {
+  /* Cooking needs a real side workspace for direct pantry interaction. Other
+   * service sheets are transient modals and must not refit the restaurant
+   * camera when they open or close. */
+  .game-surface:has(.compose-sheet-card) .canvas-mount {
     width: auto;
     margin-right: min(600px, 46vw);
   }
 
-  .game-surface:has(.service-panel:not([hidden])) .game-hud,
-  .game-surface:has([data-testid='compose-sheet']) .chrome-mount {
+  .game-surface:has(.compose-sheet-card) .game-hud,
+  .game-surface:has(.compose-sheet-card) .chrome-mount {
     margin-right: min(600px, 46vw);
+  }
+
+  /* Blocking service outcomes keep the full restaurant projection, but begin
+   * below the stable status strip so the modal edge never bisects a HUD tile. */
+  .service-overlay:not(:has(.compose-sheet-card)) {
+    top: var(--vk-status-hud-height, 2.75rem);
   }
 
   .service-overlay {

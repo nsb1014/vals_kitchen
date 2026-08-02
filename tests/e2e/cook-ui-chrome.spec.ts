@@ -537,23 +537,59 @@ test.describe('cook sheet responsive chrome', () => {
     });
   });
 
-  test('keeps the complete restaurant beside the desktop modifier sheet', async ({
+  test('keeps the desktop restaurant fixed behind the readable modifier sheet', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 2048, height: 1152 });
     await gotoFreshGame(page);
+    const canvas = page.getByTestId('restaurant-canvas');
     await page.getByTestId('open-day-btn').click();
-    await expect
-      .poll(async () => {
-        const sheet = await visibleRect(page.getByTestId('modifier-sheet'));
-        const canvas = await visibleRect(page.getByTestId('restaurant-canvas'));
-        return canvas.x + canvas.width <= sheet.x + 1;
-      })
-      .toBe(true);
+    const modifier = page.getByTestId('modifier-sheet');
+    await expect(modifier).toBeVisible();
+    const modifierCanvas = await visibleRect(canvas);
+    const modifierProjection = await page.evaluate(() =>
+      window.__E2E__!.gridCellToScreen(4, 4),
+    );
+    const sheet = await visibleRect(modifier);
+    const start = await visibleRect(page.getByTestId('start-service-btn'));
+    const hud = await visibleRect(page.getByTestId('game-hud'));
+    expect(sheet.x + sheet.width).toBeLessThanOrEqual(2048 + 0.5);
+    expect(sheet.y).toBeGreaterThanOrEqual(hud.y + hud.height - 0.5);
+    expect(sheet.x).toBeLessThan(modifierCanvas.x + modifierCanvas.width);
+    expect(start.x).toBeGreaterThanOrEqual(sheet.x);
+    expect(start.x + start.width).toBeLessThanOrEqual(sheet.x + sheet.width);
+    await expect(page.getByRole('button', { name: 'Cash details' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Restaurant rating details' }),
+    ).toBeVisible();
+    expect(
+      await modifier.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      ),
+    ).not.toBe('rgba(0, 0, 0, 0)');
     await page.screenshot({
       path: 'test-results/modifier-desktop-full-restaurant.png',
       animations: 'disabled',
     });
+
+    await page.getByTestId('start-service-btn').click();
+    await expect(modifier).toBeHidden();
+    await expect
+      .poll(async () => {
+        const activeCanvas = await visibleRect(canvas);
+        const activeProjection = await page.evaluate(() =>
+          window.__E2E__!.gridCellToScreen(4, 4),
+        );
+        return Math.max(
+          Math.abs(activeCanvas.x - modifierCanvas.x),
+          Math.abs(activeCanvas.y - modifierCanvas.y),
+          Math.abs(activeCanvas.width - modifierCanvas.width),
+          Math.abs(activeCanvas.height - modifierCanvas.height),
+          Math.abs(activeProjection.x - modifierProjection.x),
+          Math.abs(activeProjection.y - modifierProjection.y),
+        );
+      })
+      .toBeLessThanOrEqual(0.5);
   });
 
   test('supports desktop WASD movement through existing pathfinding', async ({
