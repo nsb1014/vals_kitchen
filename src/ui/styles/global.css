@@ -313,7 +313,7 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
+  image-rendering: auto;
   touch-action: none;
 }
 
@@ -438,12 +438,10 @@ textarea:focus-visible,
     var(--vk-bg-deep);
 }
 
-.restaurant-canvas,
-canvas {
-  /* Keep crisp pixel art. `auto` bilinear upscale smears soft atlas edges into
-     silhouettes and reads as see-through characters on busy floors. */
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+.restaurant-canvas {
+  /* The backing store already follows devicePixelRatio. Smooth any fractional
+     CSS device-scale step instead of forcing nearest-neighbor blocks. */
+  image-rendering: auto;
 }
 
 .layout-hud {

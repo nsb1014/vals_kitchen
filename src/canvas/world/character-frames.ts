@@ -24,6 +24,27 @@ export function playerCarryFrameKey(facing: string): string {
   return `player_carry_${facing}`;
 }
 
+export function playerPoseFrame(
+  facing: string,
+  walkFrame: number,
+  isMoving: boolean,
+  carrying: boolean,
+): { textureKey: string; usesAuthoredCarryPose: boolean } {
+  // The supplied sheet has one held-plate pose per direction, not a carry
+  // cycle. Keep it while stopped, then retain the leg cycle while walking;
+  // ActorLayer adds its held-dish overlay during motion.
+  if (carrying && !isMoving) {
+    return {
+      textureKey: playerCarryFrameKey(facing),
+      usesAuthoredCarryPose: true,
+    };
+  }
+  return {
+    textureKey: playerFrameKey(facing, isMoving ? walkFrame : 0),
+    usesAuthoredCarryPose: false,
+  };
+}
+
 export function guestWalkFrameKey(variant: GuestVariant, facing: string, frame: number): string {
   return `guest_${variant}_${facing}_${frame}`;
 }

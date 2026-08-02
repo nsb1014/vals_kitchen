@@ -77,7 +77,7 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     return { imageRendering: style.imageRendering, opacity: style.opacity };
   });
   expect(canvasStyle.opacity).toBe('1');
-  expect(['pixelated', 'crisp-edges']).toContain(canvasStyle.imageRendering);
+  expect(canvasStyle.imageRendering).toBe('auto');
 
   await page.locator('[data-testid="restaurant-canvas"]').screenshot({
     path: 'test-results/floor-seated-qa.png',

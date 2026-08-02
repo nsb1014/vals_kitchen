@@ -6,6 +6,7 @@ import {
   guestWalkFrameKey,
   playerCarryFrameKey,
   playerFrameKey,
+  playerPoseFrame,
 } from '../canvas/world/character-frames.ts';
 
 describe('character-frames', () => {
@@ -14,6 +15,21 @@ describe('character-frames', () => {
     expect(playerFrameKey('left', 2)).toBe('player_left_2');
     expect(playerFrameKey('up', 1)).toBe('player_up_1');
     expect(playerCarryFrameKey('right')).toBe('player_carry_right');
+  });
+
+  it('uses the authored carry pose at rest and the leg cycle while moving', () => {
+    expect(playerPoseFrame('down', 2, false, true)).toEqual({
+      textureKey: 'player_carry_down',
+      usesAuthoredCarryPose: true,
+    });
+    expect(playerPoseFrame('down', 2, true, true)).toEqual({
+      textureKey: 'player_down_2',
+      usesAuthoredCarryPose: false,
+    });
+    expect(playerPoseFrame('left', 1, true, false)).toEqual({
+      textureKey: 'player_left_1',
+      usesAuthoredCarryPose: false,
+    });
   });
 
   it('exposes multiple chibi guest variants', () => {

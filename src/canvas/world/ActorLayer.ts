@@ -20,6 +20,7 @@ import {
   guestWalkFrameKey,
   playerCarryFrameKey,
   playerFrameKey,
+  playerPoseFrame,
 } from './character-frames.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
@@ -149,7 +150,8 @@ export class ActorLayer {
     this.playerWorld = { x: nav.worldX, y: nav.worldY };
     const facing = FACING_NAMES[nav.facing];
     const frame = nav.isMoving ? nav.walkFrame() : 0;
-    const frameKey = carrying ? `carry_${facing}` : `${facing}_${frame}`;
+    const pose = playerPoseFrame(facing, frame, nav.isMoving, carrying);
+    const frameKey = pose.textureKey;
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
 
@@ -160,12 +162,12 @@ export class ActorLayer {
         hadTexture: this.playerSprite.visible,
       })
     ) {
-      const carryTexture = carrying
+      const carryTexture = pose.usesAuthoredCarryPose
         ? getCharacterTexture(playerCarryFrameKey(facing))
         : null;
       const texture =
         carryTexture ??
-        getCharacterTexture(playerFrameKey(facing, frame)) ??
+        getCharacterTexture(pose.textureKey) ??
         getCharacterTexture(playerFrameKey(facing, 0)) ??
         getCharacterTexture('player') ??
         getCharacterTexture('customer');
