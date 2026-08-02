@@ -24,6 +24,31 @@ SPEC.loader.exec_module(PACKER)
 
 
 class AtlasAlphaTest(unittest.TestCase):
+    def test_optional_content_bounds_follow_nonzero_alpha(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / "source.png"
+            atlas_path = root / "atlas.png"
+            data_path = root / "atlas.json"
+            source = Image.new("RGBA", (5, 4), (0, 0, 0, 0))
+            source.putpixel((1, 1), (10, 20, 30, 1))
+            source.putpixel((3, 2), (40, 50, 60, 255))
+            source.save(source_path)
+
+            PACKER.pack_atlas(
+                [("probe", source_path)],
+                atlas_path,
+                data_path,
+                cell=5,
+                include_content_bounds=True,
+            )
+
+            metadata = json.loads(data_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                metadata["frames"]["probe"]["contentBounds"],
+                {"x": 1, "y": 1, "w": 3, "h": 2},
+            )
+
     def test_packing_preserves_authored_alpha_once(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

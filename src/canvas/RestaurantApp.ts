@@ -18,7 +18,7 @@ import {
   playerNearPlacement,
   waitingGuestServicePositions,
 } from '../domain/floor/interact.ts';
-import type { FloorDay } from '../domain/floor/types.ts';
+import type { FloorDay, FloorGuest } from '../domain/floor/types.ts';
 import type { Placement } from '../domain/state/game-state.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
 import {
@@ -61,9 +61,15 @@ import {
   screenToGrid,
   screenToWorld,
   TILE_PX,
+  gridToWorld,
   worldToScreen,
 } from './coordinates.ts';
-import { GUEST_DISPLAY_HEIGHT } from './world/actor-metrics.ts';
+import {
+  expandGuestHitBounds,
+  guestHitBoundsContainPoint,
+  isServiceGuestHitEligible,
+  resolveTopmostGuestHit,
+} from './world/guest-hit.ts';
 import { tableServiceVisualStates } from './table-service-visual.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -484,18 +490,62 @@ export class RestaurantApp {
   ): boolean {
     const waiting = floor.pool.find((guest) => guest.stage === 'waiting');
     if (!waiting) return false;
-    const top = this.actorLayer.getGuestWorldPosition(waiting.id);
-    const feet = this.actorLayer.getGuestFeetWorldPosition(waiting.id);
-    if (!top || !feet) return false;
+    const target = this.actorLayer
+      .getGuestWorldHitTargets()
+      .find((candidate) => candidate.guestId === waiting.id);
+    if (!target) return false;
+    return guestHitBoundsContainPoint(
+      expandGuestHitBounds(target.bounds, this.camera.state.scale),
+      world,
+    );
+  }
 
-    const minHitWorld = 44 / Math.max(0.01, this.camera.state.scale);
-    const halfWidth = Math.max(GUEST_DISPLAY_HEIGHT / 2, minHitWorld / 2);
-    const verticalPadding = Math.max(4, (minHitWorld - GUEST_DISPLAY_HEIGHT) / 2);
+  private serviceGuestHitAtWorldPoint(
+    floor: FloorDay,
+    world: { x: number; y: number },
+    tapCell: GridPoint,
+  ): FloorGuest | null {
+    const hasCarriedTicket = floor.carriedTicketId != null;
+    const eligibleById = new Map(
+      floor.pool
+        .filter(
+          (guest) =>
+            guest.seat &&
+            isServiceGuestHitEligible(guest.stage, hasCarriedTicket),
+        )
+        .map((guest) => [guest.id, guest]),
+    );
+
+    const bodyHit = resolveTopmostGuestHit(
+      world,
+      this.actorLayer
+        .getGuestWorldHitTargets()
+        .filter((candidate) => eligibleById.has(candidate.guestId)),
+      this.camera.state.scale,
+    );
+    if (bodyHit) {
+      // Actor rendering trails state updates by at most one frame. Re-read the
+      // live floor snapshot before turning a painted body into a command.
+      const liveGuest = floor.pool.find(
+        (guest) => guest.id === bodyHit.guestId,
+      );
+      if (
+        liveGuest?.seat &&
+        isServiceGuestHitEligible(liveGuest.stage, hasCarriedTicket)
+      ) {
+        return liveGuest;
+      }
+    }
+
+    // Preserve the established seat-cell affordance for keyboard/debug flows,
+    // but subject it to the same lifecycle rules as direct body taps.
     return (
-      world.x >= feet.x - halfWidth &&
-      world.x <= feet.x + halfWidth &&
-      world.y >= top.y - verticalPadding &&
-      world.y <= feet.y + verticalPadding
+      floor.pool.find(
+        (guest) =>
+          guest.seat?.x === tapCell.x &&
+          guest.seat.y === tapCell.y &&
+          isServiceGuestHitEligible(guest.stage, hasCarriedTicket),
+      ) ?? null
     );
   }
 
@@ -779,13 +829,31 @@ export class RestaurantApp {
     }
 
     if (store.activeFloorRoom === 'main') {
-      const tappedGuest = floor.pool.find(
-        (candidate) =>
-          candidate.seat?.x === tapCell.x &&
-          candidate.seat.y === tapCell.y &&
-          candidate.stage !== 'leaving' &&
-          candidate.stage !== 'done',
+      const tappedTablePlacement = roomPlacements.find(
+        (placement) =>
+          placement.x === tapCell.x &&
+          placement.y === tapCell.y &&
+          floor.tables.some(
+            (table) => table.placementId === placement.id,
+          ),
       );
+      const tappedTableOrigin = tappedTablePlacement
+        ? gridToWorld(tappedTablePlacement.x, tappedTablePlacement.y)
+        : null;
+      const tableCenterHalfSize = TILE_PX / 8;
+      const tappedTableCenter = Boolean(
+        tappedTableOrigin &&
+          Math.abs(world.x - (tappedTableOrigin.x + TILE_PX / 2)) <=
+            tableCenterHalfSize &&
+          Math.abs(world.y - (tappedTableOrigin.y + TILE_PX / 2)) <=
+            tableCenterHalfSize,
+      );
+      // The authored 128px character frame can overlap the tabletop by a few
+      // pixels. Reserve only the unambiguous center hotspot for the table;
+      // north/south diners can visibly extend into the rest of its grid cell.
+      const tappedGuest = tappedTableCenter
+        ? null
+        : this.serviceGuestHitAtWorldPoint(floor, world, tapCell);
       const player = store.floorPlayerGrid ?? this.nav.position;
 
       if (floor.carriedTicketId && tappedGuest) {
@@ -1282,6 +1350,36 @@ export class RestaurantApp {
     return {
       x: rect.left + screen.x,
       y: rect.top + screen.y,
+    };
+  }
+
+  getGuestScreenRenderedBounds(guestId: string): {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  } | null {
+    const target = this.actorLayer
+      .getGuestWorldHitTargets()
+      .find((candidate) => candidate.guestId === guestId);
+    if (!target) return null;
+    const bounds = target.bounds;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const topLeft = worldToScreen(
+      bounds.left,
+      bounds.top,
+      this.camera.state,
+    );
+    const bottomRight = worldToScreen(
+      bounds.right,
+      bounds.bottom,
+      this.camera.state,
+    );
+    return {
+      left: rect.left + topLeft.x,
+      top: rect.top + topLeft.y,
+      right: rect.left + bottomRight.x,
+      bottom: rect.top + bottomRight.y,
     };
   }
 

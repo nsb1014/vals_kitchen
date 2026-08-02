@@ -45,6 +45,40 @@ async function waitingGuestHitPoint(
   }, guestId);
 }
 
+type GuestBodyBand = 'head' | 'torso' | 'lower';
+
+async function guestRenderedBodyPoint(
+  page: Page,
+  guestId: string,
+  band: GuestBodyBand,
+  horizontalRatio = 0.5,
+): Promise<{ x: number; y: number }> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (id) => Boolean(window.__E2E__!.getGuestScreenRenderedBounds(id)),
+        guestId,
+      ),
+    )
+    .toBe(true);
+  return page.evaluate(({ id, bodyBand, xRatio }) => {
+    const bounds = window.__E2E__!.getGuestScreenRenderedBounds(id)!;
+    const verticalRatio =
+      bodyBand === 'head' ? 0.2 : bodyBand === 'lower' ? 0.8 : 0.5;
+    return {
+      x: bounds.left + (bounds.right - bounds.left) * xRatio,
+      y: bounds.top + (bounds.bottom - bounds.top) * verticalRatio,
+    };
+  }, { id: guestId, bodyBand: band, xRatio: horizontalRatio });
+}
+
+async function tapRealPointer(
+  page: Page,
+  point: { x: number; y: number },
+): Promise<void> {
+  await page.mouse.click(point.x, point.y);
+}
+
 async function tapScreenPoint(
   page: Page,
   point: { x: number; y: number },
@@ -89,8 +123,29 @@ async function tapGridCell(page: Page, x: number, y: number): Promise<void> {
   );
 }
 
-async function openRunningFloor(page: Page): Promise<void> {
-  await page.setViewportSize({ width: 1280, height: 800 });
+async function expectPlayerAtGuestServicePosition(
+  page: Page,
+  seat: { x: number; y: number },
+): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(({ x, y }) => {
+        const player = window.__E2E__!.getState().floorPlayerGrid;
+        const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
+        const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
+        return Boolean(
+          player && ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
+        );
+      }, seat),
+    )
+    .toBe(true);
+}
+
+async function openRunningFloor(
+  page: Page,
+  viewport = { width: 1280, height: 800 },
+): Promise<void> {
+  await page.setViewportSize(viewport);
   await gotoFreshGame(page);
   await page.getByTestId('open-day-btn').click();
   await page.getByTestId('start-service-btn').click();
@@ -120,10 +175,53 @@ async function prepareWaitingGuest(page: Page): Promise<string> {
   });
 }
 
+async function prepareSeatedGuest(page: Page): Promise<{
+  guestId: string;
+  seat: { x: number; y: number; tablePlacementId: string };
+  remote: { x: number; y: number };
+}> {
+  const waitingPosition = await waitingGuestServicePosition(page);
+  return page.evaluate(async (nearWaiting) => {
+    const bridge = window.__E2E__!;
+    const floor = () => bridge.getGameState().activeDay!.floor!;
+    for (const table of floor().tables) {
+      if (table.state === 'unset') {
+        await bridge.dispatch({
+          type: 'FLOOR_SET_TABLE',
+          placementId: table.placementId,
+        });
+      }
+    }
+    if (floor().pool.some((guest) => guest.stage === 'entering')) {
+      await bridge.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    }
+    bridge.setFloorNavPosition(nearWaiting);
+    await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+    const seating = floor().pool.find((guest) => guest.stage === 'seating');
+    if (!seating?.seat) throw new Error('expected a guest assigned to a seat');
+    await bridge.dispatch({
+      type: 'FLOOR_COMPLETE_SEATING',
+      guestId: seating.id,
+    });
+    const remote = { x: 4, y: 5 };
+    bridge.setFloorNavPosition(remote);
+    return {
+      guestId: seating.id,
+      seat: {
+        x: seating.seat.x,
+        y: seating.seat.y,
+        tablePlacementId: seating.seat.tablePlacementId,
+      },
+      remote,
+    };
+  }, waitingPosition);
+}
+
 async function prepareOrderedGuest(
   page: Page,
   plate: boolean,
 ): Promise<{
+  guestId: string;
   seat: { x: number; y: number };
   station: { x: number; y: number };
   remote: { x: number; y: number };
@@ -187,6 +285,7 @@ async function prepareOrderedGuest(
     const remote = { x: 4, y: 5 };
     bridge.setFloorNavPosition(remote);
     return {
+      guestId: seating.id,
       seat: { x: seating.seat.x, y: seating.seat.y },
       station: { x: station.x, y: station.y },
       remote,
@@ -196,6 +295,254 @@ async function prepareOrderedGuest(
 }
 
 test.describe('object tap controls', () => {
+  const bodyTapCases = [
+    { label: '320px head', viewport: { width: 320, height: 720 }, band: 'head' },
+    { label: '320px torso', viewport: { width: 320, height: 720 }, band: 'torso' },
+    { label: '320px lower body', viewport: { width: 320, height: 720 }, band: 'lower' },
+    { label: '1280px head', viewport: { width: 1280, height: 800 }, band: 'head' },
+    { label: '1280px torso', viewport: { width: 1280, height: 800 }, band: 'torso' },
+    { label: '1280px lower body', viewport: { width: 1280, height: 800 }, band: 'lower' },
+  ] as const;
+
+  for (const bodyCase of bodyTapCases) {
+    test(`orders through the rendered ${bodyCase.label}`, async ({ page }) => {
+      await openRunningFloor(page, bodyCase.viewport);
+      const fixture = await prepareSeatedGuest(page);
+
+      await tapRealPointer(
+        page,
+        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
+      );
+      await expectPlayerAtGuestServicePosition(page, fixture.seat);
+      expect(
+        await page.evaluate(
+          (guestId) =>
+            window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
+              (guest) => guest.id === guestId,
+            )?.stage,
+          fixture.guestId,
+        ),
+      ).toBe('seated');
+
+      await tapRealPointer(
+        page,
+        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (guestId) =>
+              window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
+                (guest) => guest.id === guestId,
+              )?.stage,
+            fixture.guestId,
+          ),
+        )
+        .toBe('ordered');
+    });
+
+    test(`delivers through the rendered ${bodyCase.label}`, async ({ page }) => {
+      await openRunningFloor(page, bodyCase.viewport);
+      const fixture = await prepareOrderedGuest(page, true);
+
+      await tapRealPointer(
+        page,
+        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
+      );
+      await expectPlayerAtGuestServicePosition(page, fixture.seat);
+      expect(
+        await page.evaluate(
+          (ticketId) =>
+            window.__E2E__!.getGameState().activeDay!.floor!
+              .carriedTicketId === ticketId,
+          fixture.ticketId,
+        ),
+      ).toBe(true);
+
+      await tapRealPointer(
+        page,
+        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              window.__E2E__!.getGameState().activeDay!.floor!
+                .carriedTicketId,
+          ),
+        )
+        .toBeNull();
+    });
+  }
+
+  test('keeps a table-center tap with the table when a seated frame overlaps it', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const fixture = await prepareSeatedGuest(page);
+    const table = await page.evaluate((placementId) => {
+      const placement = window.__E2E__!
+        .getGameState()
+        .placements.find((candidate) => candidate.id === placementId);
+      if (!placement) throw new Error('expected the seated guest table');
+      return { x: placement.x, y: placement.y };
+    }, fixture.seat.tablePlacementId);
+
+    await tapGridCell(page, table.x, table.y);
+    await page.waitForTimeout(300);
+    expect(
+      await page.evaluate((guestId) => {
+        const bridge = window.__E2E__!;
+        const floor = bridge.getGameState().activeDay!.floor!;
+        return {
+          player: bridge.getState().floorPlayerGrid,
+          guestStage: floor.pool.find((guest) => guest.id === guestId)?.stage,
+          ticketCount: floor.tickets.length,
+        };
+      }, fixture.guestId),
+    ).toEqual({
+      player: fixture.remote,
+      guestStage: 'seated',
+      ticketCount: 0,
+    });
+  });
+
+  test('keeps rendered guest controls live across all four seat facings', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const guests = await page.evaluate(() =>
+      window.__E2E__!.prepareFourFacingSeatedGuestsFixture(),
+    );
+    expect(
+      guests.map((guest) => guest.seat.facing).sort((a, b) => a - b),
+    ).toEqual([0, 90, 180, 270]);
+    const pointForFacing: Record<
+      0 | 90 | 180 | 270,
+      { band: GuestBodyBand; horizontalRatio: number }
+    > = {
+      0: { band: 'head', horizontalRatio: 0.5 },
+      90: { band: 'torso', horizontalRatio: 0.15 },
+      180: { band: 'torso', horizontalRatio: 0.5 },
+      270: { band: 'torso', horizontalRatio: 0.85 },
+    };
+
+    for (const guest of guests) {
+      await page.evaluate(
+        ({ x, y }) =>
+          window.__E2E__!.setFloorNavPosition({ x, y: y + 2 }),
+        guest.seat,
+      );
+      await tapRealPointer(
+        page,
+        await guestRenderedBodyPoint(
+          page,
+          guest.guestId,
+          pointForFacing[guest.seat.facing].band,
+          pointForFacing[guest.seat.facing].horizontalRatio,
+        ),
+      );
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              (guestId) =>
+                window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
+                  (candidate) => candidate.id === guestId,
+                )?.stage,
+              guest.guestId,
+            ),
+          { message: `facing ${guest.seat.facing} should receive its body tap` },
+        )
+        .toBe('ordered');
+    }
+  });
+
+  test('keeps a carried dish matched when another rendered guest is tapped', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const capacityFixture = await page.evaluate(() =>
+      window.__E2E__!.prepareFullTicketRemoteSeatedGuestFixture(),
+    );
+    const fixture = await page.evaluate(async (remote) => {
+      const bridge = window.__E2E__!;
+      const state = bridge.getGameState();
+      const floor = state.activeDay!.floor!;
+      const ticket = floor.tickets[0];
+      const matchingGuest = floor.pool.find(
+        (guest) => guest.customer.id === ticket?.customerId,
+      );
+      const wrongGuest = floor.pool.find(
+        (guest) =>
+          guest.stage === 'ordered' &&
+          guest.customer.id !== ticket?.customerId,
+      );
+      const station = state.placements.find(
+        (placement) => placement.itemKey === 'prep_station',
+      );
+      if (!ticket || !matchingGuest?.seat || !wrongGuest?.seat || !station) {
+        throw new Error('wrong-guest carry fixture is incomplete');
+      }
+      bridge.setFloorNavPosition({ x: station.x - 1, y: station.y + 1 });
+      await bridge.dispatch({
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: state.unlockedIngredientIds.slice(0, 3),
+      });
+      await bridge.dispatch({ type: 'FLOOR_PLATE', ticketId: ticket.id });
+      bridge.setFloorNavPosition(remote);
+      return {
+        ticketId: ticket.id,
+        matchingGuestId: matchingGuest.id,
+        matchingSeat: { x: matchingGuest.seat.x, y: matchingGuest.seat.y },
+        wrongGuestId: wrongGuest.id,
+      };
+    }, capacityFixture.remote);
+
+    await tapRealPointer(
+      page,
+      await guestRenderedBodyPoint(page, fixture.wrongGuestId, 'torso'),
+    );
+    await expect(page.locator('.notice-banner-body')).toHaveText(
+      'Wrong table — deliver to the matching guest',
+    );
+    expect(
+      await page.evaluate((ticketId) => {
+        const bridge = window.__E2E__!;
+        return {
+          player: bridge.getState().floorPlayerGrid,
+          carriedTicketId:
+            bridge.getGameState().activeDay!.floor!.carriedTicketId,
+          expectedTicketId: ticketId,
+        };
+      }, fixture.ticketId),
+    ).toEqual({
+      player: capacityFixture.remote,
+      carriedTicketId: fixture.ticketId,
+      expectedTicketId: fixture.ticketId,
+    });
+
+    await page.evaluate(
+      ({ x, y }) =>
+        window.__E2E__!.setFloorNavPosition({ x, y: y + 2 }),
+      fixture.matchingSeat,
+    );
+    await tapRealPointer(
+      page,
+      await guestRenderedBodyPoint(page, fixture.matchingGuestId, 'torso'),
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            window.__E2E__!.getGameState().activeDay!.floor!
+              .carriedTicketId,
+        ),
+      )
+      .toBeNull();
+  });
+
   test('retires a still-actionable order bubble behind compose and releases its notice block', async ({
     page,
   }) => {

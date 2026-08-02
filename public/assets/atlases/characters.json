@@ -18,6 +18,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 7,
+        "w": 76,
+        "h": 146
       }
     },
     "player_walk": {
@@ -38,6 +44,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 6,
+        "w": 76,
+        "h": 148
       }
     },
     "player_left_0": {
@@ -58,6 +70,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 24,
+        "y": 11,
+        "w": 80,
+        "h": 143
       }
     },
     "player_left_1": {
@@ -78,6 +96,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 24,
+        "y": 15,
+        "w": 79,
+        "h": 139
       }
     },
     "player_left_2": {
@@ -98,6 +122,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 24,
+        "y": 12,
+        "w": 80,
+        "h": 142
       }
     },
     "player_carry_left": {
@@ -118,6 +148,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 15,
+        "y": 11,
+        "w": 97,
+        "h": 143
       }
     },
     "player_down_0": {
@@ -138,6 +174,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 7,
+        "w": 76,
+        "h": 146
       }
     },
     "player_down_1": {
@@ -158,6 +200,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 6,
+        "w": 76,
+        "h": 148
       }
     },
     "player_down_2": {
@@ -178,6 +226,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 6,
+        "w": 76,
+        "h": 148
       }
     },
     "player_carry_down": {
@@ -198,6 +252,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 7,
+        "w": 76,
+        "h": 147
       }
     },
     "player_up_0": {
@@ -218,6 +278,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 10,
+        "w": 72,
+        "h": 143
       }
     },
     "player_up_1": {
@@ -238,6 +304,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 9,
+        "w": 73,
+        "h": 145
       }
     },
     "player_up_2": {
@@ -258,6 +330,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 6,
+        "w": 76,
+        "h": 147
       }
     },
     "player_carry_up": {
@@ -278,6 +356,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 19,
+        "y": 10,
+        "w": 91,
+        "h": 143
       }
     },
     "player_right_0": {
@@ -298,6 +382,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 13,
+        "w": 78,
+        "h": 141
       }
     },
     "player_right_1": {
@@ -318,6 +408,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 15,
+        "w": 78,
+        "h": 138
       }
     },
     "player_right_2": {
@@ -338,6 +434,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 13,
+        "w": 77,
+        "h": 141
       }
     },
     "player_carry_right": {
@@ -358,6 +460,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 18,
+        "y": 13,
+        "w": 92,
+        "h": 140
       }
     },
     "guest_a_left_0": {
@@ -378,6 +486,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 22,
+        "w": 68,
+        "h": 134
       }
     },
     "guest_a_left_1": {
@@ -398,6 +512,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 21,
+        "w": 74,
+        "h": 135
       }
     },
     "guest_a_left_2": {
@@ -418,6 +538,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 22,
+        "w": 73,
+        "h": 134
       }
     },
     "guest_a_sit_left": {
@@ -438,6 +564,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 28,
+        "w": 77,
+        "h": 128
       }
     },
     "guest_a_down_0": {
@@ -458,6 +590,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 21,
+        "y": 6,
+        "w": 85,
+        "h": 150
       }
     },
     "guest_a_down_1": {
@@ -478,6 +616,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 21,
+        "y": 6,
+        "w": 85,
+        "h": 150
       }
     },
     "guest_a_down_2": {
@@ -498,6 +642,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 21,
+        "y": 4,
+        "w": 85,
+        "h": 152
       }
     },
     "guest_a_sit_down": {
@@ -518,6 +668,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 21,
+        "y": 13,
+        "w": 85,
+        "h": 143
       }
     },
     "guest_a_up_0": {
@@ -538,6 +694,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 20,
+        "w": 75,
+        "h": 136
       }
     },
     "guest_a_up_1": {
@@ -558,6 +720,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 19,
+        "w": 74,
+        "h": 137
       }
     },
     "guest_a_up_2": {
@@ -578,6 +746,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 20,
+        "w": 75,
+        "h": 136
       }
     },
     "guest_a_sit_up": {
@@ -598,6 +772,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 25,
+        "w": 77,
+        "h": 131
       }
     },
     "guest_a_right_0": {
@@ -618,6 +798,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 19,
+        "w": 70,
+        "h": 137
       }
     },
     "guest_a_right_1": {
@@ -638,6 +824,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 20,
+        "w": 74,
+        "h": 136
       }
     },
     "guest_a_right_2": {
@@ -658,6 +850,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 19,
+        "w": 73,
+        "h": 137
       }
     },
     "guest_a_sit_right": {
@@ -678,6 +876,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 24,
+        "w": 77,
+        "h": 132
       }
     },
     "guest_b_left_0": {
@@ -698,6 +902,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 33,
+        "y": 27,
+        "w": 61,
+        "h": 129
       }
     },
     "guest_b_left_1": {
@@ -718,6 +928,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 31,
+        "y": 28,
+        "w": 65,
+        "h": 128
       }
     },
     "guest_b_left_2": {
@@ -738,6 +954,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 31,
+        "y": 28,
+        "w": 66,
+        "h": 128
       }
     },
     "guest_b_sit_left": {
@@ -758,6 +980,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 34,
+        "w": 67,
+        "h": 122
       }
     },
     "guest_b_down_0": {
@@ -778,6 +1006,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 5,
+        "w": 71,
+        "h": 151
       }
     },
     "guest_b_down_1": {
@@ -798,6 +1032,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 4,
+        "w": 71,
+        "h": 152
       }
     },
     "guest_b_down_2": {
@@ -818,6 +1058,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 5,
+        "w": 71,
+        "h": 151
       }
     },
     "guest_b_sit_down": {
@@ -838,6 +1084,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 15,
+        "w": 70,
+        "h": 141
       }
     },
     "guest_b_up_0": {
@@ -858,6 +1110,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 28,
+        "w": 64,
+        "h": 128
       }
     },
     "guest_b_up_1": {
@@ -878,6 +1136,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 33,
+        "y": 28,
+        "w": 62,
+        "h": 128
       }
     },
     "guest_b_up_2": {
@@ -898,6 +1162,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 28,
+        "w": 63,
+        "h": 128
       }
     },
     "guest_b_sit_up": {
@@ -918,6 +1188,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 63,
+        "h": 117
       }
     },
     "guest_b_right_0": {
@@ -938,6 +1214,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 25,
+        "w": 64,
+        "h": 131
       }
     },
     "guest_b_right_1": {
@@ -958,6 +1240,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 31,
+        "y": 26,
+        "w": 66,
+        "h": 130
       }
     },
     "guest_b_right_2": {
@@ -978,6 +1266,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 27,
+        "w": 67,
+        "h": 129
       }
     },
     "guest_b_sit_right": {
@@ -998,6 +1292,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 31,
+        "w": 69,
+        "h": 125
       }
     },
     "guest_c_left_0": {
@@ -1018,6 +1318,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 18,
+        "w": 67,
+        "h": 138
       }
     },
     "guest_c_left_1": {
@@ -1038,6 +1344,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 16,
+        "w": 68,
+        "h": 140
       }
     },
     "guest_c_left_2": {
@@ -1058,6 +1370,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 16,
+        "w": 71,
+        "h": 140
       }
     },
     "guest_c_sit_left": {
@@ -1078,6 +1396,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 21,
+        "w": 73,
+        "h": 135
       }
     },
     "guest_c_down_0": {
@@ -1098,6 +1422,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 24,
+        "y": 4,
+        "w": 79,
+        "h": 152
       }
     },
     "guest_c_down_1": {
@@ -1118,6 +1448,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 6,
+        "w": 75,
+        "h": 150
       }
     },
     "guest_c_down_2": {
@@ -1138,6 +1474,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 5,
+        "w": 75,
+        "h": 151
       }
     },
     "guest_c_sit_down": {
@@ -1158,6 +1500,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 9,
+        "w": 73,
+        "h": 147
       }
     },
     "guest_c_up_0": {
@@ -1178,6 +1526,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 11,
+        "w": 70,
+        "h": 145
       }
     },
     "guest_c_up_1": {
@@ -1198,6 +1552,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 9,
+        "w": 70,
+        "h": 147
       }
     },
     "guest_c_up_2": {
@@ -1218,6 +1578,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 9,
+        "w": 70,
+        "h": 147
       }
     },
     "guest_c_sit_up": {
@@ -1238,6 +1604,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 20,
+        "w": 68,
+        "h": 136
       }
     },
     "guest_c_right_0": {
@@ -1258,6 +1630,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 16,
+        "w": 71,
+        "h": 140
       }
     },
     "guest_c_right_1": {
@@ -1278,6 +1656,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 16,
+        "w": 71,
+        "h": 140
       }
     },
     "guest_c_right_2": {
@@ -1298,6 +1682,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 16,
+        "w": 70,
+        "h": 140
       }
     },
     "guest_c_sit_right": {
@@ -1318,6 +1708,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 20,
+        "w": 73,
+        "h": 136
       }
     },
     "guest_d_left_0": {
@@ -1338,6 +1734,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 35,
+        "y": 27,
+        "w": 58,
+        "h": 129
       }
     },
     "guest_d_left_1": {
@@ -1358,6 +1760,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 34,
+        "y": 28,
+        "w": 59,
+        "h": 128
       }
     },
     "guest_d_left_2": {
@@ -1378,6 +1786,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 33,
+        "y": 28,
+        "w": 61,
+        "h": 128
       }
     },
     "guest_d_sit_left": {
@@ -1398,6 +1812,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 33,
+        "w": 64,
+        "h": 123
       }
     },
     "guest_d_down_0": {
@@ -1418,6 +1838,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 31,
+        "y": 5,
+        "w": 66,
+        "h": 151
       }
     },
     "guest_d_down_1": {
@@ -1438,6 +1864,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 4,
+        "w": 67,
+        "h": 152
       }
     },
     "guest_d_down_2": {
@@ -1458,6 +1890,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 4,
+        "w": 71,
+        "h": 152
       }
     },
     "guest_d_sit_down": {
@@ -1478,6 +1916,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 13,
+        "w": 64,
+        "h": 143
       }
     },
     "guest_d_up_0": {
@@ -1498,6 +1942,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 11,
+        "w": 63,
+        "h": 145
       }
     },
     "guest_d_up_1": {
@@ -1518,6 +1968,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 12,
+        "w": 63,
+        "h": 144
       }
     },
     "guest_d_up_2": {
@@ -1538,6 +1994,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 12,
+        "w": 64,
+        "h": 144
       }
     },
     "guest_d_sit_up": {
@@ -1558,6 +2020,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 33,
+        "y": 19,
+        "w": 62,
+        "h": 137
       }
     },
     "guest_d_right_0": {
@@ -1578,6 +2046,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 34,
+        "y": 26,
+        "w": 59,
+        "h": 130
       }
     },
     "guest_d_right_1": {
@@ -1598,6 +2072,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 35,
+        "y": 26,
+        "w": 58,
+        "h": 130
       }
     },
     "guest_d_right_2": {
@@ -1618,6 +2098,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 33,
+        "y": 27,
+        "w": 62,
+        "h": 129
       }
     },
     "guest_d_sit_right": {
@@ -1638,6 +2124,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 32,
+        "y": 29,
+        "w": 64,
+        "h": 127
       }
     },
     "guest_e_left_0": {
@@ -1658,6 +2150,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 30,
+        "y": 15,
+        "w": 68,
+        "h": 141
       }
     },
     "guest_e_left_1": {
@@ -1678,6 +2176,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 16,
+        "w": 69,
+        "h": 140
       }
     },
     "guest_e_left_2": {
@@ -1698,6 +2202,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 16,
+        "w": 69,
+        "h": 140
       }
     },
     "guest_e_sit_left": {
@@ -1718,6 +2228,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 20,
+        "w": 74,
+        "h": 136
       }
     },
     "guest_e_down_0": {
@@ -1738,6 +2254,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 5,
+        "w": 78,
+        "h": 151
       }
     },
     "guest_e_down_1": {
@@ -1758,6 +2280,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 4,
+        "w": 78,
+        "h": 152
       }
     },
     "guest_e_down_2": {
@@ -1778,6 +2306,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 25,
+        "y": 4,
+        "w": 78,
+        "h": 152
       }
     },
     "guest_e_sit_down": {
@@ -1798,6 +2332,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 24,
+        "y": 5,
+        "w": 79,
+        "h": 151
       }
     },
     "guest_e_up_0": {
@@ -1818,6 +2358,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 11,
+        "w": 73,
+        "h": 145
       }
     },
     "guest_e_up_1": {
@@ -1838,6 +2384,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 9,
+        "w": 73,
+        "h": 147
       }
     },
     "guest_e_up_2": {
@@ -1858,6 +2410,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 9,
+        "w": 73,
+        "h": 147
       }
     },
     "guest_e_sit_up": {
@@ -1878,6 +2436,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 27,
+        "y": 17,
+        "w": 74,
+        "h": 139
       }
     },
     "guest_e_right_0": {
@@ -1898,6 +2462,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 29,
+        "y": 13,
+        "w": 69,
+        "h": 143
       }
     },
     "guest_e_right_1": {
@@ -1918,6 +2488,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 14,
+        "w": 71,
+        "h": 142
       }
     },
     "guest_e_right_2": {
@@ -1938,6 +2514,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 15,
+        "w": 71,
+        "h": 141
       }
     },
     "guest_e_sit_right": {
@@ -1958,6 +2540,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 26,
+        "y": 17,
+        "w": 76,
+        "h": 139
       }
     },
     "customer": {
@@ -1978,6 +2566,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 21,
+        "y": 6,
+        "w": 85,
+        "h": 150
       }
     },
     "customer_b": {
@@ -1998,6 +2592,12 @@
       "sourceSize": {
         "w": 128,
         "h": 160
+      },
+      "contentBounds": {
+        "x": 28,
+        "y": 5,
+        "w": 71,
+        "h": 151
       }
     }
   },

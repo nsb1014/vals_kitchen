@@ -1,11 +1,19 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { getCharacterTexture } from '../../assets/loader.ts';
+import {
+  getCharacterContentBounds,
+  getCharacterTexture,
+} from '../../assets/loader.ts';
 import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { TILE_PX, gridToWorld } from '../coordinates.ts';
 import { carryPlateGeometry } from './carry-plate.ts';
 import { nextBoundFrameKey } from './actor-texture-bind.ts';
+import type {
+  GuestHitTargetCandidate,
+  GuestWorldBounds,
+} from './guest-hit.ts';
+import { anchoredSpriteContentWorldBounds } from './guest-hit.ts';
 import {
   GUEST_DISPLAY_HEIGHT,
   GUEST_SIT_CONTENT_HEIGHT_PX,
@@ -143,6 +151,65 @@ export class ActorLayer {
     const entry = this.guestSprites.get(guestId);
     if (!entry) return null;
     return { x: entry.root.x, y: entry.root.y };
+  }
+
+  getGuestWorldHitTargets(): GuestHitTargetCandidate[] {
+    // Pixi resolves equal z-index children by their current container order.
+    // Sort first so hit resolution follows the exact order users can see.
+    this.actorContainer.sortChildren();
+    const targets: GuestHitTargetCandidate[] = [];
+    for (const [guestId, entry] of this.guestSprites) {
+      const bounds = this.guestEntryWorldBounds(entry);
+      targets.push({
+        guestId,
+        bounds,
+        sortY: entry.root.zIndex,
+        paintOrder: this.actorContainer.getChildIndex(entry.root),
+      });
+    }
+    return targets;
+  }
+
+  private guestEntryWorldBounds(
+    entry: { root: Container; sprite: Sprite },
+  ): GuestWorldBounds {
+    if (entry.sprite.visible) {
+      const texture = entry.sprite.texture;
+      const content = getCharacterContentBounds(texture) ?? {
+        x: 0,
+        y: 0,
+        w: texture.orig.width,
+        h: texture.orig.height,
+      };
+      return anchoredSpriteContentWorldBounds({
+        rootX: entry.root.x,
+        rootY: entry.root.y,
+        spriteX: entry.sprite.x,
+        spriteY: entry.sprite.y,
+        sourceWidth: texture.orig.width,
+        sourceHeight: texture.orig.height,
+        contentBounds: {
+          left: content.x,
+          top: content.y,
+          right: content.x + content.w,
+          bottom: content.y + content.h,
+        },
+        anchorX: entry.sprite.anchor.x,
+        anchorY: entry.sprite.anchor.y,
+        scaleX: entry.sprite.scale.x,
+        scaleY: entry.sprite.scale.y,
+      });
+    }
+
+    // Missing atlases draw an 8px fallback circle centered 8px above the
+    // actor root. Keep its authored bounds, then let the pure hit policy grow
+    // it to the shared minimum touch target.
+    return {
+      left: entry.root.x - 8,
+      top: entry.root.y - 16,
+      right: entry.root.x + 8,
+      bottom: entry.root.y,
+    };
   }
 
   private drawDestination(dest: GridPoint | null): void {

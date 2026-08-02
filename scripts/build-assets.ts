@@ -309,6 +309,7 @@ function runPacker(
   outJson: string,
   cell?: number,
   scale?: number,
+  includeContentBounds = false,
 ): void {
   const args = [path.join(__dirname, 'pack-atlas.py'), manifestFile, outPng, outJson];
   if (cell !== undefined) args.push(String(cell));
@@ -317,6 +318,12 @@ function runPacker(
       throw new Error('runPacker: cell is required when scale is set');
     }
     args.push(String(scale));
+  }
+  if (includeContentBounds) {
+    if (cell === undefined || scale === undefined) {
+      throw new Error('runPacker: cell and scale are required for content bounds');
+    }
+    args.push('content-bounds');
   }
   execFileSync('python3', args, { stdio: 'inherit' });
 }
@@ -486,7 +493,10 @@ function buildCredits(shippedFiles: string[]): void {
     shippedFiles,
   };
 
-  writeFileSync(path.join(OUT, 'CREDITS.json'), JSON.stringify(manifest, null, 2));
+  writeFileSync(
+    path.join(OUT, 'CREDITS.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
 }
 
 function listShippedFiles(dir: string, prefix = ''): string[] {
@@ -562,6 +572,7 @@ function main(): void {
     path.join(OUT, 'atlases', 'characters.json'),
     160,
     1,
+    true,
   );
 
   runIngredientIconBuilder();

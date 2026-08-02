@@ -17,6 +17,7 @@ def pack_atlas(
     out_json: Path,
     cell: int | None = None,
     scale: int = 1,
+    include_content_bounds: bool = False,
 ) -> None:
     if not entries:
         raise SystemExit('No entries to pack')
@@ -66,13 +67,25 @@ def pack_atlas(
         packed_alpha = sheet.crop((x, y, x + img.width, y + img.height)).getchannel('A')
         if packed_alpha.tobytes() != img.getchannel('A').tobytes():
             raise SystemExit(f'Atlas alpha changed while packing frame: {name}')
-        frames[name] = {
+        metadata = {
             'frame': {'x': x, 'y': y, 'w': img.width, 'h': img.height},
             'rotated': False,
             'trimmed': False,
             'spriteSourceSize': {'x': 0, 'y': 0, 'w': img.width, 'h': img.height},
             'sourceSize': {'w': img.width, 'h': img.height},
         }
+        if include_content_bounds:
+            alpha_bounds = img.getchannel('A').getbbox()
+            if alpha_bounds is None:
+                raise SystemExit(f'Cannot derive content bounds from empty frame: {name}')
+            left, top, right, bottom = alpha_bounds
+            metadata['contentBounds'] = {
+                'x': left,
+                'y': top,
+                'w': right - left,
+                'h': bottom - top,
+            }
+        frames[name] = metadata
 
     out_png.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out_png, optimize=True)
@@ -94,13 +107,17 @@ def pack_atlas(
 
 def main() -> None:
     if len(sys.argv) < 4:
-        raise SystemExit('Usage: pack-atlas.py <manifest.json> <out.png> <out.json> [cell] [scale]')
+        raise SystemExit(
+            'Usage: pack-atlas.py <manifest.json> <out.png> <out.json> '
+            '[cell] [scale] [content-bounds]'
+        )
 
     manifest_path = Path(sys.argv[1])
     out_png = Path(sys.argv[2])
     out_json = Path(sys.argv[3])
     cell = int(sys.argv[4]) if len(sys.argv) > 4 else None
     scale = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+    include_content_bounds = len(sys.argv) > 6 and sys.argv[6] == 'content-bounds'
 
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     entries: list[tuple[str, Path]] = []
@@ -112,7 +129,7 @@ def main() -> None:
             raise SystemExit(f'Missing source: {path}')
         entries.append((name, path))
 
-    pack_atlas(entries, out_png, out_json, cell, scale)
+    pack_atlas(entries, out_png, out_json, cell, scale, include_content_bounds)
 
 
 if __name__ == '__main__':

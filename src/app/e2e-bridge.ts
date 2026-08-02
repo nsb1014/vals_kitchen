@@ -136,6 +136,12 @@ export interface E2eBridge {
     seat: { x: number; y: number };
     remote: { x: number; y: number };
   }>;
+  prepareFourFacingSeatedGuestsFixture: () => Promise<
+    Array<{
+      guestId: string;
+      seat: { x: number; y: number; facing: 0 | 90 | 180 | 270 };
+    }>
+  >;
   prepareStationCarryFixture: (
     mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
   ) => Promise<{
@@ -167,6 +173,13 @@ export interface E2eBridge {
   getPlayerScreenFeetAnchor: () => { x: number; y: number } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
+  /** Debug: current unexpanded rendered frame bounds for one guest actor. */
+  getGuestScreenRenderedBounds: (guestId: string) => {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  } | null;
   /** Debug: whether a world-space tap affordance is currently rendered. */
   getInteractHintVisible: () => boolean;
   /** Debug: exact grid cells currently carrying tap affordances. */
@@ -359,6 +372,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getGuestScreenFeetAnchor(guestId) {
       return getRestaurantApp()?.getGuestScreenFeetAnchor(guestId) ?? null;
+    },
+
+    getGuestScreenRenderedBounds(guestId) {
+      return getRestaurantApp()?.getGuestScreenRenderedBounds(guestId) ?? null;
     },
 
     getInteractHintVisible() {
@@ -652,6 +669,112 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         seat: { x: targetGuest.seat.x, y: targetGuest.seat.y },
         remote,
       };
+    },
+
+    async prepareFourFacingSeatedGuestsFixture() {
+      if (!useGameStore.getState().activeDay) {
+        await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }
+      await useGameStore.getState().dismissModifier();
+
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('four-facing fixture requires an active floor day');
+      }
+      const customers = activeDay.customers.slice(0, 4);
+      if (customers.length !== 4) {
+        throw new Error('four-facing fixture requires four customers');
+      }
+
+      const retainedPlacements = current.placements.filter(
+        (placement) => !placement.itemKey.startsWith('table'),
+      );
+      const fixturePlacementState = {
+        ...current,
+        placements: retainedPlacements,
+      };
+      let fixtureTable: Placement | null = null;
+      for (let y = 1; y < current.gridSize.h - 1 && !fixtureTable; y += 1) {
+        for (let x = 1; x < current.gridSize.w - 1; x += 1) {
+          const candidate: Placement = {
+            id: '__e2e_four_facing_table__',
+            itemKey: 'table_4seat',
+            x,
+            y,
+            rotation: 0,
+          };
+          if (validatePlacement(fixturePlacementState, candidate)) {
+            fixtureTable = candidate;
+            break;
+          }
+        }
+      }
+      if (!fixtureTable) {
+        throw new Error('four-facing fixture could not place its table');
+      }
+
+      const fixtureSeats = seatsFromPlacements([fixtureTable]);
+      if (fixtureSeats.length !== 4) {
+        throw new Error('four-facing fixture requires four seat facings');
+      }
+      const guests = customers.map((customer, index) => {
+        const existing = floor.pool.find(
+          (guest) => guest.customer.id === customer.id,
+        );
+        return {
+          ...(existing ?? {
+            id: `__e2e_four_facing_guest_${index}__`,
+            customer,
+            eatTicksRemaining: 0,
+          }),
+          stage: 'seated' as const,
+          seat: fixtureSeats[index]!,
+          motionPosition: undefined,
+        };
+      });
+      const placements = [...retainedPlacements, fixtureTable];
+      const seats = seatsFromPlacements(placements);
+      const tables = tablesFromPlacements(placements).map((table) => ({
+        ...table,
+        state: table.placementId === fixtureTable.id
+          ? ('occupied' as const)
+          : ('ready' as const),
+      }));
+      const remote = { x: 4, y: 5 };
+
+      useGameStore.setState({
+        placements,
+        seatingCapacity: seatingFromPlacements(placements),
+        tableCount: tables.length,
+        floorPlayerGrid: remote,
+        activeFloorRoom: 'main',
+        activeDay: {
+          ...activeDay,
+          floor: {
+            ...floor,
+            pool: guests,
+            tables,
+            seats,
+            tickets: [],
+            carriedTicketId: null,
+            selectedTicketId: null,
+            playerPosition: remote,
+            playerRoom: 'main',
+          },
+        },
+      });
+      getRestaurantApp()?.nav.snapTo(remote);
+
+      return guests.map((guest) => ({
+        guestId: guest.id,
+        seat: {
+          x: guest.seat.x,
+          y: guest.seat.y,
+          facing: guest.seat.facing,
+        },
+      }));
     },
 
     async prepareStationCarryFixture(mode) {

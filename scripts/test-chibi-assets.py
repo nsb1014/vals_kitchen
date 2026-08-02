@@ -171,6 +171,18 @@ class CharacterAtlasIntegrityTests(unittest.TestCase):
                     metadata["spriteSourceSize"],
                     {"x": 0, "y": 0, "w": 128, "h": 160},
                 )
+                alpha_bounds = source.getchannel("A").getbbox()
+                self.assertIsNotNone(alpha_bounds, f"empty character frame: {name}")
+                left, top, right, bottom = alpha_bounds
+                self.assertEqual(
+                    metadata["contentBounds"],
+                    {
+                        "x": left,
+                        "y": top,
+                        "w": right - left,
+                        "h": bottom - top,
+                    },
+                )
 
     def test_atlas_pixels_preserve_every_manifest_source(self) -> None:
         frames = self.atlas_data["frames"]
