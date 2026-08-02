@@ -54,6 +54,7 @@ export function mapReducerEventsToUi(
         break;
       case 'CUSTOMER_SERVED':
         patch.pendingReview = {
+          customerId: event.customerId,
           matchStars: event.matchStars,
           tip: event.tip,
           ratingDelta: event.ratingDelta,

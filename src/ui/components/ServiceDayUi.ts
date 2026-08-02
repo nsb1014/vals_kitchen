@@ -567,6 +567,30 @@ export function mountServiceDayUi(
 
     if (state.pendingReview) {
       const review = buildReviewDisplay(state.pendingReview);
+      const reviewCustomer = state.activeDay?.customers.find(
+        (customer) => customer.id === state.pendingReview?.customerId,
+      );
+      const reviewGuest = state.activeDay?.floor?.pool.find(
+        (guest) => guest.customer.id === state.pendingReview?.customerId,
+      );
+      const reviewArchetype = reviewCustomer
+        ? getDomainContext().archetypes.find(
+            (archetype) => archetype.id === reviewCustomer.archetypeId,
+          )
+        : undefined;
+      const reviewIdentity = reviewCustomer
+        ? `
+              <header class="sheet-header review-identity" data-testid="review-guest-identity">
+                ${renderGuestPortraitHtml(reviewGuest?.id ?? reviewCustomer.id)}
+                <span class="review-identity-copy">
+                  <span class="review-identity-kicker">Review from</span>
+                  <h2 class="service-title" data-testid="review-guest-name">${escapeHtml(reviewArchetype?.name ?? 'Customer')}</h2>
+                </span>
+              </header>`
+        : `
+              <header class="sheet-header">
+                <h2 class="service-title">Customer Review</h2>
+              </header>`;
       const ratingModifierLine = formatReviewModifierLine(
         selectActiveModifier(state),
         state.pendingReview.matchStars,
@@ -581,9 +605,7 @@ export function mountServiceDayUi(
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid" data-testid="review-sheet">
           <div class="service-card sheet-card-layout">
-            <header class="sheet-header">
-              <h2 class="service-title">Customer Review</h2>
-            </header>
+            ${reviewIdentity}
             <div class="sheet-body-scroll">
             ${progress && !floorActive ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="review-stars" data-testid="review-stars" aria-label="${review.starsText}">${renderStarGlyphs(review.starsFilled)}</p>
