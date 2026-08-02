@@ -25,6 +25,11 @@ export interface GuestMotionSyncOpts {
 }
 
 export interface GuestMotionSyncResult {
+  /** Last fully reached cells that changed during this sync. */
+  motionPositionUpdates: Array<{
+    guestId: string;
+    position: GridPoint;
+  }>;
   /** Guest ids whose enter walk just finished this sync. */
   enteredGuestIds: string[];
   /** Guest ids whose walk to their assigned seat just finished this sync. */
@@ -48,6 +53,7 @@ export class GuestMotion {
 
   sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
+    const motionPositionUpdates: GuestMotionSyncResult['motionPositionUpdates'] = [];
     const enteredGuestIds: string[] = [];
     const seatedGuestIds: string[] = [];
     const exitedGuestIds: string[] = [];
@@ -57,6 +63,18 @@ export class GuestMotion {
       seen.add(guest.id);
       this.rearmCompletionForStage(guest);
       const finished = this.syncGuest(guest, opts);
+      const nav = this.navs.get(guest.id);
+      if (
+        nav &&
+        isMotionStage(guest.stage) &&
+        (guest.motionPosition?.x !== nav.position.x ||
+          guest.motionPosition.y !== nav.position.y)
+      ) {
+        motionPositionUpdates.push({
+          guestId: guest.id,
+          position: { ...nav.position },
+        });
+      }
       if (finished === 'entered' && !this.enteredReported.has(guest.id)) {
         this.enteredReported.add(guest.id);
         enteredGuestIds.push(guest.id);
@@ -83,7 +101,12 @@ export class GuestMotion {
       }
     }
 
-    return { enteredGuestIds, seatedGuestIds, exitedGuestIds };
+    return {
+      motionPositionUpdates,
+      enteredGuestIds,
+      seatedGuestIds,
+      exitedGuestIds,
+    };
   }
 
   pose(guestId: string): GuestPose | null {
@@ -119,12 +142,14 @@ export class GuestMotion {
     let nav = this.navs.get(guest.id);
     if (!nav) {
       const start =
-        guest.stage === 'entering'
+        guest.motionPosition && isMotionStage(guest.stage)
+          ? { ...guest.motionPosition }
+          : guest.stage === 'entering'
           ? { ...opts.door }
           : this.defaultCell(guest, opts.door);
       nav = new NavController(start, 2.4);
       this.navs.set(guest.id, nav);
-      if (guest.stage === 'leaving' && guest.seat) {
+      if (guest.stage === 'leaving' && guest.seat && !guest.motionPosition) {
         const sit = seatSitWorldPosition(guest.seat);
         nav.worldX = sit.x;
         nav.worldY = sit.y;
@@ -135,11 +160,10 @@ export class GuestMotion {
     if (guest.stage === 'entering') {
       const waitCell = waitingAreaGridAnchor(opts.door);
       if (!this.enterStarted.has(guest.id)) {
-        nav.snapTo(opts.door);
         this.enterStarted.add(guest.id);
         const path =
-          findPath(opts.grid, opts.door, waitCell, { allowBlockedEndpoints: true }) ??
-          directPath(opts.door, waitCell);
+          findPath(opts.grid, nav.position, waitCell, { allowBlockedEndpoints: true }) ??
+          directPath(nav.position, waitCell);
         nav.setPath(path);
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
@@ -277,6 +301,10 @@ export class GuestMotion {
     if (guest.stage === 'seating') this.seatingReported.delete(guest.id);
     if (guest.stage === 'leaving') this.exitReported.delete(guest.id);
   }
+}
+
+function isMotionStage(stage: FloorGuest['stage']): boolean {
+  return stage === 'entering' || stage === 'seating' || stage === 'leaving';
 }
 
 function directPath(from: GridPoint, to: GridPoint): GridPoint[] {

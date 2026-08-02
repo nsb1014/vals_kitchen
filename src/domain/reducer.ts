@@ -16,6 +16,7 @@ import {
   tablesFromPlacements,
   takeOrdersForSeated,
   tickEating,
+  updateGuestMotionPosition,
 } from './floor/sim.ts';
 import { plateTicket } from './floor/tickets.ts';
 import { clearTable, setTable } from './floor/tables.ts';
@@ -58,6 +59,11 @@ export type GameAction =
   | { type: 'FLOOR_COMPLETE_ENTERING' }
   | { type: 'FLOOR_COMPLETE_SEATING'; guestId: string }
   | { type: 'FLOOR_COMPLETE_LEAVING'; guestId: string }
+  | {
+      type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION';
+      guestId: string;
+      position: { x: number; y: number };
+    }
   | { type: 'FLOOR_TAKE_ORDERS'; customerIds: string[] }
   | { type: 'FLOOR_PLATE'; ticketId: string; ingredientIds: string[] }
   | { type: 'FLOOR_DELIVER'; ticketId: string }
@@ -339,6 +345,17 @@ export function gameReducer(
     case 'FLOOR_COMPLETE_LEAVING': {
       const floor = requireFloor(state);
       return { state: withFloor(state, completeGuestLeaving(floor, action.guestId)), events };
+    }
+
+    case 'FLOOR_UPDATE_GUEST_MOTION_POSITION': {
+      const floor = requireFloor(state);
+      return {
+        state: withFloor(
+          state,
+          updateGuestMotionPosition(floor, action.guestId, action.position),
+        ),
+        events,
+      };
     }
 
     case 'FLOOR_TAKE_ORDERS': {

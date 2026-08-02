@@ -150,6 +150,16 @@ describe('persistence', () => {
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
 
     const seating = state.activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
+    const motionPosition = { x: 4, y: 5 };
+    state = gameReducer(
+      state,
+      {
+        type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION',
+        guestId: seating.id,
+        position: motionPosition,
+      },
+      testContext,
+    ).state;
     expect(seating.seat).toBeDefined();
     expect(
       state.activeDay!.floor!.tables.find((table) => table.placementId === seating.seat!.tablePlacementId)?.state,
@@ -160,6 +170,7 @@ describe('persistence', () => {
     const resumed = loaded.activeDay!.floor!.pool.find((guest) => guest.id === seating.id)!;
     expect(resumed.stage).toBe('seating');
     expect(resumed.seat).toEqual(seating.seat);
+    expect(resumed.motionPosition).toEqual(motionPosition);
     expect(
       loaded.activeDay!.floor!.tables.find((table) => table.placementId === resumed.seat!.tablePlacementId)?.state,
     ).toBe('occupied');
@@ -184,6 +195,7 @@ describe('persistence', () => {
                   ...candidate,
                   stage: 'leaving' as const,
                   seat: { ...seat },
+                  motionPosition: { x: seat.x + 1, y: seat.y + 1 },
                   eatTicksRemaining: 0,
                 }
               : candidate,
@@ -200,6 +212,7 @@ describe('persistence', () => {
     const resumed = loaded.activeDay!.floor!.pool.find((candidate) => candidate.id === guest.id)!;
     expect(resumed.stage).toBe('leaving');
     expect(resumed.seat).toEqual(seat);
+    expect(resumed.motionPosition).toEqual({ x: seat.x + 1, y: seat.y + 1 });
     expect(loaded.activeDay!.floor!.tables.find((table) => table.placementId === seat.tablePlacementId)?.state).toBe(
       'occupied',
     );
