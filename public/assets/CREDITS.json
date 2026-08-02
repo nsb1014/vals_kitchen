@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-08-02T09:05:47.793Z",
+  "generatedAt": "2026-08-02T09:17:57.813Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [
@@ -284,15 +284,15 @@
     },
     {
       "path": "atlases/furniture.json#smoker",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (smoker)"
       ],
       "sourceFile": "smoker.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#wok",
@@ -332,15 +332,15 @@
     },
     {
       "path": "atlases/furniture.json#spice_rack",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (spice_rack)"
       ],
       "sourceFile": "spice_rack.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#table_2seat",

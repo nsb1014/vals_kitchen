@@ -707,6 +707,9 @@ def build_props() -> None:
         SEATING_SOURCE / "table-states-v2-transparent.png"
     ).convert("RGBA")
     decor_sheet = Image.open(SOURCE / "decor-sheet-v2-transparent.png").convert("RGBA")
+    equipment_sheet = Image.open(
+        SOURCE / "equipment-extension-v2-transparent.png"
+    ).convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected furniture sheet size: {sheet.size}")
     if seating_sheet.size != (1536, 1024):
@@ -715,23 +718,30 @@ def build_props() -> None:
         raise SystemExit(f"Unexpected table state sheet size: {table_sheet.size}")
     if decor_sheet.size != (1717, 916):
         raise SystemExit(f"Unexpected coordinated décor sheet size: {decor_sheet.size}")
-    corners = (
-        decor_sheet.getpixel((0, 0)),
-        decor_sheet.getpixel((decor_sheet.width - 1, 0)),
-        decor_sheet.getpixel((0, decor_sheet.height - 1)),
-        decor_sheet.getpixel((decor_sheet.width - 1, decor_sheet.height - 1)),
-    )
-    if any(pixel[3] != 0 for pixel in corners):
-        raise ValueError("Coordinated décor sheet does not have transparent corners")
-    key_residual = sum(
-        1
-        for red, green, blue, alpha in decor_sheet.get_flattened_data()
-        if alpha > 0 and red > 230 and blue > 230 and green < 80
-    )
-    if key_residual > 0:
-        raise ValueError(
-            f"Coordinated décor sheet retains magenta key spill ({key_residual}px)"
+    if equipment_sheet.size != (1536, 1024):
+        raise SystemExit(
+            f"Unexpected coordinated equipment sheet size: {equipment_sheet.size}"
         )
+
+    def validate_transparent_sheet(image: Image.Image, label: str) -> None:
+        corners = (
+            image.getpixel((0, 0)),
+            image.getpixel((image.width - 1, 0)),
+            image.getpixel((0, image.height - 1)),
+            image.getpixel((image.width - 1, image.height - 1)),
+        )
+        if any(pixel[3] != 0 for pixel in corners):
+            raise ValueError(f"{label} does not have transparent corners")
+        key_residual = sum(
+            1
+            for red, green, blue, alpha in image.get_flattened_data()
+            if alpha > 0 and red > 230 and blue > 230 and green < 80
+        )
+        if key_residual > 0:
+            raise ValueError(f"{label} retains magenta key spill ({key_residual}px)")
+
+    validate_transparent_sheet(decor_sheet, "Coordinated décor sheet")
+    validate_transparent_sheet(equipment_sheet, "Coordinated equipment sheet")
 
     seating_sheet = clear_alpha_noise(seating_sheet)
     seating_boxes = authored_grid_boxes(seating_sheet, columns=4, rows=2)
@@ -777,6 +787,16 @@ def build_props() -> None:
         sprite = contain(trim(cell, 3), target, bottom_pad=3)
         save(sprite, PROP_OUT / f"{name}.png")
 
+    # The smoker and spice rack were the final two equipment textures still
+    # sourced from the legacy 32×48 pixel set. They were authored together at
+    # the same perspective and scale as the current chibi station family.
+    equipment_sheet = clear_alpha_noise(equipment_sheet, cutoff=12)
+    equipment_boxes = authored_grid_boxes(equipment_sheet, columns=2, rows=1, padding=8)
+    for name, column in {"smoker": 0, "spice_rack": 1}.items():
+        cell = equipment_sheet.crop(equipment_boxes[0][column])
+        sprite = contain(trim(cell, 3), (64, 96), bottom_pad=2)
+        save(sprite, PROP_OUT / f"{name}.png")
+
     boxes = {
         "prep_station": (86, 350, 314, 638),
         "oven": (401, 351, 583, 638),
@@ -801,6 +821,7 @@ def main() -> None:
         "furniture-sheet-keyed.png",
         "furniture-sheet-v2-keyed.png",
         "decor-sheet-v2-transparent.png",
+        "equipment-extension-v2-transparent.png",
     ):
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")

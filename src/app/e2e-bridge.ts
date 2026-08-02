@@ -114,6 +114,7 @@ export interface E2eBridge {
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
   prepareDecorVisualFixture: () => void;
+  prepareEquipmentVisualFixture: () => void;
   unlockKitchenAnnexForTest: () => void;
   openComposeSheet: () => void;
   openFlavorInspector: (ingredientId: string) => void;
@@ -428,6 +429,29 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           decor_lamp: 1,
           decor_sign: 1,
         },
+        editLayoutMode: true,
+      });
+    },
+
+    prepareEquipmentVisualFixture() {
+      const current = useGameStore.getState();
+      const equipment = [
+        { id: 'qa_equipment_smoker', itemKey: 'smoker', x: 1, y: 2, rotation: 0 },
+        {
+          id: 'qa_equipment_spice_rack',
+          itemKey: 'spice_rack',
+          x: 2,
+          y: 2,
+          rotation: 0,
+        },
+      ];
+      useGameStore.setState({
+        kitchenAnnexOwned: true,
+        activeFloorRoom: 'back_kitchen',
+        backKitchenPlacements: equipment,
+        purchasedEquipmentIds: [
+          ...new Set([...current.purchasedEquipmentIds, 'smoker', 'spice_rack']),
+        ],
         editLayoutMode: true,
       });
     },

@@ -23,6 +23,9 @@ project. They are not attributed to a third-party artist or commercial pack.
 - `source/decor-sheet-v2-{keyed,transparent}.png` — five coordinated illustrated
   décor props generated together against the current furniture and room style;
   see `source/DECOR-PROMPT.md` for the retained production prompt.
+- `source/equipment-extension-v2-{keyed,transparent}.png` — the smoker and spice
+  apothecary station generated together against the current kitchen-station
+  family; see `source/EQUIPMENT-EXTENSION-PROMPT.md` for the retained prompt.
 - `source/*-keyed.png` — reproducible chroma-key extractions retained so the
   runtime build does not depend on an external image service.
 - `guest-frames/` — runtime 128×160 frames derived from the coordinated sheets

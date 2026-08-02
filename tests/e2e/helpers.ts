@@ -570,6 +570,7 @@ declare global {
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
       prepareDecorVisualFixture: () => void;
+      prepareEquipmentVisualFixture: () => void;
       openComposeSheet: () => void;
       getActorSpriteMetrics: () => Array<{
         kind: string;

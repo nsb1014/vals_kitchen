@@ -232,6 +232,8 @@ function assertVendor(): void {
     path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-v2-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-transparent.png'),
+    path.join(GENERATED_CHIBI, 'source', 'equipment-extension-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'equipment-extension-v2-transparent.png'),
     path.join(GENERATED_CHIBI_GUESTS, 'guest_a_down_0.png'),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),

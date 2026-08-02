@@ -20,3 +20,16 @@ describe('coordinated décor atlas', () => {
     expect(atlas.frames.decor_sign?.sourceSize).toEqual({ w: 80, h: 104 });
   });
 });
+
+describe('coordinated late-game equipment atlas', () => {
+  const atlas = JSON.parse(
+    readFileSync(path.join(ROOT, 'public/assets/atlases/furniture.json'), 'utf8'),
+  ) as {
+    frames: Record<string, { sourceSize: { w: number; h: number } }>;
+  };
+
+  it('ships the smoker and spice rack at the current station resolution', () => {
+    expect(atlas.frames.smoker?.sourceSize).toEqual({ w: 64, h: 96 });
+    expect(atlas.frames.spice_rack?.sourceSize).toEqual({ w: 64, h: 96 });
+  });
+});
