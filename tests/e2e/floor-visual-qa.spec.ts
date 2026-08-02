@@ -44,6 +44,9 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     return floor.pool.filter((guest) => guest.stage === 'seated').length;
   });
   expect(seated).toBeGreaterThan(0);
+  const seatGuestAction = page.getByTestId('floor-seat-next');
+  await expect(seatGuestAction).toBeEnabled();
+  await expect(seatGuestAction).not.toHaveClass(/\bprimary\b/);
 
   // Allow GuestMotion walks to finish (nav speed ~2.4 tiles/s).
   await page.waitForTimeout(3500);
@@ -76,6 +79,25 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     path: 'test-results/floor-seated-qa.png',
     animations: 'disabled',
   });
+  await page.screenshot({
+    path: 'test-results/floor-seated-full-qa.png',
+    animations: 'disabled',
+  });
+
+  await page.evaluate(() => {
+    const bridge = window.__E2E__!;
+    const seatedGuest = bridge
+      .getGameState()
+      .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated');
+    if (!seatedGuest?.seat) throw new Error('expected a seated guest');
+    bridge.setFloorNavPosition({
+      x: seatedGuest.seat.x,
+      y: seatedGuest.seat.y + 1,
+    });
+  });
+  const takeOrdersAction = page.getByTestId('floor-take-orders');
+  await expect(takeOrdersAction).toBeEnabled();
+  await expect(takeOrdersAction).toHaveClass(/\bprimary\b/);
 
   await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
 
@@ -87,6 +109,10 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   expect(orderBubbleBox!.x + orderBubbleBox!.width).toBeLessThanOrEqual(382);
   await page.locator('[data-testid="restaurant-canvas"]').screenshot({
     path: 'test-results/floor-order-bubble-qa.png',
+    animations: 'disabled',
+  });
+  await page.screenshot({
+    path: 'test-results/floor-order-bubble-full-qa.png',
     animations: 'disabled',
   });
 
@@ -110,6 +136,10 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   await page.waitForTimeout(100);
   await page.locator('[data-testid="restaurant-canvas"]').screenshot({
     path: 'test-results/floor-served-qa.png',
+    animations: 'disabled',
+  });
+  await page.screenshot({
+    path: 'test-results/floor-served-full-qa.png',
     animations: 'disabled',
   });
   assertNoDiagnostics(diagnostics);

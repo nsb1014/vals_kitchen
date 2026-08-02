@@ -9,9 +9,9 @@ import {
 // Default Playwright project is Chromium (matches CI). Firefox is opt-in via
 // PLAYWRIGHT_BROWSERS. WebKit/iOS remains unverified in this environment.
 const VIEWPORT_MATRIX = [
-  { width: 390, height: 844, rows: 2 },
-  { width: 320, height: 568, rows: 3 },
-  { width: 320, height: 480, rows: 3 },
+  { width: 390, height: 844, rows: 1 },
+  { width: 320, height: 568, rows: 2 },
+  { width: 320, height: 480, rows: 2 },
   { width: 667, height: 375, rows: 1 },
   { width: 768, height: 1024, rows: 1 },
   { width: 1280, height: 800, rows: 1 },
@@ -106,7 +106,7 @@ for (const viewport of VIEWPORT_MATRIX) {
     await expect(closeDay).toBeHidden();
     await expect(closeDay).toBeDisabled();
     await expect(closeDay).toHaveAttribute('aria-hidden', 'true');
-    await expect(closeDay).toHaveCSS('visibility', 'hidden');
+    await expect(closeDay).toHaveAttribute('hidden', '');
 
     const layout = await readFloorLayout(page, viewport.rows);
     expect(layout.chromeMinHeight).toBeCloseTo(layout.activeTokenHeight, 5);
@@ -376,6 +376,9 @@ test('final floor action remains activatable at 200% page zoom', async ({
   const closeDay = page.locator('[data-testid="close-day-btn"]');
   await expect(closeDay).toBeVisible();
   await expect(closeDay).toBeEnabled();
+  await expect(
+    page.locator('.floor-actions .service-btn:visible'),
+  ).toHaveCount(1);
 
   await applyPageZoom(page, 2);
   const actionMetrics = await page

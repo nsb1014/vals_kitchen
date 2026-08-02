@@ -953,11 +953,19 @@
 
 .floor-actions {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
   gap: 0.5rem;
   min-height: 0;
   overflow: hidden;
+}
+
+#floor-close-day:not([hidden]) {
+  grid-column: 1 / -1;
+}
+
+.floor-actions:has(#floor-close-day:not([hidden])) > :not(#floor-close-day) {
+  display: none;
 }
 
 .floor-toast {
@@ -1003,11 +1011,11 @@
 
 @media (max-width: 760px) and (min-width: 321px) and (min-height: 501px) {
   :root {
-    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
   }
 
   .floor-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -1028,7 +1036,7 @@
 /* Keep this last: 320px must win over the short-height layout. */
 @media (max-width: 320px) {
   :root {
-    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-3);
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
   }
 
   .floor-actions {
