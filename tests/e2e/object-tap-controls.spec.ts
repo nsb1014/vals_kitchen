@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { gotoFreshGame } from './helpers.ts';
+import { dragGridCell, gotoFreshGame } from './helpers.ts';
 
 async function tapGridCell(page: Page, x: number, y: number): Promise<void> {
   await page.evaluate(
@@ -110,6 +110,104 @@ async function prepareOrderedGuest(
 }
 
 test.describe('object tap controls', () => {
+  test('uses the same room transition when editing or transferring a station', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoFreshGame(page);
+    const fixture = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      bridge.unlockKitchenAnnexForTest();
+      const state = bridge.getGameState();
+      const station = state.placements.find(
+        (placement) => placement.itemKey === 'prep_station',
+      );
+      if (!station) throw new Error('expected prep station');
+      return {
+        door: { x: state.gridSize.w - 1, y: Math.floor(state.gridSize.h / 2) },
+        station: { id: station.id, x: station.x, y: station.y },
+      };
+    });
+    await page.getByTestId('edit-restaurant-btn').click();
+    await page.getByRole('button', { name: 'Close restaurant shop' }).click();
+
+    await tapGridCell(page, fixture.door.x, fixture.door.y);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.querySelector<HTMLCanvasElement>(
+              '[data-testid="restaurant-canvas"]',
+            )?.dataset.roomTransition ?? null,
+        ),
+      )
+      .toBe('out');
+    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe(
+      'main',
+    );
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
+      .toBe('back_kitchen');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.querySelector<HTMLCanvasElement>(
+              '[data-testid="restaurant-canvas"]',
+            )?.dataset.roomTransition ?? null,
+        ),
+      )
+      .toBeNull();
+
+    await tapGridCell(page, 0, fixture.door.y);
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
+      .toBe('main');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.querySelector<HTMLCanvasElement>(
+              '[data-testid="restaurant-canvas"]',
+            )?.dataset.roomTransition ?? null,
+        ),
+      )
+      .toBeNull();
+
+    await dragGridCell(
+      page,
+      fixture.station.x,
+      fixture.station.y,
+      fixture.door.x,
+      fixture.door.y,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.querySelector<HTMLCanvasElement>(
+              '[data-testid="restaurant-canvas"]',
+            )?.dataset.roomTransition ?? null,
+        ),
+      )
+      .toBe('out');
+    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe(
+      'main',
+    );
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
+      .toBe('back_kitchen');
+    expect(
+      await page.evaluate(
+        (id) =>
+          window.__E2E__!.getGameState().backKitchenPlacements.some(
+            (placement) => placement.id === id,
+          ),
+        fixture.station.id,
+      ),
+    ).toBe(true);
+  });
+
   test('uses the same approach-then-act rhythm for tables and seated guests', async ({
     page,
   }) => {
