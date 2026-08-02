@@ -1,7 +1,11 @@
 import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
-import { findPath } from '../domain/floor/pathfinding.ts';
+import {
+  findPath,
+  findShortestPathToAny,
+  type GridPoint,
+} from '../domain/floor/pathfinding.ts';
 import {
   findCookStationPlacementAtCell,
   isAdjacent,
@@ -35,10 +39,14 @@ import {
   selectFloorRuntimeRunning,
 } from '../store/selectors/floor-runtime.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
+import { tableServiceVisualStates } from './table-service-visual.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   return Math.max(1, Math.round(dpr));
 }
+
+const ROOM_FADE_OUT_MS = 100;
+const ROOM_FADE_IN_MS = 140;
 
 export class RestaurantApp {
   readonly app: Application;
@@ -63,6 +71,8 @@ export class RestaurantApp {
   private floorRuntimeWasRunning = false;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
+  private roomTransitionInFlight = false;
+  private roomTransitionAnimation: Animation | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
@@ -98,6 +108,7 @@ export class RestaurantApp {
       this.furnitureLayer,
       this.previewLayer,
       this.app.canvas,
+      (changeRoom) => this.beginRoomTransition(changeRoom),
     );
   }
 
@@ -188,7 +199,39 @@ export class RestaurantApp {
     };
   }
 
+  private pathToAdjacentCell(
+    store: GameStore,
+    placements: Placement[],
+    target: GridPoint,
+  ): boolean {
+    const blocked = walkBlockedCells(
+      placements,
+      store.gridSize.w,
+      store.gridSize.h,
+      this.walkOpts(store),
+    );
+    const destinations: GridPoint[] = [];
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        if (dx === 0 && dy === 0) continue;
+        destinations.push({ x: target.x + dx, y: target.y + dy });
+      }
+    }
+    const path = findShortestPathToAny(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      destinations,
+    );
+    if (!path) {
+      store.setFloorToast('No clear route');
+      return false;
+    }
+    this.nav.setPath(path);
+    return true;
+  }
+
   private onTick = (): void => {
+    if (this.roomTransitionInFlight) return;
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
     const runtimeRunning = selectFloorRuntimeRunning(
@@ -215,18 +258,8 @@ export class RestaurantApp {
         this.nav.position.y,
       )
     ) {
-      const entered = useGameStore.getState().enterConnectingDoor();
-      if (entered) {
-        const next = useGameStore.getState();
-        const spawn = connectingDoorInterior(
-          next.activeFloorRoom,
-          next.gridSize.w,
-          next.gridSize.h,
-        );
-        this.nav.snapTo(spawn);
-        this.syncFromStore(next);
-        return;
-      }
+      this.beginRoomTransition();
+      return;
     }
 
     const roomPlacements = this.roomPlacements(state);
@@ -240,26 +273,52 @@ export class RestaurantApp {
     const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
       room: 'main',
     });
-    const enterResult = this.guestMotion.sync(floor, {
+    const motionResult = this.guestMotion.sync(floor, {
       door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
       dtMs: deltaMs,
     });
-    if (enterResult.enteredGuestIds.length > 0) {
+    // Persist cell arrivals before lifecycle completions. Completion actions
+    // clear the anchor, and the motion update's stage guard also makes a stale
+    // update harmless if dispatch ordering ever changes.
+    for (const update of motionResult.motionPositionUpdates) {
+      void useGameStore.getState().dispatch({
+        type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION',
+        guestId: update.guestId,
+        position: update.position,
+      });
+    }
+    if (motionResult.enteredGuestIds.length > 0) {
       void useGameStore
         .getState()
         .dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     }
+    for (const guestId of motionResult.seatedGuestIds) {
+      void useGameStore
+        .getState()
+        .dispatch({ type: 'FLOOR_COMPLETE_SEATING', guestId });
+    }
+    for (const guestId of motionResult.exitedGuestIds) {
+      void useGameStore
+        .getState()
+        .dispatch({ type: 'FLOOR_COMPLETE_LEAVING', guestId });
+    }
+
+    // Completion dispatches update the store synchronously. Render and tick
+    // the resulting lifecycle state so an exited guest cannot be recreated
+    // for one frame from the pre-dispatch snapshot.
+    const liveFloor = useGameStore.getState().activeDay?.floor;
+    if (!liveFloor) return;
 
     if (state.activeFloorRoom === 'main') {
-      this.actorLayer.sync(floor, this.nav, this.guestMotion);
+      this.actorLayer.sync(liveFloor, this.nav, this.guestMotion);
     } else {
       this.actorLayer.sync(null, this.nav, null, {
         showPlayerWithoutFloor: true,
       });
     }
 
-    if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
+    if (liveFloor.pool.some((g) => g.stage === 'eating')) {
       this.eatingTickAccumulatorMs += deltaMs;
       while (
         this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS
@@ -287,7 +346,7 @@ export class RestaurantApp {
     this.applyCamera();
     const doorOpen =
       state.activeFloorRoom === 'main' &&
-      this.guestMotion.isDoorBusy(floor, door);
+      this.guestMotion.isDoorBusy(liveFloor, door);
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       doorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
@@ -297,19 +356,97 @@ export class RestaurantApp {
     this.interactHintLayer.sync(
       state.activeFloorRoom === 'main'
         ? this.computeInteractHints(
-            floor,
+            liveFloor,
             roomPlacements,
             this.nav.position,
-            floor.tickets.some((ticket) => ticket.status === 'open') &&
-              !floor.carriedTicketId,
+            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+              !liveFloor.carriedTicketId,
           )
         : this.computeStationHints(
             roomPlacements,
-            floor.tickets.some((ticket) => ticket.status === 'open') &&
-              !floor.carriedTicketId,
+            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+              !liveFloor.carriedTicketId,
           ),
     );
   };
+
+  private enterConnectingRoomNow(): boolean {
+    const entered = useGameStore.getState().enterConnectingDoor();
+    if (!entered) return false;
+    const next = useGameStore.getState();
+    const spawn = connectingDoorInterior(
+      next.activeFloorRoom,
+      next.gridSize.w,
+      next.gridSize.h,
+    );
+    this.nav.snapTo(spawn);
+    this.syncFromStore(next);
+    return true;
+  }
+
+  private beginRoomTransition(
+    changeRoom: () => boolean = () => this.enterConnectingRoomNow(),
+  ): void {
+    if (this.roomTransitionInFlight) return;
+    const canvas = this.app.canvas;
+    if (
+      typeof canvas.animate !== 'function' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      changeRoom();
+      return;
+    }
+
+    this.roomTransitionInFlight = true;
+    canvas.style.pointerEvents = 'none';
+    void this.runRoomTransition(changeRoom);
+  }
+
+  private async runRoomTransition(changeRoom: () => boolean): Promise<void> {
+    const canvas = this.app.canvas;
+    let roomChanged = false;
+    try {
+      canvas.dataset.roomTransition = 'out';
+      const fadeOut = canvas.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        {
+          duration: ROOM_FADE_OUT_MS,
+          easing: 'ease-in',
+          fill: 'forwards',
+        },
+      );
+      this.roomTransitionAnimation = fadeOut;
+      await fadeOut.finished;
+      fadeOut.cancel();
+
+      if (!this.mounted) return;
+      roomChanged = changeRoom();
+      if (!roomChanged) return;
+
+      canvas.dataset.roomTransition = 'in';
+      const fadeIn = canvas.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        {
+          duration: ROOM_FADE_IN_MS,
+          easing: 'ease-out',
+          fill: 'forwards',
+        },
+      );
+      this.roomTransitionAnimation = fadeIn;
+      await fadeIn.finished;
+      fadeIn.cancel();
+    } catch {
+      // Cancellation during teardown is expected. If animation support fails
+      // while still mounted, preserve the doorway action without the effect.
+      if (this.mounted && !roomChanged) changeRoom();
+    } finally {
+      this.roomTransitionAnimation = null;
+      this.roomTransitionInFlight = false;
+      delete canvas.dataset.roomTransition;
+      canvas.style.removeProperty('opacity');
+      canvas.style.removeProperty('pointer-events');
+    }
+  }
 
   private onTapMove = (event: PointerEvent): void => {
     const store = useGameStore.getState();
@@ -330,78 +467,113 @@ export class RestaurantApp {
     const sy = event.clientY - rect.top;
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
     const tapCell = { x: gx, y: gy };
+    const roomPlacements = this.roomPlacements(store);
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
-      const entered = store.enterConnectingDoor();
-      if (entered) {
-        const next = useGameStore.getState();
-        const spawn = connectingDoorInterior(
-          next.activeFloorRoom,
-          next.gridSize.w,
-          next.gridSize.h,
-        );
-        this.nav.snapTo(spawn);
-        this.syncFromStore(next);
+      const blocked = walkBlockedCells(
+        roomPlacements,
+        store.gridSize.w,
+        store.gridSize.h,
+        this.walkOpts(store),
+      );
+      const path = findPath(
+        { w: store.gridSize.w, h: store.gridSize.h, blocked },
+        this.nav.position,
+        tapCell,
+      );
+      if (path) {
+        this.nav.setPath(path);
+      } else {
+        store.setFloorToast('No clear route');
       }
       return;
     }
 
-    if (store.activeFloorRoom === 'main' && floor.carriedTicketId) {
-      const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
-      if (ticket) {
-        const guest = floor.pool.find(
-          (g) => g.customer.id === ticket.customerId,
+    if (store.activeFloorRoom === 'main') {
+      const tappedGuest = floor.pool.find(
+        (candidate) =>
+          candidate.seat?.x === tapCell.x &&
+          candidate.seat.y === tapCell.y &&
+          candidate.stage !== 'leaving' &&
+          candidate.stage !== 'done',
+      );
+      const player = store.floorPlayerGrid ?? this.nav.position;
+
+      if (floor.carriedTicketId && tappedGuest) {
+        const ticket = floor.tickets.find(
+          (candidate) => candidate.id === floor.carriedTicketId,
         );
-        const tappedGuest = floor.pool.find(
-          (candidate) =>
-            candidate.seat &&
-            candidate.stage === 'ordered' &&
-            isAdjacent(tapCell, candidate.seat),
-        );
-        const player = store.floorPlayerGrid ?? this.nav.position;
         if (
-          guest?.seat &&
-          tappedGuest?.customer.id === ticket.customerId &&
-          !playerNearGuestSeat(player, guest)
+          ticket &&
+          tappedGuest.customer.id === ticket.customerId &&
+          tappedGuest.stage === 'ordered'
         ) {
-          store.setFloorToast('Move within 1 tile of the guest to deliver');
-          return;
-        }
-        if (
-          guest?.seat &&
-          tappedGuest?.customer.id === ticket.customerId &&
-          playerNearGuestSeat(player, guest)
-        ) {
+          if (!playerNearGuestSeat(player, tappedGuest)) {
+            this.pathToAdjacentCell(store, roomPlacements, tapCell);
+            return;
+          }
           void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
           return;
         }
-        if (
-          tappedGuest &&
-          tappedGuest.customer.id !== ticket.customerId
-        ) {
-          store.setFloorToast('Wrong table — deliver to the matching guest');
+
+        store.setFloorToast('Wrong table — deliver to the matching guest');
+        return;
+      }
+
+      if (!floor.carriedTicketId && tappedGuest?.stage === 'seated') {
+        if (!playerNearGuestSeat(player, tappedGuest)) {
+          this.pathToAdjacentCell(store, roomPlacements, tapCell);
           return;
         }
+        void store.dispatch({
+          type: 'FLOOR_TAKE_ORDERS',
+          customerIds: [tappedGuest.customer.id],
+        });
+        return;
       }
     }
 
-    const roomPlacements = this.roomPlacements(store);
     const station = findCookStationPlacementAtCell(roomPlacements, tapCell);
     if (station) {
-      if (store.composeSheetOpen) {
-        store.closeComposeSheet();
+      const player = store.floorPlayerGrid ?? floor.playerPosition;
+      if (!playerNearPlacement(player, station)) {
+        this.pathToAdjacentCell(store, roomPlacements, tapCell);
         return;
       }
       if (selectCanOpenFloorCompose(store)) {
         store.openComposeSheet();
         return;
       }
-      const player = store.floorPlayerGrid ?? floor.playerPosition;
-      if (!playerNearPlacement(player, station)) {
-        store.setFloorToast('Move next to the station to cook');
-        return;
-      }
       store.setFloorToast('No open ticket to cook');
       return;
+    }
+
+    if (store.activeFloorRoom === 'main') {
+      const tappedPlacement = roomPlacements.find(
+        (placement) => placement.x === tapCell.x && placement.y === tapCell.y,
+      );
+      const table = tappedPlacement
+        ? floor.tables.find(
+            (candidate) => candidate.placementId === tappedPlacement.id,
+          )
+        : undefined;
+      if (tappedPlacement && table) {
+        const player = store.floorPlayerGrid ?? this.nav.position;
+        if (table.state === 'unset' || table.state === 'dirty') {
+          if (!playerNearPlacement(player, tappedPlacement)) {
+            this.pathToAdjacentCell(store, roomPlacements, tapCell);
+            return;
+          }
+          void store.dispatch({
+            type:
+              table.state === 'unset'
+                ? 'FLOOR_SET_TABLE'
+                : 'FLOOR_CLEAR_TABLE',
+            placementId: table.placementId,
+          });
+          return;
+        }
+        return;
+      }
     }
 
     if (store.composeSheetOpen) {
@@ -608,11 +780,7 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
-    const tableStates = new Map(
-      (state.activeDay?.floor?.tables ?? []).map(
-        (t) => [t.placementId, t.state] as const,
-      ),
-    );
+    const tableStates = tableServiceVisualStates(state.activeDay?.floor);
     this.furnitureLayer.sync(
       roomPlacements,
       state.editLayoutMode,
@@ -745,6 +913,12 @@ export class RestaurantApp {
 
   destroy(): void {
     if (!this.mounted) return;
+    this.roomTransitionAnimation?.cancel();
+    this.roomTransitionAnimation = null;
+    this.roomTransitionInFlight = false;
+    delete this.app.canvas.dataset.roomTransition;
+    this.app.canvas.style.removeProperty('opacity');
+    this.app.canvas.style.removeProperty('pointer-events');
     window.removeEventListener('resize', this.handleResize);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;

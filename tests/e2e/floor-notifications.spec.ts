@@ -9,9 +9,9 @@ import {
 // Default Playwright project is Chromium (matches CI). Firefox is opt-in via
 // PLAYWRIGHT_BROWSERS. WebKit/iOS remains unverified in this environment.
 const VIEWPORT_MATRIX = [
-  { width: 390, height: 844, rows: 2 },
-  { width: 320, height: 568, rows: 3 },
-  { width: 320, height: 480, rows: 3 },
+  { width: 390, height: 844, rows: 1 },
+  { width: 320, height: 568, rows: 2 },
+  { width: 320, height: 480, rows: 2 },
   { width: 667, height: 375, rows: 1 },
   { width: 768, height: 1024, rows: 1 },
   { width: 1280, height: 800, rows: 1 },
@@ -106,7 +106,7 @@ for (const viewport of VIEWPORT_MATRIX) {
     await expect(closeDay).toBeHidden();
     await expect(closeDay).toBeDisabled();
     await expect(closeDay).toHaveAttribute('aria-hidden', 'true');
-    await expect(closeDay).toHaveCSS('visibility', 'hidden');
+    await expect(closeDay).toHaveAttribute('hidden', '');
 
     const layout = await readFloorLayout(page, viewport.rows);
     expect(layout.chromeMinHeight).toBeCloseTo(layout.activeTokenHeight, 5);
@@ -284,6 +284,26 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   expect(dismissHitBoxes.height).toBeGreaterThanOrEqual(44);
 });
 
+test('an elapsed tutorial cue does not replay after compose closes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  await dismissInitialNotice(page);
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  const notice = page.getByTestId('notice-banner');
+  await expect(notice).toContainText('Plate a ticket');
+  await expect(notice).toHaveCount(0, { timeout: 5000 });
+
+  await page.evaluate(() => window.__E2E__!.openComposeSheet());
+  await expect(page.getByTestId('compose-sheet')).toBeVisible();
+  await page.getByTestId('compose-close').click();
+  await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
+  await page.waitForTimeout(250);
+  await expect(notice).toHaveCount(0);
+});
+
 test('transient notices pause behind compose and review sheets, then resume', async ({
   page,
 }) => {
@@ -376,6 +396,9 @@ test('final floor action remains activatable at 200% page zoom', async ({
   const closeDay = page.locator('[data-testid="close-day-btn"]');
   await expect(closeDay).toBeVisible();
   await expect(closeDay).toBeEnabled();
+  await expect(
+    page.locator('.floor-actions .service-btn:visible'),
+  ).toHaveCount(1);
 
   await applyPageZoom(page, 2);
   const actionMetrics = await page

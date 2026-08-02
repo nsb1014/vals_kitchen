@@ -7,9 +7,17 @@ import { playerNearGuestSeat } from './interact.ts';
 import type { FloorDay, FloorGuest, FloorTable, FloorTicket, SeatSlot } from './types.ts';
 
 const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
+  'seating',
   'seated',
   'ordered',
   'eating',
+  'leaving',
+]);
+
+const MOTION_STAGES: ReadonlySet<FloorGuest['stage']> = new Set([
+  'entering',
+  'seating',
+  'leaving',
 ]);
 
 /** Promote the next queued guest to `entering` if the waiting area is free. */
@@ -32,7 +40,36 @@ export function completeGuestEntering(day: FloorDay): FloorDay {
   return {
     ...day,
     pool: day.pool.map((g) =>
-      g.id === entering.id ? { ...g, stage: 'waiting' as const } : g,
+      g.id === entering.id
+        ? { ...g, stage: 'waiting' as const, motionPosition: undefined }
+        : g,
+    ),
+  };
+}
+
+/** Persist a moving guest's last reached grid cell without storing sub-tile animation state. */
+export function updateGuestMotionPosition(
+  day: FloorDay,
+  guestId: FloorGuest['id'],
+  position: { x: number; y: number },
+): FloorDay {
+  const moving = day.pool.find((guest) => guest.id === guestId);
+  if (
+    !moving ||
+    !MOTION_STAGES.has(moving.stage) ||
+    !Number.isInteger(position.x) ||
+    !Number.isInteger(position.y) ||
+    (moving.motionPosition?.x === position.x && moving.motionPosition.y === position.y)
+  ) {
+    return day;
+  }
+
+  return {
+    ...day,
+    pool: day.pool.map((guest) =>
+      guest.id === guestId
+        ? { ...guest, motionPosition: { x: position.x, y: position.y } }
+        : guest,
     ),
   };
 }
@@ -57,6 +94,7 @@ export function createFloorDayFromCustomers(
     selectedTicketId: null,
     tutorialStep: null,
     playerPosition: { ...playerPosition },
+    playerRoom: 'main',
   };
   return admitNextGuest(day);
 }
@@ -91,7 +129,7 @@ export function hasAvailableSeatForWaitingGuest(day: FloorDay): boolean {
   );
 }
 
-/** Seat the next waiting guest on a ready table (or occupied with a free chair). Party size 1. */
+/** Reserve a seat for the next waiting guest and begin their walk to it. Party size 1. */
 export function seatNextWaiting(day: FloorDay): FloorDay {
   const waiting = day.pool.find((g) => g.stage === 'waiting');
   if (!waiting) return day;
@@ -108,17 +146,31 @@ export function seatNextWaiting(day: FloorDay): FloorDay {
     const seat = free[0]!;
 
     const pool = day.pool.map((g) =>
-      g.id === waiting.id ? { ...g, stage: 'seated' as const, seat } : g,
+      g.id === waiting.id ? { ...g, stage: 'seating' as const, seat } : g,
     );
     const tables =
       table.state === 'ready'
         ? day.tables.map((t) => (t.placementId === table.placementId ? occupyTable(t) : t))
         : day.tables;
-    // Free the waiting area, then let the next queued guest walk in.
-    return admitNextGuest({ ...day, pool, tables });
+    // The arrival lane remains reserved until the guest actually reaches the
+    // seat, so guests never overlap while walking through the entrance.
+    return { ...day, pool, tables };
   }
 
   return day;
+}
+
+/** Seat walk finished: `seating` -> `seated`, then admit the next arrival. */
+export function completeGuestSeating(day: FloorDay, guestId: FloorGuest['id']): FloorDay {
+  const seating = day.pool.find((guest) => guest.id === guestId);
+  if (!seating || seating.stage !== 'seating') return day;
+
+  const pool = day.pool.map((guest) =>
+    guest.id === guestId
+      ? { ...guest, stage: 'seated' as const, motionPosition: undefined }
+      : guest,
+  );
+  return admitNextGuest({ ...day, pool });
 }
 
 export function takeOrdersForSeated(day: FloorDay, customerIds: string[]): FloorDay {
@@ -174,45 +226,51 @@ function guestsActiveOnTable(day: FloorDay, tablePlacementId: string): boolean {
   );
 }
 
-/**
- * Decrement eat / leave timers.
- * Eating → 0: stage `leaving`, clear seat, reuse eatTicksRemaining as leave countdown (2).
- * Leaving → 0: stage `done`. Table dirties when the last ACTIVE_AT_TABLE guest departs.
- */
+/** Decrement the pacing-only eating dwell; guests retain their seat while leaving. */
 export function tickEating(day: FloorDay): FloorDay {
-  let next: FloorDay = { ...day, pool: day.pool.map((g) => ({ ...g })), tables: day.tables.map((t) => ({ ...t })) };
+  let changed = false;
+  const pool = day.pool.map((guest) => {
+    if (guest.stage !== 'eating') return guest;
+    changed = true;
+    const remaining = guest.eatTicksRemaining - 1;
+    return remaining > 0
+      ? { ...guest, eatTicksRemaining: remaining }
+      : { ...guest, stage: 'leaving' as const, eatTicksRemaining: 0 };
+  });
+  return changed ? { ...day, pool } : day;
+}
 
-  for (let i = 0; i < next.pool.length; i++) {
-    const g = next.pool[i]!;
-    if (g.stage === 'eating') {
-      const remaining = g.eatTicksRemaining - 1;
-      if (remaining > 0) {
-        next.pool[i] = { ...g, eatTicksRemaining: remaining };
-        continue;
-      }
-      const tableId = g.seat?.tablePlacementId;
-      next.pool[i] = { ...g, stage: 'leaving', eatTicksRemaining: 2, seat: undefined };
-      if (tableId && !guestsActiveOnTable(next, tableId)) {
-        next = {
-          ...next,
-          tables: next.tables.map((t) =>
-            t.placementId === tableId && t.state === 'occupied' ? markDirty(t) : t,
-          ),
-        };
-      }
-      continue;
-    }
-    if (g.stage === 'leaving') {
-      const remaining = g.eatTicksRemaining - 1;
-      if (remaining > 0) {
-        next.pool[i] = { ...g, eatTicksRemaining: remaining };
-      } else {
-        next.pool[i] = { ...g, stage: 'done', eatTicksRemaining: 0 };
-      }
-    }
-  }
+/**
+ * Exit walk finished: release the guest's seat and dirty the table only after
+ * the last guest associated with that table has physically left.
+ */
+export function completeGuestLeaving(day: FloorDay, guestId: FloorGuest['id']): FloorDay {
+  const leaving = day.pool.find((guest) => guest.id === guestId);
+  if (!leaving || leaving.stage !== 'leaving') return day;
 
-  return next;
+  const tableId = leaving.seat?.tablePlacementId;
+  const pool = day.pool.map((guest) =>
+    guest.id === guestId
+      ? {
+          ...guest,
+          stage: 'done' as const,
+          eatTicksRemaining: 0,
+          seat: undefined,
+          motionPosition: undefined,
+        }
+      : guest,
+  );
+  const afterExit = { ...day, pool };
+  if (!tableId || guestsActiveOnTable(afterExit, tableId)) return afterExit;
+
+  return {
+    ...afterExit,
+    tables: day.tables.map((table) =>
+      table.placementId === tableId && table.state === 'occupied'
+        ? markDirty(table)
+        : table,
+    ),
+  };
 }
 
 export function isFloorDayComplete(day: FloorDay): boolean {

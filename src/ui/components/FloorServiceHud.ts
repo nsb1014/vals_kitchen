@@ -136,11 +136,35 @@ export function mountFloorServiceHud(
       focusAfter === undefined ? captureDockFocus() : focusAfter;
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
+    const reserveChrome = () => {
+      chromeMount.hidden = false;
+      chromeMount.style.visibility = 'hidden';
+      chromeMount.inert = true;
+      chromeMount.setAttribute('aria-hidden', 'true');
+      if (!chromeMount.firstElementChild) {
+        chromeMount.innerHTML = `
+          <div class="floor-service-panel floor-service-panel--reserve"></div>
+        `;
+      }
+      dock.hidden = true;
+      dock.innerHTML = '';
+      ticketsMenuOpen = false;
+      notifyNotificationBlockingSurfaceChanged();
+    };
     // Keep the chrome strip mounted for the whole floor day (including review /
     // summary popups) so canvas height does not jump when overlays open.
+    if (!floor && state.daySummary) {
+      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
+      reserveChrome();
+      return;
+    }
+
     if (!floor) {
       state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
       chromeMount.hidden = true;
+      chromeMount.style.removeProperty('visibility');
+      chromeMount.inert = false;
+      chromeMount.removeAttribute('aria-hidden');
       chromeMount.innerHTML = '';
       dock.hidden = true;
       dock.innerHTML = '';
@@ -158,16 +182,15 @@ export function mountFloorServiceHud(
       !state.ceremony;
 
     if (!interactive) {
-      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
-      chromeMount.innerHTML = `
-        <div class="floor-service-panel floor-service-panel--reserve" aria-hidden="true"></div>
-      `;
-      dock.hidden = true;
-      dock.innerHTML = '';
-      ticketsMenuOpen = false;
-      notifyNotificationBlockingSurfaceChanged();
+      // Blocking sheets pause the shared notice surface. Keep the last HUD
+      // pacing identity so closing a temporary sheet does not replay a cue
+      // that already completed for the same gameplay state.
+      reserveChrome();
       return;
     }
+    chromeMount.style.removeProperty('visibility');
+    chromeMount.inert = false;
+    chromeMount.removeAttribute('aria-hidden');
     const initialGuestArriving =
       floor.pool.some((guest) => guest.stage === 'entering') &&
       !floor.pool.some(
@@ -181,7 +204,14 @@ export function mountFloorServiceHud(
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const step = nextTutorialStep(floor, state.day === 1);
     const prompt = tutorialPrompt(step);
-    const sticky =
+    const emphasize = (actionStep: typeof step, available: boolean) =>
+      available && (step === null || step === actionStep);
+    const emphasizeSetTable = emphasize('set_tables', canSetTable);
+    const emphasizeSeatGuest = emphasize('wait_seat', canSeatGuest);
+    const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
+    const emphasizeClearTable = emphasize('clear', canClearTable);
+    const emphasizeCloseDay = emphasize('close', canCloseDay);
+    const tutorialNotice =
       prompt && step
         ? {
             id: `tutorial:${step}`,
@@ -195,20 +225,26 @@ export function mountFloorServiceHud(
       state.day > 1
         ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
         : null;
-    const pacing = initialGuestArriving
-      ? {
-          id: `pacing:first-guest-arriving:${state.day}`,
-          source: 'pacing' as const,
-          body: 'The first guest is arriving…',
-        }
-      : pacingHint
+    // Day-one guidance introduces each state once, then yields the room to the
+    // contextual action emphasis and object highlights. Treat it as a paced
+    // notice instead of permanent chrome so experienced play does not require
+    // dismissing seven separate instructions.
+    const pacing =
+      tutorialNotice ??
+      (initialGuestArriving
         ? {
-            id: `pacing:day:${state.day}`,
+            id: `pacing:first-guest-arriving:${state.day}`,
             source: 'pacing' as const,
-            body: pacingHint,
+            body: 'The first guest is arriving…',
           }
-        : null;
-    state.syncFloorNoticesFromHud({ sticky, pacing });
+        : pacingHint
+          ? {
+              id: `pacing:day:${state.day}`,
+              source: 'pacing' as const,
+              body: pacingHint,
+            }
+          : null);
+    state.syncFloorNoticesFromHud({ sticky: null, pacing });
 
     const ctx = getDomainContext();
     const guestLabelByCustomerId: Record<string, string> = {};
@@ -250,11 +286,11 @@ export function mountFloorServiceHud(
       <div class="floor-service-panel" data-testid="floor-service-panel">
         <div class="floor-actions-scroll">
           <div class="floor-actions">
-            <button type="button" class="service-btn${canSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${canSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
-            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
-            <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
-            <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}><span class="floor-action-label">Close Day</span></button>
+            <button type="button" class="service-btn${emphasizeSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
+            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="service-btn${emphasizeTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
+            <button type="button" class="service-btn${emphasizeClearTable ? ' primary' : ''}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
+            <button type="button" class="service-btn${emphasizeCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
           </div>
         </div>
         ${ticketPanel.capacityMessage ? `<p class="sr-only" id="${capacityHelpId}">${ticketPanel.capacityMessage}</p>` : ''}

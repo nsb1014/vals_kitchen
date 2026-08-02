@@ -3,6 +3,7 @@ import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import {
   admitNextGuest,
   completeGuestEntering,
+  completeGuestSeating,
   createFloorDayFromCustomers,
   seatNextWaiting,
   tablesFromPlacements,
@@ -28,7 +29,7 @@ describe('guest entry gating', () => {
     { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 2, rotation: 0 },
   ];
 
-  it('admits only one guest at a time until seated; waiting area holds one ready guest', () => {
+  it('admits only one guest at a time until the prior guest reaches their seat', () => {
     const tables = tablesFromPlacements(placements).map(setTable);
     const seats = seatsFromPlacements(placements);
     let day = createFloorDayFromCustomers(
@@ -55,8 +56,15 @@ describe('guest entry gating', () => {
     expect(day.pool.filter((g) => g.stage === 'queued')).toHaveLength(2);
     expect(waitingAreaOccupied(day)).toBe(true);
 
-    // After seating, waiting frees and the next guest may enter (auto-admit).
+    // Reserving a seat begins the seat walk but does not admit another guest.
     day = seatNextWaiting(day);
+    expect(day.pool.find((g) => g.id === 'c1')!.stage).toBe('seating');
+    expect(day.pool.filter((g) => g.stage === 'queued')).toHaveLength(2);
+    expect(admitNextGuest(day)).toBe(day);
+    expect(waitingAreaOccupied(day)).toBe(true);
+
+    // Arrival at the stool frees the lane and auto-admits the next guest.
+    day = completeGuestSeating(day, 'c1');
     expect(day.pool.find((g) => g.id === 'c1')!.stage).toBe('seated');
     const pipeline = day.pool.filter((g) => g.stage === 'entering' || g.stage === 'waiting');
     expect(pipeline).toHaveLength(1);
@@ -76,6 +84,8 @@ describe('guest entry gating', () => {
 
     day = completeGuestEntering(day);
     day = seatNextWaiting(day);
+    expect(day.pool[0]!.stage).toBe('seating');
+    day = completeGuestSeating(day, 'c1');
     expect(day.pool[0]!.stage).toBe('seated');
   });
 });

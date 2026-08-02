@@ -64,8 +64,9 @@ test.describe('ticket planning panel', () => {
     const idealTab = page.getByTestId('tickets-view-ideal');
     await expect(orderTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('floor-tickets-item')).toHaveCount(4);
-    const orderMenuWidth =
-      (await page.getByTestId('floor-tickets-menu').boundingBox())!.width;
+    const orderMenuWidth = (await page
+      .getByTestId('floor-tickets-menu')
+      .boundingBox())!.width;
 
     const firstGuest = await page
       .locator('.floor-tickets-item-guest')
@@ -74,15 +75,19 @@ test.describe('ticket planning panel', () => {
     await idealTab.click();
     await expect(idealTab).toBeFocused();
     await expect(idealTab).toHaveAttribute('aria-selected', 'true');
-    const idealMenuWidth =
-      (await page.getByTestId('floor-tickets-menu').boundingBox())!.width;
+    const idealMenuWidth = (await page
+      .getByTestId('floor-tickets-menu')
+      .boundingBox())!.width;
     expect(idealMenuWidth).toBeCloseTo(orderMenuWidth, 0);
     await expect(page.getByTestId('floor-tickets-ideal')).toContainText(
       firstGuest?.trim() ?? '',
     );
     await expect(
       page.locator('.floor-tickets-ideal .flavor-bar-value'),
-    ).not.toHaveCount(0);
+    ).toHaveCount(15);
+    await expect(
+      page.locator('.floor-tickets-ideal [role="meter"][aria-valuenow]'),
+    ).toHaveCount(15);
     await expect(
       page.locator('.floor-tickets-ideal .flavor-temp-badge'),
     ).toHaveCount(0);
@@ -161,12 +166,14 @@ test.describe('ticket planning panel', () => {
       await expect(page.getByTestId('celebration-banner-host')).toBeHidden();
       await expectMenuInsideViewport(page);
       await expect(page.getByTestId('floor-tickets-item')).toHaveCount(4);
-      const orderWidth =
-        (await page.getByTestId('floor-tickets-menu').boundingBox())!.width;
+      const orderWidth = (await page
+        .getByTestId('floor-tickets-menu')
+        .boundingBox())!.width;
       await page.getByTestId('tickets-view-ideal').click();
       await expectMenuInsideViewport(page);
-      const idealWidth =
-        (await page.getByTestId('floor-tickets-menu').boundingBox())!.width;
+      const idealWidth = (await page
+        .getByTestId('floor-tickets-menu')
+        .boundingBox())!.width;
       expect(idealWidth).toBeCloseTo(orderWidth, 0);
 
       for (const control of await page
@@ -185,7 +192,10 @@ test.describe('ticket planning panel', () => {
     page,
     browserName,
   }) => {
-    test.skip(browserName !== 'chromium', 'CSS page zoom case is Chromium-only');
+    test.skip(
+      browserName !== 'chromium',
+      'CSS page zoom case is Chromium-only',
+    );
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoFreshGame(page);
     await prepareTickets(page, 4);
@@ -194,9 +204,7 @@ test.describe('ticket planning panel', () => {
 
     await expectMenuInsideViewport(page);
     await expect(page.getByTestId('floor-tickets-close')).toBeVisible();
-    const orderPanel = page.locator(
-      '.floor-tickets-panel-body:not([hidden])',
-    );
+    const orderPanel = page.locator('.floor-tickets-panel-body:not([hidden])');
     await orderPanel.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
@@ -204,9 +212,7 @@ test.describe('ticket planning panel', () => {
 
     await page.getByTestId('tickets-view-ideal').click();
     await expectMenuInsideViewport(page);
-    const idealPanel = page.locator(
-      '.floor-tickets-panel-body:not([hidden])',
-    );
+    const idealPanel = page.locator('.floor-tickets-panel-body:not([hidden])');
     await idealPanel.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
@@ -217,11 +223,12 @@ test.describe('ticket planning panel', () => {
     const scrollHosts = await page
       .getByTestId('floor-tickets-menu')
       .locator('*:visible')
-      .evaluateAll((elements) =>
-        elements.filter((element) => {
-          const style = getComputedStyle(element);
-          return /auto|scroll/.test(style.overflowY);
-        }).length,
+      .evaluateAll(
+        (elements) =>
+          elements.filter((element) => {
+            const style = getComputedStyle(element);
+            return /auto|scroll/.test(style.overflowY);
+          }).length,
       );
     expect(scrollHosts).toBe(1);
   });

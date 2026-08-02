@@ -451,7 +451,9 @@ export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
 export async function assertCanvasHeightStableAcrossFloorChrome(
   page: Page,
 ): Promise<void> {
-  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="floor-service-panel"]'),
+  ).toBeVisible();
   const beforeBox = await page.locator('#canvas-mount').boundingBox();
   expect(beforeBox).not.toBeNull();
   const before = Math.round(beforeBox!.height);
@@ -537,6 +539,8 @@ declare global {
         hydrated: boolean;
         activeDay: { queueIndex: number; customerCount: number } | null;
         composeDraftIngredientIds: string[];
+        floorTicketDrafts: Record<string, string[]>;
+        selectedTicketId: string | null;
         screen: string;
       };
       getGameState: () => {

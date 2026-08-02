@@ -25,6 +25,11 @@ import {
   type FloorRoomId,
 } from '../domain/floor/starter-map.ts';
 import {
+  isCookStationItemKey,
+  playerNearPlacement,
+  resolveFloorComposeTicket,
+} from '../domain/floor/index.ts';
+import {
   createNewGameState,
   type GameState,
   type Placement,
@@ -60,6 +65,7 @@ export type ScreenId =
   'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings';
 
 export interface ServeReview {
+  customerId?: string;
   matchStars: number;
   tip: number;
   ratingDelta: number;
@@ -348,6 +354,34 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
   );
 }
 
+function canPlateFromCurrentInteraction(
+  state: GameStore,
+  ticketId: string,
+): boolean {
+  if (
+    state.screen !== 'restaurant' ||
+    !selectCanOpenFloorCompose(state)
+  ) {
+    return false;
+  }
+  const floor = state.activeDay?.floor;
+  const player = state.floorPlayerGrid ?? floor?.playerPosition;
+  if (!floor || !player) return false;
+  if (resolveFloorComposeTicket(floor)?.id !== ticketId) return false;
+
+  const roomPlacements =
+    state.activeFloorRoom === 'back_kitchen'
+      ? state.backKitchenPlacements
+      : state.placements;
+  const ownedEquipment = new Set(state.purchasedEquipmentIds);
+  return roomPlacements.some(
+    (placement) =>
+      isCookStationItemKey(placement.itemKey) &&
+      ownedEquipment.has(placement.itemKey) &&
+      playerNearPlacement(player, placement),
+  );
+}
+
 function buildDaySummary(
   before: GameState,
   after: GameState,
@@ -426,7 +460,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       ...state,
       screen: 'restaurant',
       editLayoutMode: false,
-      activeFloorRoom: 'main',
+      activeFloorRoom: state.activeDay?.floor?.playerRoom ?? 'main',
       hydrated: true,
       persistGranted: persist.granted,
       modifierDismissed: state.activeDay ? true : false,
@@ -453,7 +487,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   async dispatch(action) {
-    await ensureContentForAction(action.type);
+    const contentLoad = ensureContentForAction(action.type);
+    if (contentLoad) {
+      await contentLoad;
+    }
     const ctx = getDomainContext();
     const current = get();
     if (
@@ -461,6 +498,14 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.activeFloorRoom !== 'main'
     ) {
       throw new Error('Dishes can only be delivered on the main dining floor');
+    }
+    if (
+      action.type === 'FLOOR_PLATE' &&
+      !canPlateFromCurrentInteraction(current, action.ticketId)
+    ) {
+      throw new Error(
+        'The selected ticket can only be plated beside an owned station in the current room',
+      );
     }
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
@@ -581,7 +626,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         ...imported,
         screen: 'restaurant',
         editLayoutMode: false,
-        activeFloorRoom: 'main',
+        activeFloorRoom: imported.activeDay?.floor?.playerRoom ?? 'main',
         hydrated: true,
         modifierDismissed: imported.activeDay ? true : false,
         pendingReview: null,
@@ -592,7 +637,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         recentReviews: [],
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
-        floorPlayerGrid: null,
+        floorPlayerGrid: imported.activeDay?.floor?.playerPosition ?? null,
         floorToast: null,
         noticeActive: null,
         noticeSticky: null,
@@ -641,11 +686,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setFloorNavPosition(pos) {
     const current = get();
     const prev = current.floorPlayerGrid;
-    const persisted = current.activeDay?.floor?.playerPosition;
+    const floor = current.activeDay?.floor;
+    const persisted = floor?.playerPosition;
+    const persistedRoom = floor?.playerRoom ?? 'main';
     if (
       prev?.x === pos.x &&
       prev?.y === pos.y &&
-      (!persisted || (persisted.x === pos.x && persisted.y === pos.y))
+      (!persisted ||
+        (persisted.x === pos.x &&
+          persisted.y === pos.y &&
+          persistedRoom === current.activeFloorRoom))
     ) {
       return;
     }
@@ -656,6 +706,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           floor: {
             ...current.activeDay.floor,
             playerPosition,
+            playerRoom: current.activeFloorRoom,
           },
         }
       : current.activeDay;
@@ -664,18 +715,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
     }
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
   },
 
   setFloorSelectedTicket(ticketId) {
-    const current = get();
-    const floor = current.activeDay?.floor;
-    if (!floor) return;
-    set({
-      activeDay: {
-        ...current.activeDay!,
-        floor: { ...floor, selectedTicketId: ticketId },
-      },
-    });
+    if (!get().activeDay?.floor) return;
+    void get()
+      .dispatch({ type: 'FLOOR_SELECT_TICKET', ticketId })
+      .catch(() => undefined);
     const next = get();
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
@@ -723,7 +772,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   syncFloorNoticesFromHud({ sticky, pacing }) {
     const current = get();
     const pacingChanged = !sameNotice(lastHudPacingNotice, pacing);
-    lastHudPacingNotice = pacing;
     let tutorialDismissedStepId = current.tutorialDismissedStepId;
 
     if (!sticky?.stepId) {
@@ -745,8 +793,17 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const activeIsSticky =
       current.noticeActive === null ||
       current.noticeActive === current.noticeSticky;
+    const activeIsHudNotice =
+      current.noticeActive?.source === 'pacing' ||
+      current.noticeActive?.source === 'tutorial';
 
-    if (pacing && pacingChanged && !sameNotice(current.noticeActive, pacing)) {
+    if (
+      pacing &&
+      pacingChanged &&
+      (activeIsSticky || activeIsHudNotice) &&
+      !sameNotice(current.noticeActive, pacing)
+    ) {
+      lastHudPacingNotice = pacing;
       set({
         noticeActive: pacing,
         noticeSticky: nextSticky,
@@ -755,6 +812,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       });
       restartNoticeTimer(pacing);
     } else {
+      // A toast/system message owns the front until its timer completes. Keep
+      // a changed HUD notice pending so the next render may introduce it.
+      if (!pacing) lastHudPacingNotice = null;
       const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
       set({
         noticeActive: nextActive,
@@ -858,6 +918,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setActiveFloorRoom(room) {
     const current = get();
     if (room === 'back_kitchen' && !current.kitchenAnnexOwned) return;
+    if (current.activeDay?.floor) return;
     set({ activeFloorRoom: room });
   },
 
@@ -870,11 +931,25 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.gridSize.w,
       current.gridSize.h,
     );
+    const activeDay = current.activeDay?.floor
+      ? {
+          ...current.activeDay,
+          floor: {
+            ...current.activeDay.floor,
+            playerPosition: { ...spawn },
+            playerRoom: nextRoom,
+          },
+        }
+      : current.activeDay;
     set({
       activeFloorRoom: nextRoom,
       floorPlayerGrid: spawn,
+      activeDay,
       composeSheetOpen: false,
     });
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
     return true;
   },
 

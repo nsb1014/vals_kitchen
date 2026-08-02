@@ -87,3 +87,29 @@ export function findPath(
 
   return null;
 }
+
+/**
+ * Finds the shortest reachable path to one of several destinations.
+ * Destination order is used as a stable tie-breaker when paths are equal.
+ */
+export function findShortestPathToAny(
+  grid: WalkGrid,
+  from: GridPoint,
+  destinations: readonly GridPoint[],
+): GridPoint[] | null {
+  let shortest: GridPoint[] | null = null;
+  const seen = new Set<string>();
+
+  for (const destination of destinations) {
+    const destinationKey = key(destination.x, destination.y);
+    if (seen.has(destinationKey)) continue;
+    seen.add(destinationKey);
+
+    const path = findPath(grid, from, destination);
+    if (path && (!shortest || path.length < shortest.length)) {
+      shortest = path;
+    }
+  }
+
+  return shortest;
+}

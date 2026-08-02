@@ -18,7 +18,6 @@ import {
   serveCurrentCustomer,
   trackContentRequests,
   waitForGameReady,
-  waitForInteractiveBoot,
 } from './helpers.ts';
 
 test.describe('boot and rendering', () => {
@@ -62,10 +61,7 @@ test.describe('layout editing', () => {
     await gotoFreshGame(page);
 
     await page.locator('[data-testid="edit-restaurant-btn"]').click();
-    await expect(page.locator('[data-testid="toggle-edit-layout"]')).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await expect(page.locator('[data-testid="toggle-edit-layout"]')).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'Close restaurant shop' }).click();
 
     const before = await page.evaluate(() => window.__E2E__!.getPlacements());
@@ -100,10 +96,7 @@ test.describe('screen navigation', () => {
 
     await navigateToScreen(page, 'recipes');
     await assertScreenOpen(page, 'recipes-screen');
-    await expect(page.getByRole('tab', { name: 'Flavors' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    await expect(page.getByRole('tab', { name: 'Flavors' })).toHaveAttribute('aria-selected', 'true');
     // Flavor profiles intentionally omit axes whose displayed value is zero.
     await expect(page.locator('[data-testid="flavor-axis-row"]')).toHaveCount(5);
     await expect(page.locator('.flavor-temp-badge')).toBeVisible();
@@ -114,22 +107,14 @@ test.describe('screen navigation', () => {
     await navigateToScreen(page, 'restaurant');
     await page.getByTestId('edit-restaurant-btn').click();
     await expect(page.getByTestId('layout-catalog-sheet')).toBeVisible();
-    await expect(
-      page.getByRole('tab', { name: 'Ingredients' }),
-    ).toHaveAttribute('aria-selected', 'true');
-    await expect(
-      page.getByRole('tab', { name: 'Kitchen Equipment' }),
-    ).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Ingredients' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Kitchen Equipment' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Layout' })).toBeVisible();
     await page.getByRole('button', { name: 'Close restaurant shop' }).click();
     await page.getByTestId('toggle-edit-layout').click();
 
-    await page
-      .getByRole('button', { name: 'Restaurant rating details' })
-      .click();
-    await expect(page.getByTestId('hud-detail-menu')).toContainText(
-      'Recent reviews',
-    );
+    await page.getByRole('button', { name: 'Restaurant rating details' }).click();
+    await expect(page.getByTestId('hud-detail-menu')).toContainText('Recent reviews');
 
     await navigateToScreen(page, 'settings');
     await assertScreenOpen(page, 'settings-screen');
@@ -150,20 +135,31 @@ test.describe('persistence', () => {
     await page.evaluate(async () => {
       const bridge = window.__E2E__!;
       const game = bridge.getGameState() as {
-        activeDay?: { floor?: { tables: Array<{ placementId: string; state: string }> } } | null;
+        activeDay?: {
+          floor?: { tables: Array<{ placementId: string; state: string }> };
+        } | null;
         unlockedIngredientIds: string[];
       };
       const floor = game.activeDay?.floor;
       if (!floor) throw new Error('expected floor day');
       for (const table of floor.tables) {
         if (table.state === 'unset') {
-          await bridge.dispatch({ type: 'FLOOR_SET_TABLE', placementId: table.placementId });
+          await bridge.dispatch({
+            type: 'FLOOR_SET_TABLE',
+            placementId: table.placementId,
+          });
         }
       }
       if (floor.pool.some((guest) => guest.stage === 'entering')) {
         await bridge.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
       }
       await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      const seating = bridge.getGameState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating');
+      if (!seating) throw new Error('expected seating guest');
+      await bridge.dispatch({
+        type: 'FLOOR_COMPLETE_SEATING',
+        guestId: seating.id,
+      });
       const afterSeat = bridge.getGameState() as {
         activeDay?: {
           floor?: {
@@ -185,7 +181,13 @@ test.describe('persistence', () => {
         customerIds: [seated.customer.id],
       });
       const draftIds = afterSeat.unlockedIngredientIds.slice(0, 3);
-      await bridge.dispatch({ type: 'SET_COMPOSE_DRAFT', ingredientIds: draftIds });
+      const ticket = bridge.getGameState().activeDay?.floor?.tickets.find((item) => item.status === 'open');
+      if (!ticket) throw new Error('expected open floor ticket');
+      await bridge.dispatch({
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: draftIds,
+      });
     });
 
     const before = await page.evaluate(() => window.__E2E__!.getState());
@@ -203,14 +205,17 @@ test.describe('persistence', () => {
     await expect
       .poll(async () => {
         const save = (await readSaveFromIndexedDb(page)) as {
-          gameState?: { composeDraftIngredientIds?: string[] };
-          composeDraftIngredientIds?: string[];
+          gameState?: {
+            activeDay?: {
+              floor?: {
+                selectedTicketId?: string | null;
+                tickets?: Array<{ id: string; ingredientIds?: string[] }>;
+              };
+            } | null;
+          };
         } | null;
-        return (
-          save?.gameState?.composeDraftIngredientIds?.length ??
-          save?.composeDraftIngredientIds?.length ??
-          0
-        );
+        const floor = save?.gameState?.activeDay?.floor;
+        return floor?.tickets?.find((ticket) => ticket.id === floor.selectedTicketId)?.ingredientIds?.length ?? 0;
       })
       .toBe(3);
 
@@ -221,6 +226,8 @@ test.describe('persistence', () => {
     expect(after.activeDay).not.toBeNull();
     expect(after.activeDay!.queueIndex).toBe(before.activeDay!.queueIndex);
     expect(after.composeDraftIngredientIds).toEqual(before.composeDraftIngredientIds);
+    expect(after.floorTicketDrafts).toEqual(before.floorTicketDrafts);
+    expect(after.selectedTicketId).toBe(before.selectedTicketId);
     await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
   });
 });

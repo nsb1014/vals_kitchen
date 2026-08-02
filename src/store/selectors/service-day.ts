@@ -4,11 +4,15 @@ import {
   adjacentDirtyTablePlacementIds,
   adjacentSeatedCustomerIds,
   adjacentUnsetTablePlacementIds,
-  playerNearStation,
+  isCookStationItemKey,
+  playerNearPlacement,
   seatedUnorderedCustomerIds,
 } from '../../domain/floor/interact.ts';
 import { hasAvailableSeatForWaitingGuest } from '../../domain/floor/sim.ts';
-import { canEnqueue } from '../../domain/floor/tickets.ts';
+import {
+  canEnqueue,
+  resolveFloorComposeTicket,
+} from '../../domain/floor/tickets.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { getDomainContext } from '../../app/content-loader.ts';
@@ -20,6 +24,8 @@ export function selectCurrentCustomer(state: GameState): Customer | null {
 }
 
 export function selectComposeDraftIds(state: GameState): string[] {
+  const floor = state.activeDay?.floor;
+  if (floor) return resolveFloorComposeTicket(floor)?.ingredientIds ?? [];
   return state.composeDraftIngredientIds ?? [];
 }
 
@@ -140,14 +146,7 @@ export function selectCanClearFloorTable(state: GameStore): boolean {
 
 export function selectFloorComposeTicket(state: GameState): FloorTicket | null {
   const floor = state.activeDay?.floor;
-  if (!floor || floor.carriedTicketId) return null;
-  const selectedId = floor.selectedTicketId;
-  if (selectedId) {
-    const selected = floor.tickets.find((t) => t.id === selectedId);
-    if (selected?.status === 'open') return selected;
-    return null;
-  }
-  return floor.tickets.find((t) => t.status === 'open') ?? null;
+  return floor ? resolveFloorComposeTicket(floor) : null;
 }
 
 export function selectCanOpenFloorCompose(state: GameStore): boolean {
@@ -164,7 +163,15 @@ export function selectCanOpenFloorCompose(state: GameStore): boolean {
     state.activeFloorRoom === 'back_kitchen'
       ? state.backKitchenPlacements
       : state.placements;
-  if (!player || !playerNearStation(player, roomPlacements)) return false;
+  if (!player) return false;
+  const ownedEquipment = new Set(state.purchasedEquipmentIds);
+  const nearOwnedStation = roomPlacements.some(
+    (placement) =>
+      isCookStationItemKey(placement.itemKey) &&
+      ownedEquipment.has(placement.itemKey) &&
+      playerNearPlacement(player, placement),
+  );
+  if (!nearOwnedStation) return false;
   return selectFloorComposeTicket(state) !== null;
 }
 

@@ -56,6 +56,13 @@ describe('floor vertical slice loop', () => {
 
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+    const seating = state.activeDay!.floor!.pool.find((g) => g.stage === 'seating');
+    expect(seating).toBeTruthy();
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_COMPLETE_SEATING', guestId: seating!.id },
+      testContext,
+    ).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated');
     expect(seated).toBeTruthy();
     state = {
@@ -86,7 +93,16 @@ describe('floor vertical slice loop', () => {
 
     state = gameReducer(
       state,
-      { type: 'FLOOR_PLATE', ticketId: ticket.id, ingredientIds: best.ingredientIds },
+      {
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: best.ingredientIds,
+      },
+      testContext,
+    ).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_PLATE', ticketId: ticket.id },
       testContext,
     ).state;
     expect(state.activeDay!.floor!.carriedTicketId).toBe(ticket.id);
@@ -115,6 +131,11 @@ describe('floor vertical slice loop', () => {
     ) {
       state = gameReducer(state, { type: 'FLOOR_TICK_EATING' }, testContext).state;
     }
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_COMPLETE_LEAVING', guestId: seated!.id },
+      testContext,
+    ).state;
 
     const dirty = state.activeDay!.floor!.tables.find((t) => t.state === 'dirty');
     expect(dirty).toBeTruthy();
@@ -149,6 +170,17 @@ describe('floor vertical slice loop', () => {
         state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
       }
 
+      const seatingGuests = state.activeDay!.floor!.pool.filter(
+        (guest) => guest.stage === 'seating',
+      );
+      for (const guest of seatingGuests) {
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_COMPLETE_SEATING', guestId: guest.id },
+          testContext,
+        ).state;
+      }
+
       const toOrder = state.activeDay!.floor!.pool
         .filter((g) => g.stage === 'seated')
         .map((g) => g.customer.id);
@@ -181,7 +213,21 @@ describe('floor vertical slice loop', () => {
         );
         state = gameReducer(
           state,
-          { type: 'FLOOR_PLATE', ticketId: open.id, ingredientIds: combo.ingredientIds },
+          { type: 'FLOOR_SELECT_TICKET', ticketId: open.id },
+          testContext,
+        ).state;
+        state = gameReducer(
+          state,
+          {
+            type: 'FLOOR_SET_TICKET_DRAFT',
+            ticketId: open.id,
+            ingredientIds: combo.ingredientIds,
+          },
+          testContext,
+        ).state;
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_PLATE', ticketId: open.id },
           testContext,
         ).state;
         state = {
@@ -197,10 +243,19 @@ describe('floor vertical slice loop', () => {
         state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: open.id }, testContext).state;
       }
 
-      if (
-        state.activeDay!.floor!.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')
-      ) {
+      if (state.activeDay!.floor!.pool.some((g) => g.stage === 'eating')) {
         state = gameReducer(state, { type: 'FLOOR_TICK_EATING' }, testContext).state;
+      }
+
+      const leavingGuests = state.activeDay!.floor!.pool.filter(
+        (guest) => guest.stage === 'leaving',
+      );
+      for (const guest of leavingGuests) {
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_COMPLETE_LEAVING', guestId: guest.id },
+          testContext,
+        ).state;
       }
     }
 

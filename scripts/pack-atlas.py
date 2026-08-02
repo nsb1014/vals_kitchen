@@ -56,7 +56,16 @@ def pack_atlas(
         row = index // cols
         x = col * cell
         y = row * cell
-        sheet.paste(img, (x, y), img)
+        # The source already carries straight RGBA. Passing it again as a
+        # ``paste`` mask multiplies the alpha channel by itself, turning a
+        # 50%-opaque antialiased edge into 25% opacity. In motion that reads as
+        # clipped hair, pale matte fringe, and see-through limbs. Composite
+        # onto the transparent atlas once so the packed frame preserves the
+        # authored coverage exactly.
+        sheet.alpha_composite(img, (x, y))
+        packed_alpha = sheet.crop((x, y, x + img.width, y + img.height)).getchannel('A')
+        if packed_alpha.tobytes() != img.getchannel('A').tobytes():
+            raise SystemExit(f'Atlas alpha changed while packing frame: {name}')
         frames[name] = {
             'frame': {'x': x, 'y': y, 'w': img.width, 'h': img.height},
             'rotated': False,

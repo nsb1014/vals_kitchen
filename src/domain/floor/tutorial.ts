@@ -52,9 +52,11 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
   const allSetOrBusy = day.tables.every((t) => t.state !== 'unset');
   if (!allSetOrBusy) return 'set_tables';
 
-  const notYetServed = new Set(['queued', 'entering', 'waiting', 'done']);
+  const notYetServed = new Set(['queued', 'entering', 'waiting', 'seating', 'done']);
   const anySeatedOrFurther = day.pool.some((g) => !notYetServed.has(g.stage));
-  const anyWaiting = day.pool.some((g) => g.stage === 'waiting' || g.stage === 'entering');
+  const anyWaiting = day.pool.some(
+    (g) => g.stage === 'waiting' || g.stage === 'entering' || g.stage === 'seating',
+  );
   if (
     anyWaiting &&
     !day.pool.some((g) => g.stage === 'seated' || g.stage === 'ordered' || g.stage === 'eating')

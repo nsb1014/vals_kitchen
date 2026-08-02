@@ -16,17 +16,24 @@ export {
   deliverTicket,
   enqueueTickets,
   plateTicket,
+  resolveFloorComposeTicket,
+  resolveFloorTicket,
+  selectFloorTicket,
+  setFloorTicketDraft,
 } from './tickets.ts';
 export {
   admitNextGuest,
   beginEating,
   completeGuestEntering,
+  completeGuestLeaving,
+  completeGuestSeating,
   createFloorDayFromCustomers,
   isFloorDayComplete,
   seatNextWaiting,
   tablesFromPlacements,
   takeOrdersForSeated,
   tickEating,
+  updateGuestMotionPosition,
 } from './sim.ts';
 export { waitingAreaOccupied, entryPipelineGuest } from './entry.ts';
 export {

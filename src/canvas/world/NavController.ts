@@ -1,6 +1,8 @@
 import type { GridPoint } from '../../domain/floor/pathfinding.ts';
 import { TILE_PX } from '../coordinates.ts';
 
+const WALK_FRAME_SEQUENCE = [0, 1, 0, 2] as const;
+
 /** Pure path follower — interpolates world position between grid cells. */
 export class NavController {
   private path: GridPoint[] = [];
@@ -135,10 +137,11 @@ export class NavController {
     this.worldY = a.y + (b.y - a.y) * t;
   }
 
-  /** Walk-cycle frame 0..2 from distance traveled. */
+  /** Neutral → left stride → neutral → right stride, phased by distance. */
   walkFrame(): number {
     if (!this.isMoving) return 0;
-    return Math.floor(this.distanceWalked * 4) % 3;
+    const phase = Math.floor(this.distanceWalked * 4) % WALK_FRAME_SEQUENCE.length;
+    return WALK_FRAME_SEQUENCE[phase]!;
   }
 
   private updateFacingFromSegment(): void {

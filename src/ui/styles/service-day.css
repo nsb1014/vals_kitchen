@@ -42,7 +42,7 @@
   box-shadow: inset 0 1px rgba(255, 240, 207, 0.08);
 }
 
-.hud-stat-button[aria-expanded="true"] {
+.hud-stat-button[aria-expanded='true'] {
   border-color: var(--vk-accent);
   background: color-mix(in srgb, var(--vk-accent) 18%, var(--vk-panel));
 }
@@ -68,9 +68,7 @@
   padding: 0.8rem;
   border: 1px solid var(--vk-border-strong);
   border-radius: 12px;
-  background:
-    linear-gradient(145deg, rgba(116, 74, 40, 0.22), transparent 55%),
-    rgba(30, 23, 20, 0.98);
+  background: linear-gradient(145deg, rgba(116, 74, 40, 0.22), transparent 55%), rgba(30, 23, 20, 0.98);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48);
   pointer-events: auto;
 }
@@ -186,9 +184,9 @@
 }
 
 .chat-bubble::after {
-  content: "";
+  content: '';
   position: absolute;
-  left: 50%;
+  left: calc(50% + var(--vk-bubble-tail-offset-x, 0px));
   bottom: -8px;
   width: 14px;
   height: 14px;
@@ -225,6 +223,28 @@
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
   contain: layout style;
+}
+
+.service-panel[data-panel-entering] {
+  animation: service-panel-enter 180ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: var(--vk-service-panel-enter-delay, 0ms);
+}
+
+@keyframes service-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-panel[data-panel-entering] {
+    animation: none;
+  }
 }
 
 .service-panel.sheet-tier-compact,
@@ -272,6 +292,36 @@
 
 .sheet-header {
   min-height: var(--vk-sheet-header-h);
+}
+
+.review-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.review-identity .guest-portrait {
+  flex-basis: 44px;
+  width: 44px;
+  height: 44px;
+}
+
+.review-identity-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.review-identity-kicker {
+  color: var(--vk-text-dim);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-identity .service-title {
+  margin: 0;
 }
 
 .sheet-body-scroll {
@@ -637,7 +687,7 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
-.floor-tickets-toggle[aria-expanded="true"] {
+.floor-tickets-toggle[aria-expanded='true'] {
   border-color: color-mix(in srgb, var(--vk-accent) 55%, var(--vk-border));
   color: var(--vk-accent);
 }
@@ -903,11 +953,19 @@
 
 .floor-actions {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
   gap: 0.5rem;
   min-height: 0;
   overflow: hidden;
+}
+
+#floor-close-day:not([hidden]) {
+  grid-column: 1 / -1;
+}
+
+.floor-actions:has(#floor-close-day:not([hidden])) > :not(#floor-close-day) {
+  display: none;
 }
 
 .floor-toast {
@@ -953,11 +1011,11 @@
 
 @media (max-width: 760px) and (min-width: 321px) and (min-height: 501px) {
   :root {
-    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
   }
 
   .floor-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -978,7 +1036,7 @@
 /* Keep this last: 320px must win over the short-height layout. */
 @media (max-width: 320px) {
   :root {
-    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-3);
+    --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-2);
   }
 
   .floor-actions {
@@ -1252,6 +1310,20 @@
   white-space: nowrap;
 }
 
+.compose-request-axis-head .compose-request-status {
+  display: inline;
+  font-weight: 700;
+}
+
+.compose-request-status.in-range {
+  color: var(--vk-accent-2);
+}
+
+.compose-request-status.below,
+.compose-request-status.above {
+  color: var(--vk-accent);
+}
+
 .compose-request-bars {
   display: grid;
   gap: 2px;
@@ -1287,6 +1359,12 @@
   margin: 0;
 }
 
+.compose-ingredient-card {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
 .compose-pantry .ingredient-chip {
   width: 100%;
   height: var(--vk-chip-h);
@@ -1294,6 +1372,28 @@
   padding-inline: 0.55rem;
   border-radius: 10px;
   text-align: left;
+}
+
+.compose-ingredient-inspect {
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.compose-ingredient-inspect:hover,
+.compose-ingredient-inspect:focus-visible {
+  border-color: var(--vk-accent);
+  color: var(--vk-text);
 }
 
 .compose-empty {
@@ -1339,7 +1439,7 @@
 
 .compose-flavor-mini {
   display: grid;
-  grid-template-columns: 3.25rem minmax(2.5rem, 1fr) 1.5rem;
+  grid-template-columns: 3.25rem minmax(2.5rem, 1fr);
   gap: 0.25rem;
   align-items: center;
   min-width: 0;
@@ -1364,12 +1464,6 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--vk-accent), var(--vk-accent-2));
-}
-
-.compose-flavor-mini-value {
-  color: var(--vk-text-dim);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .compose-flavor-empty {
@@ -1571,8 +1665,7 @@
   gap: 0.35rem;
   padding: 0.35rem 0.45rem;
   border-bottom: 2px solid var(--vk-border-strong);
-  background:
-    linear-gradient(180deg, rgba(98, 61, 34, 0.98), rgba(35, 21, 14, 0.98));
+  background: linear-gradient(180deg, rgba(98, 61, 34, 0.98), rgba(35, 21, 14, 0.98));
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
 }
 
@@ -1581,9 +1674,7 @@
   padding: 0.28rem 0.38rem;
   border: 1px solid #6f4a29;
   border-radius: 8px;
-  background:
-    linear-gradient(145deg, rgba(142, 90, 45, 0.2), transparent 58%),
-    #26170f;
+  background: linear-gradient(145deg, rgba(142, 90, 45, 0.2), transparent 58%), #26170f;
   box-shadow: inset 0 1px rgba(255, 234, 193, 0.08);
 }
 
@@ -1619,9 +1710,7 @@
 
 .service-panel {
   border-top: 2px solid var(--vk-border-strong);
-  background:
-    linear-gradient(180deg, rgba(112, 69, 37, 0.18), transparent 18%),
-    rgba(30, 18, 11, 0.985);
+  background: linear-gradient(180deg, rgba(112, 69, 37, 0.18), transparent 18%), rgba(30, 18, 11, 0.985);
   box-shadow: 0 -14px 38px rgba(0, 0, 0, 0.48);
 }
 
@@ -1629,9 +1718,7 @@
   position: relative;
   border: 1px solid #8f6337;
   border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(126, 79, 40, 0.18), transparent 58%),
-    #302015;
+  background: linear-gradient(145deg, rgba(126, 79, 40, 0.18), transparent 58%), #302015;
   box-shadow:
     inset 0 0 0 2px #1a100a,
     inset 0 0 0 3px rgba(225, 177, 98, 0.18),
@@ -1664,9 +1751,7 @@
 
 .service-btn.primary {
   border-color: #99b25f;
-  background:
-    linear-gradient(180deg, #789d43, #4c7028 72%),
-    #557a2d;
+  background: linear-gradient(180deg, #789d43, #4c7028 72%), #557a2d;
   color: #fff5d8;
   text-shadow: 0 2px #294017;
   box-shadow:
@@ -1692,7 +1777,9 @@
   border: 2px solid #704927;
   background: #fff0ce;
   color: #2a190f;
-  box-shadow: 0 6px 0 #2a190f, 0 12px 28px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 6px 0 #2a190f,
+    0 12px 28px rgba(0, 0, 0, 0.4);
   font-weight: 700;
 }
 
@@ -1704,8 +1791,7 @@
 .floor-tickets-menu,
 .floor-tickets-toggle {
   border-color: var(--vk-border-strong);
-  background:
-    linear-gradient(180deg, rgba(95, 59, 32, 0.97), rgba(34, 21, 14, 0.98));
+  background: linear-gradient(180deg, rgba(95, 59, 32, 0.97), rgba(34, 21, 14, 0.98));
 }
 
 .floor-ticket,
@@ -1749,22 +1835,21 @@
   min-height: 78px;
   padding: 0.7rem 0.75rem;
   border-bottom: 2px solid #684522;
-  background:
-    linear-gradient(90deg, rgba(226, 179, 99, 0.12), transparent 70%),
-    #352218;
+  background: linear-gradient(90deg, rgba(226, 179, 99, 0.12), transparent 70%), #352218;
 }
 
 .compose-sheet-header::before {
-  content: "";
+  content: '';
   width: 52px;
   height: 52px;
   border: 2px solid #b48249;
   border-radius: 11px;
   background:
     radial-gradient(ellipse at center, #e8d5aa 0 27%, #795128 29% 34%, transparent 36%),
-    radial-gradient(circle at 50% 42%, #b44e27 0 9%, #6d8a39 10% 17%, #3a2616 18% 50%, transparent 52%),
-    #24150d;
-  box-shadow: inset 0 0 0 2px #130b07, 0 3px 0 #160c08;
+    radial-gradient(circle at 50% 42%, #b44e27 0 9%, #6d8a39 10% 17%, #3a2616 18% 50%, transparent 52%), #24150d;
+  box-shadow:
+    inset 0 0 0 2px #130b07,
+    0 3px 0 #160c08;
 }
 
 .compose-sheet-header > div {
@@ -1790,11 +1875,13 @@
 }
 
 .filter-axis-chip.selected,
-.filter-axis-chip[aria-pressed="true"] {
+.filter-axis-chip[aria-pressed='true'] {
   border-color: #ddb26a;
   background: linear-gradient(180deg, #e5bd77, #ba8243);
   color: #2a190f;
-  box-shadow: inset 0 1px rgba(255, 250, 226, 0.55), 0 2px 0 #3a2415;
+  box-shadow:
+    inset 0 1px rgba(255, 250, 226, 0.55),
+    0 2px 0 #3a2415;
 }
 
 .compose-search-input {
@@ -1807,9 +1894,7 @@
 
 .compose-order-panel {
   border-color: #694525;
-  background:
-    linear-gradient(145deg, rgba(119, 75, 39, 0.2), transparent 60%),
-    #2a1a11;
+  background: linear-gradient(145deg, rgba(119, 75, 39, 0.2), transparent 60%), #2a1a11;
 }
 
 .compose-request-bar,
@@ -1829,10 +1914,8 @@
 }
 
 .compose-pantry {
-  background:
-    linear-gradient(rgba(80, 49, 27, 0.09) 1px, transparent 1px),
-    #21140d;
-  background-size: 100% 72px;
+  background: linear-gradient(rgba(80, 49, 27, 0.09) 1px, transparent 1px), #21140d;
+  background-size: 100% 128px;
 }
 
 .compose-pantry .ingredient-grid {
@@ -1851,9 +1934,7 @@
   padding: 0.3rem 0.15rem;
   border: 1px solid #76502c;
   border-radius: 6px;
-  background:
-    linear-gradient(145deg, rgba(124, 77, 38, 0.22), transparent 58%),
-    #342116;
+  background: linear-gradient(145deg, rgba(124, 77, 38, 0.22), transparent 58%), #342116;
   color: #edd6aa;
   box-shadow:
     inset 0 0 0 1px #1b100a,
@@ -1877,18 +1958,36 @@
 
 .compose-pantry .ingredient-chip.selected {
   border-color: #b5d06f;
-  background:
-    linear-gradient(145deg, rgba(196, 225, 125, 0.22), transparent 58%),
-    #4d682f;
+  background: linear-gradient(145deg, rgba(196, 225, 125, 0.22), transparent 58%), #4d682f;
   color: #fff5d8;
-  box-shadow: inset 0 0 0 1px #253817, 0 2px 0 #17230d;
+  box-shadow:
+    inset 0 0 0 1px #253817,
+    0 2px 0 #17230d;
+}
+
+.compose-pantry .compose-ingredient-inspect {
+  border-color: #76502c;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #49301e, #2c1b11);
+  color: #edcf9b;
+  box-shadow:
+    inset 0 0 0 1px #1b100a,
+    0 2px 0 #120a06;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.compose-pantry .compose-ingredient-inspect:hover,
+.compose-pantry .compose-ingredient-inspect:focus-visible {
+  border-color: #ddb26a;
+  color: #fff5d8;
+  outline: 2px solid #ddb26a;
+  outline-offset: 1px;
 }
 
 .compose-sheet-footer {
   border-top: 2px solid #744b28;
-  background:
-    linear-gradient(180deg, rgba(109, 66, 34, 0.25), transparent 55%),
-    #2b1a11;
+  background: linear-gradient(180deg, rgba(109, 66, 34, 0.25), transparent 55%), #2b1a11;
 }
 
 .compose-flavor-mini-track {
@@ -1906,7 +2005,7 @@
 }
 
 @media (max-width: 899px) {
-  .game-surface:has([data-testid="compose-sheet"]) .floor-tickets-dock {
+  .game-surface:has([data-testid='compose-sheet']) .floor-tickets-dock {
     display: none;
   }
 
@@ -2053,7 +2152,7 @@
 
   .compose-flavor-mini {
     display: grid !important;
-    grid-template-columns: 1fr 1.35rem;
+    grid-template-columns: 1fr;
     grid-template-rows: auto 10px;
     gap: 0.15rem;
   }
@@ -2099,7 +2198,7 @@
   }
 
   .game-surface:has(.service-panel:not([hidden])) .game-hud,
-  .game-surface:has([data-testid="compose-sheet"]) .chrome-mount {
+  .game-surface:has([data-testid='compose-sheet']) .chrome-mount {
     margin-right: min(600px, 46vw);
   }
 
@@ -2153,7 +2252,7 @@
   }
 
   .compose-flavor-mini {
-    grid-template-columns: 2.8rem minmax(3.25rem, 1fr) 1.3rem;
+    grid-template-columns: 2.8rem minmax(3.25rem, 1fr);
   }
 
   .floor-tickets-dock {
@@ -2205,19 +2304,14 @@
     height: 40px;
   }
 
-  .compose-sheet-card:has(.compose-flavor-strip.expanded)
-    .compose-pantry
-    .ingredient-chip {
+  .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip {
     height: 46px;
     min-height: 46px;
     flex-direction: row;
     padding-inline: 0.35rem;
   }
 
-  .compose-sheet-card:has(.compose-flavor-strip.expanded)
-    .compose-pantry
-    .ingredient-chip
-    .food-icon {
+  .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip .food-icon {
     width: 28px !important;
     height: 28px !important;
     flex-basis: 28px;
