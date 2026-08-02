@@ -620,8 +620,13 @@ export function mountServiceDayUi(
             <p class="service-subtitle"><strong>${modifier?.name ?? 'Normal Day'}</strong></p>
             <p class="service-subtitle">${modifier?.description ?? 'No special effects today.'}</p>
             <p class="queue-badge">${state.activeDay.customers.length} customers expected</p>
+            ${
+              state.serviceStartError
+                ? `<p class="save-feedback save-feedback-error" data-testid="service-start-error" role="alert">Could not save service progress. ${escapeHtml(state.serviceStartError)} Please try again.</p>`
+                : ''
+            }
             <div class="service-actions">
-              <button type="button" class="service-btn primary" id="start-service-btn" data-testid="start-service-btn">Start Service</button>
+              <button type="button" class="service-btn primary" id="start-service-btn" data-testid="start-service-btn" ${state.serviceStartPending ? 'disabled aria-busy="true"' : ''}>${state.serviceStartPending ? 'Saving…' : 'Start Service'}</button>
             </div>
           </div>
         </div>
@@ -630,16 +635,13 @@ export function mountServiceDayUi(
       const startServiceButton = serviceOverlay.querySelector<HTMLButtonElement>(
         '#start-service-btn',
       );
-      let startServicePending = false;
       startServiceButton?.addEventListener('click', async () => {
-        if (startServicePending) return;
-        startServicePending = true;
+        if (startServiceButton.disabled) return;
         startServiceButton.disabled = true;
         try {
           await useGameStore.getState().dismissModifier();
         } catch {
-          startServicePending = false;
-          startServiceButton.disabled = false;
+          // The store restores a retryable modifier sheet with an alert.
         }
       });
       return;
@@ -1286,6 +1288,8 @@ export function mountServiceDayUi(
       state.screen !== prev.screen ||
       state.activeDay !== prev.activeDay ||
       state.modifierDismissed !== prev.modifierDismissed ||
+      state.serviceStartPending !== prev.serviceStartPending ||
+      state.serviceStartError !== prev.serviceStartError ||
       state.pendingReview !== prev.pendingReview ||
       state.daySummary !== prev.daySummary ||
       state.ceremony !== prev.ceremony ||

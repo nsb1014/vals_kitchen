@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { canonicalize } from '../persistence/serialize.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { canonicalize, SAVE_KEY } from '../persistence/serialize.ts';
 import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
 import { connectingDoorInterior } from '../domain/floor/starter-map.ts';
 import { createNewGameState } from '../domain/state/game-state.ts';
-import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
+import {
+  getGameStateSnapshot,
+  setGameSaveRepositoryForTests,
+  useGameStore,
+} from '../store/game-store.ts';
 import './test-helpers.ts';
 
 const storeAutosave = useGameStore.getState().autosave;
@@ -22,6 +26,54 @@ function createMemoryStorage(): StorageAdapter {
   };
 }
 
+function createControlledStorage(): {
+  storage: StorageAdapter;
+  deferNextPrimaryWrite: () => {
+    release: () => void;
+    fail: (error: Error) => void;
+    waitUntilStarted: () => Promise<void>;
+  };
+} {
+  const map = new Map<string, unknown>();
+  const writeGates: Array<{
+    promise: Promise<void>;
+    markStarted: () => void;
+  }> = [];
+
+  return {
+    storage: {
+      get: async <T>(key: string) => map.get(key) as T | undefined,
+      set: async (key: string, value: unknown) => {
+        if (key === SAVE_KEY) {
+          const gate = writeGates.shift();
+          if (gate) {
+            gate.markStarted();
+            await gate.promise;
+          }
+        }
+        map.set(key, value);
+      },
+      del: async (key: string) => {
+        map.delete(key);
+      },
+    },
+    deferNextPrimaryWrite() {
+      let release!: () => void;
+      let fail!: (error: Error) => void;
+      let markStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve;
+      });
+      const promise = new Promise<void>((resolve, reject) => {
+          release = resolve;
+          fail = reject;
+        });
+      writeGates.push({ promise, markStarted });
+      return { release, fail, waitUntilStarted: () => started };
+    },
+  };
+}
+
 function resetStore(seed: number): void {
   useGameStore.setState({
     ...createNewGameState(seed),
@@ -30,6 +82,8 @@ function resetStore(seed: number): void {
     hydrated: true,
     persistGranted: false,
     modifierDismissed: false,
+    serviceStartPending: false,
+    serviceStartError: null,
     pendingReview: null,
     daySummary: null,
     ceremony: null,
@@ -55,6 +109,8 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
     hydrated: true,
     persistGranted: false,
     modifierDismissed: loaded.activeDay?.serviceStarted ?? false,
+    serviceStartPending: false,
+    serviceStartError: null,
     pendingReview: null,
     daySummary: null,
     ceremony: null,
@@ -131,7 +187,12 @@ async function advanceFloorToCarryTicket(): Promise<{
 describe('floor autosave via store dispatch', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    setGameSaveRepositoryForTests(null);
     resetStore(7777);
+  });
+
+  afterEach(() => {
+    setGameSaveRepositoryForTests(null);
   });
 
   it('autosaves discrete movement and validated ticket selection for reload', async () => {
@@ -161,22 +222,16 @@ describe('floor autosave via store dispatch', () => {
     expect(useGameStore.getState().floorPlayerGrid).toEqual({ x: 2, y: 5 });
   });
 
-  it('persists starting service before its promise resolves and mirrors the domain state', async () => {
+  it('fences interleaved autosaves until a successful service start is durable', async () => {
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
     expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
     expect(useGameStore.getState().modifierDismissed).toBe(false);
 
-    let releaseSave!: () => void;
-    const deferredSave = new Promise<void>((resolve) => {
-      releaseSave = resolve;
-    });
-    let savedSnapshot: ReturnType<typeof getGameStateSnapshot> | null = null;
-    const autosaveSpy = vi
-      .spyOn(useGameStore.getState(), 'autosave')
-      .mockImplementation(async () => {
-        savedSnapshot = getGameStateSnapshot();
-        await deferredSave;
-      });
+    const controlled = createControlledStorage();
+    const repo = createSaveRepository(controlled.storage);
+    setGameSaveRepositoryForTests(repo);
+    await repo.save(getGameStateSnapshot());
+    const startWrite = controlled.deferNextPrimaryWrite();
 
     let settled = false;
     const startPromise = useGameStore
@@ -187,22 +242,24 @@ describe('floor autosave via store dispatch', () => {
       });
 
     expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
-    expect(useGameStore.getState().modifierDismissed).toBe(true);
-    expect(savedSnapshot!.activeDay!.serviceStarted).toBe(true);
-    expect(autosaveSpy).toHaveBeenCalledOnce();
+    expect(useGameStore.getState().modifierDismissed).toBe(false);
+    expect(useGameStore.getState().serviceStartPending).toBe(true);
+    useGameStore.getState().setFloorNavPosition({ x: 2, y: 5 });
+    const duplicateStart = useGameStore.getState().dismissModifier();
     await Promise.resolve();
     expect(settled).toBe(false);
 
-    releaseSave();
-    await startPromise;
+    startWrite.release();
+    await Promise.all([startPromise, duplicateStart]);
+    await useGameStore.getState().autosave();
     expect(settled).toBe(true);
-
-    const activeDayAfterStart = useGameStore.getState().activeDay;
-    useGameStore.setState({ modifierDismissed: false });
-    await useGameStore.getState().dismissModifier();
-    expect(useGameStore.getState().activeDay).toBe(activeDayAfterStart);
     expect(useGameStore.getState().modifierDismissed).toBe(true);
-    expect(autosaveSpy).toHaveBeenCalledOnce();
+    expect(useGameStore.getState().serviceStartPending).toBe(false);
+
+    const loaded = (await repo.load()).state!;
+    expect(loaded.activeDay!.serviceStarted).toBe(true);
+    expect(loaded.activeDay!.floor!.playerPosition).toEqual({ x: 2, y: 5 });
+    expect(canonicalize(loaded)).toBe(canonicalize(getGameStateSnapshot()));
   });
 
   it('derives the modifier sheet mirror from imported service progress', async () => {
@@ -226,23 +283,119 @@ describe('floor autosave via store dispatch', () => {
     expect(useGameStore.getState().modifierDismissed).toBe(true);
   });
 
-  it('rolls a failed service-start save back to a retryable setup sheet', async () => {
+  it('compensates a failed interleaved service start and leaves a durable retry path', async () => {
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
-    const autosaveSpy = vi
-      .spyOn(useGameStore.getState(), 'autosave')
-      .mockRejectedValueOnce(new Error('storage unavailable'))
-      .mockResolvedValueOnce(undefined);
+    const controlled = createControlledStorage();
+    const repo = createSaveRepository(controlled.storage);
+    setGameSaveRepositoryForTests(repo);
+    await repo.save(getGameStateSnapshot());
+    const startWrite = controlled.deferNextPrimaryWrite();
 
-    await expect(useGameStore.getState().dismissModifier()).rejects.toThrow(
+    const startPromise = useGameStore.getState().dismissModifier();
+    useGameStore.getState().setFloorNavPosition({ x: 3, y: 5 });
+    startWrite.fail(new Error('storage unavailable'));
+
+    await expect(startPromise).rejects.toThrow(
       'storage unavailable',
+    );
+    await useGameStore.getState().autosave();
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
+    expect(useGameStore.getState().modifierDismissed).toBe(false);
+    expect(useGameStore.getState().serviceStartPending).toBe(false);
+    expect(useGameStore.getState().serviceStartError).toBe(
+      'storage unavailable',
+    );
+    expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual({
+      x: 3,
+      y: 5,
+    });
+
+    const rolledBack = (await repo.load()).state!;
+    expect(rolledBack.activeDay!.serviceStarted).toBe(false);
+    expect(rolledBack.activeDay!.floor!.playerPosition).toEqual({ x: 3, y: 5 });
+    expect(canonicalize(rolledBack)).toBe(canonicalize(getGameStateSnapshot()));
+
+    await expect(useGameStore.getState().dismissModifier()).resolves.toBeUndefined();
+    await useGameStore.getState().autosave();
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+    expect(useGameStore.getState().serviceStartError).toBeNull();
+    expect((await repo.load()).state!.activeDay!.serviceStarted).toBe(true);
+  });
+
+  it('restores a retryable sheet when both service start and compensation writes fail', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const controlled = createControlledStorage();
+    const repo = createSaveRepository(controlled.storage);
+    setGameSaveRepositoryForTests(repo);
+    await repo.save(getGameStateSnapshot());
+    const startWrite = controlled.deferNextPrimaryWrite();
+    const compensationWrite = controlled.deferNextPrimaryWrite();
+
+    const startPromise = useGameStore.getState().dismissModifier();
+    await startWrite.waitUntilStarted();
+    startWrite.fail(new Error('start write failed'));
+    await compensationWrite.waitUntilStarted();
+    compensationWrite.fail(new Error('rollback write failed'));
+
+    await expect(startPromise).rejects.toThrow(
+      'start write failed Rollback save also failed: rollback write failed',
     );
     expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
     expect(useGameStore.getState().modifierDismissed).toBe(false);
+    expect(useGameStore.getState().serviceStartPending).toBe(false);
+    expect(useGameStore.getState().serviceStartError).toBe(
+      'start write failed Rollback save also failed: rollback write failed',
+    );
 
-    await expect(useGameStore.getState().dismissModifier()).resolves.toBeUndefined();
+    await expect(
+      useGameStore.getState().dismissModifier(),
+    ).resolves.toBeUndefined();
     expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
     expect(useGameStore.getState().modifierDismissed).toBe(true);
-    expect(autosaveSpy).toHaveBeenCalledTimes(2);
+    expect(useGameStore.getState().serviceStartPending).toBe(false);
+    expect(useGameStore.getState().serviceStartError).toBeNull();
+  });
+
+  it('does not let a stale failed start overwrite an imported same-seed day', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const controlled = createControlledStorage();
+    const repo = createSaveRepository(controlled.storage);
+    setGameSaveRepositoryForTests(repo);
+    await repo.save(getGameStateSnapshot());
+
+    const current = getGameStateSnapshot();
+    const importedState = structuredClone(current);
+    importedState.cash = 321;
+    importedState.activeDay = {
+      ...importedState.activeDay!,
+      serviceStarted: true,
+      floor: {
+        ...importedState.activeDay!.floor!,
+        playerPosition: { x: 4, y: 5 },
+      },
+    };
+    const importCode = exportSaveCode(importedState);
+    const staleStartWrite = controlled.deferNextPrimaryWrite();
+
+    const staleStart = useGameStore.getState().dismissModifier();
+    await staleStartWrite.waitUntilStarted();
+    const importPromise = useGameStore.getState().importSaveCode(importCode);
+
+    expect(useGameStore.getState().cash).toBe(321);
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+    expect(useGameStore.getState().serviceStartPending).toBe(false);
+    staleStartWrite.fail(new Error('stale start write failed'));
+
+    await expect(staleStart).rejects.toThrow('stale start write failed');
+    await expect(importPromise).resolves.toEqual({ ok: true });
+    expect(canonicalize(getGameStateSnapshot())).toBe(
+      canonicalize(importedState),
+    );
+
+    const reloaded = (await repo.load()).state!;
+    expect(canonicalize(reloaded)).toBe(canonicalize(importedState));
   });
 
   it.each([

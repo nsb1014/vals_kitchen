@@ -198,6 +198,10 @@ test.describe('service visual continuity', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    // Start Service is a durable async boundary. The bridge intentionally
+    // bypasses pointer blocking, so wait for the save curtain to finish before
+    // advancing the floor simulation behind it.
+    await expect(page.getByTestId('modifier-sheet')).toBeHidden();
 
     const checkpoint = await page.evaluate(async () => {
       const bridge = window.__E2E__!;
