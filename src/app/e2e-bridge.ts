@@ -9,8 +9,14 @@ import { getDomainContext, isRecipesContentReady, isScoringContentReady } from '
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
 import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
-import { guestServicePositions } from '../domain/floor/interact.ts';
+import {
+  guestServicePositions,
+  waitingGuestServicePositions,
+} from '../domain/floor/interact.ts';
 import type { SeatSlot } from '../domain/floor/types.ts';
+
+const E2E_WAITING_SERVICE_BLOCKER_PREFIX =
+  '__e2e_waiting_service_blocker__:';
 
 function reachableMainFloorCellBeside(seat: Pick<SeatSlot, 'x' | 'y'>): {
   x: number;
@@ -110,6 +116,12 @@ export interface E2eBridge {
   completeFloorServiceDay: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
+  requestSeatNextGuest: () => boolean;
+  getPendingSeatingIntentDebug: () => {
+    revision: number;
+    destination: { x: number; y: number };
+  } | null;
+  setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
@@ -227,6 +239,40 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       useGameStore.getState().setFloorNavPosition(pos);
     },
 
+    requestSeatNextGuest() {
+      return getRestaurantApp()?.requestSeatNextGuest() ?? false;
+    },
+
+    getPendingSeatingIntentDebug() {
+      return getRestaurantApp()?.getPendingSeatingIntentDebug() ?? null;
+    },
+
+    setWaitingGuestServiceBlockedForTest(blocked) {
+      const current = useGameStore.getState();
+      const withoutFixtures = current.placements.filter(
+        (placement) =>
+          !placement.id.startsWith(E2E_WAITING_SERVICE_BLOCKER_PREFIX),
+      );
+      if (!blocked) {
+        useGameStore.setState({ placements: withoutFixtures });
+        return;
+      }
+
+      const fixtures = waitingGuestServicePositions(
+        current.gridSize.w,
+        current.gridSize.h,
+      ).map((position, index) => ({
+        id: `${E2E_WAITING_SERVICE_BLOCKER_PREFIX}${index}`,
+        itemKey: 'prep_station',
+        x: position.x,
+        y: position.y,
+        rotation: 0,
+      }));
+      useGameStore.setState({
+        placements: [...withoutFixtures, ...fixtures],
+      });
+    },
+
     getActorSpriteMetrics() {
       const app = getRestaurantApp();
       if (!app) return [];
@@ -332,6 +378,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
       }
       if (useGameStore.getState().activeDay!.floor!.pool.some((guest) => guest.stage === 'waiting')) {
+        const state = useGameStore.getState();
+        state.setFloorNavPosition(
+          waitingGuestServicePositions(state.gridSize.w, state.gridSize.h)[0]!,
+        );
         await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
       }
       const seatingGuest = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating');
@@ -519,6 +569,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       }
 
       if (floor().pool.some((g) => g.stage === 'waiting')) {
+        const state = useGameStore.getState();
+        state.setFloorNavPosition(
+          waitingGuestServicePositions(state.gridSize.w, state.gridSize.h)[0]!,
+        );
         await dispatch({ type: 'FLOOR_SEAT_NEXT' });
       }
 

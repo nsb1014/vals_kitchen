@@ -1,6 +1,12 @@
 import type { Placement } from '../state/game-state.ts';
 import { EQUIPMENT_IDS } from '../types.ts';
 import type { FloorDay, FloorGuest } from './types.ts';
+import {
+  doorForGrid,
+  guestWaitingAlcove,
+  isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
+} from './starter-map.ts';
 
 export interface GridPoint {
   x: number;
@@ -123,6 +129,53 @@ export function guestServicePositions(seat: GridPoint): GridPoint[] {
     { x: seat.x, y: seat.y - 2 },
     { x: seat.x, y: seat.y + 2 },
   ];
+}
+
+/**
+ * Canonical places from which Val may greet the guest waiting beside the main
+ * entrance. Keep this geometry shared by the canvas affordance, selectors, and
+ * reducer so a remote UI request can never bypass the physical floor rule.
+ */
+export function waitingGuestServicePositions(
+  gridW: number,
+  gridH: number,
+): GridPoint[] {
+  const waiting = guestWaitingAlcove(doorForGrid(gridW, gridH));
+  const reserved = new Set(
+    mainGuestEntranceReservedCells(gridW, gridH).map(
+      (position) => `${position.x},${position.y}`,
+    ),
+  );
+  const candidates = [
+    { x: waiting.x - 1, y: waiting.y },
+    { x: waiting.x + 1, y: waiting.y },
+    { x: waiting.x, y: waiting.y - 1 },
+    { x: waiting.x, y: waiting.y + 1 },
+    { x: waiting.x - 1, y: waiting.y - 1 },
+    { x: waiting.x + 1, y: waiting.y - 1 },
+    { x: waiting.x - 1, y: waiting.y + 1 },
+    { x: waiting.x + 1, y: waiting.y + 1 },
+  ];
+
+  return candidates.filter(
+    (position) =>
+      position.x >= 0 &&
+      position.y >= 0 &&
+      position.x < gridW &&
+      position.y < gridH &&
+      !isPerimeterWallCell(position.x, position.y, gridW, gridH) &&
+      !reserved.has(`${position.x},${position.y}`),
+  );
+}
+
+export function playerNearWaitingGuest(
+  player: GridPoint,
+  gridW: number,
+  gridH: number,
+): boolean {
+  return waitingGuestServicePositions(gridW, gridH).some(
+    (position) => position.x === player.x && position.y === player.y,
+  );
 }
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {

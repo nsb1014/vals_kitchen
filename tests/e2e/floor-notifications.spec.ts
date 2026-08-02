@@ -5,6 +5,7 @@ import {
   assertScrollportAtLeastCta,
   gotoFreshGame,
 } from './helpers.ts';
+import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
 
 // Default Playwright project is Chromium (matches CI). Firefox is opt-in via
 // PLAYWRIGHT_BROWSERS. WebKit/iOS remains unverified in this environment.
@@ -35,6 +36,50 @@ async function dismissInitialNotice(page: Page): Promise<void> {
   }
   await expect(notice).toHaveCount(0);
 }
+
+test('uses distinct guidance while a guest arrives, waits, and walks to a table', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  const gridSize = await page.evaluate(async () => {
+    const bridge = window.__E2E__!;
+    const floor = () => bridge.getGameState().activeDay!.floor!;
+    for (const table of floor().tables) {
+      await bridge.dispatch({
+        type: 'FLOOR_SET_TABLE',
+        placementId: table.placementId,
+      });
+    }
+    return bridge.getGameState().gridSize;
+  });
+
+  const noticeBody = page.locator('.notice-banner-body');
+  const seatGuest = page.getByTestId('floor-seat-next');
+  await expect(noticeBody).toHaveText('The first guest is arriving…');
+  await expect(seatGuest).toBeDisabled();
+  await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
+
+  await page.evaluate(() =>
+    window.__E2E__!.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' }),
+  );
+  await expect(noticeBody).toHaveText('Seat the waiting guest.');
+  await expect(seatGuest).toBeEnabled();
+  await expect(seatGuest).toHaveClass(/\bprimary\b/);
+
+  const nearWaiting = waitingGuestServicePositions(
+    gridSize.w,
+    gridSize.h,
+  )[0]!;
+  await page.evaluate(async (position) => {
+    const bridge = window.__E2E__!;
+    bridge.setFloorNavPosition(position);
+    await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+  }, nearWaiting);
+  await expect(noticeBody).toHaveText('Guest is heading to the table…');
+  await expect(seatGuest).toBeDisabled();
+  await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
+});
 
 async function readFloorLayout(
   page: Page,

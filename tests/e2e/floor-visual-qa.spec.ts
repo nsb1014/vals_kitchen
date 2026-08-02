@@ -1,5 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 import { assertCanvasHasRenderedContent, assertNoDiagnostics, gotoFreshGame } from './helpers.ts';
+import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
+
+async function movePlayerToWaitingGuest(page: Page): Promise<void> {
+  const gridSize = await page.evaluate(
+    () => window.__E2E__!.getGameState().gridSize,
+  );
+  const position = waitingGuestServicePositions(gridSize.w, gridSize.h)[0]!;
+  await page.evaluate(
+    (next) => window.__E2E__!.setFloorNavPosition(next),
+    position,
+  );
+}
 
 async function tapGridCell(page: Page, x: number, y: number): Promise<void> {
   await page.evaluate(
@@ -48,6 +60,11 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     if (floor().pool.some((guest) => guest.stage === 'entering')) {
       await e2e.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     }
+  });
+  await movePlayerToWaitingGuest(page);
+  await page.evaluate(async () => {
+    const e2e = window.__E2E__!;
+    const floor = () => e2e.getGameState().activeDay!.floor!;
     // Seat every waiting party once.
     for (let i = 0; i < 4; i += 1) {
       if (!floor().pool.some((guest) => guest.stage === 'waiting')) break;

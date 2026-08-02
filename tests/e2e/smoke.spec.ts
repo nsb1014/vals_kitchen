@@ -19,6 +19,7 @@ import {
   trackContentRequests,
   waitForGameReady,
 } from './helpers.ts';
+import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
 
 test.describe('boot and rendering', () => {
   test('loads without errors, fetches boot content, and renders canvas', async ({ page }) => {
@@ -132,7 +133,14 @@ test.describe('persistence', () => {
     await page.locator('[data-testid="start-service-btn"]').click();
     await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
 
-    await page.evaluate(async () => {
+    const gridSize = await page.evaluate(
+      () => window.__E2E__!.getGameState().gridSize,
+    );
+    const waitingPosition = waitingGuestServicePositions(
+      gridSize.w,
+      gridSize.h,
+    )[0]!;
+    await page.evaluate(async (nearWaiting) => {
       const bridge = window.__E2E__!;
       const game = bridge.getGameState() as {
         activeDay?: {
@@ -153,6 +161,7 @@ test.describe('persistence', () => {
       if (floor.pool.some((guest) => guest.stage === 'entering')) {
         await bridge.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
       }
+      bridge.setFloorNavPosition(nearWaiting);
       await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
       const seating = bridge.getGameState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating');
       if (!seating) throw new Error('expected seating guest');
@@ -188,7 +197,7 @@ test.describe('persistence', () => {
         ticketId: ticket.id,
         ingredientIds: draftIds,
       });
-    });
+    }, waitingPosition);
 
     const before = await page.evaluate(() => window.__E2E__!.getState());
     expect(before.composeDraftIngredientIds.length).toBe(3);

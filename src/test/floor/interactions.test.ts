@@ -7,10 +7,12 @@ import {
   guestServicePositions,
   isAdjacent,
   isCookStationItemKey,
+  playerNearWaitingGuest,
   playerNearGuestSeat,
   playerNearPlacement,
   playerNearStation,
   seatedUnorderedCustomerIds,
+  waitingGuestServicePositions,
 } from '../../domain/floor/interact.ts';
 import {
   createFloorDayFromCustomers,
@@ -21,6 +23,12 @@ import { setTable } from '../../domain/floor/tables.ts';
 import type { Customer } from '../../domain/day/types.ts';
 import type { CustomerPreference } from '../../domain/types.ts';
 import type { FloorGuest } from '../../domain/floor/types.ts';
+import {
+  doorForGrid,
+  guestWaitingAlcove,
+  isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
+} from '../../domain/floor/starter-map.ts';
 
 const pref = (): CustomerPreference => ({
   primary: { UM: 'high' },
@@ -153,6 +161,49 @@ describe('floor interact helpers', () => {
         eatTicksRemaining: 0,
       };
       expect(playerNearGuestSeat({ x: 1, y: 1 }, guest)).toBe(false);
+    });
+  });
+
+  describe('waiting guest service geometry', () => {
+    it('uses only adjacent, walkable-looking cells outside the reserved entrance', () => {
+      const gridW = 10;
+      const gridH = 8;
+      const waiting = guestWaitingAlcove(doorForGrid(gridW, gridH));
+      const reserved = new Set(
+        mainGuestEntranceReservedCells(gridW, gridH).map(
+          ({ x, y }) => `${x},${y}`,
+        ),
+      );
+      const positions = waitingGuestServicePositions(gridW, gridH);
+
+      expect(positions.length).toBeGreaterThan(0);
+      for (const position of positions) {
+        expect(
+          Math.max(
+            Math.abs(position.x - waiting.x),
+            Math.abs(position.y - waiting.y),
+          ),
+        ).toBe(1);
+        expect(reserved.has(`${position.x},${position.y}`)).toBe(false);
+        expect(
+          isPerimeterWallCell(position.x, position.y, gridW, gridH),
+        ).toBe(false);
+        expect(playerNearWaitingGuest(position, gridW, gridH)).toBe(true);
+      }
+      expect(playerNearWaitingGuest({ x: 4, y: 5 }, gridW, gridH)).toBe(
+        false,
+      );
+      expect(playerNearWaitingGuest(waiting, gridW, gridH)).toBe(false);
+    });
+
+    it('keeps all candidates within narrow expanded floor bounds', () => {
+      const positions = waitingGuestServicePositions(7, 6);
+      expect(positions.length).toBeGreaterThan(0);
+      expect(
+        positions.every(
+          ({ x, y }) => x >= 0 && y >= 0 && x < 7 && y < 6,
+        ),
+      ).toBe(true);
     });
   });
 

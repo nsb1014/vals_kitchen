@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { getGameStateSnapshot, useGameStore } from '../../store/game-store.ts';
+import { waitingGuestServicePositions } from '../../domain/floor/interact.ts';
 import {
   selectCanOpenFloorCompose,
   selectComposeDraftIds,
   selectShowFloorCompose,
 } from '../../store/selectors/service-day.ts';
 import '../test-helpers.ts';
+
+function movePlayerToWaitingGuest(): void {
+  const state = useGameStore.getState();
+  useGameStore
+    .getState()
+    .setFloorNavPosition(
+      waitingGuestServicePositions(state.gridSize.w, state.gridSize.h)[0]!,
+    );
+}
 
 function resetStore(): void {
   useGameStore.setState({
@@ -46,6 +56,7 @@ async function advanceToCookableTicket(): Promise<void> {
     });
   }
   await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+  movePlayerToWaitingGuest();
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
   const seating = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
   await useGameStore.getState().dispatch({
@@ -81,6 +92,7 @@ describe('compose sheet UI lifecycle', () => {
       });
     }
     await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    movePlayerToWaitingGuest();
     await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
     const seating = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
     await useGameStore.getState().dispatch({

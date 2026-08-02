@@ -20,6 +20,7 @@ vi.mock('../../app/content-loader.ts', async (importOriginal) => {
 });
 
 import { createNewGameState } from '../../domain/state/game-state.ts';
+import { waitingGuestServicePositions } from '../../domain/floor/interact.ts';
 import { exportSaveCode } from '../../persistence/saveCode.ts';
 import {
   getGameplayInteractionGeneration,
@@ -82,6 +83,12 @@ async function advanceToCarriedTicket(): Promise<string> {
   await useGameStore.getState().dispatch({
     type: 'FLOOR_COMPLETE_ENTERING',
   });
+  const state = useGameStore.getState();
+  useGameStore
+    .getState()
+    .setFloorNavPosition(
+      waitingGuestServicePositions(state.gridSize.w, state.gridSize.h)[0]!,
+    );
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
 
   const seating = useGameStore

@@ -16,6 +16,7 @@ import {
   isCookStationItemKey,
   playerNearGuestSeat,
   playerNearPlacement,
+  waitingGuestServicePositions,
 } from '../domain/floor/interact.ts';
 import type { FloorDay } from '../domain/floor/types.ts';
 import type { Placement } from '../domain/state/game-state.ts';
@@ -44,13 +45,21 @@ import {
 import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
 import {
   selectCanOpenFloorCompose,
+  selectCanRequestSeatFloorGuest,
+  selectCanSeatFloorGuest,
   selectShowFloorInteractionCues,
 } from '../store/selectors/service-day.ts';
 import {
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
 } from '../store/selectors/floor-runtime.ts';
-import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
+import {
+  screenToGrid,
+  screenToWorld,
+  TILE_PX,
+  worldToScreen,
+} from './coordinates.ts';
+import { GUEST_DISPLAY_HEIGHT } from './world/actor-metrics.ts';
 import { tableServiceVisualStates } from './table-service-visual.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -87,6 +96,14 @@ export class RestaurantApp {
   private resizeFrame: number | null = null;
   private roomTransitionInFlight = false;
   private roomTransitionAnimation: Animation | null = null;
+  private pendingSeatingIntent: {
+    revision: number;
+    daySeed: number;
+    guestId: string;
+    interactionGeneration: number;
+    destination: GridPoint;
+  } | null = null;
+  private nextPendingSeatingIntentRevision = 1;
   private readonly deliveryAttempts = new PerKeyAsyncGuard();
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
@@ -264,7 +281,7 @@ export class RestaurantApp {
       store.setFloorToast('No clear route');
       return false;
     }
-    this.nav.setPath(path);
+    this.setNavigationPath(path);
     return true;
   }
 
@@ -283,8 +300,199 @@ export class RestaurantApp {
       store.setFloorToast('No clear route');
       return false;
     }
-    this.nav.setPath(path);
+    this.setNavigationPath(path);
     return true;
+  }
+
+  private pathToWaitingGuestServiceCell(
+    store: GameStore,
+    placements: Placement[],
+  ): GridPoint | null {
+    const blocked = this.playerBlockedCells(store, placements);
+    const destinations = waitingGuestServicePositions(
+      store.gridSize.w,
+      store.gridSize.h,
+    ).filter(
+      (position) =>
+        !this.nav.isMoving ||
+        position.x !== this.nav.position.x ||
+        position.y !== this.nav.position.y,
+    );
+    const path = findShortestPathToAny(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      destinations,
+    );
+    const destination = path?.[path.length - 1];
+    if (!path || !destination) {
+      store.setFloorToast('No clear route');
+      return null;
+    }
+    this.setNavigationPath(path, { preserveSeatingIntent: true });
+    return { ...destination };
+  }
+
+  private setNavigationPath(
+    path: GridPoint[],
+    opts: { preserveSeatingIntent?: boolean } = {},
+  ): void {
+    if (!opts.preserveSeatingIntent) this.cancelPendingSeatingIntent();
+    this.nav.setPath(path);
+  }
+
+  private snapNavigationTo(cell: GridPoint): void {
+    this.cancelPendingSeatingIntent();
+    this.nav.snapTo(cell);
+  }
+
+  private cancelPendingSeatingIntent(): void {
+    this.pendingSeatingIntent = null;
+  }
+
+  private pendingSeatingIntentIsValid(store: GameStore): boolean {
+    const intent = this.pendingSeatingIntent;
+    const floor = store.activeDay?.floor;
+    return Boolean(
+      intent &&
+        store.activeDay?.seed === intent.daySeed &&
+        getGameplayInteractionGeneration() === intent.interactionGeneration &&
+        floor?.pool.some(
+          (guest) => guest.id === intent.guestId && guest.stage === 'waiting',
+        ) &&
+        this.navMatchesSeatingDestination(intent.destination) &&
+        selectCanRequestSeatFloorGuest(store) &&
+        selectFloorRuntimeRunning(
+          store,
+          document.visibilityState === 'visible',
+        ),
+    );
+  }
+
+  private navMatchesSeatingDestination(destination: GridPoint): boolean {
+    if (this.nav.isMoving) {
+      const activeDestination = this.nav.destination;
+      return Boolean(
+        activeDestination &&
+          activeDestination.x === destination.x &&
+          activeDestination.y === destination.y,
+      );
+    }
+    const centerX = destination.x * TILE_PX + TILE_PX / 2;
+    const centerY = destination.y * TILE_PX + TILE_PX / 2;
+    return (
+      this.nav.position.x === destination.x &&
+      this.nav.position.y === destination.y &&
+      Math.abs(this.nav.worldX - centerX) <= 0.5 &&
+      Math.abs(this.nav.worldY - centerY) <= 0.5
+    );
+  }
+
+  private completePendingSeatingIntent(): void {
+    if (!this.pendingSeatingIntent || this.nav.isMoving) return;
+    const store = useGameStore.getState();
+    if (!this.pendingSeatingIntentIsValid(store)) {
+      this.cancelPendingSeatingIntent();
+      return;
+    }
+    if (!selectCanSeatFloorGuest(store)) {
+      // A completed route that did not reach a canonical service position must
+      // not leave a latent action that could fire after unrelated movement.
+      this.cancelPendingSeatingIntent();
+      return;
+    }
+
+    // Clear before dispatch: synchronous subscribers and repeated ticks can
+    // never apply this request twice.
+    this.cancelPendingSeatingIntent();
+    void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+  }
+
+  /**
+   * Route Val to the waiting guest, then seat exactly once on physical arrival.
+   * The floor HUD and direct actor tap intentionally share this entry point.
+   */
+  requestSeatNextGuest(): boolean {
+    const store = useGameStore.getState();
+    const floor = store.activeDay?.floor;
+    const waiting = floor?.pool.find((guest) => guest.stage === 'waiting');
+    if (
+      !floor ||
+      !waiting ||
+      !selectCanRequestSeatFloorGuest(store) ||
+      !selectFloorRuntimeRunning(
+        store,
+        document.visibilityState === 'visible',
+      )
+    ) {
+      return false;
+    }
+
+    const activeIntent = this.pendingSeatingIntent;
+    if (
+      activeIntent &&
+      activeIntent.daySeed === store.activeDay!.seed &&
+      activeIntent.guestId === waiting.id &&
+      activeIntent.interactionGeneration === getGameplayInteractionGeneration() &&
+      this.pendingSeatingIntentIsValid(store)
+    ) {
+      // Repeated taps on the same waiting guest/CTA retain the in-flight route.
+      // They neither restart movement nor enqueue a second reducer action.
+      return true;
+    }
+    this.cancelPendingSeatingIntent();
+
+    if (!this.nav.isMoving && selectCanSeatFloorGuest(store)) {
+      void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      return true;
+    }
+
+    const destination = this.pathToWaitingGuestServiceCell(
+      store,
+      this.roomPlacements(store),
+    );
+    if (!destination) return false;
+    this.pendingSeatingIntent = {
+      revision: this.nextPendingSeatingIntentRevision++,
+      daySeed: store.activeDay!.seed,
+      guestId: waiting.id,
+      interactionGeneration: getGameplayInteractionGeneration(),
+      destination,
+    };
+    return true;
+  }
+
+  /** Read-only test/debug view of the currently armed seating interaction. */
+  getPendingSeatingIntentDebug(): Readonly<{
+    revision: number;
+    destination: Readonly<GridPoint>;
+  }> | null {
+    const intent = this.pendingSeatingIntent;
+    if (!intent) return null;
+    return {
+      revision: intent.revision,
+      destination: { ...intent.destination },
+    };
+  }
+
+  private waitingGuestHitAtWorldPoint(
+    floor: FloorDay,
+    world: { x: number; y: number },
+  ): boolean {
+    const waiting = floor.pool.find((guest) => guest.stage === 'waiting');
+    if (!waiting) return false;
+    const top = this.actorLayer.getGuestWorldPosition(waiting.id);
+    const feet = this.actorLayer.getGuestFeetWorldPosition(waiting.id);
+    if (!top || !feet) return false;
+
+    const minHitWorld = 44 / Math.max(0.01, this.camera.state.scale);
+    const halfWidth = Math.max(GUEST_DISPLAY_HEIGHT / 2, minHitWorld / 2);
+    const verticalPadding = Math.max(4, (minHitWorld - GUEST_DISPLAY_HEIGHT) / 2);
+    return (
+      world.x >= feet.x - halfWidth &&
+      world.x <= feet.x + halfWidth &&
+      world.y >= top.y - verticalPadding &&
+      world.y <= feet.y + verticalPadding
+    );
   }
 
   private onTick = (): void => {
@@ -301,10 +509,15 @@ export class RestaurantApp {
       this.app.ticker.deltaMS,
     );
     this.floorRuntimeWasRunning = runtimeRunning;
-    if (!runtimeRunning || !floor || deltaMs === 0) return;
+    if (!runtimeRunning || !floor) {
+      this.cancelPendingSeatingIntent();
+      return;
+    }
+    if (deltaMs === 0) return;
 
     this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
+    this.completePendingSeatingIntent();
 
     // Room transition when the cook steps onto the connecting door.
     if (
@@ -435,7 +648,7 @@ export class RestaurantApp {
       next.gridSize.w,
       next.gridSize.h,
     );
-    this.nav.snapTo(spawn);
+    this.snapNavigationTo(spawn);
     this.syncFromStore(next);
     return true;
   }
@@ -444,6 +657,7 @@ export class RestaurantApp {
     changeRoom: () => boolean = () => this.enterConnectingRoomNow(),
   ): void {
     if (this.roomTransitionInFlight) return;
+    this.cancelPendingSeatingIntent();
     const canvas = this.app.canvas;
     if (
       typeof canvas.animate !== 'function' ||
@@ -513,17 +727,34 @@ export class RestaurantApp {
       ) ||
       store.composeSheetOpen
     ) {
+      this.cancelPendingSeatingIntent();
       return;
     }
     const floor = store.activeDay?.floor;
-    if (!floor) return;
+    if (!floor) {
+      this.cancelPendingSeatingIntent();
+      return;
+    }
 
     const rect = this.app.canvas.getBoundingClientRect();
     const sx = event.clientX - rect.left;
     const sy = event.clientY - rect.top;
+    const world = screenToWorld(sx, sy, this.camera.state);
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
     const tapCell = { x: gx, y: gy };
     const roomPlacements = this.roomPlacements(store);
+    if (
+      store.activeFloorRoom === 'main' &&
+      this.waitingGuestHitAtWorldPoint(floor, world)
+    ) {
+      this.requestSeatNextGuest();
+      return;
+    }
+
+    // Any other direct world command replaces a queued seating request. Check
+    // the waiting actor first so repeated taps preserve the active request.
+    this.cancelPendingSeatingIntent();
+
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
       const blocked = this.playerBlockedCells(store, roomPlacements);
       const path = findPath(
@@ -532,7 +763,7 @@ export class RestaurantApp {
         tapCell,
       );
       if (path) {
-        this.nav.setPath(path);
+        this.setNavigationPath(path);
       } else {
         store.setFloorToast('No clear route');
       }
@@ -665,7 +896,7 @@ export class RestaurantApp {
       tapCell,
     );
     if (path) {
-      this.nav.setPath(path);
+      this.setNavigationPath(path);
     }
   };
 
@@ -706,10 +937,12 @@ export class RestaurantApp {
       ) ||
       store.composeSheetOpen
     ) {
+      this.cancelPendingSeatingIntent();
       return;
     }
 
     event.preventDefault();
+    this.cancelPendingSeatingIntent();
     const targetCell = {
       x: this.nav.position.x + delta.x,
       y: this.nav.position.y + delta.y,
@@ -721,7 +954,7 @@ export class RestaurantApp {
       this.nav.position,
       targetCell,
     );
-    if (path) this.nav.setPath(path);
+    if (path) this.setNavigationPath(path);
   };
 
   private handleResize = (): void => {
@@ -759,10 +992,17 @@ export class RestaurantApp {
   private onVisibilityChange = (): void => {
     if (document.visibilityState !== 'visible') {
       this.floorRuntimeWasRunning = false;
+      this.cancelPendingSeatingIntent();
     }
   };
 
   syncFromStore(state: GameStore): void {
+    if (
+      this.pendingSeatingIntent &&
+      !this.pendingSeatingIntentIsValid(state)
+    ) {
+      this.cancelPendingSeatingIntent();
+    }
     const width = this.app.screen.width;
     const height = this.app.screen.height;
     const floor = state.activeDay?.floor;
@@ -773,7 +1013,7 @@ export class RestaurantApp {
     if (floor) {
       const daySeed = state.activeDay?.seed ?? null;
       if (daySeed !== this.lastFloorSeed) {
-        this.nav.snapTo(floor.playerPosition);
+        this.snapNavigationTo(floor.playerPosition);
         this.lastFloorSeed = daySeed;
         this.lastRoom = 'main';
         this.eatingTickAccumulatorMs = 0;
@@ -783,7 +1023,7 @@ export class RestaurantApp {
           state.gridSize.w,
           state.gridSize.h,
         );
-        this.nav.snapTo(state.floorPlayerGrid ?? spawn);
+        this.snapNavigationTo(state.floorPlayerGrid ?? spawn);
         this.lastRoom = state.activeFloorRoom;
       }
 
@@ -1018,6 +1258,7 @@ export class RestaurantApp {
 
   destroy(): void {
     if (!this.mounted) return;
+    this.cancelPendingSeatingIntent();
     this.roomTransitionAnimation?.cancel();
     this.roomTransitionAnimation = null;
     this.roomTransitionInFlight = false;

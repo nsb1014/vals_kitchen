@@ -141,7 +141,11 @@ export function mountServiceDayUi(
 
   const cleanupCelebrationBanner = mountCelebrationBanner(overlayMount);
   // Tickets dock must live under overlay-mount so it stacks above the cooking panel.
-  const cleanupFloorHud = mountFloorServiceHud(chromeMount, overlayMount);
+  const cleanupFloorHud = mountFloorServiceHud(
+    chromeMount,
+    overlayMount,
+    getRestaurantApp,
+  );
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;

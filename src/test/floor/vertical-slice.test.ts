@@ -6,7 +6,10 @@ import { createNewGameState } from '../../domain/state/game-state.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import type { SeatSlot } from '../../domain/floor/types.ts';
 import { findPath } from '../../domain/floor/pathfinding.ts';
-import { guestServicePositions } from '../../domain/floor/interact.ts';
+import {
+  guestServicePositions,
+  waitingGuestServicePositions,
+} from '../../domain/floor/interact.ts';
 import { walkBlockedCells } from '../../canvas/world/blocked-cells.ts';
 import { testContext } from '../test-helpers.ts';
 
@@ -38,6 +41,24 @@ function reachableAdjacentCell(state: GameState, seat: SeatSlot) {
   throw new Error('No reachable service position near guest seat');
 }
 
+function moveStatePlayerToWaitingGuest(state: GameState): GameState {
+  const playerPosition = waitingGuestServicePositions(
+    state.gridSize.w,
+    state.gridSize.h,
+  )[0]!;
+  return {
+    ...state,
+    activeDay: {
+      ...state.activeDay!,
+      floor: {
+        ...state.activeDay!.floor!,
+        playerPosition,
+        playerRoom: 'main',
+      },
+    },
+  };
+}
+
 describe('floor vertical slice loop', () => {
   it('set → seat → order → plate → deliver → eat → clear → complete', () => {
     let state = createNewGameState(99);
@@ -53,6 +74,7 @@ describe('floor vertical slice loop', () => {
     }
 
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
+    state = moveStatePlayerToWaitingGuest(state);
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seating = state.activeDay!.floor!.pool.find((g) => g.stage === 'seating');
     expect(seating).toBeTruthy();
@@ -165,6 +187,7 @@ describe('floor vertical slice loop', () => {
 
       const waiting = state.activeDay!.floor!.pool.some((g) => g.stage === 'waiting');
       if (waiting) {
+        state = moveStatePlayerToWaitingGuest(state);
         state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
       }
 

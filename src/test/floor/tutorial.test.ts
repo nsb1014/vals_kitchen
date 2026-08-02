@@ -5,6 +5,7 @@ import { setTable } from '../../domain/floor/tables.ts';
 import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
 import type { Customer } from '../../domain/day/types.ts';
 import type { FloorDay } from '../../domain/floor/types.ts';
+import { buildFloorTutorialNotice } from '../../ui/components/FloorServiceHud.ts';
 
 const customer: Customer = {
   id: 'c1',
@@ -34,6 +35,38 @@ describe('tutorial', () => {
 
     expect(nextTutorialStep(withSetTables(day), true)).toBe('wait_seat');
     expect(tutorialPrompt('wait_seat')).toMatch(/Seat the next guest/);
+  });
+
+  it('gives each physical seating phase a distinct notice identity and body', () => {
+    const entering = withSetTables(baseDay());
+    const waiting: FloorDay = {
+      ...entering,
+      pool: entering.pool.map((guest, index) =>
+        index === 0 ? { ...guest, stage: 'waiting' as const } : guest,
+      ),
+    };
+    const seating: FloorDay = {
+      ...waiting,
+      pool: waiting.pool.map((guest, index) =>
+        index === 0 ? { ...guest, stage: 'seating' as const } : guest,
+      ),
+    };
+    const prompt = tutorialPrompt('wait_seat');
+
+    expect(
+      buildFloorTutorialNotice(entering, 'wait_seat', prompt),
+    ).toEqual({
+      id: 'tutorial:wait_seat:entering',
+      body: 'The first guest is arriving…',
+    });
+    expect(buildFloorTutorialNotice(waiting, 'wait_seat', prompt)).toEqual({
+      id: 'tutorial:wait_seat:waiting',
+      body: 'Seat the waiting guest.',
+    });
+    expect(buildFloorTutorialNotice(seating, 'wait_seat', prompt)).toEqual({
+      id: 'tutorial:wait_seat:seating',
+      body: 'Guest is heading to the table…',
+    });
   });
 
   it('prompts take_orders when a guest is seated', () => {

@@ -12,6 +12,7 @@ import {
   completeGuestLeaving,
   completeGuestSeating,
   createFloorDayFromCustomers,
+  hasAvailableSeatForWaitingGuest,
   seatNextWaiting,
   tablesFromPlacements,
   takeOrdersForSeated,
@@ -26,6 +27,7 @@ import {
 } from './floor/tickets.ts';
 import { clearTable, setTable } from './floor/tables.ts';
 import { seatsFromPlacements } from './floor/seats.ts';
+import { playerNearWaitingGuest } from './floor/interact.ts';
 import {
   applyMoveItem,
   applyPlaceItem,
@@ -385,6 +387,17 @@ export function gameReducer(
 
     case 'FLOOR_SEAT_NEXT': {
       const floor = requireFloor(state);
+      if (
+        (floor.playerRoom ?? 'main') !== 'main' ||
+        !hasAvailableSeatForWaitingGuest(floor) ||
+        !playerNearWaitingGuest(
+          floor.playerPosition,
+          state.gridSize.w,
+          state.gridSize.h,
+        )
+      ) {
+        return { state, events };
+      }
       return { state: withFloor(state, seatNextWaiting(floor)), events };
     }
 

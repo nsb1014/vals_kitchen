@@ -1,7 +1,9 @@
 import {
   nextTutorialStep,
   tutorialPrompt,
+  type TutorialStepId,
 } from '../../domain/floor/tutorial.ts';
+import type { FloorDay } from '../../domain/floor/types.ts';
 import { getDomainContext } from '../../app/content-loader.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
@@ -10,10 +12,11 @@ import {
   selectAdjacentUnsetTablePlacementIds,
   selectCanClearFloorTable,
   selectCanCloseDay,
-  selectCanSeatFloorGuest,
+  selectCanRequestSeatFloorGuest,
   selectCanSetFloorTable,
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
+import type { RestaurantApp } from '../../canvas/RestaurantApp.ts';
 import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
 import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
@@ -45,10 +48,41 @@ const IDEAL_TAB_ID = 'floor-tickets-tab-ideal';
 const ORDER_PANEL_ID = 'floor-tickets-panel-order';
 const IDEAL_PANEL_ID = 'floor-tickets-panel-ideal';
 
+export function buildFloorTutorialNotice(
+  floor: FloorDay,
+  step: TutorialStepId | null,
+  prompt: string | null,
+): { id: string; body: string } | null {
+  if (!step) return null;
+  const entryStage = floor.pool.find(
+    (guest) =>
+      guest.stage === 'entering' ||
+      guest.stage === 'waiting' ||
+      guest.stage === 'seating',
+  )?.stage;
+  const body =
+    step === 'wait_seat' && entryStage === 'entering'
+      ? 'The first guest is arriving…'
+      : step === 'wait_seat' && entryStage === 'waiting'
+        ? 'Seat the waiting guest.'
+      : step === 'wait_seat' && entryStage === 'seating'
+        ? 'Guest is heading to the table…'
+        : prompt;
+  if (!body) return null;
+  return {
+    id:
+      step === 'wait_seat' && entryStage
+        ? `tutorial:${step}:${entryStage}`
+        : `tutorial:${step}`,
+    body,
+  };
+}
+
 export function mountFloorServiceHud(
   chromeMount: HTMLElement,
   /** Host above the cooking overlay stacking context (typically overlay-mount). */
   ticketsHost: HTMLElement,
+  getRestaurantApp: () => RestaurantApp | null,
 ): () => void {
   let ticketsMenuOpen = false;
   let ticketsPanelView: TicketsPanelView = 'order';
@@ -200,23 +234,36 @@ export function mountFloorServiceHud(
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
     const canCloseDay = selectCanCloseDay(state);
-    const canSeatGuest = selectCanSeatFloorGuest(state);
+    const canRequestSeatGuest = selectCanRequestSeatFloorGuest(state);
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const step = nextTutorialStep(floor, state.day === 1);
     const prompt = tutorialPrompt(step);
     const emphasize = (actionStep: typeof step, available: boolean) =>
       available && (step === null || step === actionStep);
     const emphasizeSetTable = emphasize('set_tables', canSetTable);
-    const emphasizeSeatGuest = emphasize('wait_seat', canSeatGuest);
+    const entryStage = floor.pool.find(
+      (guest) =>
+        guest.stage === 'entering' ||
+        guest.stage === 'waiting' ||
+        guest.stage === 'seating',
+    )?.stage;
+    const emphasizeSeatGuest =
+      entryStage === 'waiting' &&
+      emphasize('wait_seat', canRequestSeatGuest);
     const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
     const emphasizeClearTable = emphasize('clear', canClearTable);
     const emphasizeCloseDay = emphasize('close', canCloseDay);
+    const tutorialPresentation = buildFloorTutorialNotice(
+      floor,
+      step,
+      prompt,
+    );
     const tutorialNotice =
-      prompt && step
+      tutorialPresentation && step
         ? {
-            id: `tutorial:${step}`,
+            id: tutorialPresentation.id,
             source: 'tutorial' as const,
-            body: prompt,
+            body: tutorialPresentation.body,
             stepId: step,
           }
         : null;
@@ -287,7 +334,7 @@ export function mountFloorServiceHud(
         <div class="floor-actions-scroll">
           <div class="floor-actions">
             <button type="button" class="service-btn${emphasizeSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canRequestSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
             <button type="button" class="service-btn${emphasizeTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
             <button type="button" class="service-btn${emphasizeClearTable ? ' primary' : ''}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
             <button type="button" class="service-btn${emphasizeCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
@@ -394,7 +441,7 @@ export function mountFloorServiceHud(
     chromeMount
       .querySelector('#floor-seat-next')
       ?.addEventListener('click', () => {
-        void useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+        getRestaurantApp()?.requestSeatNextGuest();
       });
 
     chromeMount

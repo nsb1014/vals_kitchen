@@ -5,6 +5,7 @@ import {
   adjacentSeatedCustomerIds,
   adjacentUnsetTablePlacementIds,
   isCookStationItemKey,
+  playerNearWaitingGuest,
   playerNearPlacement,
   seatedUnorderedCustomerIds,
 } from '../../domain/floor/interact.ts';
@@ -139,9 +140,25 @@ export function selectCanTakeFloorOrders(state: GameStore): boolean {
   );
 }
 
-export function selectCanSeatFloorGuest(state: GameStore): boolean {
+/** A waiting guest can be requested from anywhere on the active main floor. */
+export function selectCanRequestSeatFloorGuest(state: GameStore): boolean {
   const floor = state.activeDay?.floor;
-  return floor ? hasAvailableSeatForWaitingGuest(floor) : false;
+  return Boolean(
+    floor &&
+      state.activeFloorRoom === 'main' &&
+      (floor.playerRoom ?? 'main') === 'main' &&
+      hasAvailableSeatForWaitingGuest(floor),
+  );
+}
+
+/** The reducer action is valid only once Val reaches the waiting guest. */
+export function selectCanSeatFloorGuest(state: GameStore): boolean {
+  const player = selectFloorPlayerGrid(state);
+  return Boolean(
+    player &&
+      selectCanRequestSeatFloorGuest(state) &&
+      playerNearWaitingGuest(player, state.gridSize.w, state.gridSize.h),
+  );
 }
 
 export function selectAdjacentUnsetTablePlacementIds(

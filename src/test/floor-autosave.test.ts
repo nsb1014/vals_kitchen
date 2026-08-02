@@ -3,6 +3,7 @@ import { canonicalize, SAVE_KEY } from '../persistence/serialize.ts';
 import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
 import { connectingDoorInterior } from '../domain/floor/starter-map.ts';
+import { waitingGuestServicePositions } from '../domain/floor/interact.ts';
 import { createNewGameState } from '../domain/state/game-state.ts';
 import {
   getGameStateSnapshot,
@@ -12,6 +13,15 @@ import {
 import './test-helpers.ts';
 
 const storeAutosave = useGameStore.getState().autosave;
+
+function movePlayerToWaitingGuest(): void {
+  const state = useGameStore.getState();
+  const position = waitingGuestServicePositions(
+    state.gridSize.w,
+    state.gridSize.h,
+  )[0]!;
+  useGameStore.getState().setFloorNavPosition(position);
+}
 
 function createMemoryStorage(): StorageAdapter {
   const map = new Map<string, unknown>();
@@ -138,6 +148,7 @@ async function advanceFloorToOpenTicket(): Promise<string> {
     });
   }
   await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+  movePlayerToWaitingGuest();
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
 
   const seating = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seating')!;
@@ -515,6 +526,7 @@ describe('floor autosave via store dispatch', () => {
       });
     }
     await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    movePlayerToWaitingGuest();
     await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
 
     const beforeSave = useGameStore.getState().activeDay!.floor!;

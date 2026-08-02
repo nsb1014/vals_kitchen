@@ -18,6 +18,25 @@ import {
 } from '../domain/floor/starter-map.ts';
 import { isFloorDayComplete } from '../domain/floor/sim.ts';
 import { keepsGuestServiceReachable } from '../domain/floor/service-access.ts';
+import { waitingGuestServicePositions } from '../domain/floor/interact.ts';
+
+function moveStatePlayerToWaitingGuest(state: GameState): GameState {
+  const playerPosition = waitingGuestServicePositions(
+    state.gridSize.w,
+    state.gridSize.h,
+  )[0]!;
+  return {
+    ...state,
+    activeDay: {
+      ...state.activeDay!,
+      floor: {
+        ...state.activeDay!.floor!,
+        playerPosition,
+        playerRoom: 'main',
+      },
+    },
+  };
+}
 
 function createMemoryStorage(): StorageAdapter {
   const map = new Map<string, unknown>();
@@ -228,6 +247,7 @@ describe('persistence', () => {
       state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext).state;
     }
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
+    state = moveStatePlayerToWaitingGuest(state);
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
     const seating = state.activeDay!.floor!.pool.find((g) => g.stage === 'seating')!;
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_SEATING', guestId: seating.id }, testContext).state;
@@ -294,6 +314,7 @@ describe('persistence', () => {
       state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext).state;
     }
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
+    state = moveStatePlayerToWaitingGuest(state);
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
 
     const seating = state.activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;

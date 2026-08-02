@@ -1,5 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoFreshGame } from './helpers.ts';
+import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
+
+async function movePlayerToWaitingGuest(page: Page): Promise<void> {
+  const gridSize = await page.evaluate(
+    () => window.__E2E__!.getGameState().gridSize,
+  );
+  await page.evaluate(
+    (position) => window.__E2E__!.setFloorNavPosition(position),
+    waitingGuestServicePositions(gridSize.w, gridSize.h)[0]!,
+  );
+}
 
 async function floorSnapshot(page: Page) {
   return page.evaluate(() => {
@@ -41,7 +52,7 @@ async function seatGuestThroughVisualArrival(page: Page): Promise<string> {
     )
     .toBe(true);
 
-  const guestId = await page.evaluate(async () => {
+  await page.evaluate(async () => {
     const bridge = window.__E2E__!;
     const floor = () => bridge.getGameState().activeDay!.floor!;
     for (const table of floor().tables) {
@@ -52,6 +63,11 @@ async function seatGuestThroughVisualArrival(page: Page): Promise<string> {
         });
       }
     }
+  });
+  await movePlayerToWaitingGuest(page);
+  const guestId = await page.evaluate(async () => {
+    const bridge = window.__E2E__!;
+    const floor = () => bridge.getGameState().activeDay!.floor!;
     await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
     const seating = floor().pool.find((guest) => guest.stage === 'seating');
     if (!seating?.seat) throw new Error('expected a guest walking to a seat');
