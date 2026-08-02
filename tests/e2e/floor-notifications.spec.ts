@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   applyPageZoom,
   assertFinalFloorActionActivatable,
@@ -35,6 +35,18 @@ async function dismissInitialNotice(page: Page): Promise<void> {
       .click();
   }
   await expect(notice).toHaveCount(0);
+}
+
+async function expectMinimumTargetSize(
+  target: Locator,
+  minimum = 44,
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const box = await target.boundingBox();
+      return box ? Math.min(box.width, box.height) : 0;
+    })
+    .toBeGreaterThanOrEqual(minimum);
 }
 
 test('uses distinct guidance while a guest arrives, waits, and walks to a table', async ({
@@ -179,17 +191,11 @@ for (const viewport of VIEWPORT_MATRIX) {
     await dismissInitialNotice(page);
     const ticketsToggle = page.getByTestId('floor-tickets-toggle');
     await expect(ticketsToggle).toBeVisible();
-    const ticketsToggleBox = await ticketsToggle.boundingBox();
-    expect(ticketsToggleBox).not.toBeNull();
-    expect(ticketsToggleBox!.width).toBeGreaterThanOrEqual(44);
-    expect(ticketsToggleBox!.height).toBeGreaterThanOrEqual(44);
+    await expectMinimumTargetSize(ticketsToggle);
     await ticketsToggle.click();
     const ticketsClose = page.getByTestId('floor-tickets-close');
     await expect(ticketsClose).toBeVisible();
-    const ticketsCloseBox = await ticketsClose.boundingBox();
-    expect(ticketsCloseBox).not.toBeNull();
-    expect(ticketsCloseBox!.width).toBeGreaterThanOrEqual(44);
-    expect(ticketsCloseBox!.height).toBeGreaterThanOrEqual(44);
+    await expectMinimumTargetSize(ticketsClose);
     await ticketsClose.click();
     const canvas = page.locator('#canvas-mount');
     const before = (await canvas.boundingBox())?.height;

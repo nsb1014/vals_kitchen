@@ -128,6 +128,7 @@ export interface E2eBridge {
   } | null;
   setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
   dismissPendingReview: () => void;
+  showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
   prepareFullTicketRemoteSeatedGuestFixture: () => Promise<{
@@ -374,6 +375,17 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     dismissPendingReview() {
       useGameStore.getState().dismissPendingReview();
+    },
+
+    showCeremonyOverPendingReview() {
+      const state = useGameStore.getState();
+      if (!state.pendingReview) {
+        throw new Error('ceremony fixture requires a pending review');
+      }
+      useGameStore.setState({
+        ceremony: 'prestige',
+        ceremonyPrestige: Math.max(1, state.prestige),
+      });
     },
 
     async prepareCookUiFixture() {

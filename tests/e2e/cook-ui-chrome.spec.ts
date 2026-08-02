@@ -67,6 +67,55 @@ async function expectExpandedFlavorFitsLandscape(page: Page): Promise<void> {
   await expectFooterInsideSheet(page);
 }
 
+async function expectServiceBackgroundIsolated(page: Page): Promise<void> {
+  for (const selector of [
+    '#status-mount',
+    '#canvas-mount',
+    '#chrome-mount',
+    '#bubble-mount',
+    '[data-testid="floor-tickets-dock"]',
+  ]) {
+    const target = page.locator(selector);
+    await expect(target).toHaveCount(1);
+    await expect(target).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      await target.evaluate((element) => (element as HTMLElement).inert),
+      `${selector} should be inert while a mandatory outcome owns focus`,
+    ).toBe(true);
+  }
+}
+
+async function outcomeGameplaySnapshot(page: Page) {
+  return page.evaluate(() => {
+    const state = window.__E2E__!.getGameState();
+    const floor = state.activeDay?.floor;
+    return {
+      day: state.day,
+      cash: state.cash,
+      rating: state.rating,
+      customers:
+        state.activeDay?.customers.map((customer) => customer.id) ?? [],
+      guests:
+        floor?.pool.map((guest) => ({
+          id: guest.id,
+          customerId: guest.customer.id,
+          stage: guest.stage,
+        })) ?? [],
+      tables:
+        floor?.tables.map((table) => ({
+          id: table.placementId,
+          state: table.state,
+        })) ?? [],
+      tickets:
+        floor?.tickets.map((ticket) => ({
+          id: ticket.id,
+          customerId: ticket.customerId,
+          status: ticket.status,
+        })) ?? [],
+    };
+  });
+}
+
 test.describe('cook sheet responsive chrome', () => {
   for (const width of [320, 360, 390]) {
     test(`holds fixed regions with the full pantry at ${width}px`, async ({
@@ -598,6 +647,104 @@ test.describe('service sheet tiers', () => {
     );
   });
 
+  test('makes review a mandatory focus scope and restores gameplay without mutation', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId('start-service-btn').click();
+    await page.locator('#canvas-mount').evaluate((element) => {
+      element.setAttribute('aria-hidden', 'false');
+    });
+    await serveCurrentCustomer(page);
+
+    const review = page.getByRole('dialog', { name: /^Review from .+/ });
+    const title = page.locator('#review-context-title');
+    const continueButton = page.getByTestId('continue-service-btn');
+    await expect(review).toHaveAttribute('data-testid', 'review-sheet');
+    await expect(review).toHaveAttribute('aria-modal', 'true');
+    await expect(title).toBeFocused();
+    await expectServiceBackgroundIsolated(page);
+
+    await page.keyboard.press('Tab');
+    await expect(continueButton).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(continueButton).toBeFocused();
+    await title.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(continueButton).toBeFocused();
+
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('food-atlas-ready')),
+    );
+    await expect(continueButton).toBeFocused();
+
+    const beforeEscape = await outcomeGameplaySnapshot(page);
+    await page.keyboard.press('Escape');
+    await expect(review).toBeVisible();
+    expect(await outcomeGameplaySnapshot(page)).toEqual(beforeEscape);
+
+    const transition = await page.evaluate(() => {
+      const snapshot = () => {
+        const state = window.__E2E__!.getGameState();
+        const floor = state.activeDay?.floor;
+        return {
+          day: state.day,
+          cash: state.cash,
+          rating: state.rating,
+          customers:
+            state.activeDay?.customers.map((customer) => customer.id) ?? [],
+          guests:
+            floor?.pool.map((guest) => ({
+              id: guest.id,
+              customerId: guest.customer.id,
+              stage: guest.stage,
+            })) ?? [],
+          tables:
+            floor?.tables.map((table) => ({
+              id: table.placementId,
+              state: table.state,
+            })) ?? [],
+          tickets:
+            floor?.tickets.map((ticket) => ({
+              id: ticket.id,
+              customerId: ticket.customerId,
+              status: ticket.status,
+            })) ?? [],
+        };
+      };
+      const before = snapshot();
+      const button = document.querySelector<HTMLButtonElement>(
+        '[data-testid="continue-service-btn"]',
+      );
+      if (!button) throw new Error('review Continue button missing');
+      button.click();
+      return { before, after: snapshot() };
+    });
+    expect(transition.after).toEqual(transition.before);
+    await expect(page.getByTestId('review-sheet')).toBeHidden();
+    await expect(page.getByTestId('restaurant-canvas')).toBeFocused();
+    await expect(page.locator('#canvas-mount')).toHaveAttribute(
+      'aria-hidden',
+      'false',
+    );
+    expect(
+      await page
+        .locator('#canvas-mount')
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
+    await expect(page.locator('#chrome-mount')).not.toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    expect(
+      await page
+        .locator('#chrome-mount')
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
+  });
+
   test('keeps the day summary compact with two dedicated next choices', async ({
     page,
   }) => {
@@ -643,6 +790,108 @@ test.describe('service sheet tiers', () => {
       'summary-edit-restaurant',
     );
     await expect(page.getByTestId('summary-back-floor')).toBeVisible();
+  });
+
+  test('makes summary a mandatory focus scope and focuses the next day action', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    await completeServiceDay(page, false);
+
+    const summary = page.getByRole('dialog', {
+      name: /Day \d+ Summary/,
+    });
+    const title = page.getByTestId('day-summary-title');
+    const continueButton = page.getByTestId('summary-back-floor');
+    const editButton = page.getByTestId('summary-edit-restaurant');
+    await expect(summary).toHaveAttribute('data-testid', 'day-summary-sheet');
+    await expect(summary).toHaveAttribute('aria-modal', 'true');
+    await expect(title).toBeFocused();
+    await expectServiceBackgroundIsolated(page);
+
+    await page.keyboard.press('Tab');
+    await expect(continueButton).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(editButton).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(continueButton).toBeFocused();
+    await title.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(editButton).toBeFocused();
+
+    const beforeEscape = await outcomeGameplaySnapshot(page);
+    await page.keyboard.press('Escape');
+    await expect(summary).toBeVisible();
+    expect(await outcomeGameplaySnapshot(page)).toEqual(beforeEscape);
+
+    await continueButton.click();
+    await expect(summary).toBeHidden();
+    await expect(page.getByTestId('open-day-btn')).toBeFocused();
+  });
+
+  test('keeps Shop and Edit focus after summary teardown finishes', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    await completeServiceDay(page, false);
+
+    await page.getByTestId('summary-edit-restaurant').click();
+    const ingredientsTab = page
+      .getByTestId('layout-catalog-sheet')
+      .getByRole('tab', { name: 'Ingredients' });
+    await expect(ingredientsTab).toBeFocused();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          queueMicrotask(() =>
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => setTimeout(resolve, 0)),
+            ),
+          );
+        }),
+    );
+    await expect(ingredientsTab).toBeFocused();
+  });
+
+  test('gives ceremony precedence over a pending review and restores review focus', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 720 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId('start-service-btn').click();
+    await serveCurrentCustomer(page);
+    await page.evaluate(() =>
+      window.__E2E__!.showCeremonyOverPendingReview(),
+    );
+
+    const ceremony = page.getByRole('dialog', {
+      name: 'Prestige Achieved!',
+    });
+    const ceremonyTitle = page.locator('#ceremony-title');
+    const ceremonyAction = page.locator('#dismiss-ceremony');
+    await expect(ceremony).toHaveAttribute('aria-modal', 'true');
+    await expect(ceremonyTitle).toBeFocused();
+    await expect(page.getByTestId('review-sheet')).toBeHidden();
+    await expectServiceBackgroundIsolated(page);
+
+    await page.keyboard.press('Tab');
+    await expect(ceremonyAction).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(ceremonyAction).toBeFocused();
+    await ceremonyTitle.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(ceremonyAction).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(ceremony).toBeVisible();
+    await expect(page.getByTestId('review-sheet')).toBeHidden();
+
+    await ceremonyAction.click();
+    await expect(ceremony).toBeHidden();
+    await expect(page.getByTestId('review-sheet')).toBeVisible();
+    await expect(page.locator('#review-context-title')).toBeFocused();
   });
 });
 

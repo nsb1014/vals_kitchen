@@ -155,7 +155,8 @@ export function mountServiceDayUi(
   let orderBubbleBlocksNotice = false;
   let composeWasVisible = false;
   let composeTicketId: string | null = null;
-  let composeFocusReturn: HTMLElement | null = null;
+  let blockingFocusReturn: HTMLElement | null = null;
+  let summaryFocusExit: 'open-day' | 'shop' | null = null;
   let composeFlavorDetailsOpen = false;
   let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
@@ -188,28 +189,53 @@ export function mountServiceDayUi(
     serviceOverlay.innerHTML = '';
   };
 
-  type ComposeFocusIdentity = {
+  type BlockingScopeKind =
+    | 'ceremony'
+    | 'day-summary'
+    | 'review'
+    | 'floor-compose';
+
+  type BlockingScope = {
+    kind: BlockingScopeKind;
+    key: string;
+    root: HTMLElement;
+    title: HTMLElement;
+  };
+
+  type FocusIdentity = {
     attributes: Array<{
       name:
         | 'data-testid'
         | 'data-compose-ingredient-id'
         | 'data-compose-axis'
+        | 'aria-label'
         | 'id';
       value: string;
     }>;
   };
 
-  const composeFocusableSelector =
+  const blockingFocusableSelector =
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-  const composeFocusIdentity = (): ComposeFocusIdentity | null => {
+  let activeBlockingScope: BlockingScope | null = null;
+  const isolationSnapshots = new Map<
+    HTMLElement,
+    {
+      ownedInert: boolean;
+      ownedAriaHidden: boolean;
+      previousAriaHidden: string | null;
+    }
+  >();
+
+  const focusIdentity = (scope: BlockingScope): FocusIdentity | null => {
     const active = document.activeElement;
-    if (!(active instanceof HTMLElement) || !serviceOverlay.contains(active))
+    if (!(active instanceof HTMLElement) || !scope.root.contains(active))
       return null;
     const attributes = [
       'data-testid',
       'data-compose-ingredient-id',
       'data-compose-axis',
+      'aria-label',
       'id',
     ] as const;
     const values = attributes.flatMap((name) => {
@@ -219,42 +245,92 @@ export function mountServiceDayUi(
     return values.length > 0 ? { attributes: values } : null;
   };
 
-  const focusComposeIdentity = (identity: ComposeFocusIdentity | null) => {
-    const panel = serviceOverlay.querySelector<HTMLElement>(
-      '[data-testid="compose-sheet"]',
-    );
-    if (!panel) return;
+  const focusIdentityInScope = (
+    scope: BlockingScope,
+    identity: FocusIdentity | null,
+  ) => {
     const match = identity
       ? Array.from(
-          panel.querySelectorAll<HTMLElement>(composeFocusableSelector),
+          scope.root.querySelectorAll<HTMLElement>('*'),
         ).find((element) =>
           identity.attributes.every(
             ({ name, value }) => element.getAttribute(name) === value,
           ),
         )
       : null;
-    const target =
-      match ??
-      panel.querySelector<HTMLElement>('[data-testid="compose-close"]') ??
-      panel.querySelector<HTMLElement>(composeFocusableSelector);
+    const target = match ?? scope.title;
     target?.focus({ preventScroll: true });
   };
 
-  const setComposeBackgroundIsolation = (active: boolean) => {
-    const floorTickets = overlayMount.querySelector<HTMLElement>(
-      '[data-testid="floor-tickets-dock"]',
-    );
-    for (const element of [
-      statusMount,
-      chromeMount,
-      bubbleMount,
-      canvasMount,
-      floorTickets,
-    ]) {
-      if (!element) continue;
-      element.inert = active;
-      if (active) element.setAttribute('aria-hidden', 'true');
-      else element.removeAttribute('aria-hidden');
+  const restoreIsolation = (element: HTMLElement) => {
+    const snapshot = isolationSnapshots.get(element);
+    if (!snapshot) return;
+    if (snapshot.ownedInert && element.inert) element.inert = false;
+    if (
+      snapshot.ownedAriaHidden &&
+      element.getAttribute('aria-hidden') === 'true'
+    ) {
+      if (snapshot.previousAriaHidden === null) {
+        element.removeAttribute('aria-hidden');
+      } else {
+        element.setAttribute('aria-hidden', snapshot.previousAriaHidden);
+      }
+    }
+    isolationSnapshots.delete(element);
+  };
+
+  const syncBackgroundIsolation = (scope: BlockingScope | null) => {
+    const targets = new Set<HTMLElement>();
+    if (scope) {
+      if (surface) {
+        for (const child of Array.from(surface.children)) {
+          if (child instanceof HTMLElement && child !== overlayMount) {
+            targets.add(child);
+          }
+        }
+      } else {
+        for (const element of [statusMount, chromeMount, canvasMount]) {
+          targets.add(element);
+        }
+      }
+      targets.add(bubbleMount);
+      for (const child of Array.from(overlayMount.children)) {
+        if (!(child instanceof HTMLElement)) continue;
+        if (child.id === 'flavor-inspector-modal') continue;
+        if (child.contains(scope.root)) continue;
+        targets.add(child);
+      }
+    }
+
+    for (const element of Array.from(isolationSnapshots.keys())) {
+      if (!targets.has(element) || !element.isConnected) {
+        restoreIsolation(element);
+      }
+    }
+    for (const element of targets) {
+      const existing = isolationSnapshots.get(element);
+      if (existing) {
+        if (!element.inert) {
+          existing.ownedInert = true;
+          element.inert = true;
+        }
+        if (element.getAttribute('aria-hidden') !== 'true') {
+          existing.ownedAriaHidden = true;
+          existing.previousAriaHidden = element.getAttribute('aria-hidden');
+          element.setAttribute('aria-hidden', 'true');
+        }
+        continue;
+      }
+      const previousAriaHidden = element.getAttribute('aria-hidden');
+      const ownedInert = !element.inert;
+      const ownedAriaHidden = previousAriaHidden !== 'true';
+      isolationSnapshots.set(element, {
+        ownedInert,
+        ownedAriaHidden,
+        previousAriaHidden,
+      });
+      if (ownedInert) element.inert = true;
+      if (ownedAriaHidden) element.setAttribute('aria-hidden', 'true');
     }
   };
 
@@ -263,16 +339,32 @@ export function mountServiceDayUi(
     composeFilters = emptyComposePantryFilters();
   };
 
-  const focusFloorAfterCompose = () => {
-    const target =
-      composeFocusReturn?.isConnected &&
-      !serviceOverlay.contains(composeFocusReturn)
-        ? composeFocusReturn
-        : (document.querySelector(
-            '[data-testid="restaurant-canvas"]',
-          ) as HTMLElement | null);
+  const isSafeFocusReturn = (
+    target: HTMLElement | null,
+  ): target is HTMLElement => {
+    if (
+      !target ||
+      target === document.body ||
+      target === document.documentElement ||
+      !target.isConnected ||
+      overlayMount.contains(target) ||
+      target.hidden ||
+      target.closest('[hidden], [inert], [aria-hidden="true"]')
+    ) {
+      return false;
+    }
+    const style = getComputedStyle(target);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  };
+
+  const focusAfterBlockingScope = () => {
+    const target = isSafeFocusReturn(blockingFocusReturn)
+      ? blockingFocusReturn
+      : (document.querySelector(
+          '[data-testid="restaurant-canvas"]',
+        ) as HTMLElement | null);
     target?.focus({ preventScroll: true });
-    composeFocusReturn = null;
+    blockingFocusReturn = null;
   };
 
   const renderHud = () => {
@@ -388,7 +480,7 @@ export function mountServiceDayUi(
   };
 
   const positionChatBubble = () => {
-    if (!serviceOverlay.hidden) {
+    if (!serviceOverlay.hidden || !ceremonyModal.hidden) {
       clearOrderBubble();
       return;
     }
@@ -430,7 +522,7 @@ export function mountServiceDayUi(
     }
     // A service sheet owns the current conversation. Keep older order speech
     // from competing visually with modifiers, cooking, reviews, or summaries.
-    if (!serviceOverlay.hidden) {
+    if (!serviceOverlay.hidden || !ceremonyModal.hidden) {
       clearOrderBubble();
       return;
     }
@@ -485,16 +577,16 @@ export function mountServiceDayUi(
     ceremonyModal.hidden = false;
     if (state.ceremony === 'prestige') {
       ceremonyModal.innerHTML = `
-        <div class="modal-card" role="dialog" aria-labelledby="ceremony-title">
-          <h2 id="ceremony-title">Prestige Achieved!</h2>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
+          <h2 id="ceremony-title" tabindex="-1">Prestige Achieved!</h2>
           <p>Your restaurant reached 6★. Prestige level is now <strong>P${state.ceremonyPrestige ?? state.prestige}</strong>. Rating resets to 3.0★ and all future payouts scale up permanently.</p>
           <button type="button" class="service-btn primary" id="dismiss-ceremony">Continue</button>
         </div>
       `;
     } else {
       ceremonyModal.innerHTML = `
-        <div class="modal-card" role="dialog" aria-labelledby="ceremony-title">
-          <h2 id="ceremony-title">Soft Reset</h2>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
+          <h2 id="ceremony-title" tabindex="-1">Soft Reset</h2>
           <p>Rating hit 0★. You keep prestige <strong>P${state.prestige}</strong> and your recipe book, but cash, ingredients (except starters), equipment, and layout were reset.</p>
           <button type="button" class="service-btn primary" id="dismiss-ceremony">Rebuild</button>
         </div>
@@ -514,21 +606,14 @@ export function mountServiceDayUi(
     const state = useGameStore.getState();
     const composeVisible = selectShowFloorCompose(state);
     const composeOpenedNow = composeVisible && !composeWasVisible;
-    const retainedComposeFocus =
-      composeVisible && !composeOpenedNow ? composeFocusIdentity() : null;
     const nextComposeTicketId = composeVisible
       ? (selectFloorComposeTicket(state)?.id ?? null)
       : null;
 
     if (composeOpenedNow) {
-      composeFocusReturn =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
       resetComposeUi();
     } else if (!composeVisible && composeWasVisible) {
       resetComposeUi();
-      queueMicrotask(focusFloorAfterCompose);
     } else if (
       composeVisible &&
       composeTicketId !== null &&
@@ -538,7 +623,11 @@ export function mountServiceDayUi(
     }
     composeWasVisible = composeVisible;
     composeTicketId = nextComposeTicketId;
-    setComposeBackgroundIsolation(composeVisible);
+
+    if (state.ceremony) {
+      hideServicePanel();
+      return;
+    }
 
     if (!selectShowServiceDayOverlay(state)) {
       hideServicePanel();
@@ -549,10 +638,10 @@ export function mountServiceDayUi(
       const masteryLine =
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full summary-service-panel" data-testid="day-summary-sheet">
+        <div class="service-panel sheet-tier-near-full summary-service-panel" data-testid="day-summary-sheet" role="dialog" aria-modal="true" aria-labelledby="day-summary-title">
           <div class="service-card sheet-card-layout">
             <header class="sheet-header">
-              <h2 class="service-title" data-testid="day-summary-title">Day ${state.daySummary.completedDay} Summary</h2>
+              <h2 id="day-summary-title" class="service-title" data-testid="day-summary-title" tabindex="-1">Day ${state.daySummary.completedDay} Summary</h2>
             </header>
             <div class="sheet-body-scroll">
             <p class="review-detail">${state.daySummary.earningsLine}</p>
@@ -575,6 +664,7 @@ export function mountServiceDayUi(
       serviceOverlay.querySelector('#summary-back-floor')?.addEventListener(
         'click',
         () => {
+          summaryFocusExit = 'open-day';
           const store = useGameStore.getState();
           store.dismissDaySummary();
           store.navigateTo('restaurant');
@@ -586,6 +676,7 @@ export function mountServiceDayUi(
         ?.addEventListener(
           'click',
           () => {
+            summaryFocusExit = 'shop';
             const store = useGameStore.getState();
             store.dismissDaySummary();
             store.navigateTo('restaurant');
@@ -689,13 +780,13 @@ export function mountServiceDayUi(
               <header class="sheet-header review-identity" data-testid="review-guest-identity">
                 ${renderGuestPortraitHtml(reviewGuest?.id ?? reviewCustomer.id)}
                 <span class="review-identity-copy">
-                  <span class="review-identity-kicker">Review from</span>
-                  <h2 class="service-title" data-testid="review-guest-name">${escapeHtml(reviewArchetype?.name ?? 'Customer')}</h2>
+                  <span id="review-context-title" class="review-identity-kicker" role="heading" aria-level="2" tabindex="-1">Review from</span>
+                  <h2 id="review-guest-title" class="service-title" data-testid="review-guest-name">${escapeHtml(reviewArchetype?.name ?? 'Customer')}</h2>
                 </span>
               </header>`
         : `
               <header class="sheet-header">
-                <h2 class="service-title">Customer Review</h2>
+                <h2 id="review-title" class="service-title" tabindex="-1">Customer Review</h2>
               </header>`;
       const ratingModifierLine = formatReviewModifierLine(
         selectActiveModifier(state),
@@ -708,7 +799,7 @@ export function mountServiceDayUi(
         selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-mid review-service-panel" data-testid="review-sheet">
+        <div class="service-panel sheet-tier-mid review-service-panel" data-testid="review-sheet" role="dialog" aria-modal="true" aria-labelledby="${reviewCustomer ? 'review-context-title review-guest-title' : 'review-title'}">
           <div class="service-card sheet-card-layout">
             ${reviewIdentity}
             <div class="sheet-body-scroll">
@@ -927,7 +1018,7 @@ export function mountServiceDayUi(
           <div class="service-card sheet-card-layout compose-sheet-card">
             <header class="sheet-header compose-sheet-header">
               <div>
-                <h2 id="compose-title" class="service-title">Plate Dish</h2>
+                <h2 id="compose-title" class="service-title" tabindex="-1">Plate Dish</h2>
                 ${ticketBadge}
               </div>
               <button type="button" class="icon-btn" data-testid="compose-close" aria-label="Close cooking sheet">✕</button>
@@ -1144,16 +1235,6 @@ export function mountServiceDayUi(
         },
         { once: true },
       );
-      queueMicrotask(() => {
-        const current = useGameStore.getState();
-        if (
-          !selectShowFloorCompose(current) ||
-          current.flavorInspectorIngredientId
-        ) {
-          return;
-        }
-        focusComposeIdentity(composeOpenedNow ? null : retainedComposeFocus);
-      });
       return;
     }
 
@@ -1251,38 +1332,185 @@ export function mountServiceDayUi(
     hideServicePanel();
   };
 
+  const currentBlockingScope = (): BlockingScope | null => {
+    const state = useGameStore.getState();
+    if (state.ceremony) {
+      const root = ceremonyModal.querySelector<HTMLElement>('[role="dialog"]');
+      const title = ceremonyModal.querySelector<HTMLElement>('#ceremony-title');
+      return root && title
+        ? { kind: 'ceremony', key: state.ceremony, root, title }
+        : null;
+    }
+    if (state.daySummary) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="day-summary-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>(
+        '#day-summary-title',
+      );
+      return root && title
+        ? {
+            kind: 'day-summary',
+            key: String(state.daySummary.completedDay),
+            root,
+            title,
+          }
+        : null;
+    }
+    if (state.pendingReview) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="review-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>(
+        '#review-context-title, #review-title',
+      );
+      return root && title
+        ? {
+            kind: 'review',
+            key: state.pendingReview.customerId ?? 'customer-review',
+            root,
+            title,
+          }
+        : null;
+    }
+    if (selectShowFloorCompose(state)) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="compose-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>('#compose-title');
+      return root && title
+        ? {
+            kind: 'floor-compose',
+            key: selectFloorComposeTicket(state)?.id ?? 'untargeted',
+            root,
+            title,
+          }
+        : null;
+    }
+    return null;
+  };
+
+  const sameBlockingScope = (
+    left: BlockingScope | null,
+    right: BlockingScope | null,
+  ) => left?.kind === right?.kind && left?.key === right?.key;
+
+  const queueScopeFocus = (
+    scope: BlockingScope,
+    identity: FocusIdentity | null,
+  ) => {
+    queueMicrotask(() => {
+      const current = activeBlockingScope;
+      if (
+        useGameStore.getState().flavorInspectorIngredientId ||
+        !current ||
+        !sameBlockingScope(current, scope) ||
+        !current.root.isConnected
+      ) {
+        return;
+      }
+      focusIdentityInScope(current, identity);
+    });
+  };
+
+  const initialScopeFocus = (scope: BlockingScope): FocusIdentity | null =>
+    scope.kind === 'floor-compose'
+      ? {
+          attributes: [
+            { name: 'data-testid', value: 'compose-close' },
+          ],
+        }
+      : null;
+
+  const reconcileBlockingScope = (
+    previous: BlockingScope | null,
+    next: BlockingScope | null,
+    retainedFocus: FocusIdentity | null,
+    focusBeforeRender: HTMLElement | null,
+  ) => {
+    syncBackgroundIsolation(next);
+    activeBlockingScope = next;
+
+    if (!previous && next) {
+      blockingFocusReturn = focusBeforeRender;
+      queueScopeFocus(next, initialScopeFocus(next));
+      return;
+    }
+    if (previous && next) {
+      if (!sameBlockingScope(previous, next)) {
+        queueScopeFocus(next, initialScopeFocus(next));
+      } else if (retainedFocus) {
+        queueScopeFocus(next, retainedFocus);
+      }
+      return;
+    }
+    if (!previous || next) return;
+
+    const summaryExit =
+      previous.kind === 'day-summary' ? summaryFocusExit : null;
+    summaryFocusExit = null;
+    if (summaryExit === 'shop') {
+      blockingFocusReturn = null;
+      return;
+    }
+    if (summaryExit === 'open-day') {
+      blockingFocusReturn = null;
+      queueMicrotask(() => {
+        serviceOverlay
+          .querySelector<HTMLElement>('[data-testid="open-day-btn"]')
+          ?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    queueMicrotask(focusAfterBlockingScope);
+  };
+
   const sync = () => {
+    const previousScope = activeBlockingScope;
+    const retainedFocus = previousScope
+      ? focusIdentity(previousScope)
+      : null;
+    const focusBeforeRender =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     renderHud();
     renderCeremony();
     renderServiceOverlay();
     renderChatBubble();
+    reconcileBlockingScope(
+      previousScope,
+      currentBlockingScope(),
+      retainedFocus,
+      focusBeforeRender,
+    );
   };
 
-  const onComposeKeydown = (event: KeyboardEvent) => {
+  const onBlockingScopeKeydown = (event: KeyboardEvent) => {
     const state = useGameStore.getState();
-    if (state.flavorInspectorIngredientId || !selectShowFloorCompose(state)) {
-      return;
-    }
+    if (state.flavorInspectorIngredientId) return;
+    const scope = activeBlockingScope;
+    if (!scope) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      state.closeComposeSheet();
+      if (scope.kind === 'floor-compose') {
+        state.closeComposeSheet();
+      } else {
+        event.stopPropagation();
+      }
       return;
     }
     if (event.key !== 'Tab') return;
-    const panel = serviceOverlay.querySelector<HTMLElement>(
-      '[data-testid="compose-sheet"]',
-    );
-    if (!panel) return;
     const focusable = Array.from(
-      panel.querySelectorAll<HTMLElement>(composeFocusableSelector),
+      scope.root.querySelectorAll<HTMLElement>(blockingFocusableSelector),
     ).filter((element) => element.getClientRects().length > 0);
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const active = document.activeElement;
-    if (!panel.contains(active)) {
+    if (active === scope.title || !scope.root.contains(active)) {
       event.preventDefault();
-      first.focus();
+      (event.shiftKey ? last : first).focus();
     } else if (event.shiftKey && active === first) {
       event.preventDefault();
       last.focus();
@@ -1293,6 +1521,13 @@ export function mountServiceDayUi(
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
+    if (
+      prev.flavorInspectorIngredientId &&
+      !state.flavorInspectorIngredientId &&
+      activeBlockingScope?.kind === 'ceremony'
+    ) {
+      queueScopeFocus(activeBlockingScope, null);
+    }
     const previousTicketIds = new Set(
       prev.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
     );
@@ -1341,7 +1576,7 @@ export function mountServiceDayUi(
   });
 
   window.addEventListener('resize', positionChatBubble);
-  document.addEventListener('keydown', onComposeKeydown);
+  document.addEventListener('keydown', onBlockingScopeKeydown, true);
   const onFoodAtlas = () => sync();
   window.addEventListener('food-atlas-ready', onFoodAtlas);
   sync();
@@ -1353,10 +1588,10 @@ export function mountServiceDayUi(
     cleanupCelebrationBanner();
     cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
-    document.removeEventListener('keydown', onComposeKeydown);
+    document.removeEventListener('keydown', onBlockingScopeKeydown, true);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
     clearOrderBubble();
-    setComposeBackgroundIsolation(false);
+    syncBackgroundIsolation(null);
     bubbleEl?.remove();
     statusMount.innerHTML = '';
     overlayMount.innerHTML = '';
