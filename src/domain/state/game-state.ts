@@ -65,6 +65,7 @@ export interface GameState {
   kitchenAnnexOwned: boolean;
   ingredientUnlockIndex: number;
   activeDay: ActiveDay | null;
+  /** Legacy serial-service draft. Floor service stores drafts on open tickets. */
   composeDraftIngredientIds?: string[];
   stats: GameStats;
 }
@@ -214,8 +215,81 @@ export function createNewGameState(seed?: number): GameState {
 export function normalizeGameState(raw: GameState): GameState {
   const migrated = migrateAnnexWidthToBackRoom(raw);
   const placements = migrated.placements;
+  const unlockedIngredientIds = raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS];
   const tableCount =
     raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
+  let activeDay = raw.activeDay ?? null;
+  let composeDraftIngredientIds = raw.composeDraftIngredientIds;
+
+  if (activeDay?.floor) {
+    const rawFloor = activeDay.floor;
+    let tickets = rawFloor.tickets.map((ticket) => ({
+      ...ticket,
+      ingredientIds: Array.isArray(ticket.ingredientIds)
+        ? [...ticket.ingredientIds]
+        : [],
+    }));
+    const rawSelectedTicketId = rawFloor.selectedTicketId ?? null;
+    const rawCarriedTicketId = rawFloor.carriedTicketId ?? null;
+    const carriedTicketId = tickets.some(
+      (ticket) =>
+        ticket.id === rawCarriedTicketId && ticket.status === 'plated',
+    )
+      ? rawCarriedTicketId
+      : null;
+    const preferredOpenTicket =
+      tickets.find(
+        (ticket) =>
+          ticket.id === rawSelectedTicketId && ticket.status === 'open',
+      ) ?? tickets.find((ticket) => ticket.status === 'open');
+    const selectedTicketId = carriedTicketId
+      ? null
+      : (preferredOpenTicket?.id ?? null);
+
+    // Floor saves made before ticket-owned drafts kept the current recipe on
+    // GameState. Move it once to the effective open ticket, preserving order
+    // while dropping duplicates, locked/unknown ids, and anything after six.
+    if (Array.isArray(composeDraftIngredientIds)) {
+      const target = preferredOpenTicket;
+      if (target) {
+        // Persistence can validate against the save's unlocked allowlist. The
+        // content-aware draft/plate reducer checks catalog membership again
+        // before accepting any later interaction.
+        const unlocked = new Set(unlockedIngredientIds);
+        const seen = new Set<string>();
+        const migratedDraft: string[] = [];
+        for (const ingredientId of composeDraftIngredientIds) {
+          if (
+            typeof ingredientId !== 'string' ||
+            !unlocked.has(ingredientId) ||
+            seen.has(ingredientId)
+          ) {
+            continue;
+          }
+          seen.add(ingredientId);
+          migratedDraft.push(ingredientId);
+          if (migratedDraft.length === MAX_DISH_INGREDIENTS) break;
+        }
+        tickets = tickets.map((ticket) =>
+          ticket.id === target.id
+            ? { ...ticket, ingredientIds: migratedDraft }
+            : ticket,
+        );
+      }
+    }
+
+    activeDay = {
+      ...activeDay,
+      floor: {
+        ...rawFloor,
+        tickets,
+        carriedTicketId,
+        selectedTicketId,
+      },
+    };
+    composeDraftIngredientIds = undefined;
+  }
+
   return {
     saveVersion: CURRENT_SAVE_VERSION,
     globalRunSeed: raw.globalRunSeed ?? 1,
@@ -223,7 +297,7 @@ export function normalizeGameState(raw: GameState): GameState {
     cash: raw.cash ?? STARTING_CASH,
     prestige: raw.prestige ?? 0,
     rating: raw.rating ?? 3,
-    unlockedIngredientIds: raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS],
+    unlockedIngredientIds,
     purchasedEquipmentIds: raw.purchasedEquipmentIds ?? [...STARTING_EQUIPMENT_IDS],
     discoveredRecipeIds: raw.discoveredRecipeIds ?? [],
     recipeMastery: raw.recipeMastery ?? {},
@@ -240,8 +314,8 @@ export function normalizeGameState(raw: GameState): GameState {
     gridExpansionCount: raw.gridExpansionCount ?? 0,
     kitchenAnnexOwned: raw.kitchenAnnexOwned ?? false,
     ingredientUnlockIndex: raw.ingredientUnlockIndex ?? 0,
-    activeDay: raw.activeDay ?? null,
-    composeDraftIngredientIds: raw.composeDraftIngredientIds,
+    activeDay,
+    composeDraftIngredientIds,
     stats: raw.stats ?? {
       totalCustomersServed: 0,
       totalEarnings: 0,

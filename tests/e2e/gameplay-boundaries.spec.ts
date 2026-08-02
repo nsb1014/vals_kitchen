@@ -171,11 +171,22 @@ test.describe('canonical gameplay boundaries', () => {
       });
       const ticket = floor().tickets.find((candidate) => candidate.customerId === customerId);
       if (!ticket) throw new Error('expected an order ticket');
-      await bridge.dispatch({
-        type: 'FLOOR_PLATE',
-        ticketId: ticket.id,
-        ingredientIds: bridge.getGameState().unlockedIngredientIds.slice(0, 3),
+      const state = bridge.getGameState();
+      const station = state.placements.find((placement) =>
+        state.purchasedEquipmentIds.includes(placement.itemKey),
+      );
+      if (!station) throw new Error('expected an owned cooking station');
+      bridge.setFloorNavPosition({
+        x: station.x > 0 ? station.x - 1 : station.x + 1,
+        y: station.y,
       });
+      await bridge.dispatch({
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: state.unlockedIngredientIds.slice(0, 3),
+      });
+      await bridge.dispatch({ type: 'FLOOR_PLATE', ticketId: ticket.id });
+      bridge.setFloorNavPosition(guest.seat);
       await bridge.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
       return placementId;
     }, guestId);

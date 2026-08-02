@@ -18,7 +18,12 @@ import {
   tickEating,
   updateGuestMotionPosition,
 } from './floor/sim.ts';
-import { plateTicket } from './floor/tickets.ts';
+import {
+  plateTicket,
+  resolveFloorComposeTicket,
+  selectFloorTicket,
+  setFloorTicketDraft,
+} from './floor/tickets.ts';
 import { clearTable, setTable } from './floor/tables.ts';
 import { seatsFromPlacements } from './floor/seats.ts';
 import {
@@ -31,7 +36,11 @@ import {
 } from './economy/purchases.ts';
 import { servicePlayerSpawn, type FloorRoomId } from './floor/starter-map.ts';
 import type { GameState, Placement } from './state/game-state.ts';
-import { cloneGameState } from './state/game-state.ts';
+import {
+  cloneGameState,
+  MAX_DISH_INGREDIENTS,
+  MIN_DISH_INGREDIENTS,
+} from './state/game-state.ts';
 import { applyAchievementUnlocks } from './achievements/evaluate.ts';
 import type { AchievementId } from './achievements/catalog.ts';
 
@@ -65,7 +74,9 @@ export type GameAction =
       position: { x: number; y: number };
     }
   | { type: 'FLOOR_TAKE_ORDERS'; customerIds: string[] }
-  | { type: 'FLOOR_PLATE'; ticketId: string; ingredientIds: string[] }
+  | { type: 'FLOOR_SELECT_TICKET'; ticketId: string | null }
+  | { type: 'FLOOR_SET_TICKET_DRAFT'; ticketId: string; ingredientIds: string[] }
+  | { type: 'FLOOR_PLATE'; ticketId: string }
   | { type: 'FLOOR_DELIVER'; ticketId: string }
   | { type: 'FLOOR_TICK_EATING' };
 
@@ -113,6 +124,32 @@ function withFloor(state: GameState, floor: NonNullable<GameState['activeDay']>[
   const next = cloneGameState(state);
   next.activeDay = { ...next.activeDay!, floor };
   return next;
+}
+
+function assertValidFloorIngredients(
+  state: GameState,
+  ingredientIds: string[],
+  ctx: DomainContext,
+  minimum: number,
+): void {
+  if (
+    ingredientIds.length < minimum ||
+    ingredientIds.length > MAX_DISH_INGREDIENTS
+  ) {
+    throw new Error(`Dish requires ${minimum}-${MAX_DISH_INGREDIENTS} ingredients`);
+  }
+  if (new Set(ingredientIds).size !== ingredientIds.length) {
+    throw new Error('Dish ingredients must be unique');
+  }
+  const unlocked = new Set(state.unlockedIngredientIds);
+  for (const ingredientId of ingredientIds) {
+    if (!ctx.ingredientsById.has(ingredientId)) {
+      throw new Error(`Unknown ingredient: ${ingredientId}`);
+    }
+    if (!unlocked.has(ingredientId)) {
+      throw new Error(`Ingredient is locked: ${ingredientId}`);
+    }
+  }
 }
 
 function serveEvents(
@@ -229,6 +266,9 @@ export function gameReducer(
     }
 
     case 'SET_COMPOSE_DRAFT': {
+      if (state.activeDay?.floor) {
+        throw new Error('Floor drafts must be saved on their selected ticket');
+      }
       const next = cloneGameState(state);
       next.composeDraftIngredientIds = [...action.ingredientIds];
       return { state: next, events };
@@ -363,16 +403,40 @@ export function gameReducer(
       return { state: withFloor(state, takeOrdersForSeated(floor, action.customerIds)), events };
     }
 
+    case 'FLOOR_SELECT_TICKET': {
+      const floor = requireFloor(state);
+      return {
+        state: withFloor(state, selectFloorTicket(floor, action.ticketId)),
+        events,
+      };
+    }
+
+    case 'FLOOR_SET_TICKET_DRAFT': {
+      const floor = requireFloor(state);
+      assertValidFloorIngredients(state, action.ingredientIds, ctx, 0);
+      return {
+        state: withFloor(
+          state,
+          setFloorTicketDraft(floor, action.ticketId, action.ingredientIds),
+        ),
+        events,
+      };
+    }
+
     case 'FLOOR_PLATE': {
       const floor = requireFloor(state);
-      const plated = plateTicket(floor.tickets, action.ticketId, action.ingredientIds);
+      const ticket = resolveFloorComposeTicket(floor);
+      if (!ticket || ticket.id !== action.ticketId) {
+        throw new Error(`Ticket is not selected for plating: ${action.ticketId}`);
+      }
+      assertValidFloorIngredients(
+        state,
+        ticket.ingredientIds,
+        ctx,
+        MIN_DISH_INGREDIENTS,
+      );
       return {
-        state: withFloor(state, {
-          ...floor,
-          tickets: plated.tickets,
-          carriedTicketId: plated.carriedTicketId,
-          selectedTicketId: null,
-        }),
+        state: withFloor(state, plateTicket(floor, action.ticketId)),
         events,
       };
     }

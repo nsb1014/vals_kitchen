@@ -78,8 +78,29 @@ describe('phase 6 store integrations', () => {
     useGameStore.getState().dismissModifier();
 
     const draft = ['flour', 'salt', 'butter'];
+    const activeDay = useGameStore.getState().activeDay!;
+    const customer = activeDay.customers[0]!;
+    const ticketId = `ticket_${customer.id}`;
+    useGameStore.setState({
+      activeDay: {
+        ...activeDay,
+        floor: {
+          ...activeDay.floor!,
+          tickets: [
+            {
+              id: ticketId,
+              customerId: customer.id,
+              ingredientIds: [],
+              status: 'open',
+            },
+          ],
+          selectedTicketId: ticketId,
+        },
+      },
+    });
     await useGameStore.getState().dispatch({
-      type: 'SET_COMPOSE_DRAFT',
+      type: 'FLOOR_SET_TICKET_DRAFT',
+      ticketId,
       ingredientIds: draft,
     });
 

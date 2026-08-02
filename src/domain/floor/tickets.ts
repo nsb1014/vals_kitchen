@@ -1,4 +1,4 @@
-import type { FloorTicket } from './types.ts';
+import type { FloorDay, FloorTicket } from './types.ts';
 
 export const MAX_TICKETS = 4;
 /** @deprecated Use {@link MAX_TICKETS} */
@@ -24,21 +24,118 @@ export function enqueueTickets(
   return [...tickets, ...newTickets];
 }
 
-export function plateTicket(
-  tickets: FloorTicket[],
+type TicketResolutionFloor = Pick<
+  FloorDay,
+  'tickets' | 'carriedTicketId' | 'selectedTicketId'
+>;
+
+/**
+ * Resolve the one ticket that owns the current service interaction.
+ *
+ * A real carried dish always wins. Otherwise a valid open selection wins,
+ * followed by the oldest open ticket. Stale persisted ids are deliberately
+ * ignored so a resumed day cannot strand the player.
+ */
+export function resolveFloorTicket(floor: TicketResolutionFloor): FloorTicket | null {
+  if (floor.carriedTicketId) {
+    const carried = floor.tickets.find(
+      (ticket) =>
+        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+    );
+    if (carried) return carried;
+  }
+
+  if (floor.selectedTicketId) {
+    const selected = floor.tickets.find(
+      (ticket) =>
+        ticket.id === floor.selectedTicketId && ticket.status === 'open',
+    );
+    if (selected) return selected;
+  }
+
+  return floor.tickets.find((ticket) => ticket.status === 'open') ?? null;
+}
+
+/** Resolve the open ticket whose saved draft may be edited or plated. */
+export function resolveFloorComposeTicket(
+  floor: TicketResolutionFloor,
+): FloorTicket | null {
+  const resolved = resolveFloorTicket(floor);
+  return resolved?.status === 'open' ? resolved : null;
+}
+
+function hasValidCarriedTicket(floor: TicketResolutionFloor): boolean {
+  return floor.tickets.some(
+    (ticket) =>
+      ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+  );
+}
+
+export function selectFloorTicket(
+  floor: FloorDay,
+  ticketId: string | null,
+): FloorDay {
+  if (ticketId === null) {
+    return floor.selectedTicketId === null
+      ? floor
+      : { ...floor, selectedTicketId: null };
+  }
+  if (hasValidCarriedTicket(floor)) {
+    throw new Error('Cannot select a ticket while carrying a plated dish');
+  }
+  const ticket = floor.tickets.find((candidate) => candidate.id === ticketId);
+  if (!ticket) throw new Error(`Unknown ticket: ${ticketId}`);
+  if (ticket.status !== 'open') {
+    throw new Error(`Ticket not open: ${ticket.status}`);
+  }
+  return floor.selectedTicketId === ticketId
+    ? floor
+    : { ...floor, selectedTicketId: ticketId };
+}
+
+export function setFloorTicketDraft(
+  floor: FloorDay,
   ticketId: string,
   ingredientIds: string[],
-): { tickets: FloorTicket[]; carriedTicketId: string } {
-  if (tickets.some((t) => t.status === 'plated')) {
+): FloorDay {
+  const composeTicket = resolveFloorComposeTicket(floor);
+  if (!composeTicket || composeTicket.id !== ticketId) {
+    throw new Error(`Ticket is not selected for composing: ${ticketId}`);
+  }
+  return {
+    ...floor,
+    tickets: floor.tickets.map((ticket) =>
+      ticket.id === ticketId
+        ? { ...ticket, ingredientIds: [...ingredientIds] }
+        : ticket,
+    ),
+  };
+}
+
+export function plateTicket(
+  floor: FloorDay,
+  ticketId: string,
+): FloorDay {
+  if (hasValidCarriedTicket(floor)) {
     throw new Error('Already carrying a plated dish');
   }
-  const idx = tickets.findIndex((t) => t.id === ticketId);
-  if (idx < 0) throw new Error(`Unknown ticket: ${ticketId}`);
-  const ticket = tickets[idx]!;
-  if (ticket.status !== 'open') throw new Error(`Ticket not open: ${ticket.status}`);
-  const next = tickets.slice();
-  next[idx] = { ...ticket, status: 'plated', ingredientIds: [...ingredientIds] };
-  return { tickets: next, carriedTicketId: ticketId };
+  if (floor.tickets.some((ticket) => ticket.status === 'plated')) {
+    throw new Error('Already carrying a plated dish');
+  }
+  const composeTicket = resolveFloorComposeTicket(floor);
+  if (!composeTicket || composeTicket.id !== ticketId) {
+    throw new Error(`Ticket is not selected for plating: ${ticketId}`);
+  }
+  return {
+    ...floor,
+    tickets: floor.tickets.map((ticket) =>
+      ticket.id === ticketId
+        ? { ...ticket, status: 'plated' as const }
+        : ticket,
+    ),
+    carriedTicketId: ticketId,
+    selectedTicketId: null,
+  };
 }
 
 export function deliverTicket(tickets: FloorTicket[], ticketId: string): FloorTicket[] {
