@@ -240,26 +240,42 @@ export class RestaurantApp {
     const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
       room: 'main',
     });
-    const enterResult = this.guestMotion.sync(floor, {
+    const motionResult = this.guestMotion.sync(floor, {
       door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
       dtMs: deltaMs,
     });
-    if (enterResult.enteredGuestIds.length > 0) {
+    if (motionResult.enteredGuestIds.length > 0) {
       void useGameStore
         .getState()
         .dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     }
+    for (const guestId of motionResult.seatedGuestIds) {
+      void useGameStore
+        .getState()
+        .dispatch({ type: 'FLOOR_COMPLETE_SEATING', guestId });
+    }
+    for (const guestId of motionResult.exitedGuestIds) {
+      void useGameStore
+        .getState()
+        .dispatch({ type: 'FLOOR_COMPLETE_LEAVING', guestId });
+    }
+
+    // Completion dispatches update the store synchronously. Render and tick
+    // the resulting lifecycle state so an exited guest cannot be recreated
+    // for one frame from the pre-dispatch snapshot.
+    const liveFloor = useGameStore.getState().activeDay?.floor;
+    if (!liveFloor) return;
 
     if (state.activeFloorRoom === 'main') {
-      this.actorLayer.sync(floor, this.nav, this.guestMotion);
+      this.actorLayer.sync(liveFloor, this.nav, this.guestMotion);
     } else {
       this.actorLayer.sync(null, this.nav, null, {
         showPlayerWithoutFloor: true,
       });
     }
 
-    if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
+    if (liveFloor.pool.some((g) => g.stage === 'eating')) {
       this.eatingTickAccumulatorMs += deltaMs;
       while (
         this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS
@@ -287,7 +303,7 @@ export class RestaurantApp {
     this.applyCamera();
     const doorOpen =
       state.activeFloorRoom === 'main' &&
-      this.guestMotion.isDoorBusy(floor, door);
+      this.guestMotion.isDoorBusy(liveFloor, door);
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
       doorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
@@ -297,16 +313,16 @@ export class RestaurantApp {
     this.interactHintLayer.sync(
       state.activeFloorRoom === 'main'
         ? this.computeInteractHints(
-            floor,
+            liveFloor,
             roomPlacements,
             this.nav.position,
-            floor.tickets.some((ticket) => ticket.status === 'open') &&
-              !floor.carriedTicketId,
+            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+              !liveFloor.carriedTicketId,
           )
         : this.computeStationHints(
             roomPlacements,
-            floor.tickets.some((ticket) => ticket.status === 'open') &&
-              !floor.carriedTicketId,
+            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+              !liveFloor.carriedTicketId,
           ),
     );
   };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { deliverAndScore } from '../../domain/floor/deliver.ts';
 import {
   completeGuestEntering,
+  completeGuestSeating,
   createFloorDayFromCustomers,
   seatNextWaiting,
   tablesFromPlacements,
@@ -38,6 +39,7 @@ function floorStateWithPlatedTicket() {
   let floor = createFloorDayFromCustomers([c], tables, seats);
   floor = completeGuestEntering(floor);
   floor = seatNextWaiting(floor);
+  floor = completeGuestSeating(floor, 'c1');
   const guest = floor.pool.find((entry) => entry.customer.id === c.id)!;
   const deliveryPosition = { x: guest.seat!.x, y: guest.seat!.y - 1 };
   expect(

@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { getGameStateSnapshot, useGameStore } from '../../store/game-store.ts';
-import {
-  selectCanOpenFloorCompose,
-  selectShowFloorCompose,
-} from '../../store/selectors/service-day.ts';
+import { selectCanOpenFloorCompose, selectShowFloorCompose } from '../../store/selectors/service-day.ts';
 import '../test-helpers.ts';
 
 function resetStore(): void {
@@ -46,21 +43,20 @@ async function advanceToCookableTicket(): Promise<void> {
   }
   await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
-  const seated = useGameStore
-    .getState()
-    .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
+  const seating = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
+  await useGameStore.getState().dispatch({
+    type: 'FLOOR_COMPLETE_SEATING',
+    guestId: seating.id,
+  });
+  const seated = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
   useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
   await useGameStore.getState().dispatch({
     type: 'FLOOR_TAKE_ORDERS',
     customerIds: [seated.customer.id],
   });
 
-  const station = useGameStore
-    .getState()
-    .placements.find((placement) => placement.itemKey === 'prep_station')!;
-  useGameStore
-    .getState()
-    .setFloorNavPosition({ x: station.x - 1, y: station.y });
+  const station = useGameStore.getState().placements.find((placement) => placement.itemKey === 'prep_station')!;
+  useGameStore.getState().setFloorNavPosition({ x: station.x - 1, y: station.y });
 }
 
 describe('compose sheet UI lifecycle', () => {
@@ -79,9 +75,12 @@ describe('compose sheet UI lifecycle', () => {
     }
     await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
     await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
-    const seated = useGameStore
-      .getState()
-      .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
+    const seating = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
+    await useGameStore.getState().dispatch({
+      type: 'FLOOR_COMPLETE_SEATING',
+      guestId: seating.id,
+    });
+    const seated = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
 
     useGameStore.getState().setFloorNavPosition({ x: 99, y: 99 });
     await useGameStore.getState().dispatch({
@@ -91,9 +90,10 @@ describe('compose sheet UI lifecycle', () => {
     expect(useGameStore.getState().activeDay!.floor!.tickets).toHaveLength(0);
 
     useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
-    expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual(
-      { x: seated.seat!.x, y: seated.seat!.y },
-    );
+    expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual({
+      x: seated.seat!.x,
+      y: seated.seat!.y,
+    });
     await useGameStore.getState().dispatch({
       type: 'FLOOR_TAKE_ORDERS',
       customerIds: [seated.customer.id],
@@ -120,9 +120,7 @@ describe('compose sheet UI lifecycle', () => {
 
   it('closes without clearing the dish draft', async () => {
     await advanceToCookableTicket();
-    const ingredientIds = useGameStore
-      .getState()
-      .unlockedIngredientIds.slice(0, 3);
+    const ingredientIds = useGameStore.getState().unlockedIngredientIds.slice(0, 3);
     await useGameStore.getState().dispatch({
       type: 'SET_COMPOSE_DRAFT',
       ingredientIds,
@@ -131,23 +129,17 @@ describe('compose sheet UI lifecycle', () => {
     useGameStore.getState().closeComposeSheet();
 
     expect(useGameStore.getState().composeSheetOpen).toBe(false);
-    expect(useGameStore.getState().composeDraftIngredientIds).toEqual(
-      ingredientIds,
-    );
+    expect(useGameStore.getState().composeDraftIngredientIds).toEqual(ingredientIds);
   });
 
   it('actively clears on lost adjacency and does not stale-reopen', async () => {
     await advanceToCookableTicket();
-    const station = useGameStore
-      .getState()
-      .placements.find((placement) => placement.itemKey === 'prep_station')!;
+    const station = useGameStore.getState().placements.find((placement) => placement.itemKey === 'prep_station')!;
     useGameStore.getState().openComposeSheet();
     useGameStore.getState().setFloorNavPosition({ x: 0, y: 0 });
     expect(useGameStore.getState().composeSheetOpen).toBe(false);
 
-    useGameStore
-      .getState()
-      .setFloorNavPosition({ x: station.x - 1, y: station.y });
+    useGameStore.getState().setFloorNavPosition({ x: station.x - 1, y: station.y });
     expect(selectCanOpenFloorCompose(useGameStore.getState())).toBe(true);
     expect(selectShowFloorCompose(useGameStore.getState())).toBe(false);
   });
@@ -167,10 +159,7 @@ describe('compose sheet UI lifecycle', () => {
   it('never includes UI state or methods in the persisted snapshot', async () => {
     await advanceToCookableTicket();
     useGameStore.getState().openComposeSheet();
-    const snapshot = getGameStateSnapshot() as unknown as Record<
-      string,
-      unknown
-    >;
+    const snapshot = getGameStateSnapshot() as unknown as Record<string, unknown>;
     expect(snapshot).not.toHaveProperty('composeSheetOpen');
     expect(snapshot).not.toHaveProperty('openComposeSheet');
     expect(snapshot).not.toHaveProperty('closeComposeSheet');

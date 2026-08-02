@@ -27,6 +27,10 @@ export interface GuestMotionSyncOpts {
 export interface GuestMotionSyncResult {
   /** Guest ids whose enter walk just finished this sync. */
   enteredGuestIds: string[];
+  /** Guest ids whose walk to their assigned seat just finished this sync. */
+  seatedGuestIds: string[];
+  /** Guest ids whose exit walk reached the restaurant door this sync. */
+  exitedGuestIds: string[];
 }
 
 /**
@@ -37,16 +41,34 @@ export class GuestMotion {
   private readonly navs = new Map<string, NavController>();
   private readonly enterStarted = new Set<string>();
   private readonly seatedIds = new Set<string>();
+  private readonly lastStages = new Map<string, FloorGuest['stage']>();
+  private readonly enteredReported = new Set<string>();
+  private readonly seatingReported = new Set<string>();
+  private readonly exitReported = new Set<string>();
 
   sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
     const enteredGuestIds: string[] = [];
+    const seatedGuestIds: string[] = [];
+    const exitedGuestIds: string[] = [];
 
     for (const guest of floor.pool) {
       if (guest.stage === 'done' || guest.stage === 'queued') continue;
       seen.add(guest.id);
+      this.rearmCompletionForStage(guest);
       const finished = this.syncGuest(guest, opts);
-      if (finished) enteredGuestIds.push(guest.id);
+      if (finished === 'entered' && !this.enteredReported.has(guest.id)) {
+        this.enteredReported.add(guest.id);
+        enteredGuestIds.push(guest.id);
+      }
+      if (finished === 'seated' && !this.seatingReported.has(guest.id)) {
+        this.seatingReported.add(guest.id);
+        seatedGuestIds.push(guest.id);
+      }
+      if (finished === 'exited' && !this.exitReported.has(guest.id)) {
+        this.exitReported.add(guest.id);
+        exitedGuestIds.push(guest.id);
+      }
     }
 
     for (const id of this.navs.keys()) {
@@ -54,10 +76,14 @@ export class GuestMotion {
         this.navs.delete(id);
         this.enterStarted.delete(id);
         this.seatedIds.delete(id);
+        this.lastStages.delete(id);
+        this.enteredReported.delete(id);
+        this.seatingReported.delete(id);
+        this.exitReported.delete(id);
       }
     }
 
-    return { enteredGuestIds };
+    return { enteredGuestIds, seatedGuestIds, exitedGuestIds };
   }
 
   pose(guestId: string): GuestPose | null {
@@ -89,7 +115,7 @@ export class GuestMotion {
   private syncGuest(
     guest: FloorGuest,
     opts: GuestMotionSyncOpts,
-  ): boolean {
+  ): 'entered' | 'seated' | 'exited' | null {
     let nav = this.navs.get(guest.id);
     if (!nav) {
       const start =
@@ -98,6 +124,12 @@ export class GuestMotion {
           : this.defaultCell(guest, opts.door);
       nav = new NavController(start, 2.4);
       this.navs.set(guest.id, nav);
+      if (guest.stage === 'leaving' && guest.seat) {
+        const sit = seatSitWorldPosition(guest.seat);
+        nav.worldX = sit.x;
+        nav.worldY = sit.y;
+        nav.facing = seatFacingToActorFacing(guest.seat.facing);
+      }
     }
 
     if (guest.stage === 'entering') {
@@ -116,9 +148,9 @@ export class GuestMotion {
         nav.worldX = world.x;
         nav.worldY = world.y;
         nav.facing = 1;
-        return true;
+        return 'entered';
       }
-      return false;
+      return null;
     }
 
     if (guest.stage === 'waiting') {
@@ -126,7 +158,7 @@ export class GuestMotion {
       const world = waitingGuestWorldPosition(opts.door, 0);
       if (nav.isMoving) {
         if (opts.dtMs > 0) nav.update(opts.dtMs);
-        return false;
+        return null;
       }
       if (nav.position.x !== cell.x || nav.position.y !== cell.y) {
         nav.snapTo(cell);
@@ -134,7 +166,41 @@ export class GuestMotion {
       nav.worldX = world.x;
       nav.worldY = world.y;
       nav.facing = 1;
-      return false;
+      return null;
+    }
+
+    if (guest.stage === 'seating') {
+      if (!guest.seat) return null;
+      const seatCell = { x: guest.seat.x, y: guest.seat.y };
+      const sit = seatSitWorldPosition(guest.seat);
+      const atSeat =
+        !nav.isMoving &&
+        nav.position.x === seatCell.x &&
+        nav.position.y === seatCell.y;
+
+      if (!atSeat && !nav.isMoving) {
+        const path =
+          findPath(opts.grid, nav.position, seatCell, { allowBlockedEndpoints: true }) ??
+          directPath(nav.position, seatCell);
+        nav.setPath(path);
+      }
+
+      if (opts.dtMs > 0) nav.update(opts.dtMs);
+
+      if (
+        !nav.isMoving &&
+        nav.position.x === seatCell.x &&
+        nav.position.y === seatCell.y
+      ) {
+        nav.worldX = sit.x;
+        nav.worldY = sit.y;
+        nav.facing = seatFacingToActorFacing(guest.seat.facing);
+        this.seatedIds.add(guest.id);
+        return 'seated';
+      }
+
+      this.seatedIds.delete(guest.id);
+      return null;
     }
 
     if (
@@ -142,7 +208,7 @@ export class GuestMotion {
       guest.stage === 'ordered' ||
       guest.stage === 'eating'
     ) {
-      if (!guest.seat) return false;
+      if (!guest.seat) return null;
       const seatCell = { x: guest.seat.x, y: guest.seat.y };
       const sit = seatSitWorldPosition(guest.seat);
       const atSeat =
@@ -155,7 +221,7 @@ export class GuestMotion {
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
         this.seatedIds.add(guest.id);
-        return false;
+        return null;
       }
 
       this.seatedIds.delete(guest.id);
@@ -175,7 +241,7 @@ export class GuestMotion {
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
         this.seatedIds.add(guest.id);
       }
-      return false;
+      return null;
     }
 
     this.seatedIds.delete(guest.id);
@@ -189,14 +255,27 @@ export class GuestMotion {
         nav.setPath(path);
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
+      if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) {
+        return 'exited';
+      }
     }
-    return false;
+    return null;
   }
 
   private defaultCell(guest: FloorGuest, door: GridPoint): GridPoint {
+    if (guest.stage === 'seating') return waitingAreaGridAnchor(door);
     if (guest.seat) return { x: guest.seat.x, y: guest.seat.y };
     if (guest.stage === 'entering') return { ...door };
     return waitingAreaGridAnchor(door);
+  }
+
+  private rearmCompletionForStage(guest: FloorGuest): void {
+    const previous = this.lastStages.get(guest.id);
+    if (previous === guest.stage) return;
+    this.lastStages.set(guest.id, guest.stage);
+    if (guest.stage === 'entering') this.enteredReported.delete(guest.id);
+    if (guest.stage === 'seating') this.seatingReported.delete(guest.id);
+    if (guest.stage === 'leaving') this.exitReported.delete(guest.id);
   }
 }
 

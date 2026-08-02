@@ -3,11 +3,7 @@ import { canonicalize } from '../persistence/serialize.ts';
 import { SAVE_KEY, computeChecksum } from '../persistence/serialize.ts';
 import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
-import {
-  createNewGameState,
-  CURRENT_SAVE_VERSION,
-  normalizeGameState,
-} from '../domain/state/game-state.ts';
+import { createNewGameState, CURRENT_SAVE_VERSION, normalizeGameState } from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { testContext } from './test-helpers.ts';
@@ -90,11 +86,12 @@ describe('persistence', () => {
     expect(floorBefore).toBeTruthy();
 
     for (const table of floorBefore.tables) {
-      state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext)
-        .state;
+      state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext).state;
     }
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+    const seating = state.activeDay!.floor!.pool.find((g) => g.stage === 'seating')!;
+    state = gameReducer(state, { type: 'FLOOR_COMPLETE_SEATING', guestId: seating.id }, testContext).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
     state = {
       ...state,
@@ -106,11 +103,7 @@ describe('persistence', () => {
         },
       },
     };
-    state = gameReducer(
-      state,
-      { type: 'FLOOR_TAKE_ORDERS', customerIds: [seated.customer.id] },
-      testContext,
-    ).state;
+    state = gameReducer(state, { type: 'FLOOR_TAKE_ORDERS', customerIds: [seated.customer.id] }, testContext).state;
 
     const ticket = state.activeDay!.floor!.tickets[0]!;
     state = gameReducer(
@@ -143,6 +136,73 @@ describe('persistence', () => {
     expect(floor!.tables.length).toBeGreaterThan(0);
     expect(floor!.seats.length).toBeGreaterThan(0);
     expect(canonicalize(loaded.activeDay?.floor)).toBe(canonicalize(mutatedFloor));
+  });
+
+  it('restores in-flight seating with its reserved seat and occupied table', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(7878), { type: 'OPEN_DAY' }, testContext).state;
+
+    for (const table of state.activeDay!.floor!.tables) {
+      state = gameReducer(state, { type: 'FLOOR_SET_TABLE', placementId: table.placementId }, testContext).state;
+    }
+    state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
+    state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+
+    const seating = state.activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
+    expect(seating.seat).toBeDefined();
+    expect(
+      state.activeDay!.floor!.tables.find((table) => table.placementId === seating.seat!.tablePlacementId)?.state,
+    ).toBe('occupied');
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    const resumed = loaded.activeDay!.floor!.pool.find((guest) => guest.id === seating.id)!;
+    expect(resumed.stage).toBe('seating');
+    expect(resumed.seat).toEqual(seating.seat);
+    expect(
+      loaded.activeDay!.floor!.tables.find((table) => table.placementId === resumed.seat!.tablePlacementId)?.state,
+    ).toBe('occupied');
+  });
+
+  it('restores a leaving guest at their seat before departure completes', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const state = gameReducer(createNewGameState(7979), { type: 'OPEN_DAY' }, testContext).state;
+    const floor = state.activeDay!.floor!;
+    const guest = floor.pool[0]!;
+    const seat = floor.seats[0]!;
+    const leavingState = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...floor,
+          pool: floor.pool.map((candidate) =>
+            candidate.id === guest.id
+              ? {
+                  ...candidate,
+                  stage: 'leaving' as const,
+                  seat: { ...seat },
+                  eatTicksRemaining: 0,
+                }
+              : candidate,
+          ),
+          tables: floor.tables.map((table) =>
+            table.placementId === seat.tablePlacementId ? { ...table, state: 'occupied' as const } : table,
+          ),
+        },
+      },
+    };
+
+    await repo.save(leavingState);
+    const loaded = (await repo.load()).state!;
+    const resumed = loaded.activeDay!.floor!.pool.find((candidate) => candidate.id === guest.id)!;
+    expect(resumed.stage).toBe('leaving');
+    expect(resumed.seat).toEqual(seat);
+    expect(loaded.activeDay!.floor!.tables.find((table) => table.placementId === seat.tablePlacementId)?.state).toBe(
+      'occupied',
+    );
   });
 
   it('migrates v1 saves through to current with empty recipeMastery', () => {
@@ -193,7 +253,11 @@ describe('persistence', () => {
     const good = createNewGameState(2020);
     await repo.save(good);
     await repo.save(good);
-    await storage.set('restaurant-save', { saveVersion: 1, checksum: 'deadbeef', gameState: {} });
+    await storage.set('restaurant-save', {
+      saveVersion: 1,
+      checksum: 'deadbeef',
+      gameState: {},
+    });
 
     const loaded = await repo.load();
     expect(loaded.source).toBe('backup');

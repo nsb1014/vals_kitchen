@@ -38,6 +38,7 @@ export {
 const GUEST_STAGE_CUE: Record<string, number> = {
   entering: 0xffc857,
   waiting: 0xffc857,
+  seating: 0x4a90d9,
   seated: 0x4a90d9,
   ordered: 0x9b59b6,
   eating: 0xe67e22,
@@ -47,8 +48,6 @@ const GUEST_STAGE_CUE: Record<string, number> = {
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
-const LEAVING_DOOR_OFFSET_X = 4;
-
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
@@ -378,14 +377,27 @@ function fallbackGuestPose(
       walkFrame: 0,
     };
   }
-  if (guest.stage === 'leaving') {
-    const door = tileCenter(STARTER_DOOR.x, STARTER_DOOR.y);
+  if (guest.stage === 'seating') {
+    const world = waitingGuestWorldPosition(STARTER_DOOR, waitingIndex ?? 0);
     return {
-      worldX: door.x + LEAVING_DOOR_OFFSET_X,
-      worldY: door.y,
+      worldX: world.x,
+      worldY: world.y,
       facing: 1,
-      isMoving: false,
+      isMoving: true,
       walkFrame: 0,
+      isSeated: false,
+    };
+  }
+  if (guest.stage === 'leaving') {
+    if (!guest.seat) return null;
+    const seat = seatSitWorldPosition(guest.seat);
+    return {
+      worldX: seat.x,
+      worldY: seat.y,
+      facing: seatFacingToActorFacing(guest.seat.facing),
+      isMoving: true,
+      walkFrame: 0,
+      isSeated: false,
     };
   }
   return null;

@@ -40,9 +40,12 @@ async function prepareAdjacentSeatedGuest(): Promise<void> {
   }
   await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
-  const seated = useGameStore
-    .getState()
-    .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
+  const seating = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating')!;
+  await useGameStore.getState().dispatch({
+    type: 'FLOOR_COMPLETE_SEATING',
+    guestId: seating.id,
+  });
+  const seated = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
   useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
 }
 
@@ -55,8 +58,7 @@ function setTickets(tickets: FloorTicket[]): void {
       floor: {
         ...activeDay.floor!,
         tickets,
-        selectedTicketId:
-          tickets.find((ticket) => ticket.status === 'open')?.id ?? null,
+        selectedTicketId: tickets.find((ticket) => ticket.status === 'open')?.id ?? null,
       },
     },
   });

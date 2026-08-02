@@ -20,6 +20,7 @@ export type GuestStage =
   | 'queued'
   | 'entering'
   | 'waiting'
+  | 'seating'
   | 'seated'
   | 'ordered'
   | 'eating'
