@@ -76,6 +76,7 @@ test.describe('cook sheet responsive chrome', () => {
       await openCookFixture(page);
       await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
       await expect(page.getByTestId('ingredient-inspect')).toHaveCount(100);
+      await expect(page.getByTestId('ingredient-inspect').first()).toHaveText('i');
       await expect(page.getByTestId('compose-order-panel')).toBeVisible();
       await expect(page.getByTestId('compose-request-axis')).not.toHaveCount(0);
       await expect(
@@ -105,6 +106,20 @@ test.describe('cook sheet responsive chrome', () => {
       );
       expect(close!.width).toBeGreaterThanOrEqual(44);
       expect(close!.height).toBeGreaterThanOrEqual(44);
+      const firstCard = await page.locator('.compose-ingredient-card').first().boundingBox();
+      const firstIngredient = await page.getByTestId('ingredient-chip').first().boundingBox();
+      const firstInspect = await page.getByTestId('ingredient-inspect').first().boundingBox();
+      expect(firstCard).not.toBeNull();
+      expect(firstIngredient).not.toBeNull();
+      expect(firstInspect).not.toBeNull();
+      // Inspection stays a full touch target without adding a labeled row to
+      // every pantry card.
+      expect(firstInspect!.width).toBeGreaterThanOrEqual(44);
+      expect(firstInspect!.height).toBeGreaterThanOrEqual(44);
+      expect(firstCard!.height).toBeLessThanOrEqual(firstIngredient!.height + 1);
+      expect(firstInspect!.x + firstInspect!.width).toBeLessThanOrEqual(
+        firstCard!.x + firstCard!.width + 1,
+      );
       const filterBounds = await page
         .locator('.compose-axis-row')
         .boundingBox();
