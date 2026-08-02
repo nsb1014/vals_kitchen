@@ -46,7 +46,10 @@ async function prepareAdjacentSeatedGuest(): Promise<void> {
     guestId: seating.id,
   });
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
-  useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
+  useGameStore.getState().setFloorNavPosition({
+    x: seated.seat!.x,
+    y: seated.seat!.y + 2,
+  });
 }
 
 function setTickets(tickets: FloorTicket[]): void {

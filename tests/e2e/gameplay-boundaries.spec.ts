@@ -56,7 +56,7 @@ async function seatGuestThroughVisualArrival(page: Page): Promise<string> {
     const seating = floor().pool.find((guest) => guest.stage === 'seating');
     if (!seating?.seat) throw new Error('expected a guest walking to a seat');
     // Keep order eligibility dependent on guest stage, not player proximity.
-    bridge.setFloorNavPosition(seating.seat);
+    bridge.setFloorNavPosition({ x: seating.seat.x, y: seating.seat.y + 2 });
     return seating.id;
   });
 
@@ -186,7 +186,7 @@ test.describe('canonical gameplay boundaries', () => {
         ingredientIds: state.unlockedIngredientIds.slice(0, 3),
       });
       await bridge.dispatch({ type: 'FLOOR_PLATE', ticketId: ticket.id });
-      bridge.setFloorNavPosition(guest.seat);
+      bridge.setFloorNavPosition({ x: guest.seat.x, y: guest.seat.y + 2 });
       await bridge.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
       return placementId;
     }, guestId);

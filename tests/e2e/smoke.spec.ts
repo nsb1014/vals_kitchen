@@ -175,7 +175,7 @@ test.describe('persistence', () => {
       const seated = afterSeat.activeDay?.floor?.pool.find((g) => g.stage === 'seated');
       if (!seated) throw new Error('expected seated guest');
       if (!seated.seat) throw new Error('expected seated guest position');
-      bridge.setFloorNavPosition(seated.seat);
+      bridge.setFloorNavPosition({ x: seated.seat.x, y: seated.seat.y + 2 });
       await bridge.dispatch({
         type: 'FLOOR_TAKE_ORDERS',
         customerIds: [seated.customer.id],

@@ -4,6 +4,7 @@ import {
   adjacentSeatedCustomerIds,
   adjacentUnsetTablePlacementIds,
   findCookStationPlacementAtCell,
+  guestServicePositions,
   isAdjacent,
   isCookStationItemKey,
   playerNearGuestSeat,
@@ -123,7 +124,7 @@ describe('floor interact helpers', () => {
   });
 
   describe('playerNearGuestSeat', () => {
-    it('is true when player is adjacent to guest seat', () => {
+    it('keeps vertical chibi silhouettes two cells apart while allowing side service', () => {
       const guest: FloorGuest = {
         id: 'g1',
         customer: customer('c1'),
@@ -131,7 +132,16 @@ describe('floor interact helpers', () => {
         seat: { tablePlacementId: 't1', slotIndex: 0, x: 1, y: 3, facing: 0 },
         eatTicksRemaining: 0,
       };
-      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(true);
+      expect(guestServicePositions(guest.seat!)).toEqual([
+        { x: 0, y: 3 },
+        { x: 2, y: 3 },
+        { x: 1, y: 1 },
+        { x: 1, y: 5 },
+      ]);
+      expect(playerNearGuestSeat({ x: 0, y: 3 }, guest)).toBe(true);
+      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(false);
+      expect(playerNearGuestSeat({ x: 1, y: 5 }, guest)).toBe(true);
+      expect(playerNearGuestSeat({ x: 1, y: 3 }, guest)).toBe(false);
       expect(playerNearGuestSeat({ x: 5, y: 5 }, guest)).toBe(false);
     });
 

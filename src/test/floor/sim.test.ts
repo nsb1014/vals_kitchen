@@ -45,7 +45,13 @@ describe('floor sim', () => {
     expect(day.pool[0]!.stage).toBe('seated');
     expect(day.tables.find((t) => t.placementId === 'table_1')!.state).toBe('occupied');
 
-    day = { ...day, playerPosition: { ...day.pool[0]!.seat! } };
+    day = {
+      ...day,
+      playerPosition: {
+        x: day.pool[0]!.seat!.x,
+        y: day.pool[0]!.seat!.y + 2,
+      },
+    };
     day = takeOrdersForSeated(day, ['c1']);
     expect(day.tickets).toHaveLength(1);
     expect(day.pool[0]!.stage).toBe('ordered');
@@ -122,7 +128,10 @@ describe('floor sim', () => {
     day = takeOrdersForSeated(day, ['c1', 'c2']);
     expect(day.tickets).toHaveLength(0);
 
-    day = { ...day, playerPosition: { ...firstSeat } };
+    day = {
+      ...day,
+      playerPosition: { x: firstSeat.x, y: firstSeat.y + 2 },
+    };
     day = takeOrdersForSeated(day, ['c1', 'c2']);
 
     expect(day.tickets).toHaveLength(1);

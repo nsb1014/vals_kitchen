@@ -96,7 +96,7 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     if (!seatedGuest?.seat) throw new Error('expected a seated guest');
     bridge.setFloorNavPosition({
       x: seatedGuest.seat.x,
-      y: seatedGuest.seat.y + 1,
+      y: seatedGuest.seat.y + 2,
     });
   });
   const takeOrdersAction = page.getByTestId('floor-take-orders');
@@ -104,6 +104,20 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   await expect(takeOrdersAction).toHaveClass(/\bprimary\b/);
 
   await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  const serviceSpacing = await page.evaluate(() => {
+    const bridge = window.__E2E__!;
+    const state = bridge.getGameState();
+    const guest = state.activeDay!.floor!.pool.find(
+      (candidate) => candidate.stage === 'ordered',
+    );
+    if (!guest) throw new Error('expected ordered service guest');
+    const player = bridge.getPlayerScreenAnchor();
+    const guestAnchor = bridge.getGuestScreenAnchor(guest.id);
+    if (!player || !guestAnchor) throw new Error('expected rendered service actors');
+    return Math.hypot(player.x - guestAnchor.x, player.y - guestAnchor.y);
+  });
+  expect(serviceSpacing).toBeGreaterThanOrEqual(56);
 
   const orderBubble = page.getByTestId('chat-bubble');
   await expect(orderBubble).toBeVisible();

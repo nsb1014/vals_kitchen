@@ -234,7 +234,10 @@ describe('persistence', () => {
         ...state.activeDay!,
         floor: {
           ...state.activeDay!.floor!,
-          playerPosition: { ...seated.seat! },
+          playerPosition: {
+            x: seated.seat!.x,
+            y: seated.seat!.y + 2,
+          },
         },
       },
     };

@@ -53,7 +53,10 @@ async function advanceToCookableTicket(): Promise<void> {
     guestId: seating.id,
   });
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seated')!;
-  useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
+  useGameStore.getState().setFloorNavPosition({
+    x: seated.seat!.x,
+    y: seated.seat!.y + 2,
+  });
   await useGameStore.getState().dispatch({
     type: 'FLOOR_TAKE_ORDERS',
     customerIds: [seated.customer.id],
@@ -93,10 +96,13 @@ describe('compose sheet UI lifecycle', () => {
     });
     expect(useGameStore.getState().activeDay!.floor!.tickets).toHaveLength(0);
 
-    useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
+    useGameStore.getState().setFloorNavPosition({
+      x: seated.seat!.x,
+      y: seated.seat!.y + 2,
+    });
     expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual({
       x: seated.seat!.x,
-      y: seated.seat!.y,
+      y: seated.seat!.y + 2,
     });
     await useGameStore.getState().dispatch({
       type: 'FLOOR_TAKE_ORDERS',

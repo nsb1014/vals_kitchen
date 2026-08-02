@@ -67,13 +67,9 @@ async function prepareOrderedGuest(
     });
 
     const state = bridge.getGameState();
-    const tablePlacement = state.placements.find(
-      (placement) => placement.id === seating.seat!.tablePlacementId,
-    );
-    if (!tablePlacement) throw new Error('guest table placement is missing');
     bridge.setFloorNavPosition({
-      x: tablePlacement.x,
-      y: tablePlacement.y + 1,
+      x: seating.seat.x,
+      y: seating.seat.y + 2,
     });
     await bridge.dispatch({
       type: 'FLOOR_TAKE_ORDERS',
@@ -299,9 +295,11 @@ test.describe('object tap controls', () => {
       .poll(() =>
         page.evaluate(({ x, y }) => {
           const player = window.__E2E__!.getState().floorPlayerGrid;
+          const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
+          const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
           return Boolean(
             player &&
-              Math.max(Math.abs(player.x - x), Math.abs(player.y - y)) <= 1,
+              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
           );
         }, guest),
       )
@@ -398,9 +396,11 @@ test.describe('object tap controls', () => {
       .poll(() =>
         page.evaluate(({ x, y }) => {
           const player = window.__E2E__!.getState().floorPlayerGrid;
+          const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
+          const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
           return Boolean(
             player &&
-              Math.max(Math.abs(player.x - x), Math.abs(player.y - y)) <= 1,
+              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
           );
         }, seat),
       )
@@ -424,6 +424,27 @@ test.describe('object tap controls', () => {
           },
           adjacentFloor,
         ),
+      )
+      .toBe(true);
+    expect(
+      await page.evaluate(
+        (id) => window.__E2E__!.getGameState().activeDay!.floor!.carriedTicketId === id,
+        ticketId,
+      ),
+    ).toBe(true);
+
+    await tapGridCell(page, seat.x, seat.y);
+    await expect
+      .poll(() =>
+        page.evaluate(({ x, y }) => {
+          const player = window.__E2E__!.getState().floorPlayerGrid;
+          const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
+          const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
+          return Boolean(
+            player &&
+              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
+          );
+        }, seat),
       )
       .toBe(true);
     expect(

@@ -41,7 +41,7 @@ function floorStateWithPlatedTicket() {
   floor = seatNextWaiting(floor);
   floor = completeGuestSeating(floor, 'c1');
   const guest = floor.pool.find((entry) => entry.customer.id === c.id)!;
-  const deliveryPosition = { x: guest.seat!.x, y: guest.seat!.y - 1 };
+  const deliveryPosition = { x: guest.seat!.x, y: guest.seat!.y + 2 };
   expect(
     walkBlockedCells(placements, 12, 12).has(
       `${deliveryPosition.x},${deliveryPosition.y}`,

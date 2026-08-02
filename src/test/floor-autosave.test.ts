@@ -88,7 +88,10 @@ async function advanceFloorToOpenTicket(): Promise<string> {
   });
 
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
-  useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
+  useGameStore.getState().setFloorNavPosition({
+    x: seated.seat!.x,
+    y: seated.seat!.y + 2,
+  });
   await useGameStore.getState().dispatch({
     type: 'FLOOR_TAKE_ORDERS',
     customerIds: [seated.customer.id],

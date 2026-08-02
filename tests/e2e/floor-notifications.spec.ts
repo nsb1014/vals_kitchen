@@ -133,12 +133,14 @@ for (const viewport of VIEWPORT_MATRIX) {
 
     await dismissInitialNotice(page);
     const ticketsToggle = page.getByTestId('floor-tickets-toggle');
+    await expect(ticketsToggle).toBeVisible();
     const ticketsToggleBox = await ticketsToggle.boundingBox();
     expect(ticketsToggleBox).not.toBeNull();
     expect(ticketsToggleBox!.width).toBeGreaterThanOrEqual(44);
     expect(ticketsToggleBox!.height).toBeGreaterThanOrEqual(44);
     await ticketsToggle.click();
     const ticketsClose = page.getByTestId('floor-tickets-close');
+    await expect(ticketsClose).toBeVisible();
     const ticketsCloseBox = await ticketsClose.boundingBox();
     expect(ticketsCloseBox).not.toBeNull();
     expect(ticketsCloseBox!.width).toBeGreaterThanOrEqual(44);

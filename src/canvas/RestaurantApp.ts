@@ -8,6 +8,7 @@ import {
 } from '../domain/floor/pathfinding.ts';
 import {
   findCookStationPlacementAtCell,
+  guestServicePositions,
   isAdjacent,
   isCookStationItemKey,
   playerNearGuestSeat,
@@ -251,6 +252,25 @@ export class RestaurantApp {
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
       destinations,
+    );
+    if (!path) {
+      store.setFloorToast('No clear route');
+      return false;
+    }
+    this.nav.setPath(path);
+    return true;
+  }
+
+  private pathToGuestServiceCell(
+    store: GameStore,
+    placements: Placement[],
+    seat: GridPoint,
+  ): boolean {
+    const blocked = this.playerBlockedCells(store, placements);
+    const path = findShortestPathToAny(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      guestServicePositions(seat),
     );
     if (!path) {
       store.setFloorToast('No clear route');
@@ -532,7 +552,7 @@ export class RestaurantApp {
           tappedGuest.stage === 'ordered'
         ) {
           if (!playerNearGuestSeat(player, tappedGuest)) {
-            this.pathToAdjacentCell(store, roomPlacements, tapCell);
+            this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
             return;
           }
           void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
@@ -545,7 +565,7 @@ export class RestaurantApp {
 
       if (!floor.carriedTicketId && tappedGuest?.stage === 'seated') {
         if (!playerNearGuestSeat(player, tappedGuest)) {
-          this.pathToAdjacentCell(store, roomPlacements, tapCell);
+          this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
           return;
         }
         void store.dispatch({
@@ -879,7 +899,7 @@ export class RestaurantApp {
         );
         if (
           guest?.seat &&
-          guestHintAction(guest.stage, isAdjacent(player, guest.seat), 'matching') ===
+          guestHintAction(guest.stage, playerNearGuestSeat(player, guest), 'matching') ===
             'deliver'
         ) {
           add(guest.seat.x, guest.seat.y);
@@ -896,7 +916,7 @@ export class RestaurantApp {
       for (const guest of floor.pool) {
         if (
           guest.seat &&
-          guestHintAction(guest.stage, isAdjacent(player, guest.seat), 'none') ===
+          guestHintAction(guest.stage, playerNearGuestSeat(player, guest), 'none') ===
             'order'
         ) {
           add(guest.seat.x, guest.seat.y);
@@ -910,6 +930,16 @@ export class RestaurantApp {
   getCustomerScreenAnchor(): { x: number; y: number } | null {
     const world = this.customerLayer.getAnchorWorldPosition();
     if (!world) return null;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const screen = worldToScreen(world.x, world.y, this.camera.state);
+    return {
+      x: rect.left + screen.x,
+      y: rect.top + screen.y,
+    };
+  }
+
+  getPlayerScreenAnchor(): { x: number; y: number } {
+    const world = this.actorLayer.getPlayerWorldPosition();
     const rect = this.app.canvas.getBoundingClientRect();
     const screen = worldToScreen(world.x, world.y, this.camera.state);
     return {

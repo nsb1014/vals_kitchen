@@ -105,7 +105,24 @@ export function playerNearGuestSeat(
   guest: FloorGuest,
 ): boolean {
   if (!guest.seat) return false;
-  return isAdjacent(player, guest.seat);
+  return guestServicePositions(guest.seat).some(
+    (position) => position.x === player.x && position.y === player.y,
+  );
+}
+
+/**
+ * Service positions around a seated guest, ordered left/right then vertical.
+ * Chibi actors are almost two tiles tall but less than one tile wide, so a
+ * one-cell vertical neighbor visibly stacks their bodies. Horizontal neighbors
+ * remain natural; vertical approaches keep a two-cell personal-space gap.
+ */
+export function guestServicePositions(seat: GridPoint): GridPoint[] {
+  return [
+    { x: seat.x - 1, y: seat.y },
+    { x: seat.x + 1, y: seat.y },
+    { x: seat.x, y: seat.y - 2 },
+    { x: seat.x, y: seat.y + 2 },
+  ];
 }
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {
