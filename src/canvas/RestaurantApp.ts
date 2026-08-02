@@ -1,7 +1,11 @@
 import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
 import { useGameStore } from '../store/game-store.ts';
-import { findPath } from '../domain/floor/pathfinding.ts';
+import {
+  findPath,
+  findShortestPathToAny,
+  type GridPoint,
+} from '../domain/floor/pathfinding.ts';
 import {
   findCookStationPlacementAtCell,
   isAdjacent,
@@ -188,6 +192,37 @@ export class RestaurantApp {
     };
   }
 
+  private pathToAdjacentCell(
+    store: GameStore,
+    placements: Placement[],
+    target: GridPoint,
+  ): boolean {
+    const blocked = walkBlockedCells(
+      placements,
+      store.gridSize.w,
+      store.gridSize.h,
+      this.walkOpts(store),
+    );
+    const destinations: GridPoint[] = [];
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        if (dx === 0 && dy === 0) continue;
+        destinations.push({ x: target.x + dx, y: target.y + dy });
+      }
+    }
+    const path = findShortestPathToAny(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      destinations,
+    );
+    if (!path) {
+      store.setFloorToast('No clear route');
+      return false;
+    }
+    this.nav.setPath(path);
+    return true;
+  }
+
   private onTick = (): void => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
@@ -356,78 +391,113 @@ export class RestaurantApp {
     const sy = event.clientY - rect.top;
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
     const tapCell = { x: gx, y: gy };
+    const roomPlacements = this.roomPlacements(store);
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
-      const entered = store.enterConnectingDoor();
-      if (entered) {
-        const next = useGameStore.getState();
-        const spawn = connectingDoorInterior(
-          next.activeFloorRoom,
-          next.gridSize.w,
-          next.gridSize.h,
-        );
-        this.nav.snapTo(spawn);
-        this.syncFromStore(next);
+      const blocked = walkBlockedCells(
+        roomPlacements,
+        store.gridSize.w,
+        store.gridSize.h,
+        this.walkOpts(store),
+      );
+      const path = findPath(
+        { w: store.gridSize.w, h: store.gridSize.h, blocked },
+        this.nav.position,
+        tapCell,
+      );
+      if (path) {
+        this.nav.setPath(path);
+      } else {
+        store.setFloorToast('No clear route');
       }
       return;
     }
 
-    if (store.activeFloorRoom === 'main' && floor.carriedTicketId) {
-      const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
-      if (ticket) {
-        const guest = floor.pool.find(
-          (g) => g.customer.id === ticket.customerId,
+    if (store.activeFloorRoom === 'main') {
+      const tappedGuest = floor.pool.find(
+        (candidate) =>
+          candidate.seat?.x === tapCell.x &&
+          candidate.seat.y === tapCell.y &&
+          candidate.stage !== 'leaving' &&
+          candidate.stage !== 'done',
+      );
+      const player = store.floorPlayerGrid ?? this.nav.position;
+
+      if (floor.carriedTicketId && tappedGuest) {
+        const ticket = floor.tickets.find(
+          (candidate) => candidate.id === floor.carriedTicketId,
         );
-        const tappedGuest = floor.pool.find(
-          (candidate) =>
-            candidate.seat &&
-            candidate.stage === 'ordered' &&
-            isAdjacent(tapCell, candidate.seat),
-        );
-        const player = store.floorPlayerGrid ?? this.nav.position;
         if (
-          guest?.seat &&
-          tappedGuest?.customer.id === ticket.customerId &&
-          !playerNearGuestSeat(player, guest)
+          ticket &&
+          tappedGuest.customer.id === ticket.customerId &&
+          tappedGuest.stage === 'ordered'
         ) {
-          store.setFloorToast('Move within 1 tile of the guest to deliver');
-          return;
-        }
-        if (
-          guest?.seat &&
-          tappedGuest?.customer.id === ticket.customerId &&
-          playerNearGuestSeat(player, guest)
-        ) {
+          if (!playerNearGuestSeat(player, tappedGuest)) {
+            this.pathToAdjacentCell(store, roomPlacements, tapCell);
+            return;
+          }
           void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
           return;
         }
-        if (
-          tappedGuest &&
-          tappedGuest.customer.id !== ticket.customerId
-        ) {
-          store.setFloorToast('Wrong table — deliver to the matching guest');
+
+        store.setFloorToast('Wrong table — deliver to the matching guest');
+        return;
+      }
+
+      if (!floor.carriedTicketId && tappedGuest?.stage === 'seated') {
+        if (!playerNearGuestSeat(player, tappedGuest)) {
+          this.pathToAdjacentCell(store, roomPlacements, tapCell);
           return;
         }
+        void store.dispatch({
+          type: 'FLOOR_TAKE_ORDERS',
+          customerIds: [tappedGuest.customer.id],
+        });
+        return;
       }
     }
 
-    const roomPlacements = this.roomPlacements(store);
     const station = findCookStationPlacementAtCell(roomPlacements, tapCell);
     if (station) {
-      if (store.composeSheetOpen) {
-        store.closeComposeSheet();
+      const player = store.floorPlayerGrid ?? floor.playerPosition;
+      if (!playerNearPlacement(player, station)) {
+        this.pathToAdjacentCell(store, roomPlacements, tapCell);
         return;
       }
       if (selectCanOpenFloorCompose(store)) {
         store.openComposeSheet();
         return;
       }
-      const player = store.floorPlayerGrid ?? floor.playerPosition;
-      if (!playerNearPlacement(player, station)) {
-        store.setFloorToast('Move next to the station to cook');
-        return;
-      }
       store.setFloorToast('No open ticket to cook');
       return;
+    }
+
+    if (store.activeFloorRoom === 'main') {
+      const tappedPlacement = roomPlacements.find(
+        (placement) => placement.x === tapCell.x && placement.y === tapCell.y,
+      );
+      const table = tappedPlacement
+        ? floor.tables.find(
+            (candidate) => candidate.placementId === tappedPlacement.id,
+          )
+        : undefined;
+      if (tappedPlacement && table) {
+        const player = store.floorPlayerGrid ?? this.nav.position;
+        if (table.state === 'unset' || table.state === 'dirty') {
+          if (!playerNearPlacement(player, tappedPlacement)) {
+            this.pathToAdjacentCell(store, roomPlacements, tapCell);
+            return;
+          }
+          void store.dispatch({
+            type:
+              table.state === 'unset'
+                ? 'FLOOR_SET_TABLE'
+                : 'FLOOR_CLEAR_TABLE',
+            placementId: table.placementId,
+          });
+          return;
+        }
+        return;
+      }
     }
 
     if (store.composeSheetOpen) {
