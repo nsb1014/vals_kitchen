@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import type { E2eBridge } from '../../src/app/e2e-bridge.ts';
 
 export const E2E_PATH = '/?e2e=1';
 
@@ -652,6 +653,77 @@ declare global {
         facing: 'right' | 'down' | 'up' | 'left';
         isMoving: boolean;
       } | null;
+      getGuestDoorwayTransitionDebug: (guestId: string) => {
+        guestId: string;
+        stage:
+          | 'queued'
+          | 'entering'
+          | 'waiting'
+          | 'seating'
+          | 'seated'
+          | 'ordered'
+          | 'eating'
+          | 'leaving'
+          | 'done'
+          | null;
+        guest: {
+          requestedFrameKey: string;
+          actualBoundFrameKey: string;
+          textureMatchesActualBoundFrame: boolean;
+          actualMaskWorldBounds: {
+            left: number;
+            top: number;
+            right: number;
+            bottom: number;
+          } | null;
+          isMoving: boolean;
+          facing: 'right' | 'down' | 'up' | 'left';
+          visible: boolean;
+          alpha: number;
+          feet: { x: number; y: number };
+          doorwayCrop: {
+            progress: number;
+            visibleFraction: number;
+            apertureWorldY: number;
+            visualOffsetY: number;
+            maskApplied: boolean;
+            contentRenderable: boolean;
+            unclippedWorldBounds: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            };
+            clippedWorldBounds: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            } | null;
+          } | null;
+        } | null;
+        door: {
+          cell: { x: number; y: number } | null;
+          requestedOpen: boolean;
+          paintedOpen: boolean;
+          spriteCount: number;
+        };
+        authoritativeOpen: boolean;
+        exitLingerRemainingMs: number;
+        camera: {
+          x: number;
+          y: number;
+          scale: number;
+          stageOffsetX: number;
+          stageOffsetY: number;
+        };
+      } | null;
+      startServiceAndCaptureGuestDoorwayFrame: (
+        guestId: string,
+      ) => Promise<
+        NonNullable<ReturnType<E2eBridge['getGuestDoorwayTransitionDebug']>>
+      >;
+      repaintRestaurantFromStoreForTest: () => void;
       getSeatingSceneDebug: () => {
         depthParent: {
           shared: boolean;

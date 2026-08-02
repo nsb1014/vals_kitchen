@@ -93,15 +93,30 @@ export class GuestMotion {
           position: { ...nav.position },
         });
       }
-      if (finished === 'entered' && !this.enteredReported.has(guest.id)) {
+      // Zero-delta syncs reconstruct render poses during store subscriptions and
+      // initial load. They must not consume the one-shot lifecycle completion;
+      // the first positive-time simulation tick remains authoritative.
+      if (
+        opts.dtMs > 0 &&
+        finished === 'entered' &&
+        !this.enteredReported.has(guest.id)
+      ) {
         this.enteredReported.add(guest.id);
         enteredGuestIds.push(guest.id);
       }
-      if (finished === 'seated' && !this.seatingReported.has(guest.id)) {
+      if (
+        opts.dtMs > 0 &&
+        finished === 'seated' &&
+        !this.seatingReported.has(guest.id)
+      ) {
         this.seatingReported.add(guest.id);
         seatedGuestIds.push(guest.id);
       }
-      if (finished === 'exited' && !this.exitReported.has(guest.id)) {
+      if (
+        opts.dtMs > 0 &&
+        finished === 'exited' &&
+        !this.exitReported.has(guest.id)
+      ) {
         this.exitReported.add(guest.id);
         exitedGuestIds.push(guest.id);
       }

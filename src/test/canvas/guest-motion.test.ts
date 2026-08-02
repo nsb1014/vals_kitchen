@@ -86,6 +86,22 @@ describe('GuestMotion', () => {
     expect(pose.isMoving).toBe(true);
   });
 
+  it('defers a restored entering endpoint until the first positive-time sync', () => {
+    const motion = new GuestMotion();
+    const waitCell = { x: door.x - 1, y: door.y - 1 };
+    const entering = guest({
+      id: 'g1',
+      stage: 'entering',
+      motionPosition: waitCell,
+    });
+
+    for (let i = 0; i < 3; i++) {
+      expect(sync(motion, [entering], 0).enteredGuestIds).toEqual([]);
+    }
+    expect(sync(motion, [entering], 1).enteredGuestIds).toEqual(['g1']);
+    expect(sync(motion, [entering], 1).enteredGuestIds).toEqual([]);
+  });
+
   it('holds an entering guest at the door when no route exists and retries later', () => {
     const motion = new GuestMotion();
     const entering = guest({ id: 'g1', stage: 'entering' });
@@ -127,6 +143,23 @@ describe('GuestMotion', () => {
     expect(pose.worldX).toBe(anchor.x * TILE_PX + TILE_PX / 2);
     expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
     expect(pose.isMoving).toBe(true);
+  });
+
+  it('defers a restored seating endpoint until the first positive-time sync', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 0, 2);
+    const seating = guest({
+      id: 'g1',
+      stage: 'seating',
+      seat: assignedSeat,
+      motionPosition: { x: assignedSeat.x, y: assignedSeat.y },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      expect(sync(motion, [seating], 0).seatedGuestIds).toEqual([]);
+    }
+    expect(sync(motion, [seating], 1).seatedGuestIds).toEqual(['g1']);
+    expect(sync(motion, [seating], 1).seatedGuestIds).toEqual([]);
   });
 
   it('holds a seating guest at its current cell when the seat is unreachable', () => {
@@ -586,6 +619,22 @@ describe('GuestMotion', () => {
     expect(pose.isSeated).toBe(false);
   });
 
+  it('defers a restored leaving endpoint until the first positive-time sync', () => {
+    const motion = new GuestMotion();
+    const leaving = guest({
+      id: 'g1',
+      stage: 'leaving',
+      seat: seat('table_1', 0, 2),
+      motionPosition: { ...door },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      expect(sync(motion, [leaving], 0).exitedGuestIds).toEqual([]);
+    }
+    expect(sync(motion, [leaving], 1).exitedGuestIds).toEqual(['g1']);
+    expect(sync(motion, [leaving], 1).exitedGuestIds).toEqual([]);
+  });
+
   it('treats a persisted seat cell as an already-started departure', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 1, 2);
@@ -635,10 +684,12 @@ describe('GuestMotion', () => {
     const atDoor = seat('table_1', door.x, door.y);
     const leaving = guest({ id: 'g1', stage: 'leaving', seat: atDoor });
 
-    expect(sync(motion, [leaving], 0).exitedGuestIds).toEqual(['g1']);
     expect(sync(motion, [leaving], 0).exitedGuestIds).toEqual([]);
+    expect(sync(motion, [leaving], 1).exitedGuestIds).toEqual(['g1']);
+    expect(sync(motion, [leaving], 1).exitedGuestIds).toEqual([]);
 
     sync(motion, [guest({ id: 'g1', stage: 'done' })], 0);
-    expect(sync(motion, [leaving], 0).exitedGuestIds).toEqual(['g1']);
+    expect(sync(motion, [leaving], 0).exitedGuestIds).toEqual([]);
+    expect(sync(motion, [leaving], 1).exitedGuestIds).toEqual(['g1']);
   });
 });

@@ -13,14 +13,23 @@ import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 const FLOOR_COLOR = 0x3d3d5c;
 const GRID_LINE_COLOR = 0x2a2a40;
 
+interface DoorSpriteState {
+  cell: { x: number; y: number };
+  sprite: Sprite;
+  requestedOpen: boolean;
+  paintedOpen: boolean;
+  boundTextureKey: 'door' | 'door_open' | 'other';
+}
+
 export class GridLayer {
   readonly view = new Container();
   private floorContainer = new Container();
   private wallContainer = new Container();
-  private doorSprites: Sprite[] = [];
+  private doorSprites = new Map<string, DoorSpriteState>();
   private gridLines = new Graphics();
   private lastKey = '';
-  private doorOpen = false;
+  private guestDoorCell: { x: number; y: number } | null = null;
+  private guestDoorRequestedOpen = false;
 
   constructor() {
     this.view.addChild(this.floorContainer);
@@ -33,13 +42,13 @@ export class GridLayer {
     gridH: number,
     _camera: CameraState,
     opts: {
-      doorOpen?: boolean;
+      guestDoorOpen?: boolean;
       kitchenAnnexOwned?: boolean;
       room?: FloorRoomId;
       showGrid?: boolean;
     } = {},
   ): void {
-    const doorOpen = Boolean(opts.doorOpen);
+    const guestDoorOpen = Boolean(opts.guestDoorOpen);
     const kitchenAnnexOwned = Boolean(opts.kitchenAnnexOwned);
     const room: FloorRoomId = opts.room ?? 'main';
     const floorA = getTileTexture('floor_a');
@@ -51,18 +60,19 @@ export class GridLayer {
     const wallS = getTileTexture('wall_s') ?? wallN;
     const wallW = getTileTexture('wall_w') ?? wallN;
     const doorClosed = getTileTexture('door');
-    const doorOpenTex = getTileTexture('door_open') ?? doorClosed;
+    const doorOpen = getTileTexture('door_open');
     const key = `${gridW}x${gridH}:room${room}:annex${kitchenAnnexOwned}:${Boolean(floorA)}:${Boolean(kitchenA)}:${Boolean(wallN)}:${Boolean(wallE)}`;
 
     if (key !== this.lastKey) {
       this.lastKey = key;
       this.floorContainer.removeChildren();
       this.wallContainer.removeChildren();
-      this.doorSprites = [];
+      this.doorSprites.clear();
 
       const zones = mapZonesForGrid(gridW, gridH, { room });
       const openDoors = openDoorCellsForRoom(room, gridW, gridH, kitchenAnnexOwned);
       const doorKeys = new Set(openDoors.map((d) => `${d.x},${d.y}`));
+      this.guestDoorCell = room === 'main' ? { ...zones.door } : null;
 
       for (let gy = 0; gy < gridH; gy += 1) {
         for (let gx = 0; gx < gridW; gx += 1) {
@@ -111,7 +121,15 @@ export class GridLayer {
           tile.height = TILE_PX;
           tile.position.set(x, y);
           this.wallContainer.addChild(tile);
-          if (isDoor) this.doorSprites.push(tile);
+          if (isDoor) {
+            this.doorSprites.set(`${gx},${gy}`, {
+              cell: { x: gx, y: gy },
+              sprite: tile,
+              requestedOpen: false,
+              paintedOpen: false,
+              boundTextureKey: 'door',
+            });
+          }
           return;
         }
         const block = new Graphics();
@@ -126,17 +144,26 @@ export class GridLayer {
           placeWall(gx, gy, isDoor);
         }
       }
-      this.doorOpen = !doorOpen; // force texture refresh below
     }
 
-    if (this.doorSprites.length > 0 && doorOpen !== this.doorOpen) {
-      this.doorOpen = doorOpen;
-      const tex = doorOpen ? doorOpenTex : doorClosed;
-      if (tex) {
-        for (const sprite of this.doorSprites) {
-          sprite.texture = tex;
-        }
+    const guestDoorKey = this.guestDoorCell
+      ? `${this.guestDoorCell.x},${this.guestDoorCell.y}`
+      : null;
+    this.guestDoorRequestedOpen = guestDoorKey !== null && guestDoorOpen;
+    for (const [cellKey, door] of this.doorSprites) {
+      const requestedOpen = cellKey === guestDoorKey && guestDoorOpen;
+      const texture = requestedOpen ? (doorOpen ?? doorClosed) : doorClosed;
+      if (texture) {
+        door.sprite.texture = texture;
       }
+      door.requestedOpen = requestedOpen;
+      door.boundTextureKey =
+        doorOpen != null && door.sprite.texture === doorOpen
+          ? 'door_open'
+          : doorClosed != null && door.sprite.texture === doorClosed
+            ? 'door'
+            : 'other';
+      door.paintedOpen = door.boundTextureKey === 'door_open';
     }
 
     this.gridLines.clear();
@@ -151,5 +178,41 @@ export class GridLayer {
       this.gridLines.moveTo(0, y).lineTo(gridW * TILE_PX, y);
     }
     this.gridLines.stroke();
+  }
+
+  /** Narrow runtime probe for the canonical south guest door. */
+  getGuestDoorDebug(): Readonly<{
+    cell: { x: number; y: number } | null;
+    requestedOpen: boolean;
+    paintedOpen: boolean;
+    boundTextureKey: 'door' | 'door_open' | 'other' | null;
+    spriteCount: number;
+  }> {
+    const cell = this.guestDoorCell;
+    const door = cell ? this.doorSprites.get(`${cell.x},${cell.y}`) : undefined;
+    return {
+      cell: cell ? { ...cell } : null,
+      requestedOpen: this.guestDoorRequestedOpen,
+      paintedOpen: door?.paintedOpen ?? false,
+      boundTextureKey: door?.boundTextureKey ?? null,
+      spriteCount: door ? 1 : 0,
+    };
+  }
+
+  /** Per-cell door state used by focused render regression tests. */
+  getDoorVisualDebug(): ReadonlyArray<
+    Readonly<{
+      cell: { x: number; y: number };
+      requestedOpen: boolean;
+      paintedOpen: boolean;
+      boundTextureKey: 'door' | 'door_open' | 'other';
+    }>
+  > {
+    return [...this.doorSprites.values()].map((door) => ({
+      cell: { ...door.cell },
+      requestedOpen: door.requestedOpen,
+      paintedOpen: door.paintedOpen,
+      boundTextureKey: door.boundTextureKey,
+    }));
   }
 }

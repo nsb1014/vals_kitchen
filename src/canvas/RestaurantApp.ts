@@ -79,6 +79,28 @@ const ROOM_FADE_OUT_MS = 100;
 const ROOM_FADE_IN_MS = 140;
 const DELIVERY_RETRY_TOAST =
   'Could not deliver that dish — tap the guest to retry';
+const GUEST_DOOR_EXIT_LINGER_MS = 120;
+
+interface DoorwayCropDebug {
+  progress: number;
+  visibleFraction: number;
+  apertureWorldY: number;
+  visualOffsetY: number;
+  maskApplied: boolean;
+  contentRenderable: boolean;
+  unclippedWorldBounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+  clippedWorldBounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  } | null;
+}
 
 export class RestaurantApp {
   readonly app: Application;
@@ -101,6 +123,7 @@ export class RestaurantApp {
   private lastRoom: FloorRoomId | null = null;
   private eatingTickAccumulatorMs = 0;
   private floorRuntimeWasRunning = false;
+  private guestDoorExitLingerUntilMs = 0;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
   private roomTransitionInFlight = false;
@@ -647,6 +670,76 @@ export class RestaurantApp {
     };
   }
 
+  /** Read-only frame snapshot for guest threshold and door-state continuity. */
+  getGuestDoorwayTransitionDebug(guestId: string): Readonly<{
+    guestId: string;
+    stage: FloorGuest['stage'] | null;
+    guest: {
+      requestedFrameKey: string;
+      actualBoundFrameKey: string;
+      textureMatchesActualBoundFrame: boolean;
+      actualMaskWorldBounds: {
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+      } | null;
+      isMoving: boolean;
+      facing: 'right' | 'down' | 'up' | 'left';
+      visible: boolean;
+      alpha: number;
+      feet: { x: number; y: number };
+      doorwayCrop: DoorwayCropDebug | null;
+    } | null;
+    door: {
+      cell: { x: number; y: number } | null;
+      requestedOpen: boolean;
+      paintedOpen: boolean;
+      spriteCount: number;
+    };
+    authoritativeOpen: boolean;
+    exitLingerRemainingMs: number;
+    camera: {
+      x: number;
+      y: number;
+      scale: number;
+      stageOffsetX: number;
+      stageOffsetY: number;
+    };
+  }> {
+    const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    const guest = floor?.pool.find((candidate) => candidate.id === guestId);
+    const visual = this.actorLayer.getGuestVisualDebug(guestId);
+    const door = this.gridLayer.getGuestDoorDebug();
+    return {
+      guestId,
+      stage: guest?.stage ?? null,
+      guest: visual
+        ? {
+            requestedFrameKey: visual.requestedFrameKey,
+            actualBoundFrameKey: visual.actualBoundFrameKey,
+            textureMatchesActualBoundFrame:
+              visual.textureMatchesActualBoundFrame,
+            actualMaskWorldBounds: visual.actualMaskWorldBounds,
+            isMoving: visual.isMoving,
+            facing: visual.facing,
+            visible: visual.visible,
+            alpha: visual.alpha,
+            feet: visual.feet,
+            doorwayCrop: visual.doorwayCrop,
+          }
+        : null,
+      door,
+      authoritativeOpen: this.guestDoorOpen(state, floor),
+      exitLingerRemainingMs: Math.max(
+        0,
+        this.guestDoorExitLingerUntilMs - performance.now(),
+      ),
+      camera: { ...this.camera.state },
+    };
+  }
+
   private waitingGuestHitAtWorldPoint(
     floor: FloorDay,
     world: { x: number; y: number },
@@ -747,7 +840,12 @@ export class RestaurantApp {
       this.cancelPendingSeatingIntent();
       return;
     }
-    if (deltaMs === 0) return;
+    if (deltaMs === 0) {
+      // The resume-safe frame advances no gameplay, but it must still repaint
+      // wall art so an elapsed post-exit linger cannot leave the door stale.
+      this.repaintGuestDoor(state, floor);
+      return;
+    }
 
     this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
@@ -803,6 +901,13 @@ export class RestaurantApp {
         .dispatch({ type: 'FLOOR_COMPLETE_SEATING', guestId });
     }
     for (const guestId of motionResult.exitedGuestIds) {
+      // Keep the opened door painted briefly after the logical threshold is
+      // crossed. Arm before the synchronous reducer dispatch removes the
+      // leaving lifecycle that otherwise owns the open state.
+      this.guestDoorExitLingerUntilMs = Math.max(
+        this.guestDoorExitLingerUntilMs,
+        performance.now() + GUEST_DOOR_EXIT_LINGER_MS,
+      );
       void useGameStore
         .getState()
         .dispatch({ type: 'FLOOR_COMPLETE_LEAVING', guestId });
@@ -815,11 +920,14 @@ export class RestaurantApp {
     if (!liveFloor) return;
 
     if (state.activeFloorRoom === 'main') {
-      this.actorLayer.sync(liveFloor, this.nav, this.guestMotion);
+      this.actorLayer.sync(liveFloor, this.nav, this.guestMotion, {
+        guestDoor: door,
+      });
     } else {
       this.actorLayer.sync(null, this.nav, null, {
         showPlayerWithoutFloor: true,
         playerCarrying: liveFloor.carriedTicketId != null,
+        guestDoor: door,
       });
     }
 
@@ -849,11 +957,10 @@ export class RestaurantApp {
       mapHpx,
     );
     this.applyCamera();
-    const doorOpen =
-      state.activeFloorRoom === 'main' &&
-      this.guestMotion.isDoorBusy(liveFloor, door);
+    const liveState = useGameStore.getState();
+    const guestDoorOpen = this.guestDoorOpen(liveState, liveFloor);
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
-      doorOpen,
+      guestDoorOpen,
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
@@ -1209,6 +1316,40 @@ export class RestaurantApp {
     if (path) this.setNavigationPath(path);
   };
 
+  /** One authoritative guest-door state shared by ticks, store syncs, and resize paints. */
+  private guestDoorOpen(
+    state: GameStore,
+    floor: FloorDay | null | undefined,
+  ): boolean {
+    if (
+      state.activeFloorRoom !== 'main' ||
+      !floor ||
+      state.activeDay?.serviceStarted !== true ||
+      !state.modifierDismissed
+    ) {
+      return false;
+    }
+    const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
+      room: 'main',
+    });
+    return (
+      this.guestMotion.isDoorBusy(floor, door) ||
+      performance.now() < this.guestDoorExitLingerUntilMs
+    );
+  }
+
+  private repaintGuestDoor(
+    state: GameStore,
+    floor: FloorDay | null | undefined,
+  ): void {
+    this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      guestDoorOpen: this.guestDoorOpen(state, floor),
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+      room: state.activeFloorRoom,
+      showGrid: state.editLayoutMode,
+    });
+  }
+
   private handleResize = (): void => {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
@@ -1235,6 +1376,7 @@ export class RestaurantApp {
     }
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      guestDoorOpen: this.guestDoorOpen(state, state.activeDay?.floor),
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
@@ -1258,6 +1400,9 @@ export class RestaurantApp {
     const width = this.app.screen.width;
     const height = this.app.screen.height;
     const floor = state.activeDay?.floor;
+    const guestDoor = doorForGrid(state.gridSize.w, state.gridSize.h, {
+      room: 'main',
+    });
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
     const roomPlacements = this.roomPlacements(state);
@@ -1289,7 +1434,7 @@ export class RestaurantApp {
         },
       );
       this.guestMotion.sync(floor, {
-        door: doorForGrid(state.gridSize.w, state.gridSize.h, { room: 'main' }),
+        door: guestDoor,
         grid: {
           w: state.gridSize.w,
           h: state.gridSize.h,
@@ -1305,11 +1450,13 @@ export class RestaurantApp {
           // explicitly starts service; the existing door-to-wait walk begins
           // on the first live tick afterward.
           showGuests: state.modifierDismissed,
+          guestDoor,
         });
       } else {
         this.actorLayer.sync(null, this.nav, null, {
           showPlayerWithoutFloor: true,
           playerCarrying: floor.carriedTicketId != null,
+          guestDoor,
         });
       }
       if (!state.editLayoutMode) {
@@ -1333,7 +1480,7 @@ export class RestaurantApp {
     } else {
       this.lastFloorSeed = null;
       this.lastRoom = state.activeFloorRoom;
-      this.actorLayer.sync(null, this.nav);
+      this.actorLayer.sync(null, this.nav, null, { guestDoor });
       this.camera.centerOnGrid(
         state.gridSize.w,
         state.gridSize.h,
@@ -1344,6 +1491,7 @@ export class RestaurantApp {
 
     this.applyCamera();
     this.gridLayer.sync(state.gridSize.w, state.gridSize.h, this.camera.state, {
+      guestDoorOpen: this.guestDoorOpen(state, floor),
       kitchenAnnexOwned: state.kitchenAnnexOwned,
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,

@@ -235,6 +235,80 @@ export interface E2eBridge {
     facing: 'right' | 'down' | 'up' | 'left';
     isMoving: boolean;
   } | null;
+  /** Debug: one guest plus the authoritative/painted south-door state. */
+  getGuestDoorwayTransitionDebug: (guestId: string) => {
+    guestId: string;
+    stage:
+      | 'queued'
+      | 'entering'
+      | 'waiting'
+      | 'seating'
+      | 'seated'
+      | 'ordered'
+      | 'eating'
+      | 'leaving'
+      | 'done'
+      | null;
+    guest: {
+      requestedFrameKey: string;
+      actualBoundFrameKey: string;
+      textureMatchesActualBoundFrame: boolean;
+      actualMaskWorldBounds: {
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+      } | null;
+      isMoving: boolean;
+      facing: 'right' | 'down' | 'up' | 'left';
+      visible: boolean;
+      alpha: number;
+      feet: { x: number; y: number };
+      doorwayCrop: {
+        progress: number;
+        visibleFraction: number;
+        apertureWorldY: number;
+        visualOffsetY: number;
+        maskApplied: boolean;
+        contentRenderable: boolean;
+        unclippedWorldBounds: {
+          left: number;
+          top: number;
+          right: number;
+          bottom: number;
+        };
+        clippedWorldBounds: {
+          left: number;
+          top: number;
+          right: number;
+          bottom: number;
+        } | null;
+      } | null;
+    } | null;
+    door: {
+      cell: { x: number; y: number } | null;
+      requestedOpen: boolean;
+      paintedOpen: boolean;
+      spriteCount: number;
+    };
+    authoritativeOpen: boolean;
+    exitLingerRemainingMs: number;
+    camera: {
+      x: number;
+      y: number;
+      scale: number;
+      stageOffsetX: number;
+      stageOffsetY: number;
+    };
+  } | null;
+  /** Click the real Start Service control and capture its synchronous revealed frame. */
+  startServiceAndCaptureGuestDoorwayFrame: (
+    guestId: string,
+  ) => Promise<
+    NonNullable<ReturnType<E2eBridge['getGuestDoorwayTransitionDebug']>>
+  >;
+  /** Exercise the ordinary store-to-canvas render path without mutating gameplay. */
+  repaintRestaurantFromStoreForTest: () => void;
   /** Debug: combined furniture and seated-actor depth/pose snapshot. */
   getSeatingSceneDebug: () => {
     depthParent: {
@@ -487,6 +561,50 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPlayerVisualDebug() {
       return getRestaurantApp()?.getPlayerVisualDebug() ?? null;
+    },
+
+    getGuestDoorwayTransitionDebug(guestId) {
+      return getRestaurantApp()?.getGuestDoorwayTransitionDebug(guestId) ?? null;
+    },
+
+    startServiceAndCaptureGuestDoorwayFrame(guestId) {
+      return new Promise((resolve, reject) => {
+        const button = document.querySelector<HTMLButtonElement>(
+          '[data-testid="start-service-btn"]',
+        );
+        if (!button) {
+          reject(new Error('Start Service control is missing'));
+          return;
+        }
+        let settled = false;
+        const timeout = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          unsubscribe();
+          reject(new Error('Start Service did not reveal the live floor'));
+        }, 10_000);
+        const unsubscribe = useGameStore.subscribe((state) => {
+          if (settled || !state.modifierDismissed) return;
+          settled = true;
+          window.clearTimeout(timeout);
+          unsubscribe();
+          // Let every listener for the same store mutation finish, while
+          // remaining in the current task before the next ticker/rAF advances.
+          queueMicrotask(() => {
+            const debug = getRestaurantApp()?.getGuestDoorwayTransitionDebug(guestId);
+            if (!debug) {
+              reject(new Error('restaurant app omitted the revealed doorway frame'));
+              return;
+            }
+            resolve(debug);
+          });
+        });
+        button.click();
+      });
+    },
+
+    repaintRestaurantFromStoreForTest() {
+      getRestaurantApp()?.syncFromStore(useGameStore.getState());
     },
 
     getSeatingSceneDebug() {

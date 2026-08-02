@@ -51,8 +51,11 @@ type ActorFacingName = (typeof FACING_NAMES)[number];
 
 interface GuestSpriteEntry {
   root: Container;
+  content: Container;
   sprite: Sprite;
   cue: Graphics;
+  cropMask: Graphics;
+  doorwayCrop: GuestDoorwayCropDebug | null;
   /** Requested key last accepted by the texture-binding retry policy. */
   lastFrameKey: string;
   /** Requested pose for the current rendered tick, even while an atlas is loading. */
@@ -71,6 +74,109 @@ function tileCenter(gx: number, gy: number): { x: number; y: number } {
 
 function scaleForContent(displayHeight: number, contentHeight: number): number {
   return displayHeight / Math.max(1, contentHeight);
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Visible top fraction while a moving guest crosses the south doorway.
+ * The same northward progress gives arrivals 0 -> 1 and departures 1 -> 0.
+ * Position remains authoritative at exact endpoints even after navigation
+ * stops, so a guest at door center stays fully concealed until removal.
+ */
+export function doorwayGuestCropFraction(
+  stage: FloorGuest['stage'],
+  pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+  door: GridPoint = STARTER_DOOR,
+): number {
+  if (stage !== 'entering' && stage !== 'leaving') {
+    return 1;
+  }
+
+  const doorCenterY = tileCenter(door.x, door.y).y;
+  const laneCenterY = tileCenter(door.x, Math.max(0, door.y - 1)).y;
+  const doorwayTravel = doorCenterY - laneCenterY;
+  if (doorwayTravel <= 0) return 1;
+  return clampUnit((doorCenterY - pose.worldY) / doorwayTravel);
+}
+
+/** Clip translated content against the fixed north edge of the doorway. */
+export function topClippedGuestWorldBoundsAtAperture(
+  bounds: GuestWorldBounds,
+  apertureWorldY: number,
+): GuestWorldBounds | null {
+  const bottom = Math.min(bounds.bottom, apertureWorldY);
+  if (bottom <= bounds.top) return null;
+  return {
+    left: bounds.left,
+    top: bounds.top,
+    right: bounds.right,
+    bottom,
+  };
+}
+
+export interface GuestDoorwayCropDebug {
+  /** Geographic doorway progress: 0 at door center, 1 at north lane center. */
+  progress: number;
+  /** Top fraction of authored/fallback content currently painted. */
+  visibleFraction: number;
+  apertureWorldY: number;
+  visualOffsetY: number;
+  maskApplied: boolean;
+  contentRenderable: boolean;
+  unclippedWorldBounds: GuestWorldBounds;
+  clippedWorldBounds: GuestWorldBounds | null;
+}
+
+/** Deterministic render/debug geometry for an active doorway crossing. */
+export function guestDoorwayCropGeometry(
+  bounds: GuestWorldBounds,
+  stage: FloorGuest['stage'],
+  pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+  door: GridPoint = STARTER_DOOR,
+): GuestDoorwayCropDebug | null {
+  if (stage !== 'entering' && stage !== 'leaving') {
+    return null;
+  }
+  const progress = doorwayGuestCropFraction(stage, pose, door);
+  // Once the body is fully inside the north lane this is ordinary actor
+  // rendering, not an active doorway threshold. Keeping the debug state null
+  // also prevents full interior travel from implying that the door is busy.
+  if (progress >= 1) return null;
+  // Actor roots use a two-pixel feet inset. Align the aperture with the root
+  // at the lane-center endpoint so full content arrives with zero visual
+  // offset while the north doorway threshold remains fixed in world space.
+  const apertureWorldY = door.y * TILE_PX - 2;
+  const visualOffsetY =
+    (apertureWorldY - bounds.top) * (1 - progress);
+  const unclippedWorldBounds = {
+    left: bounds.left,
+    top: bounds.top + visualOffsetY,
+    right: bounds.right,
+    bottom: bounds.bottom + visualOffsetY,
+  };
+  const clippedWorldBounds = topClippedGuestWorldBoundsAtAperture(
+    unclippedWorldBounds,
+    apertureWorldY,
+  );
+  const fullHeight = Math.max(0, bounds.bottom - bounds.top);
+  const clippedHeight = clippedWorldBounds
+    ? clippedWorldBounds.bottom - clippedWorldBounds.top
+    : 0;
+  return {
+    progress,
+    visibleFraction: fullHeight > 0
+      ? clampUnit(clippedHeight / fullHeight)
+      : 0,
+    apertureWorldY,
+    visualOffsetY,
+    maskApplied: true,
+    contentRenderable: clippedWorldBounds !== null,
+    unclippedWorldBounds,
+    clippedWorldBounds,
+  };
 }
 
 export class ActorLayer {
@@ -118,6 +224,7 @@ export class ActorLayer {
       showPlayerWithoutFloor?: boolean;
       showGuests?: boolean;
       playerCarrying?: boolean;
+      guestDoor?: GridPoint;
     } = {},
   ): void {
     this.markerLayer.clear();
@@ -140,7 +247,11 @@ export class ActorLayer {
     if (opts.showGuests === false) {
       this.clearGuests();
     } else {
-      this.syncGuests(floor, guestMotion ?? null);
+      this.syncGuests(
+        floor,
+        guestMotion ?? null,
+        opts.guestDoor ?? STARTER_DOOR,
+      );
     }
     const carrying = floor.carriedTicketId != null;
     const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
@@ -209,6 +320,9 @@ export class ActorLayer {
     facing: ActorFacingName;
     visible: boolean;
     alpha: number;
+    doorwayCrop: GuestDoorwayCropDebug | null;
+    actualMaskWorldBounds: GuestWorldBounds | null;
+    textureMatchesActualBoundFrame: boolean;
     feet: { x: number; y: number };
   }> | null {
     const entry = this.guestSprites.get(guestId);
@@ -226,6 +340,22 @@ export class ActorLayer {
       facing: entry.facing,
       visible: entry.sprite.visible,
       alpha: entry.sprite.alpha,
+      doorwayCrop: entry.doorwayCrop
+        ? {
+            ...entry.doorwayCrop,
+            maskApplied: entry.content.mask === entry.cropMask,
+            contentRenderable: entry.content.renderable,
+            unclippedWorldBounds: { ...entry.doorwayCrop.unclippedWorldBounds },
+            clippedWorldBounds: entry.doorwayCrop.clippedWorldBounds
+              ? { ...entry.doorwayCrop.clippedWorldBounds }
+              : null,
+          }
+        : null,
+      actualMaskWorldBounds: this.guestActualMaskWorldBounds(entry),
+      textureMatchesActualBoundFrame:
+        entry.sprite.visible &&
+        entry.actualBoundFrameKey.length > 0 &&
+        entry.sprite.texture === getCharacterTexture(entry.actualBoundFrameKey),
       feet: { x: entry.root.x, y: entry.root.y },
     };
   }
@@ -397,7 +527,11 @@ export class ActorLayer {
     this.plateOverlayVisible = true;
   }
 
-  private syncGuests(floor: FloorDay, guestMotion: GuestMotion | null): void {
+  private syncGuests(
+    floor: FloorDay,
+    guestMotion: GuestMotion | null,
+    guestDoor: GridPoint,
+  ): void {
     const seen = new Set<string>();
     let waitingIndex = 0;
     for (const guest of floor.pool) {
@@ -410,18 +544,25 @@ export class ActorLayer {
       let entry = this.guestSprites.get(guest.id);
       if (!entry) {
         const root = new Container();
+        const content = new Container();
         const sprite = new Sprite();
         sprite.roundPixels = true;
         sprite.anchor.set(0.5, 1);
         sprite.alpha = 1;
         const cue = new Graphics();
-        root.addChild(sprite);
-        root.addChild(cue);
+        const cropMask = new Graphics();
+        content.addChild(sprite);
+        content.addChild(cue);
+        root.addChild(content);
+        root.addChild(cropMask);
         this.actorContainer.addChild(root);
         entry = {
           root,
+          content,
           sprite,
           cue,
+          cropMask,
+          doorwayCrop: null,
           lastFrameKey: '',
           requestedFrameKey: '',
           actualBoundFrameKey: '',
@@ -502,6 +643,12 @@ export class ActorLayer {
       if (!entry.sprite.visible) {
         entry.cue.circle(0, -8, 8).fill(FALLBACK_GUEST_COLOR);
       }
+      this.syncGuestDoorwayCrop(
+        entry,
+        guest.stage,
+        pose,
+        guestDoor,
+      );
     }
 
     for (const [id, entry] of this.guestSprites) {
@@ -516,6 +663,122 @@ export class ActorLayer {
       this.actorContainer.removeChild(entry.root);
     }
     this.guestSprites.clear();
+  }
+
+  private syncGuestDoorwayCrop(
+    entry: GuestSpriteEntry,
+    stage: FloorGuest['stage'],
+    pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+    guestDoor: GridPoint,
+  ): void {
+    const fullBounds = this.guestEntryDoorwayWorldBounds(entry);
+    const doorwayCrop = guestDoorwayCropGeometry(
+      fullBounds,
+      stage,
+      pose,
+      guestDoor,
+    );
+    entry.doorwayCrop = doorwayCrop;
+    entry.cropMask.clear();
+    entry.content.y = doorwayCrop?.visualOffsetY ?? 0;
+    entry.content.renderable = doorwayCrop?.contentRenderable ?? true;
+
+    if (!doorwayCrop) {
+      entry.content.mask = null;
+      return;
+    }
+
+    entry.content.mask = entry.cropMask;
+    const clipped = doorwayCrop.clippedWorldBounds;
+    if (!clipped) return;
+    entry.cropMask
+      .rect(
+        clipped.left - entry.root.x,
+        clipped.top - entry.root.y,
+        clipped.right - clipped.left,
+        clipped.bottom - clipped.top,
+      )
+      .fill({ color: 0xffffff });
+  }
+
+  /**
+   * Doorway masks use the complete displayed frame rather than alpha-trimmed
+   * hit content. Both authored frames and fallback cues therefore end at the
+   * actor root, which is the fixed aperture baseline at lane-center arrival.
+   */
+  private guestEntryDoorwayWorldBounds(
+    entry: { root: Container; sprite: Sprite },
+  ): GuestWorldBounds {
+    if (entry.sprite.visible) {
+      const texture = entry.sprite.texture;
+      return anchoredSpriteContentWorldBounds({
+        rootX: entry.root.x,
+        rootY: entry.root.y,
+        spriteX: entry.sprite.x,
+        spriteY: entry.sprite.y,
+        sourceWidth: texture.orig.width,
+        sourceHeight: texture.orig.height,
+        contentBounds: {
+          left: 0,
+          top: 0,
+          right: texture.orig.width,
+          bottom: texture.orig.height,
+        },
+        anchorX: entry.sprite.anchor.x,
+        anchorY: entry.sprite.anchor.y,
+        scaleX: entry.sprite.scale.x,
+        scaleY: entry.sprite.scale.y,
+      });
+    }
+    return {
+      left: entry.root.x - 8,
+      top: entry.root.y - 16,
+      right: entry.root.x + 8,
+      bottom: entry.root.y,
+    };
+  }
+
+  /** Measure the Graphics geometry that Pixi will actually use as the mask. */
+  private guestActualMaskWorldBounds(
+    entry: GuestSpriteEntry,
+  ): GuestWorldBounds | null {
+    const local = entry.cropMask.getLocalBounds();
+    if (
+      !Number.isFinite(local.minX) ||
+      !Number.isFinite(local.minY) ||
+      !Number.isFinite(local.maxX) ||
+      !Number.isFinite(local.maxY) ||
+      local.maxX <= local.minX ||
+      local.maxY <= local.minY
+    ) {
+      return null;
+    }
+
+    // Actor roots and their mask child are translation/scale-only by design.
+    // Apply those live Pixi transforms instead of repeating intended crop
+    // geometry, while intentionally stopping before the camera/world stage.
+    const maskLeft = entry.cropMask.x +
+      (local.minX - entry.cropMask.pivot.x) * entry.cropMask.scale.x;
+    const maskRight = entry.cropMask.x +
+      (local.maxX - entry.cropMask.pivot.x) * entry.cropMask.scale.x;
+    const maskTop = entry.cropMask.y +
+      (local.minY - entry.cropMask.pivot.y) * entry.cropMask.scale.y;
+    const maskBottom = entry.cropMask.y +
+      (local.maxY - entry.cropMask.pivot.y) * entry.cropMask.scale.y;
+    const x1 = entry.root.x +
+      (maskLeft - entry.root.pivot.x) * entry.root.scale.x;
+    const x2 = entry.root.x +
+      (maskRight - entry.root.pivot.x) * entry.root.scale.x;
+    const y1 = entry.root.y +
+      (maskTop - entry.root.pivot.y) * entry.root.scale.y;
+    const y2 = entry.root.y +
+      (maskBottom - entry.root.pivot.y) * entry.root.scale.y;
+    return {
+      left: Math.min(x1, x2),
+      top: Math.min(y1, y2),
+      right: Math.max(x1, x2),
+      bottom: Math.max(y1, y2),
+    };
   }
 }
 
