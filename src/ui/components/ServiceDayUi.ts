@@ -627,13 +627,21 @@ export function mountServiceDayUi(
         </div>
       `;
       revealServicePanel('modifier');
-      serviceOverlay.querySelector('#start-service-btn')?.addEventListener(
-        'click',
-        () => {
-          useGameStore.getState().dismissModifier();
-        },
-        { once: true },
+      const startServiceButton = serviceOverlay.querySelector<HTMLButtonElement>(
+        '#start-service-btn',
       );
+      let startServicePending = false;
+      startServiceButton?.addEventListener('click', async () => {
+        if (startServicePending) return;
+        startServicePending = true;
+        startServiceButton.disabled = true;
+        try {
+          await useGameStore.getState().dismissModifier();
+        } catch {
+          startServicePending = false;
+          startServiceButton.disabled = false;
+        }
+      });
       return;
     }
 

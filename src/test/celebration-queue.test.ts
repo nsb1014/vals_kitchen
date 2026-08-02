@@ -135,6 +135,7 @@ describe('celebration queue timing', () => {
     game.activeDay = {
       seed: 10,
       modifierId: 'none',
+      serviceStarted: true,
       customers: [],
       queueIndex: 0,
       dayEarnings: 0,

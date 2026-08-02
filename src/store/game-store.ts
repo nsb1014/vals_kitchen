@@ -123,7 +123,7 @@ interface StoreMeta {
 export interface GameStore extends GameState, StoreMeta {
   hydrate: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
-  dismissModifier: () => void;
+  dismissModifier: () => Promise<void>;
   dismissPendingReview: () => void;
   dismissDaySummary: () => void;
   dismissCeremony: () => void;
@@ -463,7 +463,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       activeFloorRoom: state.activeDay?.floor?.playerRoom ?? 'main',
       hydrated: true,
       persistGranted: persist.granted,
-      modifierDismissed: state.activeDay ? true : false,
+      modifierDismissed: state.activeDay?.serviceStarted ?? false,
       pendingReview: null,
       daySummary: null,
       ceremony: null,
@@ -509,6 +509,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
+    if (
+      action.type === 'START_SERVICE' &&
+      before.activeDay?.serviceStarted === true &&
+      result.state.activeDay?.serviceStarted === true
+    ) {
+      if (!current.modifierDismissed) {
+        set({ modifierDismissed: true });
+      }
+      return;
+    }
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
     const mappedCelebrations = applyReducerEvents(
       result.events,
@@ -524,7 +534,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
     switch (action.type) {
       case 'OPEN_DAY':
-        patch.modifierDismissed = false;
         patch.pendingReview = null;
         patch.daySummary = null;
         patch.ceremony = null;
@@ -544,7 +553,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           result.state,
           current.dayStartRating ?? before.rating,
         );
-        patch.modifierDismissed = false;
         patch.pendingReview = null;
         patch.dayStartRating = null;
         patch.editLayoutMode = false;
@@ -561,6 +569,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       default:
         break;
     }
+
+    patch.modifierDismissed =
+      result.state.activeDay?.serviceStarted ?? false;
 
     if (resetsNotificationLifecycle) {
       patch.floorToast = null;
@@ -586,6 +597,26 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
     syncStoreNotificationTimer();
 
+    if (action.type === 'START_SERVICE') {
+      try {
+        await get().autosave();
+      } catch (error) {
+        const failed = get();
+        const startedDay = result.state.activeDay;
+        if (
+          startedDay &&
+          failed.activeDay?.seed === startedDay.seed &&
+          failed.activeDay.serviceStarted
+        ) {
+          set({
+            activeDay: { ...failed.activeDay, serviceStarted: false },
+            modifierDismissed: false,
+          });
+        }
+        throw error;
+      }
+      return;
+    }
     if (shouldAutosaveAfterDispatch(action.type)) {
       void get().autosave();
     }
@@ -628,7 +659,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         editLayoutMode: false,
         activeFloorRoom: imported.activeDay?.floor?.playerRoom ?? 'main',
         hydrated: true,
-        modifierDismissed: imported.activeDay ? true : false,
+        modifierDismissed: imported.activeDay?.serviceStarted ?? false,
         pendingReview: null,
         daySummary: null,
         ceremony: null,
@@ -881,8 +912,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     syncStoreNotificationTimer();
   },
 
-  dismissModifier() {
-    set({ modifierDismissed: true });
+  async dismissModifier() {
+    await get().dispatch({ type: 'START_SERVICE' });
   },
 
   dismissPendingReview() {

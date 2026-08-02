@@ -174,6 +174,28 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     version = 5;
   }
 
+  if (version === 5) {
+    const activeDay = envelope.gameState.activeDay;
+    envelope = {
+      ...envelope,
+      saveVersion: 6,
+      gameState: {
+        ...envelope.gameState,
+        activeDay:
+          activeDay && typeof activeDay === 'object'
+            ? {
+                ...activeDay,
+                serviceStarted:
+                  (activeDay as { serviceStarted?: unknown }).serviceStarted === false
+                    ? false
+                    : true,
+              }
+            : activeDay,
+      },
+    };
+    version = 6;
+  }
+
   const gameState = envelope.gameState as GameState;
   return {
     ...envelope,

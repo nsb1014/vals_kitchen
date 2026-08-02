@@ -253,6 +253,7 @@ describe('achievement mutation integration', () => {
     state.activeDay = {
       seed: 10,
       modifierId: 'none',
+      serviceStarted: true,
       customers: [],
       queueIndex: 0,
       dayEarnings: 0,

@@ -12,6 +12,8 @@ export interface ActiveDay {
   seed: number;
   modifierId: string;
   customers: Customer[];
+  /** Whether the player has dismissed setup and begun floor service. */
+  serviceStarted: boolean;
   queueIndex: number;
   dayEarnings: number;
   dayMatchSum: number;

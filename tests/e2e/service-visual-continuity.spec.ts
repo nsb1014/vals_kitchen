@@ -1,6 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { guestVariant } from '../../src/canvas/world/character-frames.ts';
-import { gotoFreshGame } from './helpers.ts';
+import {
+  gotoFreshGame,
+  readSaveFromIndexedDb,
+  waitForGameReady,
+} from './helpers.ts';
 
 async function rect(locator: Locator) {
   const box = await locator.boundingBox();
@@ -57,7 +61,45 @@ test.describe('service visual continuity', () => {
       animations: 'disabled',
     });
 
+    await expect
+      .poll(async () => {
+        const save = (await readSaveFromIndexedDb(page)) as {
+          gameState?: { activeDay?: { serviceStarted?: boolean } | null };
+        } | null;
+        return save?.gameState?.activeDay?.serviceStarted;
+      })
+      .toBe(false);
+    await page.reload({ waitUntil: 'networkidle' });
+    await waitForGameReady(page);
+    await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+    expect(
+      await page.evaluate(
+        (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
+        enteringGuestId,
+      ),
+    ).toBeNull();
+
     await page.getByTestId('start-service-btn').click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
+          enteringGuestId,
+        ),
+      )
+      .not.toBeNull();
+    await expect
+      .poll(async () => {
+        const save = (await readSaveFromIndexedDb(page)) as {
+          gameState?: { activeDay?: { serviceStarted?: boolean } | null };
+        } | null;
+        return save?.gameState?.activeDay?.serviceStarted;
+      })
+      .toBe(true);
+    await page.reload({ waitUntil: 'networkidle' });
+    await waitForGameReady(page);
+    await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+    await expect(page.getByTestId('floor-service-panel')).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate(

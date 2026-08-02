@@ -70,6 +70,7 @@ function floorStateWithPlatedTicket() {
   const activeDay: ActiveDay = {
     seed: 1,
     modifierId: 'none',
+    serviceStarted: true,
     customers: [c],
     queueIndex: 0,
     dayEarnings: 0,

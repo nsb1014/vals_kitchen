@@ -46,6 +46,7 @@ import type { AchievementId } from './achievements/catalog.ts';
 
 export type GameAction =
   | { type: 'OPEN_DAY' }
+  | { type: 'START_SERVICE' }
   | { type: 'SET_COMPOSE_DRAFT'; ingredientIds: string[] }
   | { type: 'SERVE_DISH'; ingredientIds: string[] }
   | { type: 'NEXT_CUSTOMER' }
@@ -256,6 +257,7 @@ export function gameReducer(
         seed: generated.seed,
         modifierId: generated.modifier.id,
         customers: generated.customers,
+        serviceStarted: false,
         queueIndex: 0,
         dayEarnings: 0,
         dayMatchSum: 0,
@@ -265,6 +267,16 @@ export function gameReducer(
         floor,
       };
       next.composeDraftIngredientIds = undefined;
+      return { state: next, events };
+    }
+
+    case 'START_SERVICE': {
+      requireFloor(state);
+      if (state.activeDay!.serviceStarted) {
+        return { state, events };
+      }
+      const next = cloneGameState(state);
+      next.activeDay = { ...next.activeDay!, serviceStarted: true };
       return { state: next, events };
     }
 

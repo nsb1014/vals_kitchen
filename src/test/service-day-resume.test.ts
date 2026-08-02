@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { gameReducer } from '../domain/reducer.ts';
-import { createNewGameState, normalizeGameState } from '../domain/state/game-state.ts';
+import {
+  createNewGameState,
+  normalizeGameState,
+  type GameState,
+} from '../domain/state/game-state.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
+import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
+import { computeChecksum } from '../persistence/serialize.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import { testContext } from './test-helpers.ts';
 
@@ -200,4 +206,115 @@ describe('service day mid-day resume', () => {
     legacy.composeDraftIngredientIds = undefined;
     expect(normalizeGameState(legacy).activeDay!.floor!.selectedTicketId).toBeNull();
   });
+});
+
+describe('persisted service start', () => {
+  it('rejects starting service without an active floor day', () => {
+    expect(() =>
+      gameReducer(createNewGameState(7101), { type: 'START_SERVICE' }, testContext),
+    ).toThrow('No active floor day');
+
+    const withoutFloor = gameReducer(
+      createNewGameState(7102),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    withoutFloor.activeDay = { ...withoutFloor.activeDay!, floor: null };
+    expect(() =>
+      gameReducer(withoutFloor, { type: 'START_SERVICE' }, testContext),
+    ).toThrow('No active floor day');
+  });
+
+  it('starts service once and returns the exact state when already started', () => {
+    const opened = gameReducer(
+      createNewGameState(7103),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    expect(opened.activeDay?.serviceStarted).toBe(false);
+
+    const started = gameReducer(opened, { type: 'START_SERVICE' }, testContext);
+    expect(started.state).not.toBe(opened);
+    expect(started.state.activeDay?.serviceStarted).toBe(true);
+    expect(started.events).toEqual([]);
+
+    const repeated = gameReducer(
+      started.state,
+      { type: 'START_SERVICE' },
+      testContext,
+    );
+    expect(repeated.state).toBe(started.state);
+    expect(repeated.events).toEqual([]);
+  });
+
+  it.each([
+    { label: 'a missing flag', serviceStarted: undefined, expected: true },
+    { label: 'an explicit false flag', serviceStarted: false, expected: false },
+  ])('migrates v5 active days with $label', ({ serviceStarted, expected }) => {
+    const state = gameReducer(
+      createNewGameState(7104),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const activeDay = { ...state.activeDay } as Record<string, unknown>;
+    if (serviceStarted === undefined) {
+      delete activeDay.serviceStarted;
+    } else {
+      activeDay.serviceStarted = serviceStarted;
+    }
+    const legacyState = {
+      ...state,
+      saveVersion: 5,
+      activeDay,
+    };
+    const envelope = {
+      saveVersion: 5,
+      checksum: computeChecksum(legacyState as unknown as GameState),
+      createdAt: '2026-08-02T00:00:00.000Z',
+      gameState: legacyState,
+    };
+
+    expect(migrateSave(envelope).gameState.activeDay?.serviceStarted).toBe(expected);
+  });
+
+  it('defensively normalizes a current save while preserving explicit false', () => {
+    const opened = gameReducer(
+      createNewGameState(7105),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    expect(
+      normalizeGameState({
+        ...opened,
+        activeDay: { ...opened.activeDay!, serviceStarted: false },
+      }).activeDay?.serviceStarted,
+    ).toBe(false);
+
+    const malformed = structuredClone(opened) as unknown as {
+      activeDay: Record<string, unknown>;
+    };
+    delete malformed.activeDay.serviceStarted;
+    expect(
+      normalizeGameState(malformed as unknown as typeof opened).activeDay?.serviceStarted,
+    ).toBe(true);
+  });
+
+  it.each([false, true])(
+    'round-trips serviceStarted=%s through a Save Code',
+    (serviceStarted) => {
+      let state = gameReducer(
+        createNewGameState(serviceStarted ? 7106 : 7107),
+        { type: 'OPEN_DAY' },
+        testContext,
+      ).state;
+      if (serviceStarted) {
+        state = gameReducer(state, { type: 'START_SERVICE' }, testContext).state;
+      }
+
+      const imported = parseSaveCode(
+        exportSaveCode(state, '2026-08-02T00:00:00.000Z'),
+      );
+      expect(imported.activeDay?.serviceStarted).toBe(serviceStarted);
+    },
+  );
 });

@@ -7,6 +7,8 @@ import { createNewGameState } from '../domain/state/game-state.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import './test-helpers.ts';
 
+const storeAutosave = useGameStore.getState().autosave;
+
 function createMemoryStorage(): StorageAdapter {
   const map = new Map<string, unknown>();
   return {
@@ -40,6 +42,7 @@ function resetStore(seed: number): void {
     musicEnabled: false,
     floorPlayerGrid: null,
     floorToast: null,
+    autosave: storeAutosave,
   });
 }
 
@@ -51,7 +54,7 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
     activeFloorRoom: loaded.activeDay?.floor?.playerRoom ?? 'main',
     hydrated: true,
     persistGranted: false,
-    modifierDismissed: true,
+    modifierDismissed: loaded.activeDay?.serviceStarted ?? false,
     pendingReview: null,
     daySummary: null,
     ceremony: null,
@@ -69,7 +72,7 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
 
 async function advanceFloorToOpenTicket(): Promise<string> {
   await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
-  useGameStore.getState().dismissModifier();
+  await useGameStore.getState().dismissModifier();
 
   const floor = useGameStore.getState().activeDay!.floor!;
   for (const table of floor.tables) {
@@ -156,6 +159,90 @@ describe('floor autosave via store dispatch', () => {
       y: 5,
     });
     expect(useGameStore.getState().floorPlayerGrid).toEqual({ x: 2, y: 5 });
+  });
+
+  it('persists starting service before its promise resolves and mirrors the domain state', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
+    expect(useGameStore.getState().modifierDismissed).toBe(false);
+
+    let releaseSave!: () => void;
+    const deferredSave = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    let savedSnapshot: ReturnType<typeof getGameStateSnapshot> | null = null;
+    const autosaveSpy = vi
+      .spyOn(useGameStore.getState(), 'autosave')
+      .mockImplementation(async () => {
+        savedSnapshot = getGameStateSnapshot();
+        await deferredSave;
+      });
+
+    let settled = false;
+    const startPromise = useGameStore
+      .getState()
+      .dismissModifier()
+      .then(() => {
+        settled = true;
+      });
+
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+    expect(savedSnapshot!.activeDay!.serviceStarted).toBe(true);
+    expect(autosaveSpy).toHaveBeenCalledOnce();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    releaseSave();
+    await startPromise;
+    expect(settled).toBe(true);
+
+    const activeDayAfterStart = useGameStore.getState().activeDay;
+    useGameStore.setState({ modifierDismissed: false });
+    await useGameStore.getState().dismissModifier();
+    expect(useGameStore.getState().activeDay).toBe(activeDayAfterStart);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+    expect(autosaveSpy).toHaveBeenCalledOnce();
+  });
+
+  it('derives the modifier sheet mirror from imported service progress', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const beforeStartCode = exportSaveCode(getGameStateSnapshot());
+
+    resetStore(1);
+    expect(
+      await useGameStore.getState().importSaveCode(beforeStartCode),
+    ).toEqual({ ok: true });
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
+    expect(useGameStore.getState().modifierDismissed).toBe(false);
+
+    await useGameStore.getState().dismissModifier();
+    const afterStartCode = exportSaveCode(getGameStateSnapshot());
+    resetStore(2);
+    expect(
+      await useGameStore.getState().importSaveCode(afterStartCode),
+    ).toEqual({ ok: true });
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+  });
+
+  it('rolls a failed service-start save back to a retryable setup sheet', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const autosaveSpy = vi
+      .spyOn(useGameStore.getState(), 'autosave')
+      .mockRejectedValueOnce(new Error('storage unavailable'))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(useGameStore.getState().dismissModifier()).rejects.toThrow(
+      'storage unavailable',
+    );
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(false);
+    expect(useGameStore.getState().modifierDismissed).toBe(false);
+
+    await expect(useGameStore.getState().dismissModifier()).resolves.toBeUndefined();
+    expect(useGameStore.getState().activeDay!.serviceStarted).toBe(true);
+    expect(useGameStore.getState().modifierDismissed).toBe(true);
+    expect(autosaveSpy).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -267,7 +354,7 @@ describe('floor autosave via store dispatch', () => {
   it('autosaves an in-flight seating reservation through reload', async () => {
     const autosaveSpy = vi.spyOn(useGameStore.getState(), 'autosave').mockResolvedValue(undefined);
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
-    useGameStore.getState().dismissModifier();
+    await useGameStore.getState().dismissModifier();
     for (const table of useGameStore.getState().activeDay!.floor!.tables) {
       await useGameStore.getState().dispatch({
         type: 'FLOOR_SET_TABLE',

@@ -36,8 +36,8 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-/** Save v5: unlocked achievement ids are persisted. */
-export const CURRENT_SAVE_VERSION = 5 as const;
+/** Save v6: an open day's service-start state is persisted. */
+export const CURRENT_SAVE_VERSION = 6 as const;
 
 export interface Placement {
   id: string;
@@ -504,6 +504,15 @@ export function normalizeGameState(raw: GameState): GameState {
     raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
   let activeDay = raw.activeDay ?? null;
   let composeDraftIngredientIds = raw.composeDraftIngredientIds;
+
+  if (activeDay) {
+    activeDay = {
+      ...activeDay,
+      // Saves from before v6 were necessarily already in service whenever an
+      // active day existed. Preserve an explicit pre-service false from v6.
+      serviceStarted: activeDay.serviceStarted === false ? false : true,
+    };
+  }
 
   if (activeDay?.floor) {
     const rawFloor = activeDay.floor;
