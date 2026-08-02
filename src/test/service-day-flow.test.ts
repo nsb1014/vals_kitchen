@@ -65,9 +65,13 @@ describe('service day store flow', () => {
     useGameStore.getState().dismissModifier();
 
     while (!isDayComplete(useGameStore.getState())) {
+      const customerId = useGameStore.getState().activeDay!.customers[
+        useGameStore.getState().activeDay!.queueIndex
+      ]!.id;
       await serveCurrentCustomer();
       state = useGameStore.getState();
       expect(state.pendingReview).not.toBeNull();
+      expect(state.pendingReview?.customerId).toBe(customerId);
       if (isDayComplete(state)) break;
       await useGameStore.getState().dispatch({ type: 'NEXT_CUSTOMER' });
     }

@@ -272,6 +272,36 @@
   min-height: var(--vk-sheet-header-h);
 }
 
+.review-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.review-identity .guest-portrait {
+  flex-basis: 44px;
+  width: 44px;
+  height: 44px;
+}
+
+.review-identity-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.review-identity-kicker {
+  color: var(--vk-text-dim);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-identity .service-title {
+  margin: 0;
+}
+
 .sheet-body-scroll {
   flex: 1 1 auto;
   min-height: 0;

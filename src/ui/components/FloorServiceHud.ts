@@ -136,11 +136,35 @@ export function mountFloorServiceHud(
       focusAfter === undefined ? captureDockFocus() : focusAfter;
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
+    const reserveChrome = () => {
+      chromeMount.hidden = false;
+      chromeMount.style.visibility = 'hidden';
+      chromeMount.inert = true;
+      chromeMount.setAttribute('aria-hidden', 'true');
+      if (!chromeMount.firstElementChild) {
+        chromeMount.innerHTML = `
+          <div class="floor-service-panel floor-service-panel--reserve"></div>
+        `;
+      }
+      dock.hidden = true;
+      dock.innerHTML = '';
+      ticketsMenuOpen = false;
+      notifyNotificationBlockingSurfaceChanged();
+    };
     // Keep the chrome strip mounted for the whole floor day (including review /
     // summary popups) so canvas height does not jump when overlays open.
+    if (!floor && state.daySummary) {
+      state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
+      reserveChrome();
+      return;
+    }
+
     if (!floor) {
       state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
       chromeMount.hidden = true;
+      chromeMount.style.removeProperty('visibility');
+      chromeMount.inert = false;
+      chromeMount.removeAttribute('aria-hidden');
       chromeMount.innerHTML = '';
       dock.hidden = true;
       dock.innerHTML = '';
@@ -159,15 +183,12 @@ export function mountFloorServiceHud(
 
     if (!interactive) {
       state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
-      chromeMount.innerHTML = `
-        <div class="floor-service-panel floor-service-panel--reserve" aria-hidden="true"></div>
-      `;
-      dock.hidden = true;
-      dock.innerHTML = '';
-      ticketsMenuOpen = false;
-      notifyNotificationBlockingSurfaceChanged();
+      reserveChrome();
       return;
     }
+    chromeMount.style.removeProperty('visibility');
+    chromeMount.inert = false;
+    chromeMount.removeAttribute('aria-hidden');
     const initialGuestArriving =
       floor.pool.some((guest) => guest.stage === 'entering') &&
       !floor.pool.some(

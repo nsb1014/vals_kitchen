@@ -65,6 +65,7 @@ export type ScreenId =
   'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings';
 
 export interface ServeReview {
+  customerId?: string;
   matchStars: number;
   tip: number;
   ratingDelta: number;

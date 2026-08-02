@@ -102,6 +102,7 @@ export type ReducerEvent =
     }
   | {
       type: 'CUSTOMER_SERVED';
+      customerId?: string;
       matchStars: number;
       tip: number;
       ratingDelta: number;
@@ -157,6 +158,7 @@ function serveEvents(
   result: ReturnType<typeof serveCustomer>,
   events: ReducerEvent[],
   ctx: DomainContext,
+  customerId?: string,
 ): ReducerResult {
   const recipe = result.recipeId
     ? ctx.recipes.find((item) => item.id === result.recipeId)
@@ -171,6 +173,7 @@ function serveEvents(
   }
   events.push({
     type: 'CUSTOMER_SERVED',
+    ...(customerId ? { customerId } : {}),
     matchStars: result.matchStars,
     tip: result.tip,
     ratingDelta: result.ratingDelta,
@@ -275,10 +278,11 @@ export function gameReducer(
     }
 
     case 'SERVE_DISH': {
+      const customerId = state.activeDay?.customers[state.activeDay.queueIndex]?.id;
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = serveCustomer(state, action.ingredientIds, ctx);
       return withAchievementEvents(
-        serveEvents(beforeRecipes, result, events, ctx),
+        serveEvents(beforeRecipes, result, events, ctx, customerId),
       );
     }
 
@@ -442,10 +446,13 @@ export function gameReducer(
     }
 
     case 'FLOOR_DELIVER': {
+      const ticket = requireFloor(state).tickets.find(
+        (candidate) => candidate.id === action.ticketId,
+      );
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = deliverAndScore(state, action.ticketId, ctx);
       return withAchievementEvents(
-        serveEvents(beforeRecipes, result, events, ctx),
+        serveEvents(beforeRecipes, result, events, ctx, ticket?.customerId),
       );
     }
 
