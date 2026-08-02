@@ -550,6 +550,7 @@ export class RestaurantApp {
       actualBoundFrameKey: string;
       isSeated: boolean;
       isMoving: boolean;
+      walkFrame: number;
       facing: 'right' | 'down' | 'up' | 'left';
       visible: boolean;
       alpha: number;
@@ -564,8 +565,10 @@ export class RestaurantApp {
       if (!guest.seat) return [];
       const visual = this.actorLayer.getGuestVisualDebug(guest.id);
       if (!visual) return [];
+      const motionPose = this.guestMotion.pose(guest.id);
       return [{
         ...visual,
+        walkFrame: motionPose?.walkFrame ?? 0,
         tablePlacementId: guest.seat.tablePlacementId,
         slotIndex: guest.seat.slotIndex,
         seatFacing: guest.seat.facing,
@@ -602,13 +605,29 @@ export class RestaurantApp {
     y: number;
     tablePlacementId: string;
     usesTableOverhang: boolean;
+    gridCell: { x: number; y: number };
   }> | null {
     const target = this.actorLayer
       .getGuestWorldHitTargets()
       .find((candidate) => candidate.guestId === guestId);
     if (!target) return null;
+    const seat = useGameStore
+      .getState()
+      .activeDay?.floor?.pool.find((guest) => guest.id === guestId)?.seat;
+    if (!seat) return null;
+    const seatBounds = {
+      left: seat.x * TILE_PX,
+      top: seat.y * TILE_PX,
+      right: (seat.x + 1) * TILE_PX - 1,
+      bottom: (seat.y + 1) * TILE_PX - 1,
+    };
     const overlap = this.furnitureLayer.findOpaqueTableOcclusionPoint(
-      target.bounds,
+      {
+        left: Math.max(target.bounds.left, seatBounds.left),
+        top: Math.max(target.bounds.top, seatBounds.top),
+        right: Math.min(target.bounds.right, seatBounds.right),
+        bottom: Math.min(target.bounds.bottom, seatBounds.bottom),
+      },
       { sortY: target.sortY, paintOrder: target.paintOrder },
     );
     if (!overlap) return null;
@@ -619,6 +638,10 @@ export class RestaurantApp {
       y: rect.top + screen.y,
       tablePlacementId: overlap.placementId,
       usesTableOverhang: overlap.usesTableOverhang,
+      gridCell: {
+        x: Math.floor(overlap.x / TILE_PX),
+        y: Math.floor(overlap.y / TILE_PX),
+      },
     };
   }
 

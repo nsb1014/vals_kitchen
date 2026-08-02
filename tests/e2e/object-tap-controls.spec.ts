@@ -433,6 +433,10 @@ test.describe('object tap controls', () => {
     );
     expect(overlap?.tablePlacementId).toBe(behindTable!.seat.tablePlacementId);
     expect(overlap?.usesTableOverhang).toBe(true);
+    expect(overlap?.gridCell).toEqual({
+      x: behindTable!.seat.x,
+      y: behindTable!.seat.y,
+    });
     const before = await page.evaluate(() => ({
       player: window.__E2E__!.getState().floorPlayerGrid,
       tickets: window.__E2E__!.getGameState().activeDay!.floor!.tickets.length,

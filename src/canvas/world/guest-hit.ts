@@ -27,13 +27,16 @@ export interface RenderedNodeOrder {
   paintOrder: number;
 }
 
-export interface RenderedAlphaMaskGeometry {
+export interface RenderedSpriteGeometry {
   rootX: number;
   rootY: number;
   spriteX: number;
   spriteY: number;
   displayWidth: number;
   displayHeight: number;
+}
+
+export interface RenderedAlphaMaskGeometry extends RenderedSpriteGeometry {
   maskWidth: number;
   maskHeight: number;
   alpha: Uint8Array | Uint8ClampedArray;
@@ -147,29 +150,36 @@ export function renderedNodePaintsAbove(
     (candidate.sortY === incumbent.sortY && candidate.paintOrder > incumbent.paintOrder);
 }
 
+/** Test one world point against the actual displayed sprite rectangle. */
+export function renderedSpriteBoundsContainWorldPoint(
+  point: GuestHitPoint,
+  geometry: RenderedSpriteGeometry,
+): boolean {
+  if (geometry.displayWidth <= 0 || geometry.displayHeight <= 0) return false;
+  const localX = point.x - geometry.rootX - geometry.spriteX;
+  const localY = point.y - geometry.rootY - geometry.spriteY;
+  return (
+    localX >= 0 &&
+    localY >= 0 &&
+    localX < geometry.displayWidth &&
+    localY < geometry.displayHeight
+  );
+}
+
 /** Map one world point through the exact displayed sprite geometry into its alpha mask. */
 export function renderedAlphaMaskContainsWorldPoint(
   point: GuestHitPoint,
   geometry: RenderedAlphaMaskGeometry,
 ): boolean {
   if (
-    geometry.displayWidth <= 0 ||
-    geometry.displayHeight <= 0 ||
     geometry.maskWidth <= 0 ||
     geometry.maskHeight <= 0
   ) {
     return false;
   }
+  if (!renderedSpriteBoundsContainWorldPoint(point, geometry)) return false;
   const localX = point.x - geometry.rootX - geometry.spriteX;
   const localY = point.y - geometry.rootY - geometry.spriteY;
-  if (
-    localX < 0 ||
-    localY < 0 ||
-    localX >= geometry.displayWidth ||
-    localY >= geometry.displayHeight
-  ) {
-    return false;
-  }
   const maskX = Math.min(
     geometry.maskWidth - 1,
     Math.floor((localX / geometry.displayWidth) * geometry.maskWidth),

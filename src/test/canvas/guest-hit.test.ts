@@ -8,6 +8,7 @@ import {
   minimumGuestHitWorldSize,
   renderedAlphaMaskContainsWorldPoint,
   renderedNodePaintsAbove,
+  renderedSpriteBoundsContainWorldPoint,
   resolveTopmostGuestHit,
   type GuestHitTargetCandidate,
   type GuestWorldBounds,
@@ -77,6 +78,22 @@ describe('guest hit geometry', () => {
     expect(renderedAlphaMaskContainsWorldPoint({ x: 69, y: 57 }, geometry)).toBe(false);
     expect(renderedAlphaMaskContainsWorldPoint({ x: 75, y: 63 }, geometry)).toBe(true);
     expect(renderedAlphaMaskContainsWorldPoint({ x: 101, y: 95 }, geometry)).toBe(false);
+  });
+
+  it('uses only the actual displayed sprite rectangle for conservative fallback hits', () => {
+    const geometry = {
+      rootX: 64,
+      rootY: 64,
+      spriteX: -6,
+      spriteY: -12,
+      displayWidth: 44,
+      displayHeight: 44,
+    };
+
+    expect(renderedSpriteBoundsContainWorldPoint({ x: 58, y: 52 }, geometry)).toBe(true);
+    expect(renderedSpriteBoundsContainWorldPoint({ x: 101.99, y: 95.99 }, geometry)).toBe(true);
+    expect(renderedSpriteBoundsContainWorldPoint({ x: 102, y: 96 }, geometry)).toBe(false);
+    expect(renderedSpriteBoundsContainWorldPoint({ x: 57.99, y: 52 }, geometry)).toBe(false);
   });
 
   it('compares post-sort paint order only after shared z depth', () => {

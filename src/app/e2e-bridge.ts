@@ -154,6 +154,13 @@ export interface E2eBridge {
   prepareQueuedDepartureVisualFixture: () => Promise<{
     firstGuestId: string;
     heldGuestId: string;
+    heldSeat: {
+      x: number;
+      y: number;
+      facing: 0 | 90 | 180 | 270;
+      tablePlacementId: string;
+      slotIndex: number;
+    };
   }>;
   prepareStationCarryFixture: (
     mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
@@ -264,6 +271,7 @@ export interface E2eBridge {
       actualBoundFrameKey: string;
       isSeated: boolean;
       isMoving: boolean;
+      walkFrame: number;
       facing: 'right' | 'down' | 'up' | 'left';
       visible: boolean;
       alpha: number;
@@ -275,6 +283,7 @@ export interface E2eBridge {
     y: number;
     tablePlacementId: string;
     usesTableOverhang: boolean;
+    gridCell: { x: number; y: number };
   } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
@@ -938,6 +947,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       return {
         firstGuestId: first.guestId,
         heldGuestId: held.guestId,
+        heldSeat: { ...held.seat },
       };
     },
 

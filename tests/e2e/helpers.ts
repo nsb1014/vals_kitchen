@@ -584,6 +584,13 @@ declare global {
       prepareQueuedDepartureVisualFixture: () => Promise<{
         firstGuestId: string;
         heldGuestId: string;
+        heldSeat: {
+          x: number;
+          y: number;
+          facing: 0 | 90 | 180 | 270;
+          tablePlacementId: string;
+          slotIndex: number;
+        };
       }>;
       prepareStationCarryFixture: (
         mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
@@ -680,6 +687,7 @@ declare global {
           actualBoundFrameKey: string;
           isSeated: boolean;
           isMoving: boolean;
+          walkFrame: number;
           facing: 'right' | 'down' | 'up' | 'left';
           visible: boolean;
           alpha: number;
@@ -691,6 +699,7 @@ declare global {
         y: number;
         tablePlacementId: string;
         usesTableOverhang: boolean;
+        gridCell: { x: number; y: number };
       } | null;
       getInteractHintVisible: () => boolean;
       getInteractHintCells: () => Array<{ x: number; y: number }>;

@@ -15,6 +15,7 @@ import { seatChairWorldPosition, seatSitWorldPosition } from '../world/seat-sit.
 import {
   renderedAlphaMaskContainsWorldPoint,
   renderedNodePaintsAbove,
+  renderedSpriteBoundsContainWorldPoint,
   type GuestWorldBounds,
   type RenderedNodeOrder,
 } from '../world/guest-hit.ts';
@@ -440,21 +441,25 @@ export class FurnitureLayer {
     const sprite = entry.sprite;
     if (sprite?.visible && sprite.texture !== Texture.EMPTY) {
       const mask = this.alphaMaskForTexture(sprite.texture);
-      if (!mask) return false;
-      return renderedAlphaMaskContainsWorldPoint(
-        { x: wx, y: wy },
-        {
-          rootX: entry.root.x,
-          rootY: entry.root.y,
-          spriteX: sprite.x,
-          spriteY: sprite.y,
-          displayWidth: sprite.width,
-          displayHeight: sprite.height,
-          maskWidth: mask.width,
-          maskHeight: mask.height,
-          alpha: mask.alpha,
-        },
-      );
+      const point = { x: wx, y: wy };
+      const geometry = {
+        rootX: entry.root.x,
+        rootY: entry.root.y,
+        spriteX: sprite.x,
+        spriteY: sprite.y,
+        displayWidth: sprite.width,
+        displayHeight: sprite.height,
+      };
+      // Canvas readback can fail independently of the texture that Pixi has
+      // already painted. Keep that visible sprite conservative instead of
+      // allowing input to pass through to an actor underneath it.
+      if (!mask) return renderedSpriteBoundsContainWorldPoint(point, geometry);
+      return renderedAlphaMaskContainsWorldPoint(point, {
+        ...geometry,
+        maskWidth: mask.width,
+        maskHeight: mask.height,
+        alpha: mask.alpha,
+      });
     }
 
     // The no-atlas fallback paints two nested rectangles whose union is this inset box.
