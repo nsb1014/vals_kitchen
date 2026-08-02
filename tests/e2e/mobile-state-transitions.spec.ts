@@ -294,6 +294,48 @@ test.describe("mobile state-transition boundaries", () => {
       await expect(notice).toContainText(noticeText);
       assertNoDiagnostics(diagnostics);
     });
+
+    test("hands keyboard focus into Settings and back to the live HUD", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const diagnostics = await gotoFreshGame(page);
+      await page.getByTestId("open-day-btn").click();
+      await page.getByTestId("start-service-btn").click();
+
+      const settingsButton = page.getByTestId("hud-settings");
+      await settingsButton.focus();
+      await settingsButton.press("Enter");
+      await expect(page.getByTestId("settings-title")).toBeFocused();
+
+      const floorButton = page.getByTestId("nav-restaurant");
+      await floorButton.focus();
+      await floorButton.press("Enter");
+      await expect(page.getByTestId("hud-settings")).toBeFocused();
+      assertNoDiagnostics(diagnostics);
+    });
+
+    test("preserves destination focus when leaving pre-day Settings", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const diagnostics = await gotoFreshGame(page);
+
+      const settingsButton = page.getByTestId("hud-settings");
+      await settingsButton.focus();
+      await settingsButton.press("Enter");
+      await expect(page.getByTestId("settings-title")).toBeFocused();
+
+      const recipesButton = page.getByTestId("nav-recipes");
+      await recipesButton.focus();
+      await recipesButton.press("Enter");
+      await expect(page.locator("#game-root")).toHaveAttribute(
+        "data-screen",
+        "recipes",
+      );
+      await expect(recipesButton).toBeFocused();
+      assertNoDiagnostics(diagnostics);
+    });
   });
 
   test.describe("completed-day identity in the summary boundary", () => {
@@ -324,6 +366,15 @@ test.describe("mobile state-transition boundaries", () => {
         await expect(
           page.getByTestId("hud-detail-menu").locator("h2"),
         ).toHaveText(`Day ${completedDay}`);
+        await expect(page.getByTestId("hud-day-earnings")).toHaveText(
+          await page.getByTestId("summary-earnings").innerText(),
+        );
+        await expect(page.getByTestId("hud-day-rating-change")).toHaveText(
+          await page.getByTestId("summary-rating-change").innerText(),
+        );
+        await expect(page.getByTestId("hud-day-customers-served")).toHaveText(
+          await page.getByTestId("summary-customers-served").innerText(),
+        );
         await expect(page.getByTestId("summary-back-floor")).toHaveText(
           `Continue to Day ${nextDay}`,
         );

@@ -405,11 +405,17 @@ export function mountServiceDayUi(
                <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
                <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
             : hudDetail === 'day'
-              ? `<h2>Day ${displayDay}</h2>
-                 <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
-                 <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
-                 <p>Customers served: <strong>${customersServed}</strong></p>
-                 <p>Customers left: <strong>${customersLeft}</strong></p>`
+              ? state.daySummary
+                ? `<h2>Day ${displayDay}</h2>
+                   <p data-testid="hud-day-earnings">${escapeHtml(state.daySummary.earningsLine)}</p>
+                   <p data-testid="hud-day-rating-change">${escapeHtml(state.daySummary.ratingDeltaText)}</p>
+                   <p data-testid="hud-day-customers-served">${escapeHtml(state.daySummary.customersServedText)}</p>
+                   <p>${escapeHtml(state.daySummary.averageMatchText)}</p>`
+                : `<h2>Day ${displayDay}</h2>
+                   <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
+                   <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
+                   <p>Customers served: <strong>${customersServed}</strong></p>
+                   <p>Customers left: <strong>${customersLeft}</strong></p>`
               : '';
     hud.innerHTML = `
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-label="Cash details">
@@ -645,13 +651,13 @@ export function mountServiceDayUi(
               <h2 id="day-summary-title" class="service-title" data-testid="day-summary-title" tabindex="-1">Day ${state.daySummary.completedDay} Summary</h2>
             </header>
             <div class="sheet-body-scroll">
-            <p class="review-detail">${state.daySummary.earningsLine}</p>
+            <p class="review-detail" data-testid="summary-earnings">${state.daySummary.earningsLine}</p>
             ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${state.daySummary.bonusLine}</p>` : ''}
             ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${state.daySummary.volumeBonusLine}</p>` : ''}
             <p class="review-detail">${state.daySummary.averageMatchText}</p>
-            <p class="review-detail">${state.daySummary.ratingDeltaText}</p>
+            <p class="review-detail" data-testid="summary-rating-change">${state.daySummary.ratingDeltaText}</p>
             <p class="review-detail">${state.daySummary.unlockProgressText}</p>
-            <p class="review-detail">${state.daySummary.customersServedText}</p>
+            <p class="review-detail" data-testid="summary-customers-served">${state.daySummary.customersServedText}</p>
             ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
             </div>
             <footer class="sheet-footer service-actions day-summary-actions">
