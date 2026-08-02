@@ -202,6 +202,13 @@ export function mountFloorServiceHud(
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const step = nextTutorialStep(floor, state.day === 1);
     const prompt = tutorialPrompt(step);
+    const emphasize = (actionStep: typeof step, available: boolean) =>
+      available && (step === null || step === actionStep);
+    const emphasizeSetTable = emphasize('set_tables', canSetTable);
+    const emphasizeSeatGuest = emphasize('wait_seat', canSeatGuest);
+    const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
+    const emphasizeClearTable = emphasize('clear', canClearTable);
+    const emphasizeCloseDay = emphasize('close', canCloseDay);
     const sticky =
       prompt && step
         ? {
@@ -271,11 +278,11 @@ export function mountFloorServiceHud(
       <div class="floor-service-panel" data-testid="floor-service-panel">
         <div class="floor-actions-scroll">
           <div class="floor-actions">
-            <button type="button" class="service-btn${canSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${canSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
-            <button type="button" class="service-btn${canTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
-            <button type="button" class="service-btn" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
-            <button type="button" class="service-btn${canCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" style="visibility: hidden;"'}><span class="floor-action-label">Close Day</span></button>
+            <button type="button" class="service-btn${emphasizeSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
+            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="service-btn${emphasizeTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
+            <button type="button" class="service-btn${emphasizeClearTable ? ' primary' : ''}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
+            <button type="button" class="service-btn${emphasizeCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
           </div>
         </div>
         ${ticketPanel.capacityMessage ? `<p class="sr-only" id="${capacityHelpId}">${ticketPanel.capacityMessage}</p>` : ''}
