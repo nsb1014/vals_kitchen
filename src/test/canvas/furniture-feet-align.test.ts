@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHAIR_DRAW_HEIGHT_PX,
+  DECOR_DRAW_WIDTH_PX,
   STATION_DRAW_WIDTH_PX,
   TABLE_DRAW_WIDTH_PX,
   TABLE_MAX_HEIGHT_PX,
@@ -32,8 +33,26 @@ describe('furniture feet align', () => {
     expect(h).toBeLessThanOrEqual(TABLE_MAX_HEIGHT_PX);
   });
 
+  it('preserves the distinct physical scale of coordinated décor', () => {
+    const plant = furnitureDrawSize({ width: 80, height: 104 }, 'decor_plant');
+    const flowers = furnitureDrawSize({ width: 64, height: 80 }, 'decor_flowers');
+    const rug = furnitureDrawSize({ width: 104, height: 72 }, 'decor_rug');
+    const lamp = furnitureDrawSize({ width: 72, height: 108 }, 'decor_lamp');
+    const sign = furnitureDrawSize({ width: 80, height: 104 }, 'decor_sign');
+
+    expect(plant.w).toBe(DECOR_DRAW_WIDTH_PX.decor_plant);
+    expect(flowers.w).toBe(DECOR_DRAW_WIDTH_PX.decor_flowers);
+    expect(rug.w).toBe(DECOR_DRAW_WIDTH_PX.decor_rug);
+    expect(lamp.w).toBe(DECOR_DRAW_WIDTH_PX.decor_lamp);
+    expect(sign.w).toBe(DECOR_DRAW_WIDTH_PX.decor_sign);
+    expect(flowers.h).toBeLessThan(plant.h);
+    expect(rug.w).toBeGreaterThan(rug.h);
+    expect(lamp.h).toBeGreaterThan(plant.h);
+  });
+
   it('sorts flat tables under actors while stations keep south-edge depth', () => {
     expect(furnitureDepthY(2, 'table_2seat')).toBe(2);
+    expect(furnitureDepthY(2, 'decor_rug')).toBe(2);
     expect(furnitureDepthY(2, 'prep_station')).toBe(3 * TILE_PX);
     const seatedFeetY = 2 * TILE_PX + TILE_PX / 2 + TILE_PX / 2 - 2;
     expect(furnitureDepthY(2, 'table_2seat')).toBeLessThan(seatedActorDepthY(seatedFeetY));

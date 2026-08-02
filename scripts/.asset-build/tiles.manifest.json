@@ -1,13 +1,13 @@
 {
-  "floor_a": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_a.png",
-  "floor_b": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_wood_b.png",
-  "floor_kitchen_a": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_a.png",
-  "floor_kitchen_b": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_b.png",
-  "wall": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall.png",
-  "wall_n": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_n.png",
-  "wall_e": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_e.png",
-  "wall_s": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_s.png",
-  "wall_w": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/wall_w.png",
-  "door": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/door.png",
-  "door_open": "/workspace/vendor/generated/chibi-ui/restaurant-tiles/door_open.png"
+  "floor_a": "../../vendor/generated/chibi-ui/restaurant-tiles/floor_wood_a.png",
+  "floor_b": "../../vendor/generated/chibi-ui/restaurant-tiles/floor_wood_b.png",
+  "floor_kitchen_a": "../../vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_a.png",
+  "floor_kitchen_b": "../../vendor/generated/chibi-ui/restaurant-tiles/floor_kitchen_b.png",
+  "wall": "../../vendor/generated/chibi-ui/restaurant-tiles/wall.png",
+  "wall_n": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_n.png",
+  "wall_e": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_e.png",
+  "wall_s": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_s.png",
+  "wall_w": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_w.png",
+  "door": "../../vendor/generated/chibi-ui/restaurant-tiles/door.png",
+  "door_open": "../../vendor/generated/chibi-ui/restaurant-tiles/door_open.png"
 }

@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -53,6 +55,41 @@ class AtlasAlphaTest(unittest.TestCase):
             )
             self.assertEqual(packed.getpixel((1, 0))[:3], (240, 220, 200))
             self.assertEqual(packed.getpixel((0, 1))[:3], (12, 34, 56))
+
+    def test_cli_resolves_sources_relative_to_the_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_dir = root / "source"
+            manifest_dir = root / "manifests"
+            source_dir.mkdir()
+            manifest_dir.mkdir()
+            source_path = source_dir / "sprite.png"
+            Image.new("RGBA", (2, 2), (12, 34, 56, 255)).save(source_path)
+            manifest_path = manifest_dir / "atlas.manifest.json"
+            manifest_path.write_text(
+                json.dumps({"probe": "../source/sprite.png"}),
+                encoding="utf-8",
+            )
+            atlas_path = root / "atlas.png"
+            data_path = root / "atlas.json"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(manifest_path),
+                    str(atlas_path),
+                    str(data_path),
+                    "2",
+                ],
+                cwd="/",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertTrue(atlas_path.is_file())
+            self.assertEqual(Image.open(atlas_path).getpixel((0, 0)), (12, 34, 56, 255))
 
 
 if __name__ == "__main__":

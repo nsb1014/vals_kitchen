@@ -1,4 +1,5 @@
 import type { Placement } from '../state/game-state.ts';
+import { isWalkBlockingDecorItemKey } from '../economy/decor.ts';
 import { EQUIPMENT_IDS } from '../types.ts';
 import { guestServicePositions } from './interact.ts';
 import { seatsFromPlacements } from './seats.ts';
@@ -11,6 +12,15 @@ import {
 
 const STATION_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
 
+/** Shared physical occupancy for runtime routing, edit checks, and save repair. */
+export function isWalkBlockingPlacement(placement: Placement): boolean {
+  return (
+    placement.itemKey.startsWith('table') ||
+    STATION_ITEM_KEYS.has(placement.itemKey) ||
+    isWalkBlockingDecorItemKey(placement.itemKey)
+  );
+}
+
 function mainFloorReachability(
   gridSize: { w: number; h: number },
   placements: Placement[],
@@ -22,7 +32,7 @@ function mainFloorReachability(
   const { w, h } = gridSize;
   const blocked = new Set<string>();
   for (const placement of placements) {
-    if (placement.itemKey.startsWith('table') || STATION_ITEM_KEYS.has(placement.itemKey)) {
+    if (isWalkBlockingPlacement(placement)) {
       blocked.add(`${placement.x},${placement.y}`);
     }
   }

@@ -55,6 +55,24 @@ describe('walkBlockedCells', () => {
     expect(enter![enter!.length - 1]).toEqual(wait);
   });
 
+  it('routes around freestanding décor while keeping rugs walkable', () => {
+    const map = createStarterMap();
+    const placements = [
+      ...map.placements,
+      { id: 'plant', itemKey: 'decor_plant', x: 1, y: 4, rotation: 0 },
+      { id: 'flowers', itemKey: 'decor_flowers', x: 2, y: 4, rotation: 0 },
+      { id: 'lamp', itemKey: 'decor_lamp', x: 4, y: 4, rotation: 0 },
+      { id: 'sign', itemKey: 'decor_sign', x: 5, y: 4, rotation: 0 },
+      { id: 'rug', itemKey: 'decor_rug', x: 6, y: 4, rotation: 0 },
+    ];
+    const blocked = walkBlockedCells(placements, map.gridSize.w, map.gridSize.h);
+
+    for (const key of ['1,4', '2,4', '4,4', '5,4']) {
+      expect(blocked.has(key)).toBe(true);
+    }
+    expect(blocked.has('6,4')).toBe(false);
+  });
+
   it('blocks chair seat cells so the player cannot walk through them', () => {
     const map = createStarterMap();
     const { w, h } = map.gridSize;

@@ -20,6 +20,9 @@ project. They are not attributed to a third-party artist or commercial pack.
   save/code compatibility, but the visible art is stools.
 - `source/seating-rework/table-states-v2-{keyed,transparent}.png` — matching
   corner-free oval table lifecycle states with left/right place settings.
+- `source/decor-sheet-v2-{keyed,transparent}.png` — five coordinated illustrated
+  décor props generated together against the current furniture and room style;
+  see `source/DECOR-PROMPT.md` for the retained production prompt.
 - `source/*-keyed.png` — reproducible chroma-key extractions retained so the
   runtime build does not depend on an external image service.
 - `guest-frames/` — runtime 128×160 frames derived from the coordinated sheets

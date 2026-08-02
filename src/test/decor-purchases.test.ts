@@ -63,15 +63,33 @@ describe('decor purchases', () => {
     ).toThrow(/invalid purchase/i);
   });
 
-  it('allows owned one-tile decor on dining cells and enforces the placement cap', () => {
+  it('rejects raised décor that strands a stool service position', () => {
     let state = createNewGameState(503);
     state.cash = 10_000;
+    state = applyPurchase(
+      state,
+      { type: 'decor', itemKey: 'decor_flowers' },
+      testContext,
+    );
+
+    // Keep the original adversarial cell: the west stool is at (1,2), and
+    // (1,4) is its only service position not already occupied by a wall/table.
+    const placement: Placement = {
+      id: 'stranded_by_flowers',
+      itemKey: 'decor_flowers',
+      x: 1,
+      y: 4,
+      rotation: 0,
+    };
+    expect(validatePlacement(state, placement)).toBe(false);
+    expect(() => applyPlaceItem(state, placement)).toThrow(/invalid placement/i);
+  });
+
+  it('allows owned floor décor on dining cells and enforces the placement cap', () => {
+    let state = createNewGameState(5031);
+    state.cash = 10_000;
     for (let index = 0; index < MAX_DECOR_PLACEMENTS; index += 1) {
-      state = applyPurchase(
-        state,
-        { type: 'decor', itemKey: 'decor_flowers' },
-        testContext,
-      );
+      state = applyPurchase(state, { type: 'decor', itemKey: 'decor_rug' }, testContext);
     }
 
     const cells = [
@@ -85,7 +103,7 @@ describe('decor purchases', () => {
     for (const [index, [x, y]] of cells.entries()) {
       const placement: Placement = {
         id: `decor_${index}`,
-        itemKey: 'decor_flowers',
+        itemKey: 'decor_rug',
         x,
         y,
         rotation: 0,
@@ -96,7 +114,7 @@ describe('decor purchases', () => {
 
     const seventh: Placement = {
       id: 'decor_seventh',
-      itemKey: 'decor_flowers',
+      itemKey: 'decor_rug',
       x: 1,
       y: 5,
       rotation: 0,

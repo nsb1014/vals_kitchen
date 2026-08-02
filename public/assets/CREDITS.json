@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-08-01T17:39:22.475Z",
+  "generatedAt": "2026-08-02T09:05:47.793Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [
@@ -428,63 +428,63 @@
     },
     {
       "path": "atlases/furniture.json#decor_plant",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_plant)"
       ],
       "sourceFile": "decor_plant.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_flowers",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_flowers)"
       ],
       "sourceFile": "decor_flowers.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_rug",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_rug)"
       ],
       "sourceFile": "decor_rug.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_lamp",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_lamp)"
       ],
       "sourceFile": "decor_lamp.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#decor_sign",
-      "pack": "Project-generated restaurant tiles (CC0)",
+      "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
-      "sourceUrl": "vendor/generated/restaurant-tiles/",
+      "sourceUrl": "vendor/generated/chibi-ui/",
       "license": "CC0",
       "usedIn": [
         "canvas:FurnitureLayer (decor_sign)"
       ],
       "sourceFile": "decor_sign.png",
-      "approximationNote": "Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0."
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
       "path": "achievements/recipe-unlocks-1.png",

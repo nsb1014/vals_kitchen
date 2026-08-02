@@ -6,15 +6,13 @@ import {
   type FloorRoomId,
 } from '../../domain/floor/starter-map.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
-import { EQUIPMENT_IDS } from '../../domain/types.ts';
+import { isWalkBlockingPlacement } from '../../domain/floor/service-access.ts';
 
-const EQUIPMENT_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
-
-/** Walk-blocking cells occupied by tables and kitchen stations. */
+/** Walk-blocking cells occupied by real raised furniture. Rugs stay passable. */
 export function blockedCellsFromPlacements(placements: Placement[]): Set<string> {
   const blocked = new Set<string>();
   for (const p of placements) {
-    if (p.itemKey.startsWith('table') || EQUIPMENT_ITEM_KEYS.has(p.itemKey)) {
+    if (isWalkBlockingPlacement(p)) {
       blocked.add(`${p.x},${p.y}`);
     }
   }

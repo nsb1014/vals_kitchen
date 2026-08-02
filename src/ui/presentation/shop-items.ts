@@ -54,7 +54,7 @@ const DECOR_NAMES: Readonly<Record<DecorItemKey, string>> = {
   decor_flowers: 'Flowers',
   decor_rug: 'Rug',
   decor_lamp: 'Lamp',
-  decor_sign: 'Wall Sign',
+  decor_sign: 'Menu Sign',
 };
 
 function deriveAvailability(

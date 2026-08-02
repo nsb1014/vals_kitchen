@@ -532,7 +532,12 @@ export async function assertFloorChromeAboveSafeBottom(
 declare global {
   interface Window {
     __E2E__?: {
-      getPlacements: () => Array<{ id: string; x: number; y: number }>;
+      getPlacements: () => Array<{
+        id: string;
+        itemKey: string;
+        x: number;
+        y: number;
+      }>;
       getState: () => {
         day: number;
         cash: number;
@@ -542,6 +547,7 @@ declare global {
         floorTicketDrafts: Record<string, string[]>;
         selectedTicketId: string | null;
         screen: string;
+        floorPlayerGrid: { x: number; y: number } | null;
       };
       getGameState: () => {
         day: number;
@@ -563,6 +569,7 @@ declare global {
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
+      prepareDecorVisualFixture: () => void;
       openComposeSheet: () => void;
       getActorSpriteMetrics: () => Array<{
         kind: string;

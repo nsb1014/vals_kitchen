@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the project-CC0 chibi restaurant surfaces, furniture, and chef frames.
+"""Build the project-CC0 chibi restaurant surfaces, furniture, décor, and actors.
 
 The source sheets are intentionally retained in vendor/generated/chibi-ui/source so
 the shipped atlases remain reproducible. This script crops, keys, and scales those
@@ -706,12 +706,32 @@ def build_props() -> None:
     table_sheet = Image.open(
         SEATING_SOURCE / "table-states-v2-transparent.png"
     ).convert("RGBA")
+    decor_sheet = Image.open(SOURCE / "decor-sheet-v2-transparent.png").convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected furniture sheet size: {sheet.size}")
     if seating_sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected seating furniture sheet size: {seating_sheet.size}")
     if table_sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected table state sheet size: {table_sheet.size}")
+    if decor_sheet.size != (1717, 916):
+        raise SystemExit(f"Unexpected coordinated décor sheet size: {decor_sheet.size}")
+    corners = (
+        decor_sheet.getpixel((0, 0)),
+        decor_sheet.getpixel((decor_sheet.width - 1, 0)),
+        decor_sheet.getpixel((0, decor_sheet.height - 1)),
+        decor_sheet.getpixel((decor_sheet.width - 1, decor_sheet.height - 1)),
+    )
+    if any(pixel[3] != 0 for pixel in corners):
+        raise ValueError("Coordinated décor sheet does not have transparent corners")
+    key_residual = sum(
+        1
+        for red, green, blue, alpha in decor_sheet.get_flattened_data()
+        if alpha > 0 and red > 230 and blue > 230 and green < 80
+    )
+    if key_residual > 0:
+        raise ValueError(
+            f"Coordinated décor sheet retains magenta key spill ({key_residual}px)"
+        )
 
     seating_sheet = clear_alpha_noise(seating_sheet)
     seating_boxes = authored_grid_boxes(seating_sheet, columns=4, rows=2)
@@ -739,6 +759,24 @@ def build_props() -> None:
         sprite = contain(trim(cell, 2), (96, 96), bottom_pad=3)
         save(sprite, PROP_OUT / f"{name}.png")
 
+    # These five props were generated together against the current furniture
+    # reference so optional decoration no longer drops to the legacy 32×48
+    # pixel-art detail level. Preserve different source canvases here; runtime
+    # sizing then keeps a rug broad, a vase small, and a lamp actor-height.
+    decor_sheet = clear_alpha_noise(decor_sheet, cutoff=12)
+    decor_boxes = authored_grid_boxes(decor_sheet, columns=5, rows=1, padding=8)
+    decor_cells = {
+        "decor_plant": (0, (80, 104)),
+        "decor_flowers": (1, (64, 80)),
+        "decor_lamp": (2, (72, 108)),
+        "decor_rug": (3, (104, 72)),
+        "decor_sign": (4, (80, 104)),
+    }
+    for name, (column, target) in decor_cells.items():
+        cell = decor_sheet.crop(decor_boxes[0][column])
+        sprite = contain(trim(cell, 3), target, bottom_pad=3)
+        save(sprite, PROP_OUT / f"{name}.png")
+
     boxes = {
         "prep_station": (86, 350, 314, 638),
         "oven": (401, 351, 583, 638),
@@ -762,6 +800,7 @@ def main() -> None:
         "surfaces-sheet-keyed.png",
         "furniture-sheet-keyed.png",
         "furniture-sheet-v2-keyed.png",
+        "decor-sheet-v2-transparent.png",
     ):
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")

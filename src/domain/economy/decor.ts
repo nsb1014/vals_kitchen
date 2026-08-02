@@ -24,6 +24,11 @@ export function isDecorItemKey(itemKey: string): itemKey is DecorItemKey {
   return (DECOR_ITEM_KEYS as readonly string[]).includes(itemKey);
 }
 
+/** Rugs are floor surfaces; every freestanding décor prop occupies its tile. */
+export function isWalkBlockingDecorItemKey(itemKey: string): itemKey is DecorItemKey {
+  return isDecorItemKey(itemKey) && itemKey !== 'decor_rug';
+}
+
 export function createEmptyDecorPurchasedCounts(): DecorPurchasedCounts {
   return {
     decor_plant: 0,

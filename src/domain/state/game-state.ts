@@ -15,6 +15,7 @@ import {
 } from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import {
+  isWalkBlockingPlacement,
   keepsGuestServiceReachable,
   recoverMainFloorPlayerPosition,
 } from '../floor/service-access.ts';
@@ -211,13 +212,9 @@ export function normalizeMainFloorPlacements(
     }
     return true;
   };
-  const blockers = entranceSafe.filter(
-    (placement) =>
-      placement.itemKey.startsWith('table') || EQUIPMENT_ITEM_KEYS.has(placement.itemKey),
-  );
+  const blockers = entranceSafe.filter(isWalkBlockingPlacement);
   const passive = entranceSafe.filter(
-    (placement) =>
-      !placement.itemKey.startsWith('table') && !EQUIPMENT_ITEM_KEYS.has(placement.itemKey),
+    (placement) => !isWalkBlockingPlacement(placement),
   );
   const failed = new Set<string>();
   // Save loading is synchronous. Bound combinatorial legacy repair so a dense,

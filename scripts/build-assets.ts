@@ -230,6 +230,8 @@ function assertVendor(): void {
     path.join(GENERATED_CHIBI, 'source', 'surfaces-sheet-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-transparent.png'),
     path.join(GENERATED_CHIBI_GUESTS, 'guest_a_down_0.png'),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
@@ -283,7 +285,14 @@ function copyGuestPortraits(): void {
 }
 
 function writeManifest(entries: Record<string, string>, file: string): void {
-  writeFileSync(file, JSON.stringify(entries, null, 2));
+  const manifestDir = path.dirname(file);
+  const portable = Object.fromEntries(
+    Object.entries(entries).map(([name, source]) => [
+      name,
+      path.relative(manifestDir, source).split(path.sep).join('/'),
+    ]),
+  );
+  writeFileSync(file, JSON.stringify(portable, null, 2));
 }
 
 function runIngredientIconBuilder(): void {

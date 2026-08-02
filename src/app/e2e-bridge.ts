@@ -113,6 +113,7 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
+  prepareDecorVisualFixture: () => void;
   unlockKitchenAnnexForTest: () => void;
   openComposeSheet: () => void;
   openFlavorInspector: (ingredientId: string) => void;
@@ -403,6 +404,31 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
             selectedTicketId: carrying ? null : (tickets.find((ticket) => ticket.status === 'open')?.id ?? null),
           },
         },
+      });
+    },
+
+    prepareDecorVisualFixture() {
+      const current = useGameStore.getState();
+      const decor = [
+        { id: 'qa_decor_plant', itemKey: 'decor_plant', x: 1, y: 1, rotation: 0 },
+        { id: 'qa_decor_flowers', itemKey: 'decor_flowers', x: 3, y: 1, rotation: 0 },
+        { id: 'qa_decor_lamp', itemKey: 'decor_lamp', x: 6, y: 1, rotation: 0 },
+        { id: 'qa_decor_rug', itemKey: 'decor_rug', x: 4, y: 4, rotation: 0 },
+        { id: 'qa_decor_sign', itemKey: 'decor_sign', x: 1, y: 4, rotation: 0 },
+      ];
+      useGameStore.setState({
+        placements: [
+          ...current.placements.filter((placement) => !placement.itemKey.startsWith('decor_')),
+          ...decor,
+        ],
+        decorPurchasedCounts: {
+          decor_plant: 1,
+          decor_flowers: 1,
+          decor_rug: 1,
+          decor_lamp: 1,
+          decor_sign: 1,
+        },
+        editLayoutMode: true,
       });
     },
 

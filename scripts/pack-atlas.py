@@ -106,6 +106,8 @@ def main() -> None:
     entries: list[tuple[str, Path]] = []
     for name, rel in manifest.items():
         path = Path(rel)
+        if not path.is_absolute():
+            path = manifest_path.parent / path
         if not path.is_file():
             raise SystemExit(f'Missing source: {path}')
         entries.append((name, path))
