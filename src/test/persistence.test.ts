@@ -12,8 +12,12 @@ import {
 import { gameReducer } from '../domain/reducer.ts';
 import { testContext } from './test-helpers.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
-import { mainGuestEntranceReservedCells } from '../domain/floor/starter-map.ts';
+import {
+  mainGuestEntranceReservedCells,
+  servicePlayerSpawn,
+} from '../domain/floor/starter-map.ts';
 import { isFloorDayComplete } from '../domain/floor/sim.ts';
+import { keepsGuestServiceReachable } from '../domain/floor/service-access.ts';
 
 function createMemoryStorage(): StorageAdapter {
   const map = new Map<string, unknown>();
@@ -411,6 +415,160 @@ describe('persistence', () => {
     expect(resumed.seat).not.toEqual(oldSeat);
     expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
   });
+
+  it('repairs a legacy layout that strands all service positions around a stool', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const state = createNewGameState(80801);
+    state.placements = state.placements.map((placement) =>
+      placement.id === 'table_2' ? { ...placement, x: 2, y: 4 } : placement,
+    );
+
+    expect(
+      keepsGuestServiceReachable(
+        state.gridSize,
+        state.placements,
+        state.kitchenAnnexOwned,
+      ),
+    ).toBe(false);
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(loaded.placements.find((placement) => placement.id === 'table_1')).toMatchObject({
+      x: 2,
+      y: 2,
+    });
+    expect(loaded.placements.find((placement) => placement.id === 'table_2')).not.toMatchObject({
+      x: 2,
+      y: 4,
+    });
+    expect(loaded.placements).toHaveLength(state.placements.length);
+    expect(
+      keepsGuestServiceReachable(
+        loaded.gridSize,
+        loaded.placements,
+        loaded.kitchenAnnexOwned,
+      ),
+    ).toBe(true);
+    expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
+  });
+
+  it('moves Val to the service spawn when legacy repair occupies her saved cell', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(808011), { type: 'OPEN_DAY' }, testContext).state;
+    state = {
+      ...state,
+      placements: state.placements.map((placement) =>
+        placement.id === 'table_2' ? { ...placement, x: 2, y: 4 } : placement,
+      ),
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerRoom: 'main',
+          playerPosition: { x: 2, y: 1 },
+        },
+      },
+    };
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(loaded.placements.find((placement) => placement.id === 'table_2')).toMatchObject({
+      x: 2,
+      y: 1,
+    });
+    expect(loaded.activeDay!.floor!.playerPosition).toEqual(
+      servicePlayerSpawn(loaded.gridSize.w, loaded.gridSize.h),
+    );
+  });
+
+  it('backtracks legacy service repair instead of dropping later owned tables', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const state = createNewGameState(80802);
+    const tablePositions = [
+      { x: 2, y: 3 },
+      { x: 3, y: 2 },
+      { x: 5, y: 1 },
+      { x: 5, y: 3 },
+      { x: 5, y: 4 },
+      { x: 2, y: 4 },
+    ];
+    state.placements = [
+      ...tablePositions.map((position, index) => ({
+        id: `table_${index + 1}`,
+        itemKey: 'table_2seat',
+        ...position,
+        rotation: 0,
+      })),
+      { id: 'station_prep', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
+    ];
+    state.tableCount = tablePositions.length;
+    state.seatingCapacity = tablePositions.length * 2;
+
+    expect(
+      keepsGuestServiceReachable(
+        state.gridSize,
+        state.placements,
+        state.kitchenAnnexOwned,
+      ),
+    ).toBe(false);
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(loaded.placements).toHaveLength(state.placements.length);
+    expect(new Set(loaded.placements.map((placement) => placement.id))).toEqual(
+      new Set(state.placements.map((placement) => placement.id)),
+    );
+    expect(
+      keepsGuestServiceReachable(
+        loaded.gridSize,
+        loaded.placements,
+        loaded.kitchenAnnexOwned,
+      ),
+    ).toBe(true);
+    expect(loaded.seatingCapacity).toBe(tablePositions.length * 2);
+  });
+
+  it(
+    'bounds repair for a dense legacy layout while retaining unplaced ownership',
+    () => {
+      const state = createNewGameState(80803);
+      const tablePositions = Array.from({ length: 8 }, (_, index) => index + 1).flatMap(
+        (y) => [
+          { x: 2, y },
+          { x: 5, y },
+        ],
+      );
+      state.gridSize = { w: 12, h: 12 };
+      state.placements = [
+        ...tablePositions.map((position, index) => ({
+          id: `dense_table_${index + 1}`,
+          itemKey: 'table_2seat',
+          ...position,
+          rotation: 0,
+        })),
+        { id: 'station_prep', itemKey: 'prep_station', x: 10, y: 2, rotation: 0 },
+      ];
+      state.tableCount = tablePositions.length;
+      state.seatingCapacity = tablePositions.length * 2;
+
+      const loaded = normalizeGameState(state);
+      expect(loaded.tableCount).toBe(tablePositions.length);
+      expect(loaded.placements.filter((placement) => placement.itemKey.startsWith('table')).length)
+        .toBeLessThanOrEqual(tablePositions.length);
+      expect(
+        keepsGuestServiceReachable(
+          loaded.gridSize,
+          loaded.placements,
+          loaded.kitchenAnnexOwned,
+        ),
+      ).toBe(true);
+      expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
+    },
+    2_000,
+  );
 
   it('leaves an unplaceable legacy table in inventory instead of the entrance', async () => {
     const storage = createMemoryStorage();

@@ -1,5 +1,28 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { assertCanvasHasRenderedContent, assertNoDiagnostics, gotoFreshGame } from './helpers.ts';
+
+async function tapGridCell(page: Page, x: number, y: number): Promise<void> {
+  await page.evaluate(
+    ({ gx, gy }) => {
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        '[data-testid="restaurant-canvas"]',
+      );
+      if (!canvas) throw new Error('restaurant canvas is missing');
+      const point = window.__E2E__!.gridCellToScreen(gx, gy);
+      canvas.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: point.x,
+          clientY: point.y,
+          pointerId: 1,
+          pointerType: 'touch',
+        }),
+      );
+    },
+    { gx: x, gy: y },
+  );
+}
 
 /**
  * Capture the same table before and after delivery for agent visual QA.
@@ -88,35 +111,56 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     animations: 'disabled',
   });
 
-  await page.evaluate(() => {
+  const serviceGuest = await page.evaluate(() => {
     const bridge = window.__E2E__!;
     const seatedGuest = bridge
       .getGameState()
       .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated');
     if (!seatedGuest?.seat) throw new Error('expected a seated guest');
-    bridge.setFloorNavPosition({
-      x: seatedGuest.seat.x,
-      y: seatedGuest.seat.y + 2,
-    });
+    return {
+      id: seatedGuest.id,
+      seat: { x: seatedGuest.seat.x, y: seatedGuest.seat.y },
+    };
   });
+
+  await tapGridCell(page, serviceGuest.seat.x, serviceGuest.seat.y);
+  await expect
+    .poll(() =>
+      page.evaluate(({ x, y }) => {
+        const player = window.__E2E__!.getState().floorPlayerGrid;
+        if (!player) return false;
+        const dx = Math.abs(player.x - x);
+        const dy = Math.abs(player.y - y);
+        return (dx === 1 && dy === 0) || (dx === 0 && dy === 2);
+      }, serviceGuest.seat),
+    )
+    .toBe(true);
   const takeOrdersAction = page.getByTestId('floor-take-orders');
   await expect(takeOrdersAction).toBeEnabled();
   await expect(takeOrdersAction).toHaveClass(/\bprimary\b/);
 
+  await tapGridCell(page, serviceGuest.seat.x, serviceGuest.seat.y);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (guestId) =>
+          window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
+            (guest) => guest.id === guestId,
+          )?.stage,
+        serviceGuest.id,
+      ),
+    )
+    .toBe('ordered');
+
   await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
 
-  const serviceSpacing = await page.evaluate(() => {
+  const serviceSpacing = await page.evaluate((guestId) => {
     const bridge = window.__E2E__!;
-    const state = bridge.getGameState();
-    const guest = state.activeDay!.floor!.pool.find(
-      (candidate) => candidate.stage === 'ordered',
-    );
-    if (!guest) throw new Error('expected ordered service guest');
-    const player = bridge.getPlayerScreenAnchor();
-    const guestAnchor = bridge.getGuestScreenAnchor(guest.id);
+    const player = bridge.getPlayerScreenFeetAnchor();
+    const guestAnchor = bridge.getGuestScreenFeetAnchor(guestId);
     if (!player || !guestAnchor) throw new Error('expected rendered service actors');
     return Math.hypot(player.x - guestAnchor.x, player.y - guestAnchor.y);
-  });
+  }, serviceGuest.id);
   expect(serviceSpacing).toBeGreaterThanOrEqual(56);
 
   const orderBubble = page.getByTestId('chat-bubble');

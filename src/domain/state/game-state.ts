@@ -14,6 +14,10 @@ import {
   mapZonesForGrid,
 } from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
+import {
+  keepsGuestServiceReachable,
+  recoverMainFloorPlayerPosition,
+} from '../floor/service-access.ts';
 import { createRng } from '../rng/index.ts';
 import {
   createEmptyDecorPurchasedCounts,
@@ -114,6 +118,7 @@ function placementCells(placement: Placement): { x: number; y: number }[] {
 export function normalizeMainFloorPlacements(
   gridSize: { w: number; h: number },
   placements: Placement[],
+  kitchenAnnexOwned = false,
 ): Placement[] {
   const { w, h } = gridSize;
   const zones = mapZonesForGrid(w, h);
@@ -168,10 +173,144 @@ export function normalizeMainFloorPlacements(
   }
 
   const byId = new Map([...fixed, ...relocated].map((placement) => [placement.id, placement]));
-  return placements.flatMap((placement) => {
+  const entranceSafe = placements.flatMap((placement) => {
     const normalized = byId.get(placement.id);
     return normalized ? [normalized] : [];
   });
+  if (keepsGuestServiceReachable(gridSize, entranceSafe, kitchenAnnexOwned)) {
+    return entranceSafe;
+  }
+
+  // Saves created before service positions were part of placement validation
+  // can contain collision-free furniture that nevertheless strands a stool.
+  // Search the complete blocker layout so an early greedy relocation cannot
+  // silently force a later owned table back into inventory.
+  const candidatesFor = (placement: Placement): Placement[] => {
+    const candidates: Placement[] = [placement];
+    for (let y = 1; y < h - 1; y += 1) {
+      for (let x = 1; x < w - 1; x += 1) {
+        if (x === placement.x && y === placement.y) continue;
+        candidates.push({ ...placement, x, y });
+      }
+    }
+    return candidates;
+  };
+  const staticLegal = (candidate: Placement): boolean => {
+    const cells = placementCells(candidate);
+    for (const cell of cells) {
+      if (cell.x < 0 || cell.y < 0 || cell.x >= w || cell.y >= h) return false;
+      if (isPerimeterWallCell(cell.x, cell.y, w, h)) return false;
+      if (reserved.has(`${cell.x},${cell.y}`)) return false;
+    }
+    if (candidate.itemKey.startsWith('table')) {
+      if (!cells.every((cell) => isDiningCell(zones, cell.x, cell.y))) return false;
+    } else if (isDecorItemKey(candidate.itemKey)) {
+      if (!isDiningCell(zones, candidate.x, candidate.y)) return false;
+    } else if (EQUIPMENT_ITEM_KEYS.has(candidate.itemKey)) {
+      if (!isKitchenCell(zones, candidate.x, candidate.y)) return false;
+    }
+    return true;
+  };
+  const blockers = entranceSafe.filter(
+    (placement) =>
+      placement.itemKey.startsWith('table') || EQUIPMENT_ITEM_KEYS.has(placement.itemKey),
+  );
+  const passive = entranceSafe.filter(
+    (placement) =>
+      !placement.itemKey.startsWith('table') && !EQUIPMENT_ITEM_KEYS.has(placement.itemKey),
+  );
+  const failed = new Set<string>();
+  // Save loading is synchronous. Bound combinatorial legacy repair so a dense,
+  // historically valid but newly infeasible floor cannot freeze startup.
+  // The deterministic salvage below retains omitted furniture as owned inventory.
+  const MAX_SERVICE_REPAIR_STATES = 1_000;
+  let serviceRepairStates = 0;
+
+  const placePassive = (
+    blockerLayout: Placement[],
+    blockerOccupied: ReadonlySet<string>,
+  ): Placement[] | null => {
+    const searchPassive = (
+      index: number,
+      placed: Placement[],
+      occupiedCells: Set<string>,
+    ): Placement[] | null => {
+      if (index === passive.length) return placed;
+      const placement = passive[index]!;
+      for (const candidate of candidatesFor(placement)) {
+        if (!staticLegal(candidate)) continue;
+        const cells = placementCells(candidate);
+        if (cells.some((cell) => occupiedCells.has(`${cell.x},${cell.y}`))) continue;
+        const nextOccupied = new Set(occupiedCells);
+        for (const cell of cells) nextOccupied.add(`${cell.x},${cell.y}`);
+        const result = searchPassive(
+          index + 1,
+          [...placed, candidate],
+          nextOccupied,
+        );
+        if (result) return result;
+      }
+      return null;
+    };
+    return searchPassive(0, [...blockerLayout], new Set(blockerOccupied));
+  };
+
+  const search = (
+    index: number,
+    placed: Placement[],
+    occupiedCells: Set<string>,
+  ): Placement[] | null => {
+    serviceRepairStates += 1;
+    if (serviceRepairStates > MAX_SERVICE_REPAIR_STATES) return null;
+    if (index === blockers.length) {
+      return placePassive(placed, occupiedCells);
+    }
+    const memoKey = `${index}|${placed
+      .map((item) => `${item.itemKey}@${item.x},${item.y}`)
+      .join(';')}`;
+    if (failed.has(memoKey)) return null;
+    const placement = blockers[index]!;
+    for (const candidate of candidatesFor(placement)) {
+      if (!staticLegal(candidate)) continue;
+      const cells = placementCells(candidate);
+      if (cells.some((cell) => occupiedCells.has(`${cell.x},${cell.y}`))) continue;
+      const nextPlaced = [...placed, candidate];
+      if (!keepsGuestServiceReachable(gridSize, nextPlaced, kitchenAnnexOwned)) continue;
+      const nextOccupied = new Set(occupiedCells);
+      for (const cell of cells) nextOccupied.add(`${cell.x},${cell.y}`);
+      const result = search(index + 1, nextPlaced, nextOccupied);
+      if (result) return result;
+    }
+    failed.add(memoKey);
+    return null;
+  };
+
+  const fullRepair = search(0, [], new Set());
+  if (fullRepair) {
+    const repairedById = new Map(fullRepair.map((placement) => [placement.id, placement]));
+    return entranceSafe.map((placement) => repairedById.get(placement.id)!);
+  }
+
+  // No arrangement can preserve the complete set. Keep the longest legal
+  // prefix; omitted ownership remains available in edit mode for manual placement.
+  const salvage: Placement[] = [];
+  const salvageOccupied = new Set<string>();
+  for (const placement of entranceSafe) {
+    const next = candidatesFor(placement).find((candidate) => {
+      if (!staticLegal(candidate)) return false;
+      const cells = placementCells(candidate);
+      if (cells.some((cell) => salvageOccupied.has(`${cell.x},${cell.y}`))) return false;
+      return keepsGuestServiceReachable(
+        gridSize,
+        [...salvage, candidate],
+        kitchenAnnexOwned,
+      );
+    });
+    if (!next) continue;
+    salvage.push(next);
+    for (const cell of placementCells(next)) salvageOccupied.add(`${cell.x},${cell.y}`);
+  }
+  return salvage;
 }
 
 /**
@@ -301,7 +440,11 @@ export function normalizeGameState(raw: GameState): GameState {
   const kitchenAnnexOwned = Boolean(raw.kitchenAnnexOwned);
   const migrated = migrateAnnexWidthToBackRoom(raw);
   const legacyPlacements = migrated.placements;
-  const placements = normalizeMainFloorPlacements(migrated.gridSize, legacyPlacements);
+  const placements = normalizeMainFloorPlacements(
+    migrated.gridSize,
+    legacyPlacements,
+    kitchenAnnexOwned,
+  );
   const unlockedIngredientIds = raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS];
   const tableCount =
     raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
@@ -333,6 +476,15 @@ export function normalizeGameState(raw: GameState): GameState {
       rawFloor.playerRoom === 'back_kitchen' && kitchenAnnexOwned
         ? 'back_kitchen'
         : 'main';
+    const playerPosition =
+      playerRoom === 'main'
+        ? recoverMainFloorPlayerPosition(
+            migrated.gridSize,
+            placements,
+            kitchenAnnexOwned,
+            rawFloor.playerPosition,
+          )
+        : rawFloor.playerPosition;
     let tickets = rawFloor.tickets
       .filter((ticket) => !recoveredCustomerIds.has(ticket.customerId))
       .map((ticket) => ({
@@ -420,6 +572,7 @@ export function normalizeGameState(raw: GameState): GameState {
         carriedTicketId,
         selectedTicketId,
         playerRoom,
+        playerPosition,
       },
     };
     composeDraftIngredientIds = undefined;

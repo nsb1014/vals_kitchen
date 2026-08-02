@@ -119,6 +119,10 @@ export class ActorLayer {
     return { ...this.playerWorld };
   }
 
+  getPlayerFeetWorldPosition(): { x: number; y: number } {
+    return { x: this.playerWorld.x, y: this.playerFeetY };
+  }
+
   getGuestWorldPosition(guestId: string): { x: number; y: number } | null {
     const entry = this.guestSprites.get(guestId);
     if (!entry) return null;
@@ -126,6 +130,12 @@ export class ActorLayer {
       x: entry.root.x,
       y: entry.root.y - SEATED_GUEST_DISPLAY_HEIGHT,
     };
+  }
+
+  getGuestFeetWorldPosition(guestId: string): { x: number; y: number } | null {
+    const entry = this.guestSprites.get(guestId);
+    if (!entry) return null;
+    return { x: entry.root.x, y: entry.root.y };
   }
 
   private drawDestination(dest: GridPoint | null): void {

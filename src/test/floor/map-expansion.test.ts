@@ -105,7 +105,8 @@ describe('grid expansion keeps walls functional', () => {
     const ok = {
       id: 'ok_table',
       itemKey: 'table_2seat',
-      x: 3,
+      // Interior, with both stools and the existing tables' service lanes clear.
+      x: 6,
       y: 4,
       rotation: 0,
     };

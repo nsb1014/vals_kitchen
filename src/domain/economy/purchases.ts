@@ -22,6 +22,7 @@ import {
   STARTING_GRID,
 } from '../state/game-state.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
+import { keepsGuestServiceReachable } from '../floor/service-access.ts';
 import {
   connectingDoorForRoom,
   connectingDoorInterior,
@@ -278,6 +279,21 @@ export function validatePlacement(
       if (occupiedByOthers.has(`${seat.x},${seat.y}`)) {
         return false;
       }
+    }
+  }
+
+  if (room === 'main') {
+    const candidatePlacements = existingId
+      ? roomPlacements.map((item) => (item.id === existingId ? placement : item))
+      : [...roomPlacements, placement];
+    if (
+      !keepsGuestServiceReachable(
+        state.gridSize,
+        candidatePlacements,
+        state.kitchenAnnexOwned,
+      )
+    ) {
+      return false;
     }
   }
 

@@ -7,6 +7,7 @@ import {
   guestDoorwayLane,
   guestWaitingAlcove,
   mainGuestEntranceReservedCells,
+  servicePlayerSpawn,
 } from '../domain/floor/starter-map.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { testContext } from './test-helpers.ts';
@@ -79,6 +80,37 @@ describe('edit restaurant placement rules', () => {
     };
     expect(validatePlacement(state, seatClash)).toBe(false);
     expect(validatePlacement(state, { ...table, x: 3, y: 4 }, table.id)).toBe(true);
+  });
+
+  it('rejects a layout that strands every service position around a stool', () => {
+    const state = createNewGameState(1021);
+    const secondTable = state.placements.find((placement) => placement.id === 'table_2')!;
+
+    // The west stool of table_1 is at (1,2). In this otherwise collision-free
+    // move its service cells become wall, table_1, wall, and table_2's stool.
+    expect(
+      validatePlacement(
+        state,
+        { ...secondTable, x: 2, y: 4 },
+        secondTable.id,
+      ),
+    ).toBe(false);
+  });
+
+  it('keeps the service-day spawn open even when the layout has no stools', () => {
+    const state = createNewGameState(1022);
+    state.gridSize = { w: 4, h: 4 };
+    state.placements = [];
+    const spawn = servicePlayerSpawn(state.gridSize.w, state.gridSize.h);
+
+    expect(
+      validatePlacement(state, {
+        id: 'spawn_station',
+        itemKey: 'prep_station',
+        ...spawn,
+        rotation: 0,
+      }),
+    ).toBe(false);
   });
 
   it('moves a table and keeps relative side seats attached', () => {

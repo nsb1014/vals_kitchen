@@ -938,8 +938,19 @@ export class RestaurantApp {
     };
   }
 
-  getPlayerScreenAnchor(): { x: number; y: number } {
-    const world = this.actorLayer.getPlayerWorldPosition();
+  getPlayerScreenFeetAnchor(): { x: number; y: number } {
+    const world = this.actorLayer.getPlayerFeetWorldPosition();
+    const rect = this.app.canvas.getBoundingClientRect();
+    const screen = worldToScreen(world.x, world.y, this.camera.state);
+    return {
+      x: rect.left + screen.x,
+      y: rect.top + screen.y,
+    };
+  }
+
+  getGuestScreenFeetAnchor(guestId: string): { x: number; y: number } | null {
+    const world = this.actorLayer.getGuestFeetWorldPosition(guestId);
+    if (!world) return null;
     const rect = this.app.canvas.getBoundingClientRect();
     const screen = worldToScreen(world.x, world.y, this.camera.state);
     return {
