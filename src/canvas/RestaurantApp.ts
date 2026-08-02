@@ -515,6 +515,58 @@ export class RestaurantApp {
     };
   }
 
+  /** Read-only seating scene snapshot for depth/pose continuity checks. */
+  getSeatingSceneDebug(): Readonly<{
+    tables: Array<{
+      placementId: string;
+      itemKey: string;
+      zIndex: number;
+      x: number;
+      y: number;
+    }>;
+    chairs: Array<{
+      tablePlacementId: string;
+      slotIndex: number;
+      zIndex: number;
+      x: number;
+      y: number;
+    }>;
+    guests: Array<{
+      guestId: string;
+      tablePlacementId: string;
+      slotIndex: number;
+      seatFacing: 0 | 90 | 180 | 270;
+      rootZIndex: number;
+      requestedFrameKey: string;
+      actualBoundFrameKey: string;
+      isSeated: boolean;
+      isMoving: boolean;
+      facing: 'right' | 'down' | 'up' | 'left';
+      visible: boolean;
+      alpha: number;
+      feet: { x: number; y: number };
+    }>;
+  }> {
+    const furniture = this.furnitureLayer.getSeatingDepthDebug();
+    const floor = useGameStore.getState().activeDay?.floor;
+    const guests = (floor?.pool ?? []).flatMap((guest) => {
+      if (!guest.seat) return [];
+      const visual = this.actorLayer.getGuestVisualDebug(guest.id);
+      if (!visual) return [];
+      return [{
+        ...visual,
+        tablePlacementId: guest.seat.tablePlacementId,
+        slotIndex: guest.seat.slotIndex,
+        seatFacing: guest.seat.facing,
+      }];
+    });
+    return {
+      tables: furniture.tables,
+      chairs: furniture.chairs,
+      guests,
+    };
+  }
+
   private waitingGuestHitAtWorldPoint(
     floor: FloorDay,
     world: { x: number; y: number },

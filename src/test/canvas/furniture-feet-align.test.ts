@@ -50,13 +50,41 @@ describe('furniture feet align', () => {
     expect(lamp.h).toBeGreaterThan(plant.h);
   });
 
-  it('sorts flat tables under actors while stations keep south-edge depth', () => {
-    expect(furnitureDepthY(2, 'table_2seat')).toBe(2);
+  it('sorts row-two seating around the table south edge without equal-depth ties', () => {
+    const tableDepth = furnitureDepthY(2, 'table_2seat');
+    const northGuestDepth = seatedActorDepthY(70);
+    const sideGuestDepth = seatedActorDepthY(94);
+    const southGuestDepth = seatedActorDepthY(118);
+
+    expect(chairDepthY(northGuestDepth)).toBe(69);
+    expect(northGuestDepth).toBe(70);
+    expect(chairDepthY(sideGuestDepth)).toBe(93);
+    expect(sideGuestDepth).toBe(94);
+    expect(tableDepth).toBe(96);
+    expect(chairDepthY(southGuestDepth)).toBe(117);
+    expect(southGuestDepth).toBe(118);
+
+    expect(chairDepthY(northGuestDepth)).toBeLessThan(northGuestDepth);
+    expect(northGuestDepth).toBeLessThan(chairDepthY(sideGuestDepth));
+    expect(chairDepthY(sideGuestDepth)).toBeLessThan(sideGuestDepth);
+    expect(sideGuestDepth).toBeLessThan(tableDepth);
+    expect(tableDepth).toBeLessThan(chairDepthY(southGuestDepth));
+    expect(chairDepthY(southGuestDepth)).toBeLessThan(southGuestDepth);
+  });
+
+  it('sorts a standing player naturally around a row-two table', () => {
+    const playerDepthForRow = (gridY: number): number =>
+      gridY * TILE_PX + TILE_PX / 2 + TILE_PX / 2 - 2;
+    const tableDepth = furnitureDepthY(2, 'table_2seat');
+
+    expect(playerDepthForRow(1)).toBeLessThan(tableDepth);
+    expect(playerDepthForRow(2)).toBeLessThan(tableDepth);
+    expect(playerDepthForRow(3)).toBeGreaterThan(tableDepth);
+  });
+
+  it('keeps rugs on the floor plane and stations on the south edge', () => {
     expect(furnitureDepthY(2, 'decor_rug')).toBe(2);
     expect(furnitureDepthY(2, 'prep_station')).toBe(3 * TILE_PX);
-    const seatedFeetY = 2 * TILE_PX + TILE_PX / 2 + TILE_PX / 2 - 2;
-    expect(furnitureDepthY(2, 'table_2seat')).toBeLessThan(seatedActorDepthY(seatedFeetY));
-    expect(chairDepthY(seatedFeetY)).toBeLessThan(seatedActorDepthY(seatedFeetY));
   });
 
   it('uses one actor frame scale and keeps stools below seated hips', () => {

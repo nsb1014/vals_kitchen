@@ -16,11 +16,35 @@ import { seatChairWorldPosition, seatSitWorldPosition } from '../world/seat-sit.
 const MIN_HIT_PX = 44;
 const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
 
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 interface FurnitureSprite {
   root: Container;
   body: Graphics;
   sprite: Sprite | null;
   placementId: string;
+  itemKey: string;
+  tablePlacementId: string;
+  slotIndex: number;
+}
+
+export interface SeatingDepthDebug {
+  tables: Array<{
+    placementId: string;
+    itemKey: string;
+    zIndex: number;
+    x: number;
+    y: number;
+  }>;
+  chairs: Array<{
+    tablePlacementId: string;
+    slotIndex: number;
+    zIndex: number;
+    x: number;
+    y: number;
+  }>;
 }
 
 export class FurnitureLayer {
@@ -103,10 +127,39 @@ export class FurnitureLayer {
     return this.sprites.get(placementId)?.root;
   }
 
+  getSeatingDepthDebug(): SeatingDepthDebug {
+    const tables = [...this.sprites.values()]
+      .filter((entry) => entry.itemKey.startsWith('table'))
+      .map((entry) => ({
+        placementId: entry.placementId,
+        itemKey: entry.itemKey,
+        zIndex: entry.root.zIndex,
+        x: entry.root.x,
+        y: entry.root.y,
+      }))
+      .sort((a, b) => compareIds(a.placementId, b.placementId));
+    const chairs = [...this.chairSprites.values()]
+      .map((entry) => ({
+        tablePlacementId: entry.tablePlacementId,
+        slotIndex: entry.slotIndex,
+        zIndex: entry.root.zIndex,
+        x: entry.root.x,
+        y: entry.root.y,
+      }))
+      .sort(
+        (a, b) =>
+          compareIds(a.tablePlacementId, b.tablePlacementId) || a.slotIndex - b.slotIndex,
+      );
+    return { tables, chairs };
+  }
+
   private acquireSprite(): FurnitureSprite {
     const pooled = this.pool.pop();
     if (pooled) {
       pooled.placementId = '';
+      pooled.itemKey = '';
+      pooled.tablePlacementId = '';
+      pooled.slotIndex = -1;
       return pooled;
     }
     const root = new Container();
@@ -118,7 +171,15 @@ export class FurnitureLayer {
     sprite.roundPixels = true;
     root.addChild(sprite);
     root.addChild(body);
-    return { root, body, sprite, placementId: '' };
+    return {
+      root,
+      body,
+      sprite,
+      placementId: '',
+      itemKey: '',
+      tablePlacementId: '',
+      slotIndex: -1,
+    };
   }
 
   private releaseSprite(sprite: FurnitureSprite): void {
@@ -130,11 +191,17 @@ export class FurnitureLayer {
     sprite.root.removeAllListeners();
     sprite.root.cursor = 'grab';
     sprite.placementId = '';
+    sprite.itemKey = '';
+    sprite.tablePlacementId = '';
+    sprite.slotIndex = -1;
     this.pool.push(sprite);
   }
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
+    sprite.itemKey = 'chair';
+    sprite.tablePlacementId = seat.tablePlacementId;
+    sprite.slotIndex = seat.slotIndex;
     // Backless stool and authored seated pose share the seat-cell floor baseline.
     const chair = seatChairWorldPosition(seat);
     const sit = seatSitWorldPosition(seat);
@@ -183,9 +250,12 @@ export class FurnitureLayer {
     tableState: TableSurfaceState | null,
   ): void {
     sprite.placementId = placement.id;
+    sprite.itemKey = placement.itemKey;
+    sprite.tablePlacementId = '';
+    sprite.slotIndex = -1;
     const { x, y } = gridToWorld(placement.x, placement.y);
     sprite.root.position.set(x, y);
-    // Flat tabletops sort under actors; tall stations keep south-edge Y-sort.
+    // Tables and tall stations use south-edge sorting; rugs stay on the floor plane.
     sprite.root.zIndex = furnitureDepthY(placement.y, placement.itemKey);
 
     const spriteName = spriteNameForItemKey(placement.itemKey, tableState);

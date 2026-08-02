@@ -80,6 +80,11 @@ export class GuestMotion {
       if (
         nav &&
         isMotionStage(guest.stage) &&
+        !(
+          guest.stage === 'leaving' &&
+          !guest.motionPosition &&
+          this.seatedIds.has(guest.id)
+        ) &&
         (guest.motionPosition?.x !== nav.position.x ||
           guest.motionPosition.y !== nav.position.y)
       ) {
@@ -328,9 +333,31 @@ export class GuestMotion {
       return null;
     }
 
-    this.seatedIds.delete(guest.id);
-
     if (guest.stage === 'leaving') {
+      const hasPersistedMotion = guest.motionPosition != null;
+      const retainedSeat = guest.seat
+        ? { x: guest.seat.x, y: guest.seat.y }
+        : null;
+      const isMotionlessAtRetainedSeat =
+        !hasPersistedMotion &&
+        retainedSeat != null &&
+        !nav.isMoving &&
+        nav.position.x === retainedSeat.x &&
+        nav.position.y === retainedSeat.y;
+
+      // A newly completed meal remains visually seated until a real departure
+      // route starts. Persisted motion is authoritative evidence that the guest
+      // already stood up, even when its last reached cell is still the seat.
+      if (hasPersistedMotion) {
+        this.seatedIds.delete(guest.id);
+      } else if (isMotionlessAtRetainedSeat && guest.seat) {
+        const sit = seatSitWorldPosition(guest.seat);
+        nav.worldX = sit.x;
+        nav.worldY = sit.y;
+        nav.facing = seatFacingToActorFacing(guest.seat.facing);
+        this.seatedIds.add(guest.id);
+      }
+
       // Departures wait at their current pose until they exclusively own the
       // lane. In particular, do not assign a path: isMoving must remain false
       // so a queued departure cannot animate walking in place.
@@ -351,9 +378,15 @@ export class GuestMotion {
           const path = [...toLane];
           const tail = path[path.length - 1];
           if (!tail || tail.x !== door.x || tail.y !== door.y) path.push(door);
-          nav.setPath(path);
+          // A zero-delta render may probe availability, but a fresh departure
+          // does not stand until a positive-time sync can begin the walk. A
+          // restored departure has already started and may bind immediately.
+          if (path.length > 1 && (opts.dtMs > 0 || hasPersistedMotion)) {
+            nav.setPath(path);
+          }
         }
       }
+      if (nav.isMoving) this.seatedIds.delete(guest.id);
       if (opts.dtMs > 0) nav.update(opts.dtMs);
       if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) {
         return 'exited';
@@ -407,10 +440,7 @@ export class GuestMotion {
     const persistedDeparture = candidates.find(
       (guest) =>
         guest.stage === 'leaving' &&
-        guest.motionPosition &&
-        (!guest.seat ||
-          guest.motionPosition.x !== guest.seat.x ||
-          guest.motionPosition.y !== guest.seat.y),
+        guest.motionPosition,
     );
     const arrival = candidates.find(
       (guest) => guest.stage === 'entering' || guest.stage === 'seating',

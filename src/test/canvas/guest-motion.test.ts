@@ -243,7 +243,7 @@ describe('GuestMotion', () => {
     expect(sync(motion, guests).seatedGuestIds).toEqual([]);
   });
 
-  it('reconstructs a leaving guest at the retained seat and reports exit only at the door', () => {
+  it('keeps a fresh leaving guest seated through a zero-delta probe, then reports exit once', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 0, 2);
     const leaving = guest({ id: 'g1', stage: 'leaving', seat: assignedSeat });
@@ -252,9 +252,17 @@ describe('GuestMotion', () => {
     const first = sync(motion, [leaving], 0);
     const start = motion.pose('g1')!;
     expect(first.exitedGuestIds).toEqual([]);
+    expect(first.motionPositionUpdates).toEqual([]);
     expect(start.worldX).toBe(seatedAt.x);
     expect(start.worldY).toBe(seatedAt.y);
-    expect(start.isSeated).not.toBe(true);
+    expect(start.isMoving).toBe(false);
+    expect(start.isSeated).toBe(true);
+
+    sync(motion, [leaving]);
+    expect(motion.pose('g1')).toMatchObject({
+      isMoving: true,
+      isSeated: false,
+    });
 
     let arrival: GuestMotionSyncResult | null = null;
     for (let i = 0; i < 200; i++) {
@@ -287,9 +295,32 @@ describe('GuestMotion', () => {
         worldX: seatedAt.x,
         worldY: seatedAt.y,
         isMoving: false,
+        isSeated: true,
         walkFrame: 0,
       });
     }
+  });
+
+  it('preserves an already-rendered seated pose across the eating-to-leaving transition', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 1, 2);
+    const eating = guest({ id: 'g1', stage: 'eating', seat: assignedSeat });
+
+    sync(motion, [eating], 0);
+    expect(motion.pose(eating.id)!.isSeated).toBe(true);
+
+    const leaving = { ...eating, stage: 'leaving' as const };
+    sync(motion, [leaving], 0);
+    expect(motion.pose(leaving.id)).toMatchObject({
+      isMoving: false,
+      isSeated: true,
+    });
+
+    sync(motion, [leaving]);
+    expect(motion.pose(leaving.id)).toMatchObject({
+      isMoving: true,
+      isSeated: false,
+    });
   });
 
   it('keeps the waiting alcove clear of a simultaneous departure', () => {
@@ -422,6 +453,7 @@ describe('GuestMotion', () => {
 
     sync(motion, [firstLeaving, secondLeaving]);
     expect(motion.pose(firstLeaving.id)!.isMoving).toBe(true);
+    expect(motion.pose(firstLeaving.id)!.isSeated).toBe(false);
     expect(
       motion.isDoorBusy(floorWith([firstLeaving, secondLeaving]), door),
     ).toBe(false);
@@ -429,6 +461,7 @@ describe('GuestMotion', () => {
       worldX: secondStart.x,
       worldY: secondStart.y,
       isMoving: false,
+      isSeated: true,
       walkFrame: 0,
     });
 
@@ -442,6 +475,7 @@ describe('GuestMotion', () => {
       );
       const held = motion.pose(secondLeaving.id)!;
       expect(held.isMoving).toBe(false);
+      expect(held.isSeated).toBe(true);
       expect(held.walkFrame).toBe(0);
       expect(held.worldX).toBe(secondStart.x);
       expect(held.worldY).toBe(secondStart.y);
@@ -454,7 +488,10 @@ describe('GuestMotion', () => {
     expect(doorOpenedNearExit).toBe(true);
 
     sync(motion, [secondLeaving]);
-    expect(motion.pose(secondLeaving.id)!.isMoving).toBe(true);
+    expect(motion.pose(secondLeaving.id)).toMatchObject({
+      isMoving: true,
+      isSeated: false,
+    });
   });
 
   it('does not let a new departure preempt an entrant already using the corridor', () => {
@@ -473,6 +510,7 @@ describe('GuestMotion', () => {
       worldX: leavingStart.x,
       worldY: leavingStart.y,
       isMoving: false,
+      isSeated: true,
       walkFrame: 0,
     });
 
@@ -488,7 +526,10 @@ describe('GuestMotion', () => {
 
     const waiting = { ...entering, stage: 'waiting' as const };
     sync(motion, [waiting, leaving]);
-    expect(motion.pose(leaving.id)!.isMoving).toBe(true);
+    expect(motion.pose(leaving.id)).toMatchObject({
+      isMoving: true,
+      isSeated: false,
+    });
   });
 
   it('reports the nearest live guest cells for player route blocking', () => {
@@ -528,6 +569,29 @@ describe('GuestMotion', () => {
     expect(pose.worldX).toBe(anchor.x * TILE_PX + TILE_PX / 2);
     expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
     expect(pose.isMoving).toBe(true);
+    expect(pose.isSeated).toBe(false);
+  });
+
+  it('treats a persisted seat cell as an already-started departure', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 1, 2);
+    const entering = guest({ id: 'entering', stage: 'entering' });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: assignedSeat,
+      motionPosition: { x: assignedSeat.x, y: assignedSeat.y },
+    });
+
+    const result = sync(motion, [entering, leaving], 0);
+    expect(result.exitedGuestIds).toEqual([]);
+    expect(motion.pose(entering.id)).toBeNull();
+    expect(motion.pose(leaving.id)).toMatchObject({
+      worldX: assignedSeat.x * TILE_PX + TILE_PX / 2,
+      worldY: assignedSeat.y * TILE_PX + TILE_PX / 2,
+      isMoving: true,
+      isSeated: false,
+    });
   });
 
   it('reports a newly reached discrete cell without reporting sub-tile progress', () => {

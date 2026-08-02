@@ -569,6 +569,18 @@ declare global {
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
+      prepareFourFacingSeatedGuestsFixture: () => Promise<
+        Array<{
+          guestId: string;
+          seat: {
+            x: number;
+            y: number;
+            facing: 0 | 90 | 180 | 270;
+            tablePlacementId: string;
+            slotIndex: number;
+          };
+        }>
+      >;
       prepareStationCarryFixture: (
         mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
       ) => Promise<{
@@ -628,6 +640,37 @@ declare global {
         feet: { x: number; y: number } | null;
         facing: 'right' | 'down' | 'up' | 'left';
         isMoving: boolean;
+      } | null;
+      getSeatingSceneDebug: () => {
+        tables: Array<{
+          placementId: string;
+          itemKey: string;
+          zIndex: number;
+          x: number;
+          y: number;
+        }>;
+        chairs: Array<{
+          tablePlacementId: string;
+          slotIndex: number;
+          zIndex: number;
+          x: number;
+          y: number;
+        }>;
+        guests: Array<{
+          guestId: string;
+          tablePlacementId: string;
+          slotIndex: number;
+          seatFacing: 0 | 90 | 180 | 270;
+          rootZIndex: number;
+          requestedFrameKey: string;
+          actualBoundFrameKey: string;
+          isSeated: boolean;
+          isMoving: boolean;
+          facing: 'right' | 'down' | 'up' | 'left';
+          visible: boolean;
+          alpha: number;
+          feet: { x: number; y: number };
+        }>;
       } | null;
       getInteractHintVisible: () => boolean;
       getInteractHintCells: () => Array<{ x: number; y: number }>;

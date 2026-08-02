@@ -47,6 +47,22 @@ const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
 const DEST_MARKER_COLOR = 0xf0e6a8;
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
+type ActorFacingName = (typeof FACING_NAMES)[number];
+
+interface GuestSpriteEntry {
+  root: Container;
+  sprite: Sprite;
+  cue: Graphics;
+  /** Requested key last accepted by the texture-binding retry policy. */
+  lastFrameKey: string;
+  /** Requested pose for the current rendered tick, even while an atlas is loading. */
+  requestedFrameKey: string;
+  /** Exact texture candidate currently painted, including a deliberate fallback. */
+  actualBoundFrameKey: string;
+  isSeated: boolean;
+  isMoving: boolean;
+  facing: ActorFacingName;
+}
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
   const { x, y } = gridToWorld(gx, gy);
@@ -64,10 +80,7 @@ export class ActorLayer {
   private readonly playerSprite = new Sprite();
   private readonly playerFallback = new Graphics();
   private readonly plateGraphics = new Graphics();
-  private readonly guestSprites = new Map<
-    string,
-    { root: Container; sprite: Sprite; cue: Graphics; lastFrameKey: string }
-  >();
+  private readonly guestSprites = new Map<string, GuestSpriteEntry>();
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
   private lastPlayerFrameKey = '';
@@ -181,6 +194,35 @@ export class ActorLayer {
     const entry = this.guestSprites.get(guestId);
     if (!entry) return null;
     return { x: entry.root.x, y: entry.root.y };
+  }
+
+  /** Narrow read-only actor state used to verify authored seating continuity. */
+  getGuestVisualDebug(guestId: string): Readonly<{
+    guestId: string;
+    rootZIndex: number;
+    requestedFrameKey: string;
+    actualBoundFrameKey: string;
+    isSeated: boolean;
+    isMoving: boolean;
+    facing: ActorFacingName;
+    visible: boolean;
+    alpha: number;
+    feet: { x: number; y: number };
+  }> | null {
+    const entry = this.guestSprites.get(guestId);
+    if (!entry) return null;
+    return {
+      guestId,
+      rootZIndex: entry.root.zIndex,
+      requestedFrameKey: entry.requestedFrameKey,
+      actualBoundFrameKey: entry.actualBoundFrameKey,
+      isSeated: entry.isSeated,
+      isMoving: entry.isMoving,
+      facing: entry.facing,
+      visible: entry.sprite.visible,
+      alpha: entry.sprite.alpha,
+      feet: { x: entry.root.x, y: entry.root.y },
+    };
   }
 
   getGuestWorldHitTargets(): GuestHitTargetCandidate[] {
@@ -367,7 +409,17 @@ export class ActorLayer {
         root.addChild(sprite);
         root.addChild(cue);
         this.actorContainer.addChild(root);
-        entry = { root, sprite, cue, lastFrameKey: '' };
+        entry = {
+          root,
+          sprite,
+          cue,
+          lastFrameKey: '',
+          requestedFrameKey: '',
+          actualBoundFrameKey: '',
+          isSeated: false,
+          isMoving: false,
+          facing: 'down',
+        };
         this.guestSprites.set(guest.id, entry);
       }
 
@@ -381,6 +433,10 @@ export class ActorLayer {
       const frameKey = seated
         ? guestSitFrameKey(variant, facingName)
         : guestWalkFrameKey(variant, facingName, frame);
+      entry.requestedFrameKey = frameKey;
+      entry.isSeated = seated;
+      entry.isMoving = pose.isMoving;
+      entry.facing = facingName;
       if (
         nextBoundFrameKey({
           frameKey,
@@ -388,21 +444,36 @@ export class ActorLayer {
           hadTexture: entry.sprite.visible,
         })
       ) {
-        const texture = seated
-          ? (getCharacterTexture(guestSitFrameKey(variant, facingName)) ??
-            getCharacterTexture(guestWalkFrameKey(variant, facingName, 0)) ??
-            getCharacterTexture(guestWalkFrameKey(variant, 'down', 0)) ??
-            getCharacterTexture('customer'))
-          : (getCharacterTexture(guestWalkFrameKey(variant, facingName, frame)) ??
-            getCharacterTexture(guestWalkFrameKey(variant, facingName, 0)) ??
-            getCharacterTexture(guestWalkFrameKey(variant, 'down', 0)) ??
-            getCharacterTexture('customer'));
+        const candidates = seated
+          ? [
+              guestSitFrameKey(variant, facingName),
+              guestWalkFrameKey(variant, facingName, 0),
+              guestWalkFrameKey(variant, 'down', 0),
+              'customer',
+            ]
+          : [
+              guestWalkFrameKey(variant, facingName, frame),
+              guestWalkFrameKey(variant, facingName, 0),
+              guestWalkFrameKey(variant, 'down', 0),
+              'customer',
+            ];
+        let actualBoundFrameKey = '';
+        let texture = null;
+        for (const candidate of candidates) {
+          texture = getCharacterTexture(candidate);
+          if (texture) {
+            actualBoundFrameKey = candidate;
+            break;
+          }
+        }
         if (texture) {
           entry.lastFrameKey = frameKey;
+          entry.actualBoundFrameKey = actualBoundFrameKey;
           entry.sprite.texture = texture;
           entry.sprite.visible = true;
         } else {
           entry.lastFrameKey = '';
+          entry.actualBoundFrameKey = '';
           entry.sprite.visible = false;
         }
       }

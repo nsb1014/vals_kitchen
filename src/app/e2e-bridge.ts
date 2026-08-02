@@ -142,7 +142,13 @@ export interface E2eBridge {
   prepareFourFacingSeatedGuestsFixture: () => Promise<
     Array<{
       guestId: string;
-      seat: { x: number; y: number; facing: 0 | 90 | 180 | 270 };
+      seat: {
+        x: number;
+        y: number;
+        facing: 0 | 90 | 180 | 270;
+        tablePlacementId: string;
+        slotIndex: number;
+      };
     }>
   >;
   prepareStationCarryFixture: (
@@ -217,6 +223,38 @@ export interface E2eBridge {
     feet: { x: number; y: number } | null;
     facing: 'right' | 'down' | 'up' | 'left';
     isMoving: boolean;
+  } | null;
+  /** Debug: combined furniture and seated-actor depth/pose snapshot. */
+  getSeatingSceneDebug: () => {
+    tables: Array<{
+      placementId: string;
+      itemKey: string;
+      zIndex: number;
+      x: number;
+      y: number;
+    }>;
+    chairs: Array<{
+      tablePlacementId: string;
+      slotIndex: number;
+      zIndex: number;
+      x: number;
+      y: number;
+    }>;
+    guests: Array<{
+      guestId: string;
+      tablePlacementId: string;
+      slotIndex: number;
+      seatFacing: 0 | 90 | 180 | 270;
+      rootZIndex: number;
+      requestedFrameKey: string;
+      actualBoundFrameKey: string;
+      isSeated: boolean;
+      isMoving: boolean;
+      facing: 'right' | 'down' | 'up' | 'left';
+      visible: boolean;
+      alpha: number;
+      feet: { x: number; y: number };
+    }>;
   } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
@@ -419,6 +457,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPlayerVisualDebug() {
       return getRestaurantApp()?.getPlayerVisualDebug() ?? null;
+    },
+
+    getSeatingSceneDebug() {
+      return getRestaurantApp()?.getSeatingSceneDebug() ?? null;
     },
 
     getGuestScreenFeetAnchor(guestId) {
@@ -824,6 +866,8 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           x: guest.seat.x,
           y: guest.seat.y,
           facing: guest.seat.facing,
+          tablePlacementId: guest.seat.tablePlacementId,
+          slotIndex: guest.seat.slotIndex,
         },
       }));
     },
