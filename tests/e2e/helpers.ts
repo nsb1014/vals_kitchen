@@ -489,9 +489,14 @@ export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
 /** Tickets toggle sits below Cash/status HUD (not overlapping it on the overlay). */
 export async function assertTicketsBelowStatusHud(page: Page): Promise<void> {
   const hud = await page.locator('[data-testid="game-hud"]').boundingBox();
-  const tickets = await page
-    .locator('[data-testid="floor-tickets-toggle"]')
-    .boundingBox();
+  const ticketsToggle = page.locator('[data-testid="floor-tickets-toggle"]');
+  let tickets = await ticketsToggle.boundingBox();
+  await expect
+    .poll(async () => {
+      tickets = await ticketsToggle.boundingBox();
+      return tickets !== null;
+    })
+    .toBe(true);
   expect(hud).not.toBeNull();
   expect(tickets).not.toBeNull();
   expect(tickets!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height - 1);

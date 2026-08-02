@@ -1,4 +1,5 @@
 import type { Placement } from '../state/game-state.ts';
+import { EQUIPMENT_IDS } from '../types.ts';
 import type { FloorDay, FloorGuest } from './types.ts';
 
 export interface GridPoint {
@@ -62,7 +63,7 @@ export function adjacentDirtyTablePlacementIds(
   return adjacentTablePlacementIds(floor, player, placements, 'dirty');
 }
 
-const STATION_ITEM_KEYS = new Set(['prep_station']);
+const STATION_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
 
 export function isCookStationItemKey(itemKey: string): boolean {
   return STATION_ITEM_KEYS.has(itemKey);

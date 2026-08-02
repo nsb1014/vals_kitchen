@@ -433,6 +433,9 @@ export function installE2eBridge(
             ticketId: open.id,
             ingredientIds: combo.ingredientIds,
           });
+          if (guest.seat) {
+            useGameStore.getState().setFloorNavPosition({ ...guest.seat });
+          }
           await dispatch({ type: 'FLOOR_DELIVER', ticketId: open.id });
         }
       }

@@ -56,6 +56,16 @@ describe('floor vertical slice loop', () => {
     ).state;
     expect(state.activeDay!.floor!.carriedTicketId).toBe(ticket.id);
 
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerPosition: { x: seated!.seat!.x, y: seated!.seat!.y },
+        },
+      },
+    };
     const cashBefore = state.cash;
     state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: ticket.id }, testContext).state;
     expect(state.cash).toBeGreaterThanOrEqual(cashBefore);
@@ -139,6 +149,16 @@ describe('floor vertical slice loop', () => {
           { type: 'FLOOR_PLATE', ticketId: open.id, ingredientIds: combo.ingredientIds },
           testContext,
         ).state;
+        state = {
+          ...state,
+          activeDay: {
+            ...state.activeDay!,
+            floor: {
+              ...state.activeDay!.floor!,
+              playerPosition: { x: guest.seat!.x, y: guest.seat!.y },
+            },
+          },
+        };
         state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: open.id }, testContext).state;
       }
 

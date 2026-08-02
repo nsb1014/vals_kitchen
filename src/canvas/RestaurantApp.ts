@@ -30,6 +30,10 @@ import {
 } from '../domain/floor/starter-map.ts';
 import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
 import { selectCanOpenFloorCompose } from '../store/selectors/service-day.ts';
+import {
+  resumeSafeFloorDeltaMs,
+  selectFloorRuntimeRunning,
+} from '../store/selectors/floor-runtime.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -56,6 +60,7 @@ export class RestaurantApp {
   private lastFloorSeed: number | null = null;
   private lastRoom: FloorRoomId | null = null;
   private eatingTickAccumulatorMs = 0;
+  private floorRuntimeWasRunning = false;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
 
@@ -122,6 +127,7 @@ export class RestaurantApp {
     this.dragPlacement.attach();
     this.app.canvas.addEventListener('pointerdown', this.onTapMove);
     window.addEventListener('keydown', this.onKeyboardMove);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.app.ticker.add(this.onTick);
     this.unsubscribe = useGameStore.subscribe((state, prev) => {
       if (
@@ -185,9 +191,19 @@ export class RestaurantApp {
   private onTick = (): void => {
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
-    if (!floor || state.editLayoutMode) return;
+    const runtimeRunning = selectFloorRuntimeRunning(
+      state,
+      document.visibilityState === 'visible',
+    );
+    const deltaMs = resumeSafeFloorDeltaMs(
+      runtimeRunning,
+      this.floorRuntimeWasRunning,
+      this.app.ticker.deltaMS,
+    );
+    this.floorRuntimeWasRunning = runtimeRunning;
+    if (!runtimeRunning || !floor || deltaMs === 0) return;
 
-    this.nav.update(this.app.ticker.deltaMS);
+    this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
 
     // Room transition when the cook steps onto the connecting door.
@@ -227,7 +243,7 @@ export class RestaurantApp {
     const enterResult = this.guestMotion.sync(floor, {
       door,
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
-      dtMs: this.app.ticker.deltaMS,
+      dtMs: deltaMs,
     });
     if (enterResult.enteredGuestIds.length > 0) {
       void useGameStore
@@ -244,7 +260,7 @@ export class RestaurantApp {
     }
 
     if (floor.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')) {
-      this.eatingTickAccumulatorMs += this.app.ticker.deltaMS;
+      this.eatingTickAccumulatorMs += deltaMs;
       while (
         this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS
       ) {
@@ -297,15 +313,23 @@ export class RestaurantApp {
 
   private onTapMove = (event: PointerEvent): void => {
     const store = useGameStore.getState();
-    if (store.editLayoutMode || !store.activeDay?.floor) return;
+    if (
+      !selectFloorRuntimeRunning(
+        store,
+        document.visibilityState === 'visible',
+      ) ||
+      store.composeSheetOpen
+    ) {
+      return;
+    }
+    const floor = store.activeDay?.floor;
+    if (!floor) return;
 
     const rect = this.app.canvas.getBoundingClientRect();
     const sx = event.clientX - rect.left;
     const sy = event.clientY - rect.top;
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
     const tapCell = { x: gx, y: gy };
-    const floor = store.activeDay.floor;
-
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
       const entered = store.enterConnectingDoor();
       if (entered) {
@@ -431,10 +455,11 @@ export class RestaurantApp {
 
     const store = useGameStore.getState();
     if (
-      store.screen !== 'restaurant' ||
-      store.editLayoutMode ||
-      store.composeSheetOpen ||
-      !store.activeDay?.floor
+      !selectFloorRuntimeRunning(
+        store,
+        document.visibilityState === 'visible',
+      ) ||
+      store.composeSheetOpen
     ) {
       return;
     }
@@ -489,6 +514,12 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
+  };
+
+  private onVisibilityChange = (): void => {
+    if (document.visibilityState !== 'visible') {
+      this.floorRuntimeWasRunning = false;
+    }
   };
 
   syncFromStore(state: GameStore): void {
@@ -722,6 +753,7 @@ export class RestaurantApp {
       this.resizeFrame = null;
     }
     window.removeEventListener('keydown', this.onKeyboardMove);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
     this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();

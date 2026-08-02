@@ -9,7 +9,7 @@ const base = (): FloorTable => ({
 });
 
 describe('table lifecycle', () => {
-  it('set → occupy → dirty → clear → unset (bare, plates removed)', () => {
+  it('set → occupy → dirty → clear → ready for the next guest', () => {
     let t = setTable(base());
     expect(t.state).toBe('ready');
     t = occupyTable(t);
@@ -17,7 +17,7 @@ describe('table lifecycle', () => {
     t = markDirty(t);
     expect(t.state).toBe('dirty');
     t = clearTable(t);
-    expect(t.state).toBe('unset');
+    expect(t.state).toBe('ready');
   });
 
   it('rejects set when not unset', () => {

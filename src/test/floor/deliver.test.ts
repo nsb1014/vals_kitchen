@@ -47,6 +47,8 @@ function floorStateWithPlatedTicket() {
   );
   const plated = plateTicket(floor.tickets, ticketId, best.ingredientIds.slice(0, 3));
   floor = { ...floor, tickets: plated.tickets, carriedTicketId: plated.carriedTicketId };
+  const guest = floor.pool.find((entry) => entry.customer.id === c.id)!;
+  floor = { ...floor, playerPosition: { x: guest.seat!.x, y: guest.seat!.y } };
 
   const state = createNewGameState(42);
   const activeDay: ActiveDay = {
@@ -123,5 +125,29 @@ describe('deliverAndScore', () => {
     };
     state.activeDay = { ...state.activeDay!, floor: seatedFloor };
     expect(() => deliverAndScore(state, ticketId, testContext)).toThrow(/ready for delivery/i);
+  });
+
+  it('refuses a plated ticket that is not the carried dish without mutating state', () => {
+    const { state, ticketId } = floorStateWithPlatedTicket();
+    state.activeDay = {
+      ...state.activeDay!,
+      floor: { ...state.activeDay!.floor!, carriedTicketId: 'ticket_other' },
+    };
+    const before = structuredClone(state);
+
+    expect(() => deliverAndScore(state, ticketId, testContext)).toThrow(/carried dish/i);
+    expect(state).toEqual(before);
+  });
+
+  it('refuses delivery away from the matching guest seat without mutating state', () => {
+    const { state, ticketId } = floorStateWithPlatedTicket();
+    state.activeDay = {
+      ...state.activeDay!,
+      floor: { ...state.activeDay!.floor!, playerPosition: { x: 99, y: 99 } },
+    };
+    const before = structuredClone(state);
+
+    expect(() => deliverAndScore(state, ticketId, testContext)).toThrow(/not adjacent/i);
+    expect(state).toEqual(before);
   });
 });
