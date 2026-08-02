@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GuestMotion, type GuestMotionSyncResult } from '../../canvas/world/GuestMotion.ts';
+import { resolveGuestPose } from '../../canvas/world/ActorLayer.ts';
 import { TILE_PX } from '../../canvas/coordinates.ts';
 import { seatSitWorldPosition } from '../../canvas/world/seat-sit.ts';
 import { waitingGuestWorldPosition } from '../../canvas/world/waiting-line.ts';
@@ -180,6 +181,224 @@ describe('GuestMotion', () => {
     expect(end.worldX).toBe(door.x * TILE_PX + TILE_PX / 2);
     expect(end.worldY).toBe(door.y * TILE_PX + TILE_PX / 2);
     expect(sync(motion, [leaving]).exitedGuestIds).toEqual([]);
+  });
+
+  it('keeps the waiting alcove clear of a simultaneous departure', () => {
+    const motion = new GuestMotion();
+    const waiting = guest({ id: 'waiting', stage: 'waiting' });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+    });
+    let minimumDistance = Number.POSITIVE_INFINITY;
+    let exited = false;
+
+    for (let i = 0; i < 240; i++) {
+      const result = sync(motion, [waiting, leaving]);
+      const waitingPose = motion.pose(waiting.id)!;
+      const leavingPose = motion.pose(leaving.id)!;
+      minimumDistance = Math.min(
+        minimumDistance,
+        Math.hypot(
+          waitingPose.worldX - leavingPose.worldX,
+          waitingPose.worldY - leavingPose.worldY,
+        ),
+      );
+      if (result.exitedGuestIds.includes(leaving.id)) {
+        exited = true;
+        break;
+      }
+    }
+
+    expect(exited).toBe(true);
+    expect(minimumDistance).toBeGreaterThanOrEqual(TILE_PX);
+  });
+
+  it('lets a persisted departure clear the doorway before a loaded entrant moves', () => {
+    const motion = new GuestMotion();
+    const entering = guest({ id: 'entering', stage: 'entering' });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+      motionPosition: { x: door.x, y: door.y - 1 },
+    });
+
+    const first = sync(motion, [entering, leaving]);
+    expect(first.exitedGuestIds).toEqual([]);
+    // The deferred arrival remains offstage instead of occupying the exact
+    // door endpoint that the departing sprite is about to traverse.
+    expect(motion.pose(entering.id)).toBeNull();
+    expect(motion.pose(leaving.id)!.isMoving).toBe(true);
+    expect(motion.isDoorBusy(floorWith([entering, leaving]), door)).toBe(true);
+
+    let exited = false;
+    for (let i = 0; i < 80; i++) {
+      if (sync(motion, [entering, leaving]).exitedGuestIds.includes(leaving.id)) {
+        exited = true;
+        break;
+      }
+      expect(motion.pose(entering.id)).toBeNull();
+    }
+    expect(exited).toBe(true);
+
+    sync(motion, [entering]);
+    expect(motion.pose(entering.id)!.isMoving).toBe(true);
+  });
+
+  it('keeps an authoritative hidden motion pose from falling back onto the door', () => {
+    const entering = guest({ id: 'entering', stage: 'entering' });
+    const hiddenMotion = {
+      pose: () => null,
+    } as unknown as GuestMotion;
+
+    expect(resolveGuestPose(entering, 0, hiddenMotion)).toBeNull();
+    expect(resolveGuestPose(entering, 0, null)).toMatchObject({
+      worldX: door.x * TILE_PX + TILE_PX / 2,
+      worldY: door.y * TILE_PX + TILE_PX / 2,
+    });
+  });
+
+  it('holds a newly seating guest in the alcove while a departure owns the lane', () => {
+    const motion = new GuestMotion();
+    const seating = guest({
+      id: 'seating',
+      stage: 'seating',
+      seat: seat('table_2', 5, 2),
+    });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+      motionPosition: { x: door.x, y: door.y - 1 },
+    });
+    const wait = waitingGuestWorldPosition(door, 0);
+
+    sync(motion, [seating, leaving]);
+    expect(motion.pose(seating.id)).toMatchObject({
+      worldX: wait.x,
+      worldY: wait.y,
+      isMoving: false,
+      walkFrame: 0,
+    });
+
+    let exited = false;
+    for (let i = 0; i < 80; i++) {
+      if (sync(motion, [seating, leaving]).exitedGuestIds.includes(leaving.id)) {
+        exited = true;
+        break;
+      }
+      expect(motion.pose(seating.id)!.isMoving).toBe(false);
+    }
+    expect(exited).toBe(true);
+
+    sync(motion, [seating]);
+    expect(motion.pose(seating.id)!.isMoving).toBe(true);
+  });
+
+  it('serializes simultaneous departures without animating the queued guest', () => {
+    const motion = new GuestMotion();
+    const firstLeaving = guest({
+      id: 'leaving_1',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+    });
+    const secondLeaving = guest({
+      id: 'leaving_2',
+      stage: 'leaving',
+      seat: seat('table_2', 5, 2),
+    });
+    const secondStart = seatSitWorldPosition(secondLeaving.seat!);
+
+    sync(motion, [firstLeaving, secondLeaving]);
+    expect(motion.pose(firstLeaving.id)!.isMoving).toBe(true);
+    expect(
+      motion.isDoorBusy(floorWith([firstLeaving, secondLeaving]), door),
+    ).toBe(false);
+    expect(motion.pose(secondLeaving.id)).toMatchObject({
+      worldX: secondStart.x,
+      worldY: secondStart.y,
+      isMoving: false,
+      walkFrame: 0,
+    });
+
+    let firstExited = false;
+    let doorOpenedNearExit = false;
+    for (let i = 0; i < 240; i++) {
+      const result = sync(motion, [firstLeaving, secondLeaving]);
+      doorOpenedNearExit ||= motion.isDoorBusy(
+        floorWith([firstLeaving, secondLeaving]),
+        door,
+      );
+      const held = motion.pose(secondLeaving.id)!;
+      expect(held.isMoving).toBe(false);
+      expect(held.walkFrame).toBe(0);
+      expect(held.worldX).toBe(secondStart.x);
+      expect(held.worldY).toBe(secondStart.y);
+      if (result.exitedGuestIds.includes(firstLeaving.id)) {
+        firstExited = true;
+        break;
+      }
+    }
+    expect(firstExited).toBe(true);
+    expect(doorOpenedNearExit).toBe(true);
+
+    sync(motion, [secondLeaving]);
+    expect(motion.pose(secondLeaving.id)!.isMoving).toBe(true);
+  });
+
+  it('does not let a new departure preempt an entrant already using the corridor', () => {
+    const motion = new GuestMotion();
+    const entering = guest({ id: 'entering', stage: 'entering' });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+    });
+    const leavingStart = seatSitWorldPosition(leaving.seat!);
+
+    sync(motion, [entering, leaving]);
+    expect(motion.pose(entering.id)!.isMoving).toBe(true);
+    expect(motion.pose(leaving.id)).toMatchObject({
+      worldX: leavingStart.x,
+      worldY: leavingStart.y,
+      isMoving: false,
+      walkFrame: 0,
+    });
+
+    let entered = false;
+    for (let i = 0; i < 80; i++) {
+      if (sync(motion, [entering, leaving]).enteredGuestIds.includes(entering.id)) {
+        entered = true;
+        break;
+      }
+      expect(motion.pose(leaving.id)!.isMoving).toBe(false);
+    }
+    expect(entered).toBe(true);
+
+    const waiting = { ...entering, stage: 'waiting' as const };
+    sync(motion, [waiting, leaving]);
+    expect(motion.pose(leaving.id)!.isMoving).toBe(true);
+  });
+
+  it('reports the nearest live guest cells for player route blocking', () => {
+    const motion = new GuestMotion();
+    const waiting = guest({ id: 'waiting', stage: 'waiting' });
+    const leaving = guest({
+      id: 'leaving',
+      stage: 'leaving',
+      seat: seat('table_1', 1, 2),
+    });
+    const floor = floorWith([waiting, leaving]);
+
+    motion.sync(floor, { door, grid, dtMs: 50 });
+    expect(motion.playerBlockedGridCells(floor)).toEqual(
+      expect.arrayContaining([
+        { x: door.x - 1, y: door.y - 1 },
+        { x: leaving.seat!.x, y: leaving.seat!.y },
+      ]),
+    );
   });
 
   it('reconstructs a leaving guest from its persisted mid-walk cell', () => {

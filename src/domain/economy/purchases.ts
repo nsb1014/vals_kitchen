@@ -28,6 +28,7 @@ import {
   isDiningCell,
   isKitchenCell,
   isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
   mapZonesForGrid,
   otherFloorRoom,
   type FloorRoomId,
@@ -223,6 +224,13 @@ export function validatePlacement(
   }
 
   const zones = mapZonesForGrid(w, h, { room });
+  const reservedEntranceCells =
+    room === 'main'
+      ? new Set(mainGuestEntranceReservedCells(w, h).map((cell) => `${cell.x},${cell.y}`))
+      : null;
+  if (reservedEntranceCells?.has(`${placement.x},${placement.y}`)) {
+    return false;
+  }
   const isDecor = isDecorItemKey(placement.itemKey);
   if (placement.itemKey.startsWith('decor') && !isDecor) {
     return false;
@@ -262,6 +270,9 @@ export function validatePlacement(
         return false;
       }
       if (!isDiningCell(zones, seat.x, seat.y)) {
+        return false;
+      }
+      if (reservedEntranceCells?.has(`${seat.x},${seat.y}`)) {
         return false;
       }
       if (occupiedByOthers.has(`${seat.x},${seat.y}`)) {

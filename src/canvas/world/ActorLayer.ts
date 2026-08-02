@@ -324,13 +324,14 @@ export class ActorLayer {
   }
 }
 
-function resolveGuestPose(
+export function resolveGuestPose(
   guest: FloorGuest,
   waitingIndex: number | undefined,
   guestMotion: GuestMotion | null,
 ): GuestPose | null {
-  const motionPose = guestMotion?.pose(guest.id) ?? null;
-  if (motionPose) return motionPose;
+  // Once the motion system is active its null is authoritative: it is used to
+  // keep a deferred entrant offstage while a saved departure clears the door.
+  if (guestMotion) return guestMotion.pose(guest.id);
   return fallbackGuestPose(guest, waitingIndex);
 }
 

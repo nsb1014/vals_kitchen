@@ -3,6 +3,11 @@ import { validatePlacement } from '../domain/economy/purchases.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { createNewGameState, type Placement } from '../domain/state/game-state.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import {
+  guestDoorwayLane,
+  guestWaitingAlcove,
+  mainGuestEntranceReservedCells,
+} from '../domain/floor/starter-map.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { testContext } from './test-helpers.ts';
 
@@ -93,6 +98,75 @@ describe('edit restaurant placement rules', () => {
     expect(afterSeats.map((s) => ({ dx: s.x - after.x, dy: s.y - after.y, facing: s.facing }))).toEqual(
       beforeSeats.map((s) => ({ dx: s.x - table.x, dy: s.y - table.y, facing: s.facing })),
     );
+  });
+
+  it('keeps the main guest door, doorway lane, and waiting alcove free', () => {
+    const state = createNewGameState(104);
+    const reserved = mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h);
+    const [door, lane, alcove] = reserved;
+
+    expect(lane).toEqual(guestDoorwayLane(door!));
+    expect(alcove).toEqual(guestWaitingAlcove(door!));
+    expect(guestWaitingAlcove({ x: 1, y: 3 })).toEqual({ x: 2, y: 2 });
+    expect(new Set(reserved.map((cell) => `${cell.x},${cell.y}`)).size).toBe(3);
+
+    for (const [index, cell] of reserved.entries()) {
+      expect(
+        validatePlacement(state, {
+          id: `reserved_${index}`,
+          itemKey: 'decor_plant',
+          x: cell.x,
+          y: cell.y,
+          rotation: 0,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('rejects a table when any derived seat occupies the entrance corridor', () => {
+    const state = createNewGameState(105);
+    const [, lane, alcove] = mainGuestEntranceReservedCells(
+      state.gridSize.w,
+      state.gridSize.h,
+    );
+
+    const seatOnLane: Placement = {
+      id: 'seat_on_lane',
+      itemKey: 'table_4seat',
+      x: lane!.x,
+      y: lane!.y - 1,
+      rotation: 0,
+    };
+    const seatInAlcove: Placement = {
+      id: 'seat_in_alcove',
+      itemKey: 'table_4seat',
+      x: alcove!.x,
+      y: alcove!.y - 1,
+      rotation: 0,
+    };
+
+    expect(seatsFromPlacements([seatOnLane])).toContainEqual(
+      expect.objectContaining({ x: lane!.x, y: lane!.y }),
+    );
+    expect(seatsFromPlacements([seatInAlcove])).toContainEqual(
+      expect.objectContaining({ x: alcove!.x, y: alcove!.y }),
+    );
+    expect(validatePlacement(state, seatOnLane)).toBe(false);
+    expect(validatePlacement(state, seatInAlcove)).toBe(false);
+  });
+
+  it('does not apply the main entrance reservation to the back kitchen', () => {
+    const state = { ...createNewGameState(106), kitchenAnnexOwned: true };
+    const [, lane] = mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h);
+    const station: Placement = {
+      id: 'back_prep',
+      itemKey: 'prep_station',
+      x: lane!.x,
+      y: lane!.y,
+      rotation: 0,
+    };
+
+    expect(validatePlacement(state, station, undefined, 'back_kitchen')).toBe(true);
   });
 });
 

@@ -1,14 +1,23 @@
 import {
+  EQUIPMENT_IDS,
   NEW_GAME_STARTER_IDS,
   STARTING_EQUIPMENT_IDS,
 } from '../types.ts';
 import type { ActiveDay } from '../day/types.ts';
 import type { RecipeMasteryMap } from '../floor/mastery.ts';
-import { createStarterMap, isPerimeterWallCell } from '../floor/starter-map.ts';
+import {
+  createStarterMap,
+  isDiningCell,
+  isKitchenCell,
+  isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
+  mapZonesForGrid,
+} from '../floor/starter-map.ts';
 import { seatsFromPlacements } from '../floor/seats.ts';
 import { createRng } from '../rng/index.ts';
 import {
   createEmptyDecorPurchasedCounts,
+  isDecorItemKey,
   normalizeDecorPurchasedCounts,
   type DecorPurchasedCounts,
 } from '../economy/decor.ts';
@@ -71,6 +80,7 @@ export interface GameState {
 }
 
 let placementCounter = 0;
+const EQUIPMENT_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
 
 export function nextPlacementId(): string {
   placementCounter += 1;
@@ -87,6 +97,81 @@ export function seatingFromTableCount(tableCount: number): number {
 
 export function seatingFromPlacements(placements: Placement[]): number {
   return seatsFromPlacements(placements).length;
+}
+
+function placementCells(placement: Placement): { x: number; y: number }[] {
+  return placement.itemKey.startsWith('table')
+    ? [placement, ...seatsFromPlacements([placement])]
+    : [placement];
+}
+
+/**
+ * Move legacy furniture out of the reserved main entrance corridor. Unaffected
+ * furniture stays exactly where the player put it; affected items are scanned
+ * into the first legal row-major cell, or omitted when the room has no legal
+ * footprint so their separately tracked ownership remains available to place.
+ */
+export function normalizeMainFloorPlacements(
+  gridSize: { w: number; h: number },
+  placements: Placement[],
+): Placement[] {
+  const { w, h } = gridSize;
+  const zones = mapZonesForGrid(w, h);
+  const reserved = new Set(
+    mainGuestEntranceReservedCells(w, h).map((cell) => `${cell.x},${cell.y}`),
+  );
+  const conflictsEntrance = (placement: Placement): boolean =>
+    placementCells(placement).some((cell) => reserved.has(`${cell.x},${cell.y}`));
+  const fixed = placements.filter((placement) => !conflictsEntrance(placement));
+  const relocated: Placement[] = [];
+  const occupied = new Set(
+    fixed.flatMap(placementCells).map((cell) => `${cell.x},${cell.y}`),
+  );
+
+  const legalCandidate = (placement: Placement): boolean => {
+    const cells = placementCells(placement);
+    for (const cell of cells) {
+      if (cell.x < 0 || cell.y < 0 || cell.x >= w || cell.y >= h) return false;
+      if (isPerimeterWallCell(cell.x, cell.y, w, h)) return false;
+      if (reserved.has(`${cell.x},${cell.y}`)) return false;
+      if (occupied.has(`${cell.x},${cell.y}`)) return false;
+    }
+    if (placement.itemKey.startsWith('table')) {
+      return cells.every((cell) => isDiningCell(zones, cell.x, cell.y));
+    }
+    if (isDecorItemKey(placement.itemKey)) {
+      return isDiningCell(zones, placement.x, placement.y);
+    }
+    if (EQUIPMENT_ITEM_KEYS.has(placement.itemKey)) {
+      return isKitchenCell(zones, placement.x, placement.y);
+    }
+    return true;
+  };
+
+  for (const placement of placements) {
+    if (!conflictsEntrance(placement)) continue;
+    let next: Placement | undefined;
+    for (let y = 1; y < h - 1 && !next; y += 1) {
+      for (let x = 1; x < w - 1; x += 1) {
+        const candidate = { ...placement, x, y };
+        if (legalCandidate(candidate)) {
+          next = candidate;
+          break;
+        }
+      }
+    }
+    if (!next) continue;
+    relocated.push(next);
+    for (const cell of placementCells(next)) {
+      occupied.add(`${cell.x},${cell.y}`);
+    }
+  }
+
+  const byId = new Map([...fixed, ...relocated].map((placement) => [placement.id, placement]));
+  return placements.flatMap((placement) => {
+    const normalized = byId.get(placement.id);
+    return normalized ? [normalized] : [];
+  });
 }
 
 /**
@@ -215,7 +300,8 @@ export function createNewGameState(seed?: number): GameState {
 export function normalizeGameState(raw: GameState): GameState {
   const kitchenAnnexOwned = Boolean(raw.kitchenAnnexOwned);
   const migrated = migrateAnnexWidthToBackRoom(raw);
-  const placements = migrated.placements;
+  const legacyPlacements = migrated.placements;
+  const placements = normalizeMainFloorPlacements(migrated.gridSize, legacyPlacements);
   const unlockedIngredientIds = raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS];
   const tableCount =
     raw.tableCount ?? Math.max(2, placements.filter((p) => p.itemKey.startsWith('table')).length);
@@ -224,16 +310,37 @@ export function normalizeGameState(raw: GameState): GameState {
 
   if (activeDay?.floor) {
     const rawFloor = activeDay.floor;
+    const seats = seatsFromPlacements(placements);
+    const survivingTableIds = new Set(
+      placements
+        .filter((placement) => placement.itemKey.startsWith('table'))
+        .map((placement) => placement.id),
+    );
+    const seatsByKey = new Map(
+      seats.map((seat) => [`${seat.tablePlacementId}:${seat.slotIndex}`, seat]),
+    );
+    const recoveredCustomerIds = new Set(
+      rawFloor.pool
+        .filter(
+          (guest) =>
+            (seats.length === 0 && guest.stage !== 'done') ||
+            (guest.seat !== undefined &&
+              !survivingTableIds.has(guest.seat.tablePlacementId)),
+        )
+        .map((guest) => guest.customer.id),
+    );
     const playerRoom =
       rawFloor.playerRoom === 'back_kitchen' && kitchenAnnexOwned
         ? 'back_kitchen'
         : 'main';
-    let tickets = rawFloor.tickets.map((ticket) => ({
-      ...ticket,
-      ingredientIds: Array.isArray(ticket.ingredientIds)
-        ? [...ticket.ingredientIds]
-        : [],
-    }));
+    let tickets = rawFloor.tickets
+      .filter((ticket) => !recoveredCustomerIds.has(ticket.customerId))
+      .map((ticket) => ({
+        ...ticket,
+        ingredientIds: Array.isArray(ticket.ingredientIds)
+          ? [...ticket.ingredientIds]
+          : [],
+      }));
     const rawSelectedTicketId = rawFloor.selectedTicketId ?? null;
     const rawCarriedTicketId = rawFloor.carriedTicketId ?? null;
     const carriedTicketId = tickets.some(
@@ -287,6 +394,28 @@ export function normalizeGameState(raw: GameState): GameState {
       ...activeDay,
       floor: {
         ...rawFloor,
+        seats,
+        tables: rawFloor.tables.filter((table) =>
+          survivingTableIds.has(table.placementId),
+        ),
+        pool: rawFloor.pool.map((guest) => {
+          if (recoveredCustomerIds.has(guest.customer.id)) {
+            return {
+              ...guest,
+              stage: 'done' as const,
+              seat: undefined,
+              motionPosition: undefined,
+              eatTicksRemaining: 0,
+            };
+          }
+          if (!guest.seat) return guest;
+          return {
+            ...guest,
+            seat: seatsByKey.get(
+              `${guest.seat.tablePlacementId}:${guest.seat.slotIndex}`,
+            ),
+          };
+        }),
         tickets,
         carriedTicketId,
         selectedTicketId,
@@ -311,11 +440,11 @@ export function normalizeGameState(raw: GameState): GameState {
     gridSize: migrated.gridSize,
     placements,
     backKitchenPlacements: migrated.backKitchenPlacements,
-    seatingCapacity: raw.seatingCapacity ?? seatingFromTableCount(2),
+    seatingCapacity: seatingFromPlacements(placements),
     tableCount,
     decorPurchasedCounts: normalizeDecorPurchasedCounts(
       raw.decorPurchasedCounts,
-      placements,
+      legacyPlacements,
     ),
     gridExpansionCount: raw.gridExpansionCount ?? 0,
     kitchenAnnexOwned,

@@ -22,6 +22,7 @@ const MOTION_STAGES: ReadonlySet<FloorGuest['stage']> = new Set([
 
 /** Promote the next queued guest to `entering` if the waiting area is free. */
 export function admitNextGuest(day: FloorDay): FloorDay {
+  if (day.pool.some((guest) => guest.stage === 'leaving')) return day;
   if (waitingAreaOccupied(day)) return day;
   const next = day.pool.find((g) => g.stage === 'queued');
   if (!next) return day;
@@ -261,16 +262,18 @@ export function completeGuestLeaving(day: FloorDay, guestId: FloorGuest['id']): 
       : guest,
   );
   const afterExit = { ...day, pool };
-  if (!tableId || guestsActiveOnTable(afterExit, tableId)) return afterExit;
+  const tables =
+    tableId && !guestsActiveOnTable(afterExit, tableId)
+      ? day.tables.map((table) =>
+          table.placementId === tableId && table.state === 'occupied'
+            ? markDirty(table)
+            : table,
+        )
+      : day.tables;
 
-  return {
-    ...afterExit,
-    tables: day.tables.map((table) =>
-      table.placementId === tableId && table.state === 'occupied'
-        ? markDirty(table)
-        : table,
-    ),
-  };
+  // admitNextGuest intentionally refuses while any other departure remains,
+  // so the doorway switches back to arrival traffic only after the final exit.
+  return admitNextGuest(tables === day.tables ? afterExit : { ...afterExit, tables });
 }
 
 export function isFloorDayComplete(day: FloorDay): boolean {

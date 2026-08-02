@@ -11,6 +11,9 @@ import {
 } from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { testContext } from './test-helpers.ts';
+import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import { mainGuestEntranceReservedCells } from '../domain/floor/starter-map.ts';
+import { isFloorDayComplete } from '../domain/floor/sim.ts';
 
 function createMemoryStorage(): StorageAdapter {
   const map = new Map<string, unknown>();
@@ -353,6 +356,191 @@ describe('persistence', () => {
     expect(loaded.activeDay!.floor!.tables.find((table) => table.placementId === seat.tablePlacementId)?.state).toBe(
       'occupied',
     );
+  });
+
+  it('relocates a legacy entrance table and remaps an in-flight guest seat on load', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(8080), { type: 'OPEN_DAY' }, testContext).state;
+    const table = state.placements.find((placement) => placement.id === 'table_1')!;
+    const oldSeat = state.activeDay!.floor!.seats.find(
+      (seat) => seat.tablePlacementId === table.id && seat.slotIndex === 0,
+    )!;
+    const [, lane] = mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h);
+    state = {
+      ...state,
+      placements: state.placements.map((placement) =>
+        placement.id === table.id ? { ...placement, x: lane!.x, y: lane!.y } : placement,
+      ),
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          pool: state.activeDay!.floor!.pool.map((guest, index) =>
+            index === 0 ? { ...guest, stage: 'seating' as const, seat: oldSeat } : guest,
+          ),
+        },
+      },
+    };
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    const moved = loaded.placements.find((placement) => placement.id === table.id)!;
+    const reserved = new Set(
+      mainGuestEntranceReservedCells(loaded.gridSize.w, loaded.gridSize.h).map(
+        (cell) => `${cell.x},${cell.y}`,
+      ),
+    );
+    expect(moved).toMatchObject({ id: table.id, itemKey: table.itemKey, rotation: table.rotation });
+    expect(moved).toMatchObject({ x: 2, y: 1 });
+    expect(
+      [moved, ...seatsFromPlacements([moved])].some((cell) =>
+        reserved.has(`${cell.x},${cell.y}`),
+      ),
+    ).toBe(false);
+    expect(loaded.activeDay!.floor!.seats).toEqual(seatsFromPlacements(loaded.placements));
+    const resumed = loaded.activeDay!.floor!.pool[0]!;
+    expect(resumed.seat).toEqual(
+      loaded.activeDay!.floor!.seats.find(
+        (seat) => seat.tablePlacementId === table.id && seat.slotIndex === oldSeat.slotIndex,
+      ),
+    );
+    expect(resumed.seat).not.toEqual(oldSeat);
+    expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
+  });
+
+  it('leaves an unplaceable legacy table in inventory instead of the entrance', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const state = createNewGameState(8081);
+    state.gridSize = { w: 4, h: 4 };
+    state.placements = [
+      { id: 'legacy_table', itemKey: 'table_2seat', x: 1, y: 2, rotation: 90 },
+    ];
+    state.tableCount = 1;
+    state.seatingCapacity = 99;
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(loaded.placements).toEqual([]);
+    expect(loaded.tableCount).toBe(1);
+    expect(loaded.seatingCapacity).toBe(0);
+  });
+
+  it('recovers active service when its unplaceable legacy table is removed', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(8082), { type: 'OPEN_DAY' }, testContext).state;
+    const floor = state.activeDay!.floor!;
+    const guest = floor.pool[0]!;
+    const table = floor.tables.find((candidate) => candidate.placementId === 'table_1')!;
+    const seat = floor.seats.find((candidate) => candidate.tablePlacementId === table.placementId)!;
+    const ticket = {
+      id: `ticket_${guest.customer.id}`,
+      customerId: guest.customer.id,
+      ingredientIds: state.unlockedIngredientIds.slice(0, 3),
+      status: 'plated' as const,
+    };
+    state = {
+      ...state,
+      gridSize: { w: 4, h: 4 },
+      placements: [
+        { id: table.placementId, itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },
+      ],
+      tableCount: 1,
+      activeDay: {
+        ...state.activeDay!,
+        customers: [guest.customer],
+        floor: {
+          ...floor,
+          pool: [
+            {
+              ...guest,
+              stage: 'leaving' as const,
+              seat,
+              motionPosition: { x: seat.x, y: seat.y },
+              eatTicksRemaining: 2,
+            },
+          ],
+          tables: [{ ...table, state: 'occupied' as const }],
+          tickets: [ticket],
+          selectedTicketId: null,
+          carriedTicketId: ticket.id,
+        },
+      },
+    };
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    const resumedFloor = loaded.activeDay!.floor!;
+    expect(loaded.placements).toEqual([]);
+    expect(resumedFloor.tables).toEqual([]);
+    expect(resumedFloor.seats).toEqual([]);
+    expect(resumedFloor.pool).toEqual([
+      expect.objectContaining({
+        id: guest.id,
+        stage: 'done',
+        seat: undefined,
+        motionPosition: undefined,
+        eatTicksRemaining: 0,
+      }),
+    ]);
+    expect(resumedFloor.tickets).toEqual([]);
+    expect(resumedFloor.selectedTicketId).toBeNull();
+    expect(resumedFloor.carriedTicketId).toBeNull();
+    expect(isFloorDayComplete(resumedFloor)).toBe(true);
+  });
+
+  it('finishes unseated arrivals when normalization leaves no usable seats', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(createNewGameState(8083), { type: 'OPEN_DAY' }, testContext).state;
+    const floor = state.activeDay!.floor!;
+    const guest = floor.pool.find((candidate) => candidate.stage === 'entering')!;
+    const ticket = {
+      id: `ticket_${guest.customer.id}`,
+      customerId: guest.customer.id,
+      ingredientIds: [],
+      status: 'open' as const,
+    };
+    state = {
+      ...state,
+      gridSize: { w: 4, h: 4 },
+      placements: [
+        { id: 'table_1', itemKey: 'table_2seat', x: 1, y: 2, rotation: 0 },
+      ],
+      tableCount: 1,
+      activeDay: {
+        ...state.activeDay!,
+        customers: [guest.customer],
+        floor: {
+          ...floor,
+          pool: [{ ...guest, motionPosition: { x: 1, y: 2 } }],
+          tables: floor.tables.filter((table) => table.placementId === 'table_1'),
+          tickets: [ticket],
+          selectedTicketId: ticket.id,
+          carriedTicketId: null,
+        },
+      },
+    };
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    const resumedFloor = loaded.activeDay!.floor!;
+    expect(resumedFloor.seats).toEqual([]);
+    expect(resumedFloor.pool).toEqual([
+      expect.objectContaining({
+        id: guest.id,
+        stage: 'done',
+        seat: undefined,
+        motionPosition: undefined,
+        eatTicksRemaining: 0,
+      }),
+    ]);
+    expect(resumedFloor.tickets).toEqual([]);
+    expect(resumedFloor.selectedTicketId).toBeNull();
+    expect(resumedFloor.carriedTicketId).toBeNull();
+    expect(isFloorDayComplete(resumedFloor)).toBe(true);
   });
 
   it('normalizes missing, invalid, and unowned floor rooms to main', () => {

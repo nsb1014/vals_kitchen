@@ -3,6 +3,7 @@ import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import {
   admitNextGuest,
   completeGuestEntering,
+  completeGuestLeaving,
   completeGuestSeating,
   createFloorDayFromCustomers,
   seatNextWaiting,
@@ -10,6 +11,7 @@ import {
 } from '../../domain/floor/sim.ts';
 import { setTable } from '../../domain/floor/tables.ts';
 import { waitingAreaOccupied } from '../../domain/floor/entry.ts';
+import type { FloorDay } from '../../domain/floor/types.ts';
 import type { Customer } from '../../domain/day/types.ts';
 import type { CustomerPreference } from '../../domain/types.ts';
 
@@ -87,5 +89,62 @@ describe('guest entry gating', () => {
     expect(day.pool[0]!.stage).toBe('seating');
     day = completeGuestSeating(day, 'c1');
     expect(day.pool[0]!.stage).toBe('seated');
+  });
+
+  it('does not admit a queued guest while any guest is leaving', () => {
+    const tables = tablesFromPlacements(placements).map(setTable);
+    const seats = seatsFromPlacements(placements);
+    const created = createFloorDayFromCustomers(
+      [customer('departing'), customer('queued')],
+      tables,
+      seats,
+    );
+    const day = {
+      ...created,
+      pool: created.pool.map((guest) =>
+        guest.id === 'departing'
+          ? { ...guest, stage: 'leaving' as const, seat: seats[0] }
+          : { ...guest, stage: 'queued' as const },
+      ),
+      tables: created.tables.map((table, index) =>
+        index === 0 ? { ...table, state: 'occupied' as const } : table,
+      ),
+    };
+
+    expect(admitNextGuest(day)).toBe(day);
+    expect(day.pool.find((guest) => guest.id === 'queued')!.stage).toBe('queued');
+  });
+
+  it('admits only after the final global departure and finalizes each table first', () => {
+    const tables = tablesFromPlacements(placements).map(setTable);
+    const seats = seatsFromPlacements(placements);
+    const created = createFloorDayFromCustomers(
+      [customer('leaving_1'), customer('leaving_2'), customer('next')],
+      tables,
+      seats,
+    );
+    let day: FloorDay = {
+      ...created,
+      pool: created.pool.map((guest) => {
+        if (guest.id === 'leaving_1') {
+          return { ...guest, stage: 'leaving' as const, seat: seats[0] };
+        }
+        if (guest.id === 'leaving_2') {
+          return { ...guest, stage: 'leaving' as const, seat: seats[2] };
+        }
+        return { ...guest, stage: 'queued' as const };
+      }),
+      tables: created.tables.map((table) => ({ ...table, state: 'occupied' as const })),
+    };
+
+    day = completeGuestLeaving(day, 'leaving_1');
+    expect(day.tables[0]!.state).toBe('dirty');
+    expect(day.tables[1]!.state).toBe('occupied');
+    expect(day.pool.find((guest) => guest.id === 'next')!.stage).toBe('queued');
+
+    day = completeGuestLeaving(day, 'leaving_2');
+    expect(day.tables[1]!.state).toBe('dirty');
+    expect(day.pool.find((guest) => guest.id === 'next')!.stage).toBe('entering');
+    expect(day.pool.filter((guest) => guest.stage === 'leaving')).toHaveLength(0);
   });
 });

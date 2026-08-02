@@ -24,7 +24,10 @@ import { PreviewLayer } from './layers/PreviewLayer.ts';
 import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
-import { walkBlockedCells } from './world/blocked-cells.ts';
+import {
+  playerWalkBlockedCells,
+  walkBlockedCells,
+} from './world/blocked-cells.ts';
 import { guestHintAction } from './world/guest-interaction-hint.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
@@ -209,17 +212,34 @@ export class RestaurantApp {
     };
   }
 
+  private playerBlockedCells(
+    store: GameStore,
+    placements: Placement[],
+  ): Set<string> {
+    const blocked = playerWalkBlockedCells(
+      placements,
+      store.gridSize.w,
+      store.gridSize.h,
+      this.walkOpts(store),
+      this.nav.position,
+    );
+    if (store.activeFloorRoom === 'main' && store.activeDay?.floor) {
+      for (const cell of this.guestMotion.playerBlockedGridCells(store.activeDay.floor)) {
+        blocked.add(`${cell.x},${cell.y}`);
+      }
+      // A resumed player already sharing a formerly legal cell must be able
+      // to step out instead of becoming trapped by the new live reservation.
+      blocked.delete(`${this.nav.position.x},${this.nav.position.y}`);
+    }
+    return blocked;
+  }
+
   private pathToAdjacentCell(
     store: GameStore,
     placements: Placement[],
     target: GridPoint,
   ): boolean {
-    const blocked = walkBlockedCells(
-      placements,
-      store.gridSize.w,
-      store.gridSize.h,
-      this.walkOpts(store),
-    );
+    const blocked = this.playerBlockedCells(store, placements);
     const destinations: GridPoint[] = [];
     for (let dy = -1; dy <= 1; dy += 1) {
       for (let dx = -1; dx <= 1; dx += 1) {
@@ -478,12 +498,7 @@ export class RestaurantApp {
     const tapCell = { x: gx, y: gy };
     const roomPlacements = this.roomPlacements(store);
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
-      const blocked = walkBlockedCells(
-        roomPlacements,
-        store.gridSize.w,
-        store.gridSize.h,
-        this.walkOpts(store),
-      );
+      const blocked = this.playerBlockedCells(store, roomPlacements);
       const path = findPath(
         { w: store.gridSize.w, h: store.gridSize.h, blocked },
         this.nav.position,
@@ -589,12 +604,7 @@ export class RestaurantApp {
       store.closeComposeSheet();
     }
 
-    const blocked = walkBlockedCells(
-      roomPlacements,
-      store.gridSize.w,
-      store.gridSize.h,
-      this.walkOpts(store),
-    );
+    const blocked = this.playerBlockedCells(store, roomPlacements);
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
@@ -651,12 +661,7 @@ export class RestaurantApp {
       y: this.nav.position.y + delta.y,
     };
     const roomPlacements = this.roomPlacements(store);
-    const blocked = walkBlockedCells(
-      roomPlacements,
-      store.gridSize.w,
-      store.gridSize.h,
-      this.walkOpts(store),
-    );
+    const blocked = this.playerBlockedCells(store, roomPlacements);
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
       this.nav.position,
