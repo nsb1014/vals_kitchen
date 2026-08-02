@@ -838,6 +838,7 @@ export class RestaurantApp {
     this.floorRuntimeWasRunning = runtimeRunning;
     if (!runtimeRunning || !floor) {
       this.cancelPendingSeatingIntent();
+      this.reconcileGuestDoorPaint(state, floor);
       return;
     }
     if (deltaMs === 0) {
@@ -1348,6 +1349,26 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
+  }
+
+  /**
+   * Time-based exit linger can expire while simulation is paused. Keep that
+   * visual-only state current without rebuilding the grid on every paused
+   * ticker frame or advancing any gameplay system.
+   */
+  private reconcileGuestDoorPaint(
+    state: GameStore,
+    floor: FloorDay | null | undefined,
+  ): void {
+    const expectedOpen = this.guestDoorOpen(state, floor);
+    const painted = this.gridLayer.getGuestDoorDebug();
+    if (
+      painted.requestedOpen === expectedOpen &&
+      painted.paintedOpen === expectedOpen
+    ) {
+      return;
+    }
+    this.repaintGuestDoor(state, floor);
   }
 
   private handleResize = (): void => {

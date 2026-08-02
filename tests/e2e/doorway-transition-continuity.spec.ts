@@ -27,6 +27,9 @@ type DoorwayDebug = NonNullable<
 type SeatingGuestDebug = NonNullable<
   ReturnType<NonNullable<Window['__E2E__']>['getSeatingSceneDebug']>
 >['guests'][number];
+type GameStateDebug = ReturnType<
+  NonNullable<Window['__E2E__']>['getGameState']
+>;
 
 const ACTOR_FACING_BY_SEAT = {
   0: 'down',
@@ -264,6 +267,82 @@ async function startServiceAndPauseAtPartial(
       requestAnimationFrame(inspect);
     });
   }, guestId);
+}
+
+async function pauseDuringExitLinger(
+  page: Page,
+  firstGuestId: string,
+  heldGuestId: string,
+): Promise<{
+  debug: DoorwayDebug;
+  gameplay: GameStateDebug;
+  heldStage: DoorwayDebug['stage'];
+  heldVisual: SeatingGuestDebug | null;
+}> {
+  return page.evaluate(
+    ({ firstId, heldId }) => {
+      const bridge = window.__E2E__!;
+      const deadline = performance.now() + 15_000;
+      return new Promise<{
+        debug: DoorwayDebug;
+        gameplay: GameStateDebug;
+        heldStage: DoorwayDebug['stage'];
+        heldVisual: SeatingGuestDebug | null;
+      }>((resolve, reject) => {
+        const inspect = () => {
+          const debug = bridge.getGuestDoorwayTransitionDebug(firstId);
+          if (
+            debug?.stage === 'done' &&
+            debug.exitLingerRemainingMs > 0 &&
+            debug.authoritativeOpen &&
+            debug.door.requestedOpen &&
+            debug.door.paintedOpen
+          ) {
+            const settings = document.querySelector<HTMLButtonElement>(
+              '[data-testid="hud-settings"]',
+            );
+            if (!settings) {
+              reject(new Error('settings control is unavailable during exit linger'));
+              return;
+            }
+            settings.click();
+            queueMicrotask(() => {
+              const pausedDebug = bridge.getGuestDoorwayTransitionDebug(firstId);
+              if (!pausedDebug) {
+                reject(new Error('doorway debug disappeared after linger pause'));
+                return;
+              }
+              const gameplay = bridge.getGameState();
+              resolve({
+                debug: pausedDebug,
+                gameplay,
+                heldStage:
+                  gameplay.activeDay?.floor?.pool.find(
+                    (guest) => guest.id === heldId,
+                  )?.stage ?? null,
+                heldVisual:
+                  bridge
+                    .getSeatingSceneDebug()
+                    ?.guests.find((guest) => guest.guestId === heldId) ?? null,
+              });
+            });
+            return;
+          }
+          if (performance.now() >= deadline) {
+            reject(
+              new Error(
+                `first departure missed exit linger: ${JSON.stringify(debug)}`,
+              ),
+            );
+            return;
+          }
+          requestAnimationFrame(inspect);
+        };
+        requestAnimationFrame(inspect);
+      });
+    },
+    { firstId: firstGuestId, heldId: heldGuestId },
+  );
 }
 
 function expectSameDoorwayPaint(
@@ -556,6 +635,90 @@ for (const viewport of VIEWPORTS) {
     assertNoDiagnostics(diagnostics);
   });
 }
+
+test('closes an expired exit linger while Settings keeps gameplay paused', async ({
+  page,
+}) => {
+  const { diagnostics, enteringGuestId } = await openDayBeforeService(
+    page,
+    { width: 1280, height: 800 },
+    false,
+  );
+  const arrival = await startServiceAndSampleArrival(page, enteringGuestId);
+  expect(arrival.at(-1)!.debug.stage).toBe('waiting');
+
+  const departureFixture = await page.evaluate(() =>
+    window.__E2E__!.prepareQueuedDepartureVisualFixture(),
+  );
+  const paused = await pauseDuringExitLinger(
+    page,
+    departureFixture.firstGuestId,
+    departureFixture.heldGuestId,
+  );
+  await expect(page.getByTestId('settings-screen')).toBeVisible();
+  expect(paused.debug).toMatchObject({
+    stage: 'done',
+    guest: null,
+    authoritativeOpen: true,
+    door: {
+      requestedOpen: true,
+      paintedOpen: true,
+    },
+  });
+  expect(paused.debug.exitLingerRemainingMs).toBeGreaterThan(0);
+  expect(paused.heldStage).toBe('leaving');
+  expect(paused.heldVisual).toMatchObject({
+    guestId: departureFixture.heldGuestId,
+    isSeated: true,
+    isMoving: false,
+  });
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate((guestId) =>
+          window.__E2E__!.getGuestDoorwayTransitionDebug(guestId),
+        departureFixture.firstGuestId),
+      { timeout: 5_000 },
+    )
+    .toMatchObject({
+      stage: 'done',
+      guest: null,
+      authoritativeOpen: false,
+      exitLingerRemainingMs: 0,
+      door: {
+        requestedOpen: false,
+        paintedOpen: false,
+      },
+    });
+
+  const after = await page.evaluate(
+    ({ firstId, heldId }) => {
+      const bridge = window.__E2E__!;
+      const gameplay = bridge.getGameState();
+      return {
+        debug: bridge.getGuestDoorwayTransitionDebug(firstId),
+        gameplay,
+        heldStage:
+          gameplay.activeDay?.floor?.pool.find((guest) => guest.id === heldId)
+            ?.stage ?? null,
+        heldVisual:
+          bridge
+            .getSeatingSceneDebug()
+            ?.guests.find((guest) => guest.guestId === heldId) ?? null,
+      };
+    },
+    {
+      firstId: departureFixture.firstGuestId,
+      heldId: departureFixture.heldGuestId,
+    },
+  );
+  expect(after.gameplay).toEqual(paused.gameplay);
+  expect(after.heldStage).toBe(paused.heldStage);
+  expect(after.heldVisual).toEqual(paused.heldVisual);
+  expect(after.debug?.camera).toEqual(paused.debug.camera);
+  assertNoDiagnostics(diagnostics);
+});
 
 test('preserves a real partial doorway frame across paused resize and store repaint independently', async ({
   page,
