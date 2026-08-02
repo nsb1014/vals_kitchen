@@ -81,6 +81,9 @@ function freeSlotsOnTable(day: FloorDay, tablePlacementId: string): SeatSlot[] {
 
 export function hasAvailableSeatForWaitingGuest(day: FloorDay): boolean {
   if (!day.pool.some((guest) => guest.stage === 'waiting')) return false;
+  // Morning setup is restaurant-wide: service cannot begin while any table is
+  // still unset. Mid-day dirty/occupied tables do not block seating elsewhere.
+  if (day.tables.some((table) => table.state === 'unset')) return false;
   return day.tables.some(
     (table) =>
       (table.state === 'ready' || table.state === 'occupied') &&
@@ -92,6 +95,9 @@ export function hasAvailableSeatForWaitingGuest(day: FloorDay): boolean {
 export function seatNextWaiting(day: FloorDay): FloorDay {
   const waiting = day.pool.find((g) => g.stage === 'waiting');
   if (!waiting) return day;
+  // Enforce the same invariant at the domain boundary so direct reducer
+  // dispatches cannot bypass the UI selector's morning-setup gate.
+  if (day.tables.some((table) => table.state === 'unset')) return day;
 
   for (const table of day.tables) {
     if (table.state !== 'ready' && table.state !== 'occupied') continue;

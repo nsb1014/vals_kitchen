@@ -5,6 +5,7 @@ import {
   adjacentUnsetTablePlacementIds,
   findCookStationPlacementAtCell,
   isAdjacent,
+  isCookStationItemKey,
   playerNearGuestSeat,
   playerNearPlacement,
   playerNearStation,
@@ -72,10 +73,41 @@ describe('floor interact helpers', () => {
     });
   });
 
+  describe('isCookStationItemKey', () => {
+    it('recognizes every canonical equipment item as a cook station', () => {
+      const equipmentItemKeys = [
+        'prep_station',
+        'grill',
+        'oven',
+        'fryer',
+        'stockpot',
+        'cold_station',
+        'pastry_bench',
+        'smoker',
+        'wok',
+        'fermentation_crock',
+        'barista_station',
+        'spice_rack',
+      ];
+
+      expect(equipmentItemKeys).toHaveLength(12);
+      for (const itemKey of equipmentItemKeys) {
+        expect(isCookStationItemKey(itemKey), itemKey).toBe(true);
+      }
+    });
+
+    it('rejects tables, decor, and unknown item keys', () => {
+      expect(isCookStationItemKey('table_2seat')).toBe(false);
+      expect(isCookStationItemKey('table_4seat')).toBe(false);
+      expect(isCookStationItemKey('decor_plant')).toBe(false);
+      expect(isCookStationItemKey('mystery_station')).toBe(false);
+    });
+  });
+
   describe('findCookStationPlacementAtCell', () => {
-    it('resolves only a prep station at the tapped cell', () => {
+    it('resolves canonical cook stations, but not other placements, at the tapped cell', () => {
       const placements = [
-        { id: 'station', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
+        { id: 'station', itemKey: 'wok', x: 8, y: 2, rotation: 0 },
         { id: 'table', itemKey: 'table_2seat', x: 3, y: 3, rotation: 0 },
       ];
       expect(

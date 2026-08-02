@@ -66,7 +66,7 @@ describe('floor sim', () => {
     expect(isFloorDayComplete(day)).toBe(true);
   });
 
-  it('only enables seating when a waiting guest and prepared seat are available', () => {
+  it('requires every table to be set before enabling or performing morning seating', () => {
     const tables = tablesFromPlacements(placements);
     const seats = seatsFromPlacements(placements);
     let day = createFloorDayFromCustomers([customer('c1')], tables, seats);
@@ -74,8 +74,26 @@ describe('floor sim', () => {
     expect(hasAvailableSeatForWaitingGuest(day)).toBe(false);
     day = completeGuestEntering(day);
     expect(hasAvailableSeatForWaitingGuest(day)).toBe(false);
-    day = { ...day, tables: day.tables.map(setTable) };
+
+    day = {
+      ...day,
+      tables: day.tables.map((table, index) => (index === 0 ? setTable(table) : table)),
+    };
+    expect(hasAvailableSeatForWaitingGuest(day)).toBe(false);
+    expect(seatNextWaiting(day)).toBe(day);
+    expect(day.pool[0]!.stage).toBe('waiting');
+
+    // A legacy mid-day `unset` table remains recoverable through the normal
+    // set-table transition; once set, seating proceeds without reopening day.
+    day = {
+      ...day,
+      tables: day.tables.map((table) =>
+        table.state === 'unset' ? setTable(table) : table,
+      ),
+    };
     expect(hasAvailableSeatForWaitingGuest(day)).toBe(true);
+    day = seatNextWaiting(day);
+    expect(day.pool[0]!.stage).toBe('seated');
   });
 
   it('takes one nearby order at a time when multiple guests are supplied', () => {

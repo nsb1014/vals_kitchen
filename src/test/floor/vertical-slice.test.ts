@@ -3,7 +3,42 @@ import { findBestMatchCombo } from '../../domain/day/customer-request-generator.
 import { isDayComplete } from '../../domain/day/serve.ts';
 import { gameReducer } from '../../domain/reducer.ts';
 import { createNewGameState } from '../../domain/state/game-state.ts';
+import type { GameState } from '../../domain/state/game-state.ts';
+import type { SeatSlot } from '../../domain/floor/types.ts';
+import { findPath } from '../../domain/floor/pathfinding.ts';
+import { walkBlockedCells } from '../../canvas/world/blocked-cells.ts';
 import { testContext } from '../test-helpers.ts';
+
+function reachableAdjacentCell(state: GameState, seat: SeatSlot) {
+  const floor = state.activeDay!.floor!;
+  const blocked = walkBlockedCells(
+    state.placements,
+    state.gridSize.w,
+    state.gridSize.h,
+    { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
+  );
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      const candidate = { x: seat.x + dx, y: seat.y + dy };
+      if (
+        candidate.x < 0 ||
+        candidate.y < 0 ||
+        candidate.x >= state.gridSize.w ||
+        candidate.y >= state.gridSize.h ||
+        blocked.has(`${candidate.x},${candidate.y}`)
+      ) {
+        continue;
+      }
+      const path = findPath(
+        { w: state.gridSize.w, h: state.gridSize.h, blocked },
+        floor.playerPosition,
+        candidate,
+      );
+      if (path) return candidate;
+    }
+  }
+  throw new Error('No reachable floor cell beside guest seat');
+}
 
 describe('floor vertical slice loop', () => {
   it('set → seat → order → plate → deliver → eat → clear → complete', () => {
@@ -29,7 +64,7 @@ describe('floor vertical slice loop', () => {
         ...state.activeDay!,
         floor: {
           ...state.activeDay!.floor!,
-          playerPosition: { ...seated!.seat! },
+          playerPosition: reachableAdjacentCell(state, seated!.seat!),
         },
       },
     };
@@ -56,6 +91,16 @@ describe('floor vertical slice loop', () => {
     ).state;
     expect(state.activeDay!.floor!.carriedTicketId).toBe(ticket.id);
 
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerPosition: reachableAdjacentCell(state, seated!.seat!),
+        },
+      },
+    };
     const cashBefore = state.cash;
     state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: ticket.id }, testContext).state;
     expect(state.cash).toBeGreaterThanOrEqual(cashBefore);
@@ -117,7 +162,7 @@ describe('floor vertical slice loop', () => {
             ...state.activeDay!,
             floor: {
               ...state.activeDay!.floor!,
-              playerPosition: { ...target.seat! },
+              playerPosition: reachableAdjacentCell(state, target.seat!),
             },
           },
         };
@@ -139,6 +184,16 @@ describe('floor vertical slice loop', () => {
           { type: 'FLOOR_PLATE', ticketId: open.id, ingredientIds: combo.ingredientIds },
           testContext,
         ).state;
+        state = {
+          ...state,
+          activeDay: {
+            ...state.activeDay!,
+            floor: {
+              ...state.activeDay!.floor!,
+              playerPosition: reachableAdjacentCell(state, guest.seat!),
+            },
+          },
+        };
         state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: open.id }, testContext).state;
       }
 
