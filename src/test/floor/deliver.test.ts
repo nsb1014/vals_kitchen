@@ -16,6 +16,7 @@ import { createNewGameState } from '../../domain/state/game-state.ts';
 import type { ActiveDay } from '../../domain/day/types.ts';
 import { testContext } from '../test-helpers.ts';
 import { findBestMatchCombo } from '../../domain/day/customer-request-generator.ts';
+import { walkBlockedCells } from '../../canvas/world/blocked-cells.ts';
 
 const pref = (): CustomerPreference => ({
   primary: { UM: 'high' },
@@ -29,7 +30,7 @@ function customer(id: string): Customer {
 
 function floorStateWithPlatedTicket() {
   const placements = [
-    { id: 'table_1', itemKey: 'table_2seat', x: 0, y: 0, rotation: 0 },
+    { id: 'table_1', itemKey: 'table_2seat', x: 2, y: 2, rotation: 0 },
   ];
   const tables = tablesFromPlacements(placements).map(setTable);
   const seats = seatsFromPlacements(placements);
@@ -37,6 +38,14 @@ function floorStateWithPlatedTicket() {
   let floor = createFloorDayFromCustomers([c], tables, seats);
   floor = completeGuestEntering(floor);
   floor = seatNextWaiting(floor);
+  const guest = floor.pool.find((entry) => entry.customer.id === c.id)!;
+  const deliveryPosition = { x: guest.seat!.x, y: guest.seat!.y - 1 };
+  expect(
+    walkBlockedCells(placements, 12, 12).has(
+      `${deliveryPosition.x},${deliveryPosition.y}`,
+    ),
+  ).toBe(false);
+  floor = { ...floor, playerPosition: deliveryPosition };
   floor = takeOrdersForSeated(floor, ['c1']);
   const ticketId = floor.tickets[0]!.id;
   const best = findBestMatchCombo(
@@ -47,8 +56,6 @@ function floorStateWithPlatedTicket() {
   );
   const plated = plateTicket(floor.tickets, ticketId, best.ingredientIds.slice(0, 3));
   floor = { ...floor, tickets: plated.tickets, carriedTicketId: plated.carriedTicketId };
-  const guest = floor.pool.find((entry) => entry.customer.id === c.id)!;
-  floor = { ...floor, playerPosition: { x: guest.seat!.x, y: guest.seat!.y } };
 
   const state = createNewGameState(42);
   const activeDay: ActiveDay = {

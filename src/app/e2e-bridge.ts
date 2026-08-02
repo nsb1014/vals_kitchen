@@ -18,6 +18,45 @@ import {
   isScoringContentReady,
 } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
+import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
+import { findPath } from '../domain/floor/pathfinding.ts';
+import type { SeatSlot } from '../domain/floor/types.ts';
+
+function reachableMainFloorCellBeside(seat: SeatSlot): { x: number; y: number } {
+  const state = useGameStore.getState();
+  const floor = state.activeDay?.floor;
+  if (!floor) throw new Error('No active floor for guest approach');
+  const blocked = walkBlockedCells(
+    state.placements,
+    state.gridSize.w,
+    state.gridSize.h,
+    { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
+  );
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      const candidate = { x: seat.x + dx, y: seat.y + dy };
+      if (
+        candidate.x < 0 ||
+        candidate.y < 0 ||
+        candidate.x >= state.gridSize.w ||
+        candidate.y >= state.gridSize.h ||
+        blocked.has(`${candidate.x},${candidate.y}`)
+      ) {
+        continue;
+      }
+      if (
+        findPath(
+          { w: state.gridSize.w, h: state.gridSize.h, blocked },
+          floor.playerPosition,
+          candidate,
+        )
+      ) {
+        return candidate;
+      }
+    }
+  }
+  throw new Error('No reachable floor cell beside guest seat');
+}
 
 export interface E2eBridge {
   getPlacements: () => Array<{
@@ -261,7 +300,9 @@ export function installE2eBridge(
             (guest) => guest.customer.id === customerIds[0],
           );
         if (target?.seat) {
-          useGameStore.getState().setFloorNavPosition({ ...target.seat });
+          useGameStore
+            .getState()
+            .setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
         }
         await useGameStore.getState().dispatch({
           type: 'FLOOR_TAKE_ORDERS',
@@ -405,7 +446,9 @@ export function installE2eBridge(
           (guest) => guest.customer.id === toOrder[0],
         );
         if (target?.seat) {
-          useGameStore.getState().setFloorNavPosition({ ...target.seat });
+          useGameStore
+            .getState()
+            .setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
         }
         await dispatch({
           type: 'FLOOR_TAKE_ORDERS',
@@ -434,7 +477,9 @@ export function installE2eBridge(
             ingredientIds: combo.ingredientIds,
           });
           if (guest.seat) {
-            useGameStore.getState().setFloorNavPosition({ ...guest.seat });
+            useGameStore
+              .getState()
+              .setFloorNavPosition(reachableMainFloorCellBeside(guest.seat));
           }
           await dispatch({ type: 'FLOOR_DELIVER', ticketId: open.id });
         }

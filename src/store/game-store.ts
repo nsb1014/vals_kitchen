@@ -456,6 +456,12 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     await ensureContentForAction(action.type);
     const ctx = getDomainContext();
     const current = get();
+    if (
+      action.type === 'FLOOR_DELIVER' &&
+      current.activeFloorRoom !== 'main'
+    ) {
+      throw new Error('Dishes can only be delivered on the main dining floor');
+    }
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
