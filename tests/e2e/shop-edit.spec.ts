@@ -205,8 +205,10 @@ test.describe('Shop & Edit progression journey', () => {
     await expect(page.getByTestId('summary-back-floor')).toHaveText(
       'Continue to Day 2',
     );
+    await expect(page.locator('.bottom-nav')).toBeHidden();
     await page.getByTestId('summary-back-floor').click();
     await expect(page.getByTestId('open-day-btn')).toBeVisible();
+    await expect(page.locator('.bottom-nav')).toBeVisible();
     const continued = await page.evaluate(() => window.__E2E__!.getGameState());
     expect(continued.day).toBe(2);
     expect(continued.activeDay).toBeNull();

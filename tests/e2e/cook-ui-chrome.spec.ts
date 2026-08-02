@@ -583,10 +583,21 @@ test.describe('service sheet tiers', () => {
     );
   });
 
-  test('pins day-summary actions in a near-full sheet', async ({ page }) => {
+  test('keeps the day summary compact with two dedicated next choices', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 720 });
     await gotoFreshGame(page);
     await completeServiceDay(page, false);
+    const summarySheet = page.getByTestId('day-summary-sheet');
+    const sheet = await summarySheet.boundingBox();
+    const card = await summarySheet.locator('.service-card').boundingBox();
+    expect(sheet).not.toBeNull();
+    expect(card).not.toBeNull();
+    expect(sheet!.height).toBeLessThanOrEqual(card!.height + 27);
+    expect(sheet!.height / 720).toBeLessThan(0.7);
+    await expect(page.locator('.bottom-nav')).toBeHidden();
+    await expect(summarySheet.locator('.service-btn')).toHaveCount(2);
     await expectFooterInsideSheet(
       page,
       'day-summary-sheet',
@@ -594,9 +605,29 @@ test.describe('service sheet tiers', () => {
       'summary-edit-restaurant',
     );
     await page.screenshot({
-      path: 'test-results/day-summary-near-full.png',
+      path: 'test-results/day-summary-compact.png',
       animations: 'disabled',
     });
+  });
+
+  test('keeps both summary choices reachable in a short mobile viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 480 });
+    await gotoFreshGame(page);
+    await completeServiceDay(page, false);
+
+    const sheet = await page.getByTestId('day-summary-sheet').boundingBox();
+    expect(sheet).not.toBeNull();
+    expect(sheet!.height).toBeLessThanOrEqual(480 * 0.94 + 1);
+    await expect(page.locator('.bottom-nav')).toBeHidden();
+    await expectFooterInsideSheet(
+      page,
+      'day-summary-sheet',
+      '[data-testid="day-summary-sheet"] .sheet-footer',
+      'summary-edit-restaurant',
+    );
+    await expect(page.getByTestId('summary-back-floor')).toBeVisible();
   });
 });
 

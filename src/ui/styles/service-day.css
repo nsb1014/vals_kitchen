@@ -2023,6 +2023,12 @@
     border-radius: 20px 20px 0 0;
   }
 
+  /* The end-of-day ledger has a bounded body but should not erase the
+   * restaurant with empty sheet space. */
+  .service-panel.sheet-tier-near-full.summary-service-panel {
+    height: auto;
+  }
+
   .service-panel.sheet-tier-mid {
     border-radius: 20px 20px 0 0;
   }

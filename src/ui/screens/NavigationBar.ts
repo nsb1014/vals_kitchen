@@ -71,7 +71,9 @@ export function mountNavigationBar(container: HTMLElement): () => void {
       button.setAttribute('aria-current', active ? 'page' : 'false');
     });
 
-    nav.hidden = Boolean(state.activeDay && !state.daySummary && state.screen === 'restaurant');
+    nav.hidden = Boolean(
+      state.screen === 'restaurant' && (state.activeDay || state.daySummary),
+    );
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {

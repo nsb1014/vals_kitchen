@@ -509,7 +509,7 @@ export function mountServiceDayUi(
       const masteryLine =
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="day-summary-sheet">
+        <div class="service-panel sheet-tier-near-full summary-service-panel" data-testid="day-summary-sheet">
           <div class="service-card sheet-card-layout">
             <header class="sheet-header">
               <h2 class="service-title" data-testid="day-summary-title">Day ${state.daySummary.completedDay} Summary</h2>
