@@ -92,7 +92,10 @@ export class ActorLayer {
       destination: GridPoint | null;
     },
     guestMotion?: GuestMotion | null,
-    opts: { showPlayerWithoutFloor?: boolean } = {},
+    opts: {
+      showPlayerWithoutFloor?: boolean;
+      showGuests?: boolean;
+    } = {},
   ): void {
     this.markerLayer.clear();
     if (!floor) {
@@ -109,7 +112,11 @@ export class ActorLayer {
     }
 
     this.drawDestination(nav.destination);
-    this.syncGuests(floor, guestMotion ?? null);
+    if (opts.showGuests === false) {
+      this.clearGuests();
+    } else {
+      this.syncGuests(floor, guestMotion ?? null);
+    }
     const carrying = floor.carriedTicketId != null;
     const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
     this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);

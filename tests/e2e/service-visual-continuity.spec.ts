@@ -30,6 +30,48 @@ async function finishFloorWithoutClosing(page: Page): Promise<void> {
 }
 
 test.describe('service visual continuity', () => {
+  test('keeps the first arrival offstage until service starts', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoFreshGame(page);
+    await page.getByTestId('open-day-btn').click();
+
+    const enteringGuestId = await page.evaluate(() => {
+      const guest = window.__E2E__!
+        .getGameState()
+        .activeDay!.floor!.pool.find((candidate) => candidate.stage === 'entering');
+      if (!guest) throw new Error('expected the first queued arrival');
+      return guest.id;
+    });
+
+    await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+    expect(
+      await page.evaluate(
+        (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
+        enteringGuestId,
+      ),
+    ).toBeNull();
+    await page.screenshot({
+      path: 'test-results/modifier-mobile-guest-curtain.png',
+      animations: 'disabled',
+    });
+
+    await page.getByTestId('start-service-btn').click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
+          enteringGuestId,
+        ),
+      )
+      .not.toBeNull();
+    await page.screenshot({
+      path: 'test-results/service-first-arrival-mobile.png',
+      animations: 'disabled',
+    });
+  });
+
   test('eases between service sheets without replaying on compose updates', async ({
     page,
   }) => {

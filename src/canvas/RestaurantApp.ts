@@ -772,7 +772,14 @@ export class RestaurantApp {
         dtMs: 0,
       });
       if (state.activeFloorRoom === 'main') {
-        this.actorLayer.sync(floor, this.nav, this.guestMotion);
+        this.actorLayer.sync(floor, this.nav, this.guestMotion, {
+          // OPEN_DAY creates the first arrival in domain state so service can
+          // begin immediately, but the modifier sheet is still the closed
+          // restaurant threshold. Keep that arrival offstage until the player
+          // explicitly starts service; the existing door-to-wait walk begins
+          // on the first live tick afterward.
+          showGuests: state.modifierDismissed,
+        });
       } else {
         this.actorLayer.sync(null, this.nav, null, {
           showPlayerWithoutFloor: true,
