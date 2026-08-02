@@ -45,6 +45,9 @@ function integerResolution(): number {
   return Math.max(1, Math.round(dpr));
 }
 
+const ROOM_FADE_OUT_MS = 100;
+const ROOM_FADE_IN_MS = 140;
+
 export class RestaurantApp {
   readonly app: Application;
   readonly world: Container;
@@ -68,6 +71,8 @@ export class RestaurantApp {
   private floorRuntimeWasRunning = false;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
+  private roomTransitionInFlight = false;
+  private roomTransitionAnimation: Animation | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
@@ -225,6 +230,7 @@ export class RestaurantApp {
   }
 
   private onTick = (): void => {
+    if (this.roomTransitionInFlight) return;
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
     const runtimeRunning = selectFloorRuntimeRunning(
@@ -251,18 +257,8 @@ export class RestaurantApp {
         this.nav.position.y,
       )
     ) {
-      const entered = useGameStore.getState().enterConnectingDoor();
-      if (entered) {
-        const next = useGameStore.getState();
-        const spawn = connectingDoorInterior(
-          next.activeFloorRoom,
-          next.gridSize.w,
-          next.gridSize.h,
-        );
-        this.nav.snapTo(spawn);
-        this.syncFromStore(next);
-        return;
-      }
+      this.beginRoomTransition();
+      return;
     }
 
     const roomPlacements = this.roomPlacements(state);
@@ -372,6 +368,80 @@ export class RestaurantApp {
           ),
     );
   };
+
+  private enterConnectingRoomNow(): boolean {
+    const entered = useGameStore.getState().enterConnectingDoor();
+    if (!entered) return false;
+    const next = useGameStore.getState();
+    const spawn = connectingDoorInterior(
+      next.activeFloorRoom,
+      next.gridSize.w,
+      next.gridSize.h,
+    );
+    this.nav.snapTo(spawn);
+    this.syncFromStore(next);
+    return true;
+  }
+
+  private beginRoomTransition(): void {
+    if (this.roomTransitionInFlight) return;
+    const canvas = this.app.canvas;
+    if (
+      typeof canvas.animate !== 'function' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      this.enterConnectingRoomNow();
+      return;
+    }
+
+    this.roomTransitionInFlight = true;
+    void this.runRoomTransition();
+  }
+
+  private async runRoomTransition(): Promise<void> {
+    const canvas = this.app.canvas;
+    let roomChanged = false;
+    try {
+      canvas.dataset.roomTransition = 'out';
+      const fadeOut = canvas.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        {
+          duration: ROOM_FADE_OUT_MS,
+          easing: 'ease-in',
+          fill: 'forwards',
+        },
+      );
+      this.roomTransitionAnimation = fadeOut;
+      await fadeOut.finished;
+      fadeOut.cancel();
+
+      if (!this.mounted) return;
+      roomChanged = this.enterConnectingRoomNow();
+      if (!roomChanged) return;
+
+      canvas.dataset.roomTransition = 'in';
+      const fadeIn = canvas.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        {
+          duration: ROOM_FADE_IN_MS,
+          easing: 'ease-out',
+          fill: 'forwards',
+        },
+      );
+      this.roomTransitionAnimation = fadeIn;
+      await fadeIn.finished;
+      fadeIn.cancel();
+    } catch {
+      // Cancellation during teardown is expected. If animation support fails
+      // while still mounted, preserve the doorway action without the effect.
+      if (this.mounted && !roomChanged) this.enterConnectingRoomNow();
+    } finally {
+      this.roomTransitionAnimation = null;
+      this.roomTransitionInFlight = false;
+      delete canvas.dataset.roomTransition;
+      canvas.style.removeProperty('opacity');
+    }
+  }
 
   private onTapMove = (event: PointerEvent): void => {
     const store = useGameStore.getState();
@@ -838,6 +908,11 @@ export class RestaurantApp {
 
   destroy(): void {
     if (!this.mounted) return;
+    this.roomTransitionAnimation?.cancel();
+    this.roomTransitionAnimation = null;
+    this.roomTransitionInFlight = false;
+    delete this.app.canvas.dataset.roomTransition;
+    this.app.canvas.style.removeProperty('opacity');
     window.removeEventListener('resize', this.handleResize);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
