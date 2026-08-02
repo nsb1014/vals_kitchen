@@ -151,6 +151,10 @@ export interface E2eBridge {
       };
     }>
   >;
+  prepareQueuedDepartureVisualFixture: () => Promise<{
+    firstGuestId: string;
+    heldGuestId: string;
+  }>;
   prepareStationCarryFixture: (
     mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
   ) => Promise<{
@@ -226,10 +230,16 @@ export interface E2eBridge {
   } | null;
   /** Debug: combined furniture and seated-actor depth/pose snapshot. */
   getSeatingSceneDebug: () => {
+    depthParent: {
+      shared: boolean;
+      sortable: boolean;
+    };
     tables: Array<{
       placementId: string;
       itemKey: string;
       zIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       x: number;
       y: number;
     }>;
@@ -237,6 +247,8 @@ export interface E2eBridge {
       tablePlacementId: string;
       slotIndex: number;
       zIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       x: number;
       y: number;
     }>;
@@ -246,6 +258,8 @@ export interface E2eBridge {
       slotIndex: number;
       seatFacing: 0 | 90 | 180 | 270;
       rootZIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       requestedFrameKey: string;
       actualBoundFrameKey: string;
       isSeated: boolean;
@@ -255,6 +269,12 @@ export interface E2eBridge {
       alpha: number;
       feet: { x: number; y: number };
     }>;
+  } | null;
+  getOpaqueTableOverlapScreenPoint: (guestId: string) => {
+    x: number;
+    y: number;
+    tablePlacementId: string;
+    usesTableOverhang: boolean;
   } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
@@ -461,6 +481,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getSeatingSceneDebug() {
       return getRestaurantApp()?.getSeatingSceneDebug() ?? null;
+    },
+
+    getOpaqueTableOverlapScreenPoint(guestId) {
+      return getRestaurantApp()?.getOpaqueTableOverlapScreenPoint(guestId) ?? null;
     },
 
     getGuestScreenFeetAnchor(guestId) {
@@ -870,6 +894,51 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           slotIndex: guest.seat.slotIndex,
         },
       }));
+    },
+
+    async prepareQueuedDepartureVisualFixture() {
+      const seated = await window.__E2E__!.prepareFourFacingSeatedGuestsFixture();
+      const first = seated[0];
+      const held = seated[1];
+      if (!first || !held) {
+        throw new Error('queued departure fixture requires two seated guests');
+      }
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('queued departure fixture requires an active floor day');
+      }
+      const leavingGuests = [first, held].map((fixtureGuest) => {
+        const guest = floor.pool.find(
+          (candidate) => candidate.id === fixtureGuest.guestId,
+        );
+        if (!guest?.seat) {
+          throw new Error('queued departure fixture lost an authored seat');
+        }
+        return {
+          ...guest,
+          stage: 'leaving' as const,
+          motionPosition: undefined,
+        };
+      });
+      useGameStore.setState({
+        activeDay: {
+          ...activeDay,
+          queueIndex: activeDay.customers.length,
+          floor: {
+            ...floor,
+            pool: leavingGuests,
+            tickets: [],
+            carriedTicketId: null,
+            selectedTicketId: null,
+          },
+        },
+      });
+      return {
+        firstGuestId: first.guestId,
+        heldGuestId: held.guestId,
+      };
     },
 
     async prepareStationCarryFixture(mode) {

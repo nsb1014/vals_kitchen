@@ -72,6 +72,10 @@ for (const viewport of VIEWPORTS) {
       window.__E2E__!.getSeatingSceneDebug(),
     );
     expect(scene).not.toBeNull();
+    expect(scene!.depthParent).toEqual({ shared: true, sortable: true });
+    expect(scene!.tables.every((entry) => entry.inDepthParent)).toBe(true);
+    expect(scene!.chairs.every((entry) => entry.inDepthParent)).toBe(true);
+    expect(scene!.guests.every((entry) => entry.inDepthParent)).toBe(true);
     const tablePlacementId = fixture[0]!.seat.tablePlacementId;
     const table = scene!.tables.find(
       (candidate) => candidate.placementId === tablePlacementId,
@@ -90,6 +94,7 @@ for (const viewport of VIEWPORTS) {
       expect(guest, `guest ${expected.guestId} should be rendered`).toBeDefined();
       expect(chair, `stool ${expected.seat.slotIndex} should be rendered`).toBeDefined();
       expect(chair!.zIndex).toBe(guest!.rootZIndex - 1);
+      expect(chair!.paintOrder).toBeLessThan(guest!.paintOrder);
     }
 
     const guestForFacing = (facing: 0 | 90 | 180 | 270) => {
@@ -108,6 +113,10 @@ for (const viewport of VIEWPORTS) {
     expect(west.rootZIndex).toBe(east.rootZIndex);
     expect(east.rootZIndex).toBeLessThan(table!.zIndex);
     expect(table!.zIndex).toBeLessThan(south.rootZIndex);
+    expect(north.paintOrder).toBeLessThan(table!.paintOrder);
+    expect(west.paintOrder).toBeLessThan(table!.paintOrder);
+    expect(east.paintOrder).toBeLessThan(table!.paintOrder);
+    expect(table!.paintOrder).toBeLessThan(south.paintOrder);
     expect(table!.zIndex - north.rootZIndex).toBe(26);
     expect(table!.zIndex - west.rootZIndex).toBe(2);
     expect(south.rootZIndex - table!.zIndex).toBe(22);
@@ -119,3 +128,51 @@ for (const viewport of VIEWPORTS) {
     assertNoDiagnostics(diagnostics);
   });
 }
+
+test('keeps a queued departure in exact sit art until its live route begins', async ({
+  page,
+}) => {
+  const diagnostics = await openRunningFloor(page, VIEWPORTS[1]);
+  const fixture = await page.evaluate(() =>
+    window.__E2E__!.prepareQueuedDepartureVisualFixture(),
+  );
+
+  await expect
+    .poll(async () => {
+      const scene = await page.evaluate(() => window.__E2E__!.getSeatingSceneDebug());
+      const first = scene?.guests.find((guest) => guest.guestId === fixture.firstGuestId);
+      const held = scene?.guests.find((guest) => guest.guestId === fixture.heldGuestId);
+      return Boolean(
+        first?.isMoving &&
+          !first.isSeated &&
+          /^guest_[a-e]_(right|down|up|left)_[0-2]$/.test(first.requestedFrameKey) &&
+          first.actualBoundFrameKey === first.requestedFrameKey &&
+          held?.isSeated &&
+          !held.isMoving &&
+          /^guest_[a-e]_sit_(right|down|up|left)$/.test(held.requestedFrameKey) &&
+          held.actualBoundFrameKey === held.requestedFrameKey &&
+          held.inDepthParent,
+      );
+    }, { message: 'the second departure should remain in exact authored sit art while held' })
+    .toBe(true);
+
+  await expect
+    .poll(async () => {
+      const state = await page.evaluate(() => window.__E2E__!.getGameState());
+      const first = state.activeDay!.floor!.pool.find(
+        (guest) => guest.id === fixture.firstGuestId,
+      );
+      const scene = await page.evaluate(() => window.__E2E__!.getSeatingSceneDebug());
+      const held = scene?.guests.find((guest) => guest.guestId === fixture.heldGuestId);
+      return Boolean(
+        first?.stage === 'done' &&
+          held?.isMoving &&
+          !held.isSeated &&
+          /^guest_[a-e]_(right|down|up|left)_[0-2]$/.test(held.requestedFrameKey) &&
+          held.actualBoundFrameKey === held.requestedFrameKey,
+      );
+    }, { message: 'the held departure should bind exact authored walk art after the first exits' })
+    .toBe(true);
+
+  assertNoDiagnostics(diagnostics);
+});

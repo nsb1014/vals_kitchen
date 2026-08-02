@@ -61,7 +61,6 @@ import {
   screenToGrid,
   screenToWorld,
   TILE_PX,
-  gridToWorld,
   worldToScreen,
 } from './coordinates.ts';
 import {
@@ -517,10 +516,16 @@ export class RestaurantApp {
 
   /** Read-only seating scene snapshot for depth/pose continuity checks. */
   getSeatingSceneDebug(): Readonly<{
+    depthParent: {
+      shared: boolean;
+      sortable: boolean;
+    };
     tables: Array<{
       placementId: string;
       itemKey: string;
       zIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       x: number;
       y: number;
     }>;
@@ -528,6 +533,8 @@ export class RestaurantApp {
       tablePlacementId: string;
       slotIndex: number;
       zIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       x: number;
       y: number;
     }>;
@@ -537,6 +544,8 @@ export class RestaurantApp {
       slotIndex: number;
       seatFacing: 0 | 90 | 180 | 270;
       rootZIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
       requestedFrameKey: string;
       actualBoundFrameKey: string;
       isSeated: boolean;
@@ -547,7 +556,9 @@ export class RestaurantApp {
       feet: { x: number; y: number };
     }>;
   }> {
+    this.depthLayer.sortChildren();
     const furniture = this.furnitureLayer.getSeatingDepthDebug();
+    const furniturePaint = this.furnitureLayer.getSeatingPaintDebug();
     const floor = useGameStore.getState().activeDay?.floor;
     const guests = (floor?.pool ?? []).flatMap((guest) => {
       if (!guest.seat) return [];
@@ -561,9 +572,53 @@ export class RestaurantApp {
       }];
     });
     return {
-      tables: furniture.tables,
-      chairs: furniture.chairs,
+      depthParent: {
+        shared:
+          this.furnitureLayer.view === this.depthLayer &&
+          this.actorLayer.usesDepthParent(this.depthLayer),
+        sortable: this.depthLayer.sortableChildren,
+      },
+      tables: furniture.tables.map((table) => ({
+        ...table,
+        ...furniturePaint.tables.find(
+          (paint) => paint.placementId === table.placementId,
+        )!,
+      })),
+      chairs: furniture.chairs.map((chair) => ({
+        ...chair,
+        ...furniturePaint.chairs.find(
+          (paint) =>
+            paint.tablePlacementId === chair.tablePlacementId &&
+            paint.slotIndex === chair.slotIndex,
+        )!,
+      })),
       guests,
+    };
+  }
+
+  /** E2E probe for one genuinely painted tabletop pixel above a rendered guest. */
+  getOpaqueTableOverlapScreenPoint(guestId: string): Readonly<{
+    x: number;
+    y: number;
+    tablePlacementId: string;
+    usesTableOverhang: boolean;
+  }> | null {
+    const target = this.actorLayer
+      .getGuestWorldHitTargets()
+      .find((candidate) => candidate.guestId === guestId);
+    if (!target) return null;
+    const overlap = this.furnitureLayer.findOpaqueTableOcclusionPoint(
+      target.bounds,
+      { sortY: target.sortY, paintOrder: target.paintOrder },
+    );
+    if (!overlap) return null;
+    const rect = this.app.canvas.getBoundingClientRect();
+    const screen = worldToScreen(overlap.x, overlap.y, this.camera.state);
+    return {
+      x: rect.left + screen.x,
+      y: rect.top + screen.y,
+      tablePlacementId: overlap.placementId,
+      usesTableOverhang: overlap.usesTableOverhang,
     };
   }
 
@@ -599,11 +654,23 @@ export class RestaurantApp {
         .map((guest) => [guest.id, guest]),
     );
 
+    const renderedTargets = this.actorLayer.getGuestWorldHitTargets();
+    const tableOccludesTarget = (
+      candidate: (typeof renderedTargets)[number],
+    ): boolean => Boolean(
+      this.furnitureLayer.getOpaqueTableOccluderAtWorld(
+        world.x,
+        world.y,
+        { sortY: candidate.sortY, paintOrder: candidate.paintOrder },
+      ),
+    );
     const bodyHit = resolveTopmostGuestHit(
       world,
-      this.actorLayer
-        .getGuestWorldHitTargets()
-        .filter((candidate) => eligibleById.has(candidate.guestId)),
+      renderedTargets.filter(
+        (candidate) =>
+          eligibleById.has(candidate.guestId) &&
+          !tableOccludesTarget(candidate),
+      ),
       this.camera.state.scale,
     );
     if (bodyHit) {
@@ -622,14 +689,19 @@ export class RestaurantApp {
 
     // Preserve the established seat-cell affordance for keyboard/debug flows,
     // but subject it to the same lifecycle rules as direct body taps.
-    return (
-      floor.pool.find(
-        (guest) =>
-          guest.seat?.x === tapCell.x &&
-          guest.seat.y === tapCell.y &&
-          isServiceGuestHitEligible(guest.stage, hasCarriedTicket),
-      ) ?? null
+    const seatGuest = floor.pool.find(
+      (guest) =>
+        guest.seat?.x === tapCell.x &&
+        guest.seat.y === tapCell.y &&
+        isServiceGuestHitEligible(guest.stage, hasCarriedTicket),
     );
+    if (!seatGuest) return null;
+    const renderedSeatTarget = renderedTargets.find(
+      (candidate) => candidate.guestId === seatGuest.id,
+    );
+    return renderedSeatTarget && tableOccludesTarget(renderedSeatTarget)
+      ? null
+      : seatGuest;
   }
 
   private onTick = (): void => {
@@ -913,31 +985,10 @@ export class RestaurantApp {
     }
 
     if (store.activeFloorRoom === 'main') {
-      const tappedTablePlacement = roomPlacements.find(
-        (placement) =>
-          placement.x === tapCell.x &&
-          placement.y === tapCell.y &&
-          floor.tables.some(
-            (table) => table.placementId === placement.id,
-          ),
-      );
-      const tappedTableOrigin = tappedTablePlacement
-        ? gridToWorld(tappedTablePlacement.x, tappedTablePlacement.y)
-        : null;
-      const tableCenterHalfSize = TILE_PX / 8;
-      const tappedTableCenter = Boolean(
-        tappedTableOrigin &&
-          Math.abs(world.x - (tappedTableOrigin.x + TILE_PX / 2)) <=
-            tableCenterHalfSize &&
-          Math.abs(world.y - (tappedTableOrigin.y + TILE_PX / 2)) <=
-            tableCenterHalfSize,
-      );
-      // The authored 128px character frame can overlap the tabletop by a few
-      // pixels. Reserve only the unambiguous center hotspot for the table;
-      // north/south diners can visibly extend into the rest of its grid cell.
-      const tappedGuest = tappedTableCenter
-        ? null
-        : this.serviceGuestHitAtWorldPoint(floor, world, tapCell);
+      // Guest hit ownership follows the same shared depth stack and exact table
+      // alpha that painted this point; transparent tabletop padding leaves the
+      // authored guest target live.
+      const tappedGuest = this.serviceGuestHitAtWorldPoint(floor, world, tapCell);
       const player = store.floorPlayerGrid ?? this.nav.position;
 
       if (floor.carriedTicketId && tappedGuest) {

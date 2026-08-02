@@ -200,6 +200,8 @@ export class ActorLayer {
   getGuestVisualDebug(guestId: string): Readonly<{
     guestId: string;
     rootZIndex: number;
+    paintOrder: number;
+    inDepthParent: boolean;
     requestedFrameKey: string;
     actualBoundFrameKey: string;
     isSeated: boolean;
@@ -211,9 +213,12 @@ export class ActorLayer {
   }> | null {
     const entry = this.guestSprites.get(guestId);
     if (!entry) return null;
+    this.actorContainer.sortChildren();
     return {
       guestId,
       rootZIndex: entry.root.zIndex,
+      paintOrder: this.actorContainer.getChildIndex(entry.root),
+      inDepthParent: entry.root.parent === this.actorContainer,
       requestedFrameKey: entry.requestedFrameKey,
       actualBoundFrameKey: entry.actualBoundFrameKey,
       isSeated: entry.isSeated,
@@ -223,6 +228,10 @@ export class ActorLayer {
       alpha: entry.sprite.alpha,
       feet: { x: entry.root.x, y: entry.root.y },
     };
+  }
+
+  usesDepthParent(parent: Container): boolean {
+    return this.actorContainer === parent;
   }
 
   getGuestWorldHitTargets(): GuestHitTargetCandidate[] {

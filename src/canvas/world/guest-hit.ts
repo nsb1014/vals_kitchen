@@ -22,6 +22,23 @@ export interface GuestHitTargetCandidate {
   paintOrder: number;
 }
 
+export interface RenderedNodeOrder {
+  sortY: number;
+  paintOrder: number;
+}
+
+export interface RenderedAlphaMaskGeometry {
+  rootX: number;
+  rootY: number;
+  spriteX: number;
+  spriteY: number;
+  displayWidth: number;
+  displayHeight: number;
+  maskWidth: number;
+  maskHeight: number;
+  alpha: Uint8Array | Uint8ClampedArray;
+}
+
 export interface AnchoredSpriteContentGeometry {
   rootX: number;
   rootY: number;
@@ -121,16 +138,55 @@ export function guestHitBoundsContainPoint(
   );
 }
 
+/** True only when the first node is painted later in one sorted parent. */
+export function renderedNodePaintsAbove(
+  candidate: RenderedNodeOrder,
+  incumbent: RenderedNodeOrder,
+): boolean {
+  return candidate.sortY > incumbent.sortY ||
+    (candidate.sortY === incumbent.sortY && candidate.paintOrder > incumbent.paintOrder);
+}
+
+/** Map one world point through the exact displayed sprite geometry into its alpha mask. */
+export function renderedAlphaMaskContainsWorldPoint(
+  point: GuestHitPoint,
+  geometry: RenderedAlphaMaskGeometry,
+): boolean {
+  if (
+    geometry.displayWidth <= 0 ||
+    geometry.displayHeight <= 0 ||
+    geometry.maskWidth <= 0 ||
+    geometry.maskHeight <= 0
+  ) {
+    return false;
+  }
+  const localX = point.x - geometry.rootX - geometry.spriteX;
+  const localY = point.y - geometry.rootY - geometry.spriteY;
+  if (
+    localX < 0 ||
+    localY < 0 ||
+    localX >= geometry.displayWidth ||
+    localY >= geometry.displayHeight
+  ) {
+    return false;
+  }
+  const maskX = Math.min(
+    geometry.maskWidth - 1,
+    Math.floor((localX / geometry.displayWidth) * geometry.maskWidth),
+  );
+  const maskY = Math.min(
+    geometry.maskHeight - 1,
+    Math.floor((localY / geometry.displayHeight) * geometry.maskHeight),
+  );
+  return (geometry.alpha[maskY * geometry.maskWidth + maskX] ?? 0) > 0;
+}
+
 function candidatePaintsAbove(
   candidate: GuestHitTargetCandidate,
   incumbent: GuestHitTargetCandidate,
 ): boolean {
-  if (candidate.sortY !== incumbent.sortY) {
-    return candidate.sortY > incumbent.sortY;
-  }
-  if (candidate.paintOrder !== incumbent.paintOrder) {
-    return candidate.paintOrder > incumbent.paintOrder;
-  }
+  if (renderedNodePaintsAbove(candidate, incumbent)) return true;
+  if (renderedNodePaintsAbove(incumbent, candidate)) return false;
   return candidate.guestId > incumbent.guestId;
 }
 

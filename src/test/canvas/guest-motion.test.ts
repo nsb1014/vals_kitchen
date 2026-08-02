@@ -291,6 +291,7 @@ describe('GuestMotion', () => {
     for (let i = 0; i < 12; i++) {
       const result = sync(motion, [leaving], 100, sealed);
       expect(result.exitedGuestIds).toEqual([]);
+      expect(result.motionPositionUpdates).toEqual([]);
       expect(motion.pose(leaving.id)).toMatchObject({
         worldX: seatedAt.x,
         worldY: seatedAt.y,
@@ -451,7 +452,10 @@ describe('GuestMotion', () => {
     });
     const secondStart = seatSitWorldPosition(secondLeaving.seat!);
 
-    sync(motion, [firstLeaving, secondLeaving]);
+    const first = sync(motion, [firstLeaving, secondLeaving]);
+    expect(
+      first.motionPositionUpdates.some((update) => update.guestId === secondLeaving.id),
+    ).toBe(false);
     expect(motion.pose(firstLeaving.id)!.isMoving).toBe(true);
     expect(motion.pose(firstLeaving.id)!.isSeated).toBe(false);
     expect(
@@ -469,6 +473,9 @@ describe('GuestMotion', () => {
     let doorOpenedNearExit = false;
     for (let i = 0; i < 240; i++) {
       const result = sync(motion, [firstLeaving, secondLeaving]);
+      expect(
+        result.motionPositionUpdates.some((update) => update.guestId === secondLeaving.id),
+      ).toBe(false);
       doorOpenedNearExit ||= motion.isDoorBusy(
         floorWith([firstLeaving, secondLeaving]),
         door,
@@ -504,7 +511,10 @@ describe('GuestMotion', () => {
     });
     const leavingStart = seatSitWorldPosition(leaving.seat!);
 
-    sync(motion, [entering, leaving]);
+    const first = sync(motion, [entering, leaving]);
+    expect(
+      first.motionPositionUpdates.some((update) => update.guestId === leaving.id),
+    ).toBe(false);
     expect(motion.pose(entering.id)!.isMoving).toBe(true);
     expect(motion.pose(leaving.id)).toMatchObject({
       worldX: leavingStart.x,
@@ -516,7 +526,11 @@ describe('GuestMotion', () => {
 
     let entered = false;
     for (let i = 0; i < 80; i++) {
-      if (sync(motion, [entering, leaving]).enteredGuestIds.includes(entering.id)) {
+      const result = sync(motion, [entering, leaving]);
+      expect(
+        result.motionPositionUpdates.some((update) => update.guestId === leaving.id),
+      ).toBe(false);
+      if (result.enteredGuestIds.includes(entering.id)) {
         entered = true;
         break;
       }

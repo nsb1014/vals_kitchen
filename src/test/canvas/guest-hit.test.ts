@@ -6,6 +6,8 @@ import {
   guestHitBoundsContainPoint,
   isServiceGuestHitEligible,
   minimumGuestHitWorldSize,
+  renderedAlphaMaskContainsWorldPoint,
+  renderedNodePaintsAbove,
   resolveTopmostGuestHit,
   type GuestHitTargetCandidate,
   type GuestWorldBounds,
@@ -52,6 +54,50 @@ describe('guest hit geometry', () => {
         scaleY: 0.375,
       }),
     ).toEqual({ left: 85.375, top: 150.5, right: 114.25, bottom: 198.5 });
+  });
+
+  it('maps displayed sprite pixels to the exact alpha silhouette', () => {
+    const geometry = {
+      rootX: 64,
+      rootY: 64,
+      spriteX: -6,
+      spriteY: -12,
+      displayWidth: 44,
+      displayHeight: 44,
+      maskWidth: 4,
+      maskHeight: 4,
+      alpha: new Uint8Array([
+        0, 0, 0, 0,
+        0, 255, 255, 0,
+        0, 255, 255, 0,
+        0, 0, 0, 0,
+      ]),
+    };
+
+    expect(renderedAlphaMaskContainsWorldPoint({ x: 69, y: 57 }, geometry)).toBe(false);
+    expect(renderedAlphaMaskContainsWorldPoint({ x: 75, y: 63 }, geometry)).toBe(true);
+    expect(renderedAlphaMaskContainsWorldPoint({ x: 101, y: 95 }, geometry)).toBe(false);
+  });
+
+  it('compares post-sort paint order only after shared z depth', () => {
+    expect(
+      renderedNodePaintsAbove(
+        { sortY: 96, paintOrder: 4 },
+        { sortY: 94, paintOrder: 20 },
+      ),
+    ).toBe(true);
+    expect(
+      renderedNodePaintsAbove(
+        { sortY: 96, paintOrder: 5 },
+        { sortY: 96, paintOrder: 4 },
+      ),
+    ).toBe(true);
+    expect(
+      renderedNodePaintsAbove(
+        { sortY: 94, paintOrder: 20 },
+        { sortY: 96, paintOrder: 4 },
+      ),
+    ).toBe(false);
   });
 
   it('normalizes content bounds when a sprite axis is mirrored', () => {

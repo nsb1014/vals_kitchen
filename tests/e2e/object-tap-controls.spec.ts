@@ -407,6 +407,57 @@ test.describe('object tap controls', () => {
     });
   });
 
+  test('keeps an opaque table-edge tap from reaching a diner painted behind it', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const guests = await page.evaluate(() =>
+      window.__E2E__!.prepareFourFacingSeatedGuestsFixture(),
+    );
+    const behindTable = guests.find((guest) => guest.seat.facing === 90);
+    expect(behindTable).toBeDefined();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            (guestId) =>
+              window.__E2E__!.getOpaqueTableOverlapScreenPoint(guestId),
+            behindTable!.guestId,
+          ),
+        { message: 'the authored tabletop should have an opaque overlap above the side diner' },
+      )
+      .not.toBeNull();
+    const overlap = await page.evaluate(
+      (guestId) => window.__E2E__!.getOpaqueTableOverlapScreenPoint(guestId),
+      behindTable!.guestId,
+    );
+    expect(overlap?.tablePlacementId).toBe(behindTable!.seat.tablePlacementId);
+    expect(overlap?.usesTableOverhang).toBe(true);
+    const before = await page.evaluate(() => ({
+      player: window.__E2E__!.getState().floorPlayerGrid,
+      tickets: window.__E2E__!.getGameState().activeDay!.floor!.tickets.length,
+    }));
+
+    await tapRealPointer(page, overlap!);
+    await page.waitForTimeout(300);
+
+    expect(
+      await page.evaluate((guestId) => {
+        const bridge = window.__E2E__!;
+        const floor = bridge.getGameState().activeDay!.floor!;
+        return {
+          player: bridge.getState().floorPlayerGrid,
+          guestStage: floor.pool.find((guest) => guest.id === guestId)?.stage,
+          tickets: floor.tickets.length,
+        };
+      }, behindTable!.guestId),
+    ).toEqual({
+      player: before.player,
+      guestStage: 'seated',
+      tickets: before.tickets,
+    });
+  });
+
   test('keeps rendered guest controls live across all four seat facings', async ({
     page,
   }) => {

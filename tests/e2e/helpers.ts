@@ -581,6 +581,10 @@ declare global {
           };
         }>
       >;
+      prepareQueuedDepartureVisualFixture: () => Promise<{
+        firstGuestId: string;
+        heldGuestId: string;
+      }>;
       prepareStationCarryFixture: (
         mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
       ) => Promise<{
@@ -642,10 +646,16 @@ declare global {
         isMoving: boolean;
       } | null;
       getSeatingSceneDebug: () => {
+        depthParent: {
+          shared: boolean;
+          sortable: boolean;
+        };
         tables: Array<{
           placementId: string;
           itemKey: string;
           zIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
           x: number;
           y: number;
         }>;
@@ -653,6 +663,8 @@ declare global {
           tablePlacementId: string;
           slotIndex: number;
           zIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
           x: number;
           y: number;
         }>;
@@ -662,6 +674,8 @@ declare global {
           slotIndex: number;
           seatFacing: 0 | 90 | 180 | 270;
           rootZIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
           requestedFrameKey: string;
           actualBoundFrameKey: string;
           isSeated: boolean;
@@ -671,6 +685,12 @@ declare global {
           alpha: number;
           feet: { x: number; y: number };
         }>;
+      } | null;
+      getOpaqueTableOverlapScreenPoint: (guestId: string) => {
+        x: number;
+        y: number;
+        tablePlacementId: string;
+        usesTableOverhang: boolean;
       } | null;
       getInteractHintVisible: () => boolean;
       getInteractHintCells: () => Array<{ x: number; y: number }>;
