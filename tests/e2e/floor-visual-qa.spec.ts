@@ -47,9 +47,13 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   const seatGuestAction = page.getByTestId('floor-seat-next');
   await expect(seatGuestAction).toBeEnabled();
   await expect(seatGuestAction).not.toHaveClass(/\bprimary\b/);
+  await expect(page.getByTestId('notice-banner')).toContainText('Take orders');
 
-  // Allow GuestMotion walks to finish (nav speed ~2.4 tiles/s).
-  await page.waitForTimeout(3500);
+  // The state cue appears once, then the world/action affordances stand alone.
+  // This also allows GuestMotion walks to finish (nav speed ~2.4 tiles/s).
+  await expect(page.getByTestId('notice-banner')).toHaveCount(0, {
+    timeout: 5000,
+  });
   await assertCanvasHasRenderedContent(page);
 
   const metrics = await page.evaluate(() => window.__E2E__!.getActorSpriteMetrics());

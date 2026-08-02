@@ -48,18 +48,27 @@ describe('floor toast', () => {
     expect(useGameStore.getState().floorToast).toBeNull();
   });
 
-  it('clears the legacy toast when a pacing notice replaces it', () => {
+  it('lets gameplay feedback finish before a changed HUD notice appears', () => {
     useGameStore.getState().setFloorToast('Wrong table');
 
+    const pacing = {
+      id: 'pacing:guest-waiting',
+      source: 'pacing' as const,
+      body: 'A guest is waiting',
+    };
     useGameStore.getState().syncFloorNoticesFromHud({
       sticky: null,
-      pacing: {
-        id: 'pacing:guest-waiting',
-        source: 'pacing',
-        body: 'A guest is waiting',
-      },
+      pacing,
     });
 
+    expect(useGameStore.getState().noticeActive?.source).toBe('toast');
+    expect(useGameStore.getState().floorToast).toBe('Wrong table');
+
+    vi.advanceTimersByTime(2500);
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing,
+    });
     expect(useGameStore.getState().noticeActive?.source).toBe('pacing');
     expect(useGameStore.getState().floorToast).toBeNull();
   });
