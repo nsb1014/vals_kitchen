@@ -213,6 +213,7 @@ export function createNewGameState(seed?: number): GameState {
 }
 
 export function normalizeGameState(raw: GameState): GameState {
+  const kitchenAnnexOwned = Boolean(raw.kitchenAnnexOwned);
   const migrated = migrateAnnexWidthToBackRoom(raw);
   const placements = migrated.placements;
   const unlockedIngredientIds = raw.unlockedIngredientIds ?? [...NEW_GAME_STARTER_IDS];
@@ -223,6 +224,10 @@ export function normalizeGameState(raw: GameState): GameState {
 
   if (activeDay?.floor) {
     const rawFloor = activeDay.floor;
+    const playerRoom =
+      rawFloor.playerRoom === 'back_kitchen' && kitchenAnnexOwned
+        ? 'back_kitchen'
+        : 'main';
     let tickets = rawFloor.tickets.map((ticket) => ({
       ...ticket,
       ingredientIds: Array.isArray(ticket.ingredientIds)
@@ -285,6 +290,7 @@ export function normalizeGameState(raw: GameState): GameState {
         tickets,
         carriedTicketId,
         selectedTicketId,
+        playerRoom,
       },
     };
     composeDraftIngredientIds = undefined;
@@ -312,7 +318,7 @@ export function normalizeGameState(raw: GameState): GameState {
       placements,
     ),
     gridExpansionCount: raw.gridExpansionCount ?? 0,
-    kitchenAnnexOwned: raw.kitchenAnnexOwned ?? false,
+    kitchenAnnexOwned,
     ingredientUnlockIndex: raw.ingredientUnlockIndex ?? 0,
     activeDay,
     composeDraftIngredientIds,

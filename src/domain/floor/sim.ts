@@ -94,6 +94,7 @@ export function createFloorDayFromCustomers(
     selectedTicketId: null,
     tutorialStep: null,
     playerPosition: { ...playerPosition },
+    playerRoom: 'main',
   };
   return admitNextGuest(day);
 }
