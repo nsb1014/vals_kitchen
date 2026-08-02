@@ -16,6 +16,10 @@ export {
   deliverTicket,
   enqueueTickets,
   plateTicket,
+  resolveFloorComposeTicket,
+  resolveFloorTicket,
+  selectFloorTicket,
+  setFloorTicketDraft,
 } from './tickets.ts';
 export {
   admitNextGuest,

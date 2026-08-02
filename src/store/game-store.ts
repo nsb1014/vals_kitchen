@@ -25,6 +25,11 @@ import {
   type FloorRoomId,
 } from '../domain/floor/starter-map.ts';
 import {
+  isCookStationItemKey,
+  playerNearPlacement,
+  resolveFloorComposeTicket,
+} from '../domain/floor/index.ts';
+import {
   createNewGameState,
   type GameState,
   type Placement,
@@ -348,6 +353,34 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
   );
 }
 
+function canPlateFromCurrentInteraction(
+  state: GameStore,
+  ticketId: string,
+): boolean {
+  if (
+    state.screen !== 'restaurant' ||
+    !selectCanOpenFloorCompose(state)
+  ) {
+    return false;
+  }
+  const floor = state.activeDay?.floor;
+  const player = state.floorPlayerGrid ?? floor?.playerPosition;
+  if (!floor || !player) return false;
+  if (resolveFloorComposeTicket(floor)?.id !== ticketId) return false;
+
+  const roomPlacements =
+    state.activeFloorRoom === 'back_kitchen'
+      ? state.backKitchenPlacements
+      : state.placements;
+  const ownedEquipment = new Set(state.purchasedEquipmentIds);
+  return roomPlacements.some(
+    (placement) =>
+      isCookStationItemKey(placement.itemKey) &&
+      ownedEquipment.has(placement.itemKey) &&
+      playerNearPlacement(player, placement),
+  );
+}
+
 function buildDaySummary(
   before: GameState,
   after: GameState,
@@ -464,6 +497,14 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.activeFloorRoom !== 'main'
     ) {
       throw new Error('Dishes can only be delivered on the main dining floor');
+    }
+    if (
+      action.type === 'FLOOR_PLATE' &&
+      !canPlateFromCurrentInteraction(current, action.ticketId)
+    ) {
+      throw new Error(
+        'The selected ticket can only be plated beside an owned station in the current room',
+      );
     }
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
@@ -667,18 +708,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
     }
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
   },
 
   setFloorSelectedTicket(ticketId) {
-    const current = get();
-    const floor = current.activeDay?.floor;
-    if (!floor) return;
-    set({
-      activeDay: {
-        ...current.activeDay!,
-        floor: { ...floor, selectedTicketId: ticketId },
-      },
-    });
+    if (!get().activeDay?.floor) return;
+    void get()
+      .dispatch({ type: 'FLOOR_SELECT_TICKET', ticketId })
+      .catch(() => undefined);
     const next = get();
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });

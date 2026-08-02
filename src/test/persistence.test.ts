@@ -1,11 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { canonicalize } from '../persistence/serialize.ts';
 import { SAVE_KEY, computeChecksum } from '../persistence/serialize.ts';
 import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
-import { createNewGameState, CURRENT_SAVE_VERSION, normalizeGameState } from '../domain/state/game-state.ts';
+import {
+  createNewGameState,
+  CURRENT_SAVE_VERSION,
+  normalizeGameState,
+  type GameState,
+} from '../domain/state/game-state.ts';
 import { gameReducer } from '../domain/reducer.ts';
-import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { testContext } from './test-helpers.ts';
 
 function createMemoryStorage(): StorageAdapter {
@@ -21,7 +25,105 @@ function createMemoryStorage(): StorageAdapter {
   };
 }
 
+interface DeferredWrite {
+  resolve: () => void;
+  reject: (error: unknown) => void;
+}
+
+function createDelayedStorage(): {
+  storage: StorageAdapter;
+  primaryWrites: unknown[];
+  pendingWrites: DeferredWrite[];
+} {
+  const map = new Map<string, unknown>();
+  const primaryWrites: unknown[] = [];
+  const pendingWrites: DeferredWrite[] = [];
+  const storage: StorageAdapter = {
+    get: async <T>(key: string) => map.get(key) as T | undefined,
+    set: async (key: string, value: unknown) => {
+      if (key !== SAVE_KEY) {
+        map.set(key, value);
+        return;
+      }
+      primaryWrites.push(value);
+      await new Promise<void>((resolve, reject) => {
+        pendingWrites.push({ resolve, reject });
+      });
+      map.set(key, value);
+    },
+    del: async (key: string) => {
+      map.delete(key);
+    },
+  };
+  return { storage, primaryWrites, pendingWrites };
+}
+
 describe('persistence', () => {
+  it('serializes writes, snapshots requests, and makes every waiter drain through the newest state', async () => {
+    const delayed = createDelayedStorage();
+    const repo = createSaveRepository(delayed.storage);
+    const first = createNewGameState(101);
+    first.cash = 101;
+    const firstSave = repo.save(first);
+    first.cash = 999;
+
+    const middle = createNewGameState(202);
+    middle.cash = 202;
+    const middleSave = repo.save(middle);
+    const newest = createNewGameState(303);
+    newest.cash = 303;
+    const newestSave = repo.save(newest);
+
+    await vi.waitFor(() => expect(delayed.primaryWrites).toHaveLength(1));
+    expect(
+      (delayed.primaryWrites[0] as { gameState: GameState }).gameState.cash,
+    ).toBe(101);
+    let firstResolved = false;
+    void firstSave.then(() => {
+      firstResolved = true;
+    });
+
+    delayed.pendingWrites[0]!.resolve();
+    await vi.waitFor(() => expect(delayed.primaryWrites).toHaveLength(2));
+    expect(firstResolved).toBe(false);
+    expect(
+      (delayed.primaryWrites[1] as { gameState: GameState }).gameState.cash,
+    ).toBe(303);
+
+    delayed.pendingWrites[1]!.resolve();
+    await Promise.all([firstSave, middleSave, newestSave]);
+    expect((await repo.load()).state?.cash).toBe(303);
+  });
+
+  it('recovers after a rejected write without poisoning pending or later saves', async () => {
+    const delayed = createDelayedStorage();
+    const repo = createSaveRepository(delayed.storage);
+    const failedState = createNewGameState(404);
+    failedState.cash = 404;
+    const failedSave = repo.save(failedState);
+    const failureAssertion = expect(failedSave).rejects.toThrow('disk unavailable');
+
+    const recoveryState = createNewGameState(505);
+    recoveryState.cash = 505;
+    const recoverySave = repo.save(recoveryState);
+    await vi.waitFor(() => expect(delayed.pendingWrites).toHaveLength(1));
+    delayed.pendingWrites[0]!.reject(new Error('disk unavailable'));
+    await failureAssertion;
+
+    await vi.waitFor(() => expect(delayed.pendingWrites).toHaveLength(2));
+    delayed.pendingWrites[1]!.resolve();
+    await recoverySave;
+    expect((await repo.load()).state?.cash).toBe(505);
+
+    const laterState = createNewGameState(606);
+    laterState.cash = 606;
+    const laterSave = repo.save(laterState);
+    await vi.waitFor(() => expect(delayed.pendingWrites).toHaveLength(3));
+    delayed.pendingWrites[2]!.resolve();
+    await laterSave;
+    expect((await repo.load()).state?.cash).toBe(606);
+  });
+
   it('round-trips state through repository save/load', async () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
@@ -52,30 +154,60 @@ describe('persistence', () => {
     expect(() => parseSaveCode(`RS1.${code.slice(4, 40)}`)).toThrow();
   });
 
-  it('restores mid-day progress including compose draft', async () => {
+  it('restores selection and independent A-B ticket drafts mid-day', async () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
     let state = gameReducer(createNewGameState(9090), { type: 'OPEN_DAY' }, testContext).state;
-    const customer = state.activeDay!.customers[0]!;
-    const best = findBestMatchCombo(
-      state.unlockedIngredientIds,
-      customer.preference,
-      testContext.ingredientsById,
-      testContext.compoundAffinity,
-    );
-    const draftIds = best.ingredientIds.slice(0, 3);
-    state = gameReducer(state, { type: 'SET_COMPOSE_DRAFT', ingredientIds: draftIds }, testContext).state;
+    const customerA = state.activeDay!.customers[0]!;
+    const customerB = state.activeDay!.customers[1]!;
+    const ticketA = `ticket_${customerA.id}`;
+    const ticketB = `ticket_${customerB.id}`;
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          tickets: [
+            { id: ticketA, customerId: customerA.id, ingredientIds: [], status: 'open' },
+            { id: ticketB, customerId: customerB.id, ingredientIds: [], status: 'open' },
+          ],
+        },
+      },
+    };
+    const draftA = state.unlockedIngredientIds.slice(0, 3);
+    const draftB = state.unlockedIngredientIds.slice(3, 6);
+    state = gameReducer(state, { type: 'FLOOR_SELECT_TICKET', ticketId: ticketA }, testContext).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_SET_TICKET_DRAFT', ticketId: ticketA, ingredientIds: draftA },
+      testContext,
+    ).state;
+    state = gameReducer(state, { type: 'FLOOR_SELECT_TICKET', ticketId: ticketB }, testContext).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_SET_TICKET_DRAFT', ticketId: ticketB, ingredientIds: draftB },
+      testContext,
+    ).state;
+    state = gameReducer(state, { type: 'FLOOR_SELECT_TICKET', ticketId: ticketA }, testContext).state;
 
     await repo.save(state);
     const loaded = (await repo.load()).state!;
     expect(loaded.activeDay?.seed).toBe(state.activeDay?.seed);
     expect(loaded.activeDay?.queueIndex).toBe(0);
-    expect(loaded.composeDraftIngredientIds).toEqual(draftIds);
+    expect(loaded.activeDay?.floor?.selectedTicketId).toBe(ticketA);
+    expect(
+      loaded.activeDay?.floor?.tickets.find((ticket) => ticket.id === ticketA)?.ingredientIds,
+    ).toEqual(draftA);
+    expect(
+      loaded.activeDay?.floor?.tickets.find((ticket) => ticket.id === ticketB)?.ingredientIds,
+    ).toEqual(draftB);
 
-    const resumed = gameReducer(loaded, { type: 'SERVE_DISH', ingredientIds: draftIds }, testContext).state;
-    expect(resumed.activeDay?.customersServed).toBe(1);
-    expect(resumed.composeDraftIngredientIds).toBeUndefined();
-    expect(resumed.activeDay?.queueIndex).toBe(0);
+    const resumed = gameReducer(loaded, { type: 'FLOOR_PLATE', ticketId: ticketA }, testContext).state;
+    expect(resumed.activeDay?.floor?.carriedTicketId).toBe(ticketA);
+    expect(
+      resumed.activeDay?.floor?.tickets.find((ticket) => ticket.id === ticketB)?.ingredientIds,
+    ).toEqual(draftB);
   });
 
   it('restores mid-day floor progress including tickets and player position', async () => {
@@ -109,10 +241,15 @@ describe('persistence', () => {
     state = gameReducer(
       state,
       {
-        type: 'FLOOR_PLATE',
+        type: 'FLOOR_SET_TICKET_DRAFT',
         ticketId: ticket.id,
         ingredientIds: state.unlockedIngredientIds.slice(0, 3),
       },
+      testContext,
+    ).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_PLATE', ticketId: ticket.id },
       testContext,
     ).state;
 

@@ -56,8 +56,15 @@ function floorStateWithPlatedTicket() {
     testContext.ingredientsById,
     testContext.compoundAffinity,
   );
-  const plated = plateTicket(floor.tickets, ticketId, best.ingredientIds.slice(0, 3));
-  floor = { ...floor, tickets: plated.tickets, carriedTicketId: plated.carriedTicketId };
+  floor = {
+    ...floor,
+    tickets: floor.tickets.map((ticket) =>
+      ticket.id === ticketId
+        ? { ...ticket, ingredientIds: best.ingredientIds.slice(0, 3) }
+        : ticket,
+    ),
+  };
+  floor = plateTicket(floor, ticketId);
 
   const state = createNewGameState(42);
   const activeDay: ActiveDay = {
@@ -89,6 +96,21 @@ describe('deliverAndScore', () => {
     expect(guest.eatTicksRemaining).toBe(3);
     expect(result.state.activeDay!.floor!.carriedTicketId).toBeNull();
     expect(result.state.activeDay!.floor!.tickets[0]!.status).toBe('delivered');
+  });
+
+  it('selects the next open ticket after a successful delivery', () => {
+    const { state, ticketId } = floorStateWithPlatedTicket();
+    const floor = state.activeDay!.floor!;
+    state.activeDay = {
+      ...state.activeDay!,
+      floor: {
+        ...floor,
+        tickets: [...floor.tickets, openTicketFor('next', 'c2')],
+      },
+    };
+
+    const result = deliverAndScore(state, ticketId, testContext);
+    expect(result.state.activeDay!.floor!.selectedTicketId).toBe('next');
   });
 
   it('returns mastery metadata when a named recipe matches', () => {
@@ -160,3 +182,7 @@ describe('deliverAndScore', () => {
     expect(state).toEqual(before);
   });
 });
+
+function openTicketFor(id: string, customerId: string) {
+  return { id, customerId, ingredientIds: [], status: 'open' as const };
+}

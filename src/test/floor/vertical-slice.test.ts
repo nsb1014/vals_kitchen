@@ -93,7 +93,16 @@ describe('floor vertical slice loop', () => {
 
     state = gameReducer(
       state,
-      { type: 'FLOOR_PLATE', ticketId: ticket.id, ingredientIds: best.ingredientIds },
+      {
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: best.ingredientIds,
+      },
+      testContext,
+    ).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_PLATE', ticketId: ticket.id },
       testContext,
     ).state;
     expect(state.activeDay!.floor!.carriedTicketId).toBe(ticket.id);
@@ -204,7 +213,21 @@ describe('floor vertical slice loop', () => {
         );
         state = gameReducer(
           state,
-          { type: 'FLOOR_PLATE', ticketId: open.id, ingredientIds: combo.ingredientIds },
+          { type: 'FLOOR_SELECT_TICKET', ticketId: open.id },
+          testContext,
+        ).state;
+        state = gameReducer(
+          state,
+          {
+            type: 'FLOOR_SET_TICKET_DRAFT',
+            ticketId: open.id,
+            ingredientIds: combo.ingredientIds,
+          },
+          testContext,
+        ).state;
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_PLATE', ticketId: open.id },
           testContext,
         ).state;
         state = {

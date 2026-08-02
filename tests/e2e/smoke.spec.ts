@@ -18,7 +18,6 @@ import {
   serveCurrentCustomer,
   trackContentRequests,
   waitForGameReady,
-  waitForInteractiveBoot,
 } from './helpers.ts';
 
 test.describe('boot and rendering', () => {
@@ -182,8 +181,11 @@ test.describe('persistence', () => {
         customerIds: [seated.customer.id],
       });
       const draftIds = afterSeat.unlockedIngredientIds.slice(0, 3);
+      const ticket = bridge.getGameState().activeDay?.floor?.tickets.find((item) => item.status === 'open');
+      if (!ticket) throw new Error('expected open floor ticket');
       await bridge.dispatch({
-        type: 'SET_COMPOSE_DRAFT',
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
         ingredientIds: draftIds,
       });
     });
@@ -203,10 +205,17 @@ test.describe('persistence', () => {
     await expect
       .poll(async () => {
         const save = (await readSaveFromIndexedDb(page)) as {
-          gameState?: { composeDraftIngredientIds?: string[] };
-          composeDraftIngredientIds?: string[];
+          gameState?: {
+            activeDay?: {
+              floor?: {
+                selectedTicketId?: string | null;
+                tickets?: Array<{ id: string; ingredientIds?: string[] }>;
+              };
+            } | null;
+          };
         } | null;
-        return save?.gameState?.composeDraftIngredientIds?.length ?? save?.composeDraftIngredientIds?.length ?? 0;
+        const floor = save?.gameState?.activeDay?.floor;
+        return floor?.tickets?.find((ticket) => ticket.id === floor.selectedTicketId)?.ingredientIds?.length ?? 0;
       })
       .toBe(3);
 
@@ -217,6 +226,8 @@ test.describe('persistence', () => {
     expect(after.activeDay).not.toBeNull();
     expect(after.activeDay!.queueIndex).toBe(before.activeDay!.queueIndex);
     expect(after.composeDraftIngredientIds).toEqual(before.composeDraftIngredientIds);
+    expect(after.floorTicketDrafts).toEqual(before.floorTicketDrafts);
+    expect(after.selectedTicketId).toBe(before.selectedTicketId);
     await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
   });
 });

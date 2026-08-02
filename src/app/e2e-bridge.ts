@@ -4,13 +4,14 @@ import { isDayComplete } from '../domain/day/serve.ts';
 import type { GameAction } from '../domain/reducer.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
 import { getGameStateSnapshot, useGameStore, type Celebration } from '../store/game-store.ts';
+import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
 import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import type { SeatSlot } from '../domain/floor/types.ts';
 
-function reachableMainFloorCellBeside(seat: SeatSlot): {
+function reachableMainFloorCellBeside(seat: Pick<SeatSlot, 'x' | 'y'>): {
   x: number;
   y: number;
 } {
@@ -55,6 +56,8 @@ export interface E2eBridge {
     hydrated: boolean;
     activeDay: { queueIndex: number; customerCount: number } | null;
     composeDraftIngredientIds: string[];
+    floorTicketDrafts: Record<string, string[]>;
+    selectedTicketId: string | null;
     composeSheetOpen: boolean;
     pendingPlacementItemKey: string | null;
     screen: string;
@@ -118,6 +121,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getState() {
       const s = useGameStore.getState();
+      const floor = s.activeDay?.floor;
       return {
         day: s.day,
         cash: s.cash,
@@ -129,7 +133,11 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
               customerCount: s.activeDay.customers.length,
             }
           : null,
-        composeDraftIngredientIds: s.composeDraftIngredientIds ?? [],
+        composeDraftIngredientIds: selectComposeDraftIds(s),
+        floorTicketDrafts: Object.fromEntries(
+          floor?.tickets.map((ticket) => [ticket.id, [...ticket.ingredientIds]]) ?? [],
+        ),
+        selectedTicketId: floor?.selectedTicketId ?? null,
         composeSheetOpen: s.composeSheetOpen,
         pendingPlacementItemKey: s.pendingPlacementItemKey,
         screen: s.screen,
@@ -288,7 +296,8 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         unlockedIngredientIds: getDomainContext().ingredients.map((ingredient) => ingredient.id),
       });
       useGameStore.getState().setFloorSelectedTicket(openTicket.id);
-      const cookPosition = { x: station.x - 1, y: station.y };
+      useGameStore.getState().setActiveFloorRoom('main');
+      const cookPosition = reachableMainFloorCellBeside(station);
       const restaurantApp = getRestaurantApp();
       restaurantApp?.app.stop();
       restaurantApp?.nav.snapTo(cookPosition);
@@ -417,17 +426,28 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       if (open && !floor().carriedTicketId) {
         const guest = floor().pool.find((g) => g.customer.id === open.customerId);
         if (guest) {
-          const unlocked = useGameStore.getState().unlockedIngredientIds;
+          const beforeCook = useGameStore.getState();
+          const unlocked = beforeCook.unlockedIngredientIds;
           const combo = findBestMatchCombo(
             unlocked,
             guest.customer.preference,
             ctx.ingredientsById,
             ctx.compoundAffinity,
           );
+          const station = beforeCook.placements.find((placement) =>
+            beforeCook.purchasedEquipmentIds.includes(placement.itemKey),
+          );
+          if (!station) throw new Error('floor service fixture has no owned cook station');
+          beforeCook.setActiveFloorRoom('main');
+          beforeCook.setFloorNavPosition(reachableMainFloorCellBeside(station));
+          await dispatch({
+            type: 'FLOOR_SET_TICKET_DRAFT',
+            ticketId: open.id,
+            ingredientIds: combo.ingredientIds,
+          });
           await dispatch({
             type: 'FLOOR_PLATE',
             ticketId: open.id,
-            ingredientIds: combo.ingredientIds,
           });
           if (guest.seat) {
             useGameStore.getState().setFloorNavPosition(reachableMainFloorCellBeside(guest.seat));

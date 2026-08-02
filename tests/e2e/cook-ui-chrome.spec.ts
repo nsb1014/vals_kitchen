@@ -57,7 +57,10 @@ async function expectExpandedFlavorFitsLandscape(page: Page): Promise<void> {
     verticalFit.clientHeight + 1,
   );
   const pantry = await page.getByTestId('compose-pantry').boundingBox();
-  const ingredient = await page.getByTestId('ingredient-chip').first().boundingBox();
+  const ingredient = await page
+    .getByTestId('ingredient-chip')
+    .first()
+    .boundingBox();
   expect(pantry).not.toBeNull();
   expect(ingredient).not.toBeNull();
   expect(ingredient!.height).toBeLessThanOrEqual(pantry!.height + 1);
@@ -72,6 +75,7 @@ test.describe('cook sheet responsive chrome', () => {
       await page.setViewportSize({ width, height: 720 });
       await openCookFixture(page);
       await expect(page.getByTestId('ingredient-chip')).toHaveCount(100);
+      await expect(page.getByTestId('ingredient-inspect')).toHaveCount(100);
       await expect(page.getByTestId('compose-order-panel')).toBeVisible();
       await expect(page.getByTestId('compose-request-axis')).not.toHaveCount(0);
       await expect(
@@ -80,19 +84,30 @@ test.describe('cook sheet responsive chrome', () => {
       await expect(page.getByTestId('compose-search')).toHaveCount(0);
       await expect(page.locator('.compose-filters')).toBeVisible();
       await expect(page.locator('.compose-order-mobile-legend')).toBeVisible();
-      await expect(page.locator('.compose-request-bar[role="meter"]')).not.toHaveCount(0);
+      await expect(
+        page.locator('.compose-request-bars[aria-hidden="true"]'),
+      ).not.toHaveCount(0);
+      await expect(
+        page.locator('.compose-request-bar[role="meter"]'),
+      ).toHaveCount(0);
       await expectFooterInsideSheet(page);
       const pantry = await page.getByTestId('compose-pantry').boundingBox();
-      const orderPanel = await page.getByTestId('compose-order-panel').boundingBox();
+      const orderPanel = await page
+        .getByTestId('compose-order-panel')
+        .boundingBox();
       const close = await page.getByTestId('compose-close').boundingBox();
       expect(pantry).not.toBeNull();
       expect(orderPanel).not.toBeNull();
       expect(close).not.toBeNull();
       expect(pantry!.height).toBeGreaterThan(150);
-      expect(orderPanel!.y + orderPanel!.height).toBeLessThanOrEqual(pantry!.y + 1);
+      expect(orderPanel!.y + orderPanel!.height).toBeLessThanOrEqual(
+        pantry!.y + 1,
+      );
       expect(close!.width).toBeGreaterThanOrEqual(44);
       expect(close!.height).toBeGreaterThanOrEqual(44);
-      const filterBounds = await page.locator('.compose-axis-row').boundingBox();
+      const filterBounds = await page
+        .locator('.compose-axis-row')
+        .boundingBox();
       expect(filterBounds).not.toBeNull();
       for (const chip of await page
         .locator('.filter-axis-chip.requested:visible')
@@ -144,7 +159,7 @@ test.describe('cook sheet responsive chrome', () => {
     await page.setViewportSize({ width: 390, height: 720 });
     await openCookFixture(page);
     await expect(page.locator('.compose-flavor-mini')).toHaveCount(15);
-    await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(15);
+    await expect(page.locator('.compose-flavor-mini-value')).toHaveCount(0);
     const flavorToggle = page.getByTestId('compose-flavor-toggle');
     await expect(flavorToggle).toBeVisible();
     await expect(page.locator('.compose-flavor-mini').first()).toBeHidden();
@@ -161,7 +176,9 @@ test.describe('cook sheet responsive chrome', () => {
     await page.locator('.compose-flavor-strip').evaluate((element) => {
       element.scrollLeft = element.scrollWidth;
     });
-    const flavorStrip = await page.locator('.compose-flavor-strip').boundingBox();
+    const flavorStrip = await page
+      .locator('.compose-flavor-strip')
+      .boundingBox();
     const plate = await page.getByTestId('plate-btn').boundingBox();
     expect(flavorStrip).not.toBeNull();
     expect(plate).not.toBeNull();
@@ -210,6 +227,161 @@ test.describe('cook sheet responsive chrome', () => {
     );
   });
 
+  test('keeps compose qualitative while Tickets Ideal remains numeric', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openCookFixture(page);
+
+    const sheet = page.getByTestId('compose-sheet');
+    await expect(sheet.getByTestId('compose-request-axis')).not.toHaveCount(0);
+    await expect(sheet.locator('.compose-request-status')).not.toHaveCount(0);
+    for (const status of await sheet.locator('.compose-request-status').all()) {
+      await expect(status).toHaveText(
+        /^(Below request|In range|Above request)$/,
+      );
+    }
+    await expect(sheet.locator('[role="meter"]')).toHaveCount(0);
+    await expect(sheet.locator('[aria-valuenow]')).toHaveCount(0);
+    await expect(sheet.locator('.compose-flavor-mini-value')).toHaveCount(0);
+    await expect(sheet.locator('.compose-footer-copy')).not.toContainText(
+      'Current request match',
+    );
+    const requestCopy = await sheet
+      .locator('.compose-request-axis-list')
+      .innerText();
+    expect(requestCopy).not.toMatch(/\d+(?:\.\d+)?\s+(?:dish|target)/i);
+
+    await page.getByTestId('compose-close').click();
+    await page.getByTestId('floor-tickets-toggle').click();
+    await page.getByTestId('tickets-view-ideal').click();
+    await expect(
+      page.locator('.floor-tickets-ideal .flavor-bar-value'),
+    ).toHaveCount(15);
+    await expect(
+      page.locator('.floor-tickets-ideal [role="meter"][aria-valuenow]'),
+    ).toHaveCount(15);
+  });
+
+  test('inspects by pointer and keyboard without changing the selected draft', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openCookFixture(page);
+
+    await page.getByTestId('ingredient-chip').first().click();
+    const before = await page.evaluate(
+      () => window.__E2E__!.getState().composeDraftIngredientIds,
+    );
+    const firstInspect = page.getByTestId('ingredient-inspect').first();
+    const firstBounds = await firstInspect.boundingBox();
+    expect(firstBounds).not.toBeNull();
+    expect(firstBounds!.width).toBeGreaterThanOrEqual(44);
+    expect(firstBounds!.height).toBeGreaterThanOrEqual(44);
+
+    await firstInspect.click();
+    await expect(
+      page.locator('#flavor-inspector-modal [role="dialog"]'),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(firstInspect).toBeFocused();
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getState().composeDraftIngredientIds,
+      ),
+    ).toEqual(before);
+
+    const secondInspect = page.getByTestId('ingredient-inspect').nth(1);
+    await secondInspect.focus();
+    await secondInspect.press('Enter');
+    await expect(
+      page.locator('#flavor-inspector-modal [role="dialog"]'),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Back to compose' }).click();
+    await expect(secondInspect).toBeFocused();
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getState().composeDraftIngredientIds,
+      ),
+    ).toEqual(before);
+  });
+
+  test('restores independent A/B ticket drafts and plates the chosen ticket', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoFreshGame(page);
+    const ticketIds = await page.evaluate(async () => {
+      await window.__E2E__!.prepareTicketPanelFixture(2);
+      await window.__E2E__!.prepareCookUiFixture();
+      window.__E2E__!.openComposeSheet();
+      return window
+        .__E2E__!.getGameState()
+        .activeDay!.floor!.tickets.filter((ticket) => ticket.status === 'open')
+        .map((ticket) => ticket.id);
+    });
+    expect(ticketIds).toHaveLength(2);
+    await expect(page.getByTestId('compose-sheet')).toBeVisible();
+
+    for (let index = 0; index < 3; index += 1) {
+      await page.getByTestId('ingredient-chip').nth(index).click();
+    }
+    const draftA = await page.evaluate(
+      (ticketId) => window.__E2E__!.getState().floorTicketDrafts[ticketId],
+      ticketIds[0]!,
+    );
+    expect(draftA).toHaveLength(3);
+
+    const selectTicket = async (ticketId: string) => {
+      await page.getByTestId('compose-close').click();
+      await page.getByTestId('floor-tickets-toggle').click();
+      await page.locator(`[data-menu-ticket-id="${ticketId}"]`).click();
+      await page.getByTestId('floor-tickets-close').click();
+      await page.evaluate(() => window.__E2E__!.openComposeSheet());
+      await expect(page.getByTestId('compose-sheet')).toBeVisible();
+    };
+
+    await selectTicket(ticketIds[1]!);
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getState().composeDraftIngredientIds,
+      ),
+    ).toEqual([]);
+    for (let index = 3; index < 7; index += 1) {
+      await page.getByTestId('ingredient-chip').nth(index).click();
+    }
+    const draftB = await page.evaluate(
+      (ticketId) => window.__E2E__!.getState().floorTicketDrafts[ticketId],
+      ticketIds[1]!,
+    );
+    expect(draftB).toHaveLength(4);
+
+    await selectTicket(ticketIds[0]!);
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getState().composeDraftIngredientIds,
+      ),
+    ).toEqual(draftA);
+    await selectTicket(ticketIds[1]!);
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getState().composeDraftIngredientIds,
+      ),
+    ).toEqual(draftB);
+
+    await page.getByTestId('plate-btn').click();
+    await expect(page.getByTestId('compose-sheet')).toBeHidden();
+    const plated = await page.evaluate(
+      (ticketId) =>
+        window
+          .__E2E__!.getGameState()
+          .activeDay!.floor!.tickets.find((ticket) => ticket.id === ticketId),
+      ticketIds[1]!,
+    );
+    expect(plated?.status).toBe('plated');
+    expect(plated?.ingredientIds).toEqual(draftB);
+  });
+
   test('keeps a usable pantry across the upper mobile landscape breakpoint', async ({
     page,
   }) => {
@@ -247,7 +419,9 @@ test.describe('cook sheet responsive chrome', () => {
       'aria-hidden',
       'true',
     );
-    await page.evaluate(() => window.dispatchEvent(new Event('food-atlas-ready')));
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('food-atlas-ready')),
+    );
     await expect(page.getByTestId('compose-sheet')).toHaveAttribute(
       'aria-hidden',
       'true',
@@ -408,10 +582,9 @@ test.describe('consolidated mobile navigation', () => {
     expect(after.height).toBe(before.height);
 
     const catalog = page.getByTestId('layout-catalog-sheet');
-    await expect(catalog.getByRole('tab', { name: 'Ingredients' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    await expect(
+      catalog.getByRole('tab', { name: 'Ingredients' }),
+    ).toHaveAttribute('aria-selected', 'true');
     await expect(
       catalog.getByRole('tab', { name: 'Kitchen Equipment' }),
     ).toBeVisible();
@@ -437,9 +610,10 @@ test.describe('consolidated mobile navigation', () => {
     await gotoFreshGame(page);
     await navigateToScreen(page, 'recipes');
 
-    await expect(
-      page.getByRole('tab', { name: 'Flavors' }),
-    ).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Flavors' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await expect(page.getByTestId('recipe-flavor-detail')).toBeVisible();
   });
 });

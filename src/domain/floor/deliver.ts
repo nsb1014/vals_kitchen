@@ -83,6 +83,8 @@ export function deliverAndScore(
     carriedTicketId: null as string | null,
     selectedTicketId: null as string | null,
   };
+  floor.selectedTicketId =
+    floor.tickets.find((nextTicket) => nextTicket.status === 'open')?.id ?? null;
   floor = beginEating(floor, guest.customer.id, eatTicks);
 
   const next = cloneGameState(result.state);

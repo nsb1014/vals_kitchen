@@ -64,10 +64,7 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
   });
 }
 
-async function advanceFloorToCarryTicket(): Promise<{
-  ticketId: string;
-  floorBeforeSave: NonNullable<NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor']>;
-}> {
+async function advanceFloorToOpenTicket(): Promise<string> {
   await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
   useGameStore.getState().dismissModifier();
 
@@ -95,21 +92,64 @@ async function advanceFloorToCarryTicket(): Promise<{
   });
 
   const ticket = useGameStore.getState().activeDay!.floor!.tickets[0]!;
+  const station = useGameStore
+    .getState()
+    .placements.find((placement) => placement.itemKey === 'prep_station')!;
+  useGameStore
+    .getState()
+    .setFloorNavPosition({ x: station.x - 1, y: station.y });
+  return ticket.id;
+}
+
+async function advanceFloorToCarryTicket(): Promise<{
+  ticketId: string;
+  floorBeforeSave: NonNullable<NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor']>;
+}> {
+  const ticketId = await advanceFloorToOpenTicket();
   const ingredientIds = useGameStore.getState().unlockedIngredientIds.slice(0, 3);
   await useGameStore.getState().dispatch({
-    type: 'FLOOR_PLATE',
-    ticketId: ticket.id,
+    type: 'FLOOR_SET_TICKET_DRAFT',
+    ticketId,
     ingredientIds,
   });
+  await useGameStore.getState().dispatch({ type: 'FLOOR_PLATE', ticketId });
 
   const floorBeforeSave = useGameStore.getState().activeDay!.floor!;
-  expect(floorBeforeSave.carriedTicketId).toBe(ticket.id);
-  return { ticketId: ticket.id, floorBeforeSave };
+  expect(floorBeforeSave.carriedTicketId).toBe(ticketId);
+  return { ticketId, floorBeforeSave };
 }
 
 describe('floor autosave via store dispatch', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     resetStore(7777);
+  });
+
+  it('autosaves discrete movement and validated ticket selection for reload', async () => {
+    const ticketId = await advanceFloorToOpenTicket();
+    const autosaveSpy = vi
+      .spyOn(useGameStore.getState(), 'autosave')
+      .mockResolvedValue(undefined);
+
+    useGameStore.getState().setFloorSelectedTicket(null);
+    useGameStore.getState().setFloorSelectedTicket(ticketId);
+    useGameStore.getState().setFloorNavPosition({ x: 2, y: 5 });
+
+    expect(autosaveSpy).toHaveBeenCalledTimes(3);
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    await repo.save(getGameStateSnapshot());
+    resetStore(1);
+    applyHydratedState((await repo.load()).state!);
+
+    expect(useGameStore.getState().activeDay!.floor!.selectedTicketId).toBe(
+      ticketId,
+    );
+    expect(useGameStore.getState().activeDay!.floor!.playerPosition).toEqual({
+      x: 2,
+      y: 5,
+    });
+    expect(useGameStore.getState().floorPlayerGrid).toEqual({ x: 2, y: 5 });
   });
 
   it('autosaves floor tickets and carry state through save/load resume', async () => {

@@ -62,6 +62,60 @@ const defaultStorage: StorageAdapter = {
 export function createSaveRepository(storage: StorageAdapter = defaultStorage): SaveRepository {
   const readEnvelope = createReadEnvelope(storage);
 
+  interface SaveWaiter {
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  }
+
+  interface SaveBatch {
+    envelope: SaveEnvelope;
+    waiters: SaveWaiter[];
+  }
+
+  let activeSave: SaveBatch | null = null;
+  let pendingSave: SaveBatch | null = null;
+
+  async function writeEnvelope(envelope: SaveEnvelope): Promise<void> {
+    try {
+      const existing = await storage.get<unknown>(SAVE_KEY);
+      if (existing) {
+        await storage.set(BACKUP_KEY, existing);
+      }
+    } catch {
+      // backup write is best-effort
+    }
+    await storage.set(SAVE_KEY, envelope);
+  }
+
+  function pumpSaves(): void {
+    if (activeSave || !pendingSave) return;
+
+    const batch = pendingSave;
+    pendingSave = null;
+    activeSave = batch;
+
+    void writeEnvelope(batch.envelope).then(
+      () => {
+        activeSave = null;
+        if (pendingSave) {
+          // A caller awaiting an older successful write must not resume while a
+          // newer requested snapshot is still only pending.
+          pendingSave.waiters.unshift(...batch.waiters);
+        } else {
+          for (const waiter of batch.waiters) waiter.resolve();
+        }
+        pumpSaves();
+      },
+      (error: unknown) => {
+        activeSave = null;
+        for (const waiter of batch.waiters) waiter.reject(error);
+        // A failed write is local to its batch. A newer request still gets an
+        // independent attempt and the queue remains usable afterward.
+        pumpSaves();
+      },
+    );
+  }
+
   return {
     async load(): Promise<LoadResult> {
       try {
@@ -103,16 +157,19 @@ export function createSaveRepository(storage: StorageAdapter = defaultStorage): 
     },
 
     async save(state: GameState): Promise<void> {
+      // Snapshot synchronously. Callers may continue mutating their state while
+      // this request waits behind an active IndexedDB write.
       const envelope = createEnvelope(state);
-      try {
-        const existing = await storage.get<unknown>(SAVE_KEY);
-        if (existing) {
-          await storage.set(BACKUP_KEY, existing);
+      await new Promise<void>((resolve, reject) => {
+        const waiter = { resolve, reject };
+        if (pendingSave) {
+          pendingSave.envelope = envelope;
+          pendingSave.waiters.push(waiter);
+        } else {
+          pendingSave = { envelope, waiters: [waiter] };
         }
-      } catch {
-        // backup write is best-effort
-      }
-      await storage.set(SAVE_KEY, envelope);
+        pumpSaves();
+      });
     },
 
     async clear(): Promise<void> {
