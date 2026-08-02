@@ -384,7 +384,14 @@ describe('persistence', () => {
         floor: {
           ...state.activeDay!.floor!,
           pool: state.activeDay!.floor!.pool.map((guest, index) =>
-            index === 0 ? { ...guest, stage: 'seating' as const, seat: oldSeat } : guest,
+            index === 0
+              ? {
+                  ...guest,
+                  stage: 'seating' as const,
+                  seat: oldSeat,
+                  motionPosition: { x: lane!.x, y: lane!.y - 1 },
+                }
+              : guest,
           ),
         },
       },
@@ -413,7 +420,162 @@ describe('persistence', () => {
       ),
     );
     expect(resumed.seat).not.toEqual(oldSeat);
+    expect(resumed.motionPosition).toBeUndefined();
     expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
+  });
+
+  it('repairs a legacy guest-route trap and resets all in-flight motion anchors', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(
+      createNewGameState(808001),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const floor = state.activeDay!.floor!;
+    const seats = floor.seats.slice(0, 2);
+    const blockerPositions = [
+      { x: 1, y: 6 },
+      { x: 2, y: 5 },
+      { x: 3, y: 5 },
+      { x: 4, y: 6 },
+    ];
+    state = {
+      ...state,
+      placements: [
+        ...state.placements,
+        ...blockerPositions.map((position, index) => ({
+          id: `legacy_route_blocker_${index}`,
+          itemKey: 'decor_plant',
+          ...position,
+          rotation: 0,
+        })),
+      ],
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...floor,
+          pool: floor.pool.map((guest, index) => {
+            if (index === 0) {
+              return {
+                ...guest,
+                stage: 'entering' as const,
+                motionPosition: { x: 3, y: 6 },
+              };
+            }
+            if (index === 1) {
+              return {
+                ...guest,
+                stage: 'seating' as const,
+                seat: seats[0],
+                motionPosition: { x: 2, y: 5 },
+              };
+            }
+            if (index === 2) {
+              return {
+                ...guest,
+                stage: 'leaving' as const,
+                seat: seats[1],
+                motionPosition: { x: 4, y: 6 },
+              };
+            }
+            return guest;
+          }),
+        },
+      },
+    };
+
+    expect(
+      keepsGuestServiceReachable(
+        state.gridSize,
+        state.placements,
+        state.kitchenAnnexOwned,
+      ),
+    ).toBe(false);
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(
+      keepsGuestServiceReachable(
+        loaded.gridSize,
+        loaded.placements,
+        loaded.kitchenAnnexOwned,
+      ),
+    ).toBe(true);
+    expect(loaded.placements).not.toEqual(state.placements);
+    expect(
+      loaded.activeDay!.floor!.pool.slice(0, 3).map((guest) => ({
+        stage: guest.stage,
+        motionPosition: guest.motionPosition,
+      })),
+    ).toEqual([
+      { stage: 'entering', motionPosition: undefined },
+      { stage: 'seating', motionPosition: undefined },
+      { stage: 'leaving', motionPosition: undefined },
+    ]);
+    expect(loaded.activeDay!.floor!.pool[1]!.seat).toEqual(
+      loaded.activeDay!.floor!.seats.find(
+        (seat) =>
+          seat.tablePlacementId === seats[0]!.tablePlacementId &&
+          seat.slotIndex === seats[0]!.slotIndex,
+      ),
+    );
+    expect(loaded.activeDay!.floor!.pool[2]!.seat).toEqual(
+      loaded.activeDay!.floor!.seats.find(
+        (seat) =>
+          seat.tablePlacementId === seats[1]!.tablePlacementId &&
+          seat.slotIndex === seats[1]!.slotIndex,
+      ),
+    );
+  });
+
+  it('resets an out-of-bounds motion anchor after legacy annex migration', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(
+      createNewGameState(808002),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    state = {
+      ...state,
+      gridSize: { w: state.gridSize.w + 2, h: state.gridSize.h },
+      kitchenAnnexOwned: true,
+      placements: [
+        ...state.placements,
+        {
+          id: 'legacy_annex_station',
+          itemKey: 'grill',
+          x: state.gridSize.w,
+          y: 2,
+          rotation: 0,
+        },
+      ],
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          pool: state.activeDay!.floor!.pool.map((guest, index) =>
+            index === 0
+              ? {
+                  ...guest,
+                  stage: 'entering' as const,
+                  motionPosition: { x: state.gridSize.w, y: 5 },
+                }
+              : guest,
+          ),
+        },
+      },
+    };
+    delete (state as Partial<GameState>).backKitchenPlacements;
+
+    await repo.save(state);
+    const loaded = (await repo.load()).state!;
+    expect(loaded.gridSize).toEqual(createNewGameState(1).gridSize);
+    expect(loaded.backKitchenPlacements).toContainEqual(
+      expect.objectContaining({ id: 'legacy_annex_station', itemKey: 'grill' }),
+    );
+    expect(loaded.activeDay!.floor!.pool[0]!.motionPosition).toBeUndefined();
   });
 
   it('repairs a legacy layout that strands all service positions around a stool', async () => {
@@ -475,7 +637,7 @@ describe('persistence', () => {
     await repo.save(state);
     const loaded = (await repo.load()).state!;
     expect(loaded.placements.find((placement) => placement.id === 'table_2')).toMatchObject({
-      x: 2,
+      x: 5,
       y: 1,
     });
     expect(loaded.activeDay!.floor!.playerPosition).toEqual(
@@ -483,7 +645,7 @@ describe('persistence', () => {
     );
   });
 
-  it('backtracks legacy service repair instead of dropping later owned tables', async () => {
+  it('salvages an infeasible legacy service layout without losing table ownership', async () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
     const state = createNewGameState(80802);
@@ -517,9 +679,13 @@ describe('persistence', () => {
 
     await repo.save(state);
     const loaded = (await repo.load()).state!;
-    expect(loaded.placements).toHaveLength(state.placements.length);
-    expect(new Set(loaded.placements.map((placement) => placement.id))).toEqual(
-      new Set(state.placements.map((placement) => placement.id)),
+    expect(
+      loaded.placements.filter((placement) => placement.itemKey.startsWith('table')),
+    ).toHaveLength(5);
+    expect(loaded.tableCount).toBe(tablePositions.length);
+    expect(loaded.placements.some((placement) => placement.id === 'table_2')).toBe(false);
+    expect(loaded.placements).toContainEqual(
+      expect.objectContaining({ id: 'station_prep', itemKey: 'prep_station' }),
     );
     expect(
       keepsGuestServiceReachable(
@@ -528,7 +694,46 @@ describe('persistence', () => {
         loaded.kitchenAnnexOwned,
       ),
     ).toBe(true);
-    expect(loaded.seatingCapacity).toBe(tablePositions.length * 2);
+    expect(loaded.seatingCapacity).toBe(seatsFromPlacements(loaded.placements).length);
+  });
+
+  it('returns one excess rug to inventory before dropping route-safe tables', () => {
+    const state = createNewGameState(808021);
+    state.gridSize = { w: 7, h: 6 };
+    state.placements = [
+      { id: 'table_kept', itemKey: 'table_2seat', x: 2, y: 1, rotation: 0 },
+      { id: 'station_kept', itemKey: 'prep_station', x: 5, y: 2, rotation: 0 },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        id: `legacy_rug_${index}`,
+        itemKey: 'decor_rug',
+        x: 1 + (index % 3),
+        y: 2 + (Math.floor(index / 3) % 3),
+        rotation: 0,
+      })),
+    ];
+    state.tableCount = 1;
+    state.decorPurchasedCounts.decor_rug = 8;
+
+    const loaded = normalizeGameState(state);
+    expect(loaded.placements).toContainEqual(
+      expect.objectContaining({ id: 'table_kept', itemKey: 'table_2seat' }),
+    );
+    expect(loaded.placements).toContainEqual(
+      expect.objectContaining({ id: 'station_kept', itemKey: 'prep_station' }),
+    );
+    expect(
+      loaded.placements.filter((placement) => placement.itemKey === 'decor_rug'),
+    ).toHaveLength(7);
+    expect(loaded.tableCount).toBe(1);
+    expect(loaded.decorPurchasedCounts.decor_rug).toBe(8);
+    expect(loaded.seatingCapacity).toBe(2);
+    expect(
+      keepsGuestServiceReachable(
+        loaded.gridSize,
+        loaded.placements,
+        loaded.kitchenAnnexOwned,
+      ),
+    ).toBe(true);
   });
 
   it(

@@ -4,6 +4,9 @@ import { EQUIPMENT_IDS } from '../types.ts';
 import { guestServicePositions } from './interact.ts';
 import { seatsFromPlacements } from './seats.ts';
 import {
+  doorForGrid,
+  guestDoorwayLane,
+  guestWaitingAlcove,
   isPerimeterWallCell,
   mainGuestEntranceReservedCells,
   openDoorCellsForRoom,
@@ -21,14 +24,20 @@ export function isWalkBlockingPlacement(placement: Placement): boolean {
   );
 }
 
-function mainFloorReachability(
+type GridCell = { x: number; y: number };
+
+const CARDINAL_DIRECTIONS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+
+function mainFloorPhysicalOccupancy(
   gridSize: { w: number; h: number },
   placements: Placement[],
   kitchenAnnexOwned: boolean,
-): {
-  spawn: { x: number; y: number };
-  reachable: Set<string>;
-} {
+): Set<string> {
   const { w, h } = gridSize;
   const blocked = new Set<string>();
   for (const placement of placements) {
@@ -50,23 +59,27 @@ function mainFloorReachability(
       }
     }
   }
-  for (const cell of mainGuestEntranceReservedCells(w, h)) {
-    blocked.add(`${cell.x},${cell.y}`);
+
+  return blocked;
+}
+
+function reachableFrom(
+  gridSize: { w: number; h: number },
+  blocked: ReadonlySet<string>,
+  start: GridCell,
+): Set<string> {
+  const { w, h } = gridSize;
+  const reachable = new Set<string>();
+  if (blocked.has(`${start.x},${start.y}`)) return reachable;
+  if (start.x < 0 || start.y < 0 || start.x >= w || start.y >= h) {
+    return reachable;
   }
 
-  const spawn = servicePlayerSpawn(w, h);
-  const reachable = new Set<string>();
-  if (blocked.has(`${spawn.x},${spawn.y}`)) return { spawn, reachable };
-  reachable.add(`${spawn.x},${spawn.y}`);
-  const queue = [spawn];
+  reachable.add(`${start.x},${start.y}`);
+  const queue = [start];
   for (let index = 0; index < queue.length; index += 1) {
     const current = queue[index]!;
-    for (const [dx, dy] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ] as const) {
+    for (const [dx, dy] of CARDINAL_DIRECTIONS) {
       const x = current.x + dx;
       const y = current.y + dy;
       const key = `${x},${y}`;
@@ -76,13 +89,48 @@ function mainFloorReachability(
       queue.push({ x, y });
     }
   }
-  return { spawn, reachable };
+  return reachable;
+}
+
+function hasReachableSeatEndpoint(
+  seat: GridCell,
+  reachable: ReadonlySet<string>,
+): boolean {
+  // Seats remain blocked transit cells. Guest pathfinding permits the assigned
+  // seat only as its endpoint, which is equivalent to reaching one cardinal
+  // neighbor and taking a final step onto the stool.
+  return CARDINAL_DIRECTIONS.some(([dx, dy]) =>
+    reachable.has(`${seat.x + dx},${seat.y + dy}`),
+  );
+}
+
+function mainFloorPlayerReachability(
+  gridSize: { w: number; h: number },
+  placements: Placement[],
+  kitchenAnnexOwned: boolean,
+): {
+  spawn: GridCell;
+  reachable: Set<string>;
+} {
+  const blocked = mainFloorPhysicalOccupancy(
+    gridSize,
+    placements,
+    kitchenAnnexOwned,
+  );
+  for (const cell of mainGuestEntranceReservedCells(gridSize.w, gridSize.h)) {
+    blocked.add(`${cell.x},${cell.y}`);
+  }
+  const spawn = servicePlayerSpawn(gridSize.w, gridSize.h);
+  return { spawn, reachable: reachableFrom(gridSize, blocked, spawn) };
 }
 
 /**
- * True when Val can reach a personal-space service cell for every stool from
- * the service-day spawn. Shared by edit validation and legacy-save repair so
- * both paths enforce exactly the same core-loop invariant.
+ * True when every route needed for table service is physically possible:
+ * Val can reach a personal-space service cell from her service-day spawn;
+ * arriving guests can walk from the waiting alcove to every stool; and a guest
+ * can leave every stool through the doorway lane while the alcove is occupied.
+ * Shared by edit validation and legacy-save repair so both paths enforce the
+ * same core-loop invariants.
  */
 export function keepsGuestServiceReachable(
   gridSize: { w: number; h: number },
@@ -90,18 +138,46 @@ export function keepsGuestServiceReachable(
   kitchenAnnexOwned: boolean,
 ): boolean {
   const seats = seatsFromPlacements(placements);
-  // One flood fill answers reachability for every stool. Running a separate
-  // A* per candidate made bounded legacy-layout search unnecessarily costly.
-  const { spawn, reachable } = mainFloorReachability(
+  const { spawn, reachable: playerReachable } = mainFloorPlayerReachability(
     gridSize,
     placements,
     kitchenAnnexOwned,
   );
-  if (!reachable.has(`${spawn.x},${spawn.y}`)) return false;
+  if (!playerReachable.has(`${spawn.x},${spawn.y}`)) return false;
+  if (
+    !seats.every((seat) =>
+      guestServicePositions(seat).some((position) =>
+        playerReachable.has(`${position.x},${position.y}`),
+      ),
+    )
+  ) {
+    return false;
+  }
+  if (seats.length === 0) return true;
+
+  // A pair of flood fills answers both guest-route checks for every stool;
+  // seats stay blocked and are admitted only as route endpoints.
+  const physical = mainFloorPhysicalOccupancy(
+    gridSize,
+    placements,
+    kitchenAnnexOwned,
+  );
+  const door = doorForGrid(gridSize.w, gridSize.h);
+  const waiting = guestWaitingAlcove(door);
+  const arrivalReachable = reachableFrom(gridSize, physical, waiting);
+  if (!seats.every((seat) => hasReachableSeatEndpoint(seat, arrivalReachable))) {
+    return false;
+  }
+
+  const departureBlocked = new Set(physical);
+  departureBlocked.add(`${waiting.x},${waiting.y}`);
+  const departureReachable = reachableFrom(
+    gridSize,
+    departureBlocked,
+    guestDoorwayLane(door),
+  );
   return seats.every((seat) =>
-    guestServicePositions(seat).some((position) =>
-      reachable.has(`${position.x},${position.y}`),
-    ),
+    hasReachableSeatEndpoint(seat, departureReachable),
   );
 }
 
@@ -112,7 +188,7 @@ export function recoverMainFloorPlayerPosition(
   kitchenAnnexOwned: boolean,
   saved: { x: number; y: number } | undefined,
 ): { x: number; y: number } {
-  const { spawn, reachable } = mainFloorReachability(
+  const { spawn, reachable } = mainFloorPlayerReachability(
     gridSize,
     placements,
     kitchenAnnexOwned,

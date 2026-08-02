@@ -5,6 +5,7 @@ import { TILE_PX } from '../../canvas/coordinates.ts';
 import { seatSitWorldPosition } from '../../canvas/world/seat-sit.ts';
 import { waitingGuestWorldPosition } from '../../canvas/world/waiting-line.ts';
 import type { FloorDay, FloorGuest, SeatSlot } from '../../domain/floor/types.ts';
+import type { GridPoint, WalkGrid } from '../../domain/floor/pathfinding.ts';
 import type { Customer } from '../../domain/day/types.ts';
 
 function guest(partial: Partial<FloorGuest> & Pick<FloorGuest, 'id' | 'stage'>): FloorGuest {
@@ -34,7 +35,18 @@ function floorWith(pool: FloorGuest[]): FloorDay {
 }
 
 const door = { x: 3, y: 7 };
-const grid = { w: 10, h: 8, blocked: new Set<string>() };
+const grid: WalkGrid = { w: 10, h: 8, blocked: new Set<string>() };
+
+function sealedGridWithOpen(...openCells: GridPoint[]): WalkGrid {
+  const open = new Set(openCells.map((cell) => `${cell.x},${cell.y}`));
+  const blocked = new Set<string>();
+  for (let y = 0; y < grid.h; y++) {
+    for (let x = 0; x < grid.w; x++) {
+      if (!open.has(`${x},${y}`)) blocked.add(`${x},${y}`);
+    }
+  }
+  return { ...grid, blocked };
+}
 
 function seat(id: string, x: number, y: number): SeatSlot {
   return {
@@ -50,8 +62,9 @@ function sync(
   motion: GuestMotion,
   guests: FloorGuest[],
   dtMs = 50,
+  walkGrid = grid,
 ): GuestMotionSyncResult {
-  return motion.sync(floorWith(guests), { door, grid, dtMs });
+  return motion.sync(floorWith(guests), { door, grid: walkGrid, dtMs });
 }
 
 describe('GuestMotion', () => {
@@ -73,6 +86,29 @@ describe('GuestMotion', () => {
     expect(pose.isMoving).toBe(true);
   });
 
+  it('holds an entering guest at the door when no route exists and retries later', () => {
+    const motion = new GuestMotion();
+    const entering = guest({ id: 'g1', stage: 'entering' });
+    const sealed = sealedGridWithOpen(door);
+    const doorWorld = {
+      worldX: door.x * TILE_PX + TILE_PX / 2,
+      worldY: door.y * TILE_PX + TILE_PX / 2,
+    };
+
+    for (let i = 0; i < 12; i++) {
+      const result = sync(motion, [entering], 100, sealed);
+      expect(result.enteredGuestIds).toEqual([]);
+      expect(motion.pose(entering.id)).toMatchObject({
+        ...doorWorld,
+        isMoving: false,
+        walkFrame: 0,
+      });
+    }
+
+    sync(motion, [entering], 0, grid);
+    expect(motion.pose(entering.id)!.isMoving).toBe(true);
+  });
+
   it('reconstructs a seating guest from its persisted mid-walk cell', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 0, 2);
@@ -92,6 +128,60 @@ describe('GuestMotion', () => {
     expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
     expect(pose.isMoving).toBe(true);
   });
+
+  it('holds a seating guest at its current cell when the seat is unreachable', () => {
+    const motion = new GuestMotion();
+    const anchor = { x: 2, y: 4 };
+    const seating = guest({
+      id: 'g1',
+      stage: 'seating',
+      seat: seat('table_1', 6, 2),
+      motionPosition: anchor,
+    });
+    const sealed = sealedGridWithOpen(anchor);
+    const expectedPose = {
+      worldX: anchor.x * TILE_PX + TILE_PX / 2,
+      worldY: anchor.y * TILE_PX + TILE_PX / 2,
+    };
+
+    for (let i = 0; i < 12; i++) {
+      const result = sync(motion, [seating], 100, sealed);
+      expect(result.seatedGuestIds).toEqual([]);
+      expect(motion.pose(seating.id)).toMatchObject({
+        ...expectedPose,
+        isMoving: false,
+        isSeated: false,
+        walkFrame: 0,
+      });
+    }
+  });
+
+  it.each(['seated', 'ordered', 'eating'] as const)(
+    'holds a %s guest at its current cell when seat recovery has no route',
+    (stage) => {
+      const motion = new GuestMotion();
+      const waiting = guest({ id: 'g1', stage: 'waiting' });
+      const assignedSeat = seat('table_1', 6, 2);
+      const currentCell = { x: door.x - 1, y: door.y - 1 };
+      const currentWorld = waitingGuestWorldPosition(door, 0);
+      const sealed = sealedGridWithOpen(currentCell);
+
+      sync(motion, [waiting], 0, sealed);
+      const recovering = { ...waiting, stage, seat: assignedSeat };
+
+      for (let i = 0; i < 12; i++) {
+        const result = sync(motion, [recovering], 100, sealed);
+        expect(result.seatedGuestIds).toEqual([]);
+        expect(motion.pose(recovering.id)).toMatchObject({
+          worldX: currentWorld.x,
+          worldY: currentWorld.y,
+          isMoving: false,
+          isSeated: false,
+          walkFrame: 0,
+        });
+      }
+    },
+  );
 
   it('reports seating only after the guest walks from the waiting anchor to the seat', () => {
     const motion = new GuestMotion();
@@ -181,6 +271,25 @@ describe('GuestMotion', () => {
     expect(end.worldX).toBe(door.x * TILE_PX + TILE_PX / 2);
     expect(end.worldY).toBe(door.y * TILE_PX + TILE_PX / 2);
     expect(sync(motion, [leaving]).exitedGuestIds).toEqual([]);
+  });
+
+  it('holds a leaving guest at its current pose when the door is unreachable', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 6, 2);
+    const leaving = guest({ id: 'g1', stage: 'leaving', seat: assignedSeat });
+    const seatedAt = seatSitWorldPosition(assignedSeat);
+    const sealed = sealedGridWithOpen({ x: assignedSeat.x, y: assignedSeat.y });
+
+    for (let i = 0; i < 12; i++) {
+      const result = sync(motion, [leaving], 100, sealed);
+      expect(result.exitedGuestIds).toEqual([]);
+      expect(motion.pose(leaving.id)).toMatchObject({
+        worldX: seatedAt.x,
+        worldY: seatedAt.y,
+        isMoving: false,
+        walkFrame: 0,
+      });
+    }
   });
 
   it('keeps the waiting alcove clear of a simultaneous departure', () => {

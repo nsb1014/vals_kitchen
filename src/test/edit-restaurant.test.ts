@@ -97,6 +97,36 @@ describe('edit restaurant placement rules', () => {
     ).toBe(false);
   });
 
+  it('rejects exact blockers that isolate the guest alcove and departure lane', () => {
+    const state = createNewGameState(10211);
+    const blockerPositions = [
+      { x: 1, y: 6 },
+      { x: 2, y: 5 },
+      { x: 3, y: 5 },
+    ];
+    state.placements = [
+      ...state.placements,
+      ...blockerPositions.map((position, index) => ({
+        id: `route_blocker_${index}`,
+        itemKey: 'decor_plant',
+        ...position,
+        rotation: 0,
+      })),
+    ];
+    const before = structuredClone(state.placements);
+
+    expect(
+      validatePlacement(state, {
+        id: 'route_blocker_3',
+        itemKey: 'decor_plant',
+        x: 4,
+        y: 6,
+        rotation: 0,
+      }),
+    ).toBe(false);
+    expect(state.placements).toEqual(before);
+  });
+
   it('keeps the service-day spawn open even when the layout has no stools', () => {
     const state = createNewGameState(1022);
     state.gridSize = { w: 4, h: 4 };

@@ -213,11 +213,13 @@ export class GuestMotion {
       this.hiddenDoorEntrants.delete(guest.id);
       const waitCell = waitingAreaGridAnchor(opts.door);
       if (!this.enterStarted.has(guest.id)) {
-        this.enterStarted.add(guest.id);
-        const path =
-          findPath(opts.grid, nav.position, waitCell, { allowBlockedEndpoints: true }) ??
-          directPath(nav.position, waitCell);
-        nav.setPath(path);
+        const path = findPath(opts.grid, nav.position, waitCell, {
+          allowBlockedEndpoints: true,
+        });
+        if (path) {
+          this.enterStarted.add(guest.id);
+          nav.setPath(path);
+        }
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
       if (!nav.isMoving && nav.position.x === waitCell.x && nav.position.y === waitCell.y) {
@@ -257,10 +259,10 @@ export class GuestMotion {
         nav.position.y === seatCell.y;
 
       if (!atSeat && !nav.isMoving) {
-        const path =
-          findPath(opts.grid, nav.position, seatCell, { allowBlockedEndpoints: true }) ??
-          directPath(nav.position, seatCell);
-        nav.setPath(path);
+        const path = findPath(opts.grid, nav.position, seatCell, {
+          allowBlockedEndpoints: true,
+        });
+        if (path) nav.setPath(path);
       }
 
       if (opts.dtMs > 0) nav.update(opts.dtMs);
@@ -305,15 +307,19 @@ export class GuestMotion {
       this.seatedIds.delete(guest.id);
 
       if (!nav.isMoving) {
-        const path =
-          findPath(opts.grid, nav.position, seatCell, { allowBlockedEndpoints: true }) ??
-          directPath(nav.position, seatCell);
-        nav.setPath(path);
+        const path = findPath(opts.grid, nav.position, seatCell, {
+          allowBlockedEndpoints: true,
+        });
+        if (path) nav.setPath(path);
       }
 
       if (opts.dtMs > 0) nav.update(opts.dtMs);
 
-      if (!nav.isMoving) {
+      if (
+        !nav.isMoving &&
+        nav.position.x === seatCell.x &&
+        nav.position.y === seatCell.y
+      ) {
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
@@ -335,18 +341,18 @@ export class GuestMotion {
         const waiting = waitingAreaGridAnchor(door);
         const departureBlocked = new Set(opts.grid.blocked);
         departureBlocked.add(`${waiting.x},${waiting.y}`);
-        const toLane =
-          findPath(
-            { ...opts.grid, blocked: departureBlocked },
-            nav.position,
-            lane,
-            { allowBlockedEndpoints: true },
-          ) ??
-          directPath(nav.position, lane);
-        const path = [...toLane];
-        const tail = path[path.length - 1];
-        if (!tail || tail.x !== door.x || tail.y !== door.y) path.push(door);
-        nav.setPath(path);
+        const toLane = findPath(
+          { ...opts.grid, blocked: departureBlocked },
+          nav.position,
+          lane,
+          { allowBlockedEndpoints: true },
+        );
+        if (toLane) {
+          const path = [...toLane];
+          const tail = path[path.length - 1];
+          if (!tail || tail.x !== door.x || tail.y !== door.y) path.push(door);
+          nav.setPath(path);
+        }
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
       if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) {
@@ -422,14 +428,6 @@ export class GuestMotion {
 
 function isMotionStage(stage: FloorGuest['stage']): boolean {
   return stage === 'entering' || stage === 'seating' || stage === 'leaving';
-}
-
-function directPath(from: GridPoint, to: GridPoint): GridPoint[] {
-  if (from.x === to.x && from.y === to.y) return [{ ...from }];
-  return [
-    { ...from },
-    { ...to },
-  ];
 }
 
 export { TILE_PX };
