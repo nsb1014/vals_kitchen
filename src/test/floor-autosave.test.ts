@@ -66,9 +66,7 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
 
 async function advanceFloorToCarryTicket(): Promise<{
   ticketId: string;
-  floorBeforeSave: NonNullable<
-    NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor']
-  >;
+  floorBeforeSave: NonNullable<NonNullable<ReturnType<typeof getGameStateSnapshot>['activeDay']>['floor']>;
 }> {
   await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
   useGameStore.getState().dismissModifier();
@@ -82,6 +80,12 @@ async function advanceFloorToCarryTicket(): Promise<{
   }
   await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
   await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+
+  const seating = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seating')!;
+  await useGameStore.getState().dispatch({
+    type: 'FLOOR_COMPLETE_SEATING',
+    guestId: seating.id,
+  });
 
   const seated = useGameStore.getState().activeDay!.floor!.pool.find((g) => g.stage === 'seated')!;
   useGameStore.getState().setFloorNavPosition({ ...seated.seat! });
@@ -133,6 +137,40 @@ describe('floor autosave via store dispatch', () => {
     expect(floor!.playerPosition).toEqual(floorBeforeSave.playerPosition);
     expect(resumed.floorPlayerGrid).toEqual(floorBeforeSave.playerPosition);
     expect(canonicalize(floor)).toBe(canonicalize(floorBeforeSave));
+  });
+
+  it('autosaves an in-flight seating reservation through reload', async () => {
+    const autosaveSpy = vi.spyOn(useGameStore.getState(), 'autosave').mockResolvedValue(undefined);
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    useGameStore.getState().dismissModifier();
+    for (const table of useGameStore.getState().activeDay!.floor!.tables) {
+      await useGameStore.getState().dispatch({
+        type: 'FLOOR_SET_TABLE',
+        placementId: table.placementId,
+      });
+    }
+    await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+    await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+
+    const beforeSave = useGameStore.getState().activeDay!.floor!;
+    const seating = beforeSave.pool.find((guest) => guest.stage === 'seating')!;
+    expect(seating.seat).toBeDefined();
+    expect(autosaveSpy).toHaveBeenCalled();
+
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    await repo.save(getGameStateSnapshot());
+    resetStore(1);
+    applyHydratedState((await repo.load()).state!);
+
+    const resumed = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.id === seating.id)!;
+    expect(resumed.stage).toBe('seating');
+    expect(resumed.seat).toEqual(seating.seat);
+    expect(
+      useGameStore
+        .getState()
+        .activeDay!.floor!.tables.find((table) => table.placementId === resumed.seat!.tablePlacementId)?.state,
+    ).toBe('occupied');
   });
 
   it('dismisses pending review without touching floor state', async () => {

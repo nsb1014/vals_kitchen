@@ -1,9 +1,5 @@
 import { expect, test } from '@playwright/test';
-import {
-  assertCanvasHasRenderedContent,
-  assertNoDiagnostics,
-  gotoFreshGame,
-} from './helpers.ts';
+import { assertCanvasHasRenderedContent, assertNoDiagnostics, gotoFreshGame } from './helpers.ts';
 
 /**
  * Capture a seated floor frame for agent visual QA.
@@ -21,7 +17,10 @@ test('captures seated floor for visual QA', async ({ page }) => {
     const floor = () => e2e.getGameState().activeDay!.floor!;
     for (const table of floor().tables) {
       if (table.state === 'unset') {
-        await e2e.dispatch({ type: 'FLOOR_SET_TABLE', placementId: table.placementId });
+        await e2e.dispatch({
+          type: 'FLOOR_SET_TABLE',
+          placementId: table.placementId,
+        });
       }
     }
     if (floor().pool.some((guest) => guest.stage === 'entering')) {
@@ -31,6 +30,12 @@ test('captures seated floor for visual QA', async ({ page }) => {
     for (let i = 0; i < 4; i += 1) {
       if (!floor().pool.some((guest) => guest.stage === 'waiting')) break;
       await e2e.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      const seating = floor().pool.find((guest) => guest.stage === 'seating');
+      if (!seating) throw new Error('expected seating guest');
+      await e2e.dispatch({
+        type: 'FLOOR_COMPLETE_SEATING',
+        guestId: seating.id,
+      });
     }
   });
 
@@ -49,9 +54,7 @@ test('captures seated floor for visual QA', async ({ page }) => {
   const authoredActors = metrics.filter((m) => m.tex === '128x160' && m.height === 60);
   const player = authoredActors[0];
   const seatedSprite = authoredActors.find(
-    (candidate) =>
-      candidate !== player &&
-      Math.hypot(candidate.x - player!.x, candidate.y - player!.y) > 24,
+    (candidate) => candidate !== player && Math.hypot(candidate.x - player!.x, candidate.y - player!.y) > 24,
   );
   expect(player, 'player sprite').toBeTruthy();
   expect(seatedSprite, 'seated guest sprite').toBeTruthy();
@@ -60,9 +63,7 @@ test('captures seated floor for visual QA', async ({ page }) => {
   expect(player!.alpha).toBe(1);
   expect(seatedSprite!.alpha).toBe(1);
   // Cook must not stand on the same seat cell as a diner (ghost stack).
-  expect(Math.hypot(player!.x - seatedSprite!.x, player!.y - seatedSprite!.y)).toBeGreaterThan(
-    24,
-  );
+  expect(Math.hypot(player!.x - seatedSprite!.x, player!.y - seatedSprite!.y)).toBeGreaterThan(24);
 
   const canvasStyle = await page.evaluate(() => {
     const canvas = document.querySelector('[data-testid="restaurant-canvas"]') as HTMLCanvasElement;

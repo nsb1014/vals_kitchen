@@ -21,6 +21,8 @@ export {
   admitNextGuest,
   beginEating,
   completeGuestEntering,
+  completeGuestLeaving,
+  completeGuestSeating,
   createFloorDayFromCustomers,
   isFloorDayComplete,
   seatNextWaiting,

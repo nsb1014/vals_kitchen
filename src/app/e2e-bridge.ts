@@ -1,37 +1,26 @@
-import {
-  computeCameraCenter,
-  gridToWorld,
-  worldToScreen,
-} from '../canvas/coordinates.ts';
+import { computeCameraCenter, gridToWorld, worldToScreen } from '../canvas/coordinates.ts';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
 import type { GameAction } from '../domain/reducer.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
-import {
-  getGameStateSnapshot,
-  useGameStore,
-  type Celebration,
-} from '../store/game-store.ts';
-import {
-  getDomainContext,
-  isRecipesContentReady,
-  isScoringContentReady,
-} from './content-loader.ts';
+import { getGameStateSnapshot, useGameStore, type Celebration } from '../store/game-store.ts';
+import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
 import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import type { SeatSlot } from '../domain/floor/types.ts';
 
-function reachableMainFloorCellBeside(seat: SeatSlot): { x: number; y: number } {
+function reachableMainFloorCellBeside(seat: SeatSlot): {
+  x: number;
+  y: number;
+} {
   const state = useGameStore.getState();
   const floor = state.activeDay?.floor;
   if (!floor) throw new Error('No active floor for guest approach');
-  const blocked = walkBlockedCells(
-    state.placements,
-    state.gridSize.w,
-    state.gridSize.h,
-    { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
-  );
+  const blocked = walkBlockedCells(state.placements, state.gridSize.w, state.gridSize.h, {
+    kitchenAnnexOwned: state.kitchenAnnexOwned,
+    room: 'main',
+  });
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
       const candidate = { x: seat.x + dx, y: seat.y + dy };
@@ -44,13 +33,7 @@ function reachableMainFloorCellBeside(seat: SeatSlot): { x: number; y: number } 
       ) {
         continue;
       }
-      if (
-        findPath(
-          { w: state.gridSize.w, h: state.gridSize.h, blocked },
-          floor.playerPosition,
-          candidate,
-        )
-      ) {
+      if (findPath({ w: state.gridSize.w, h: state.gridSize.h, blocked }, floor.playerPosition, candidate)) {
         return candidate;
       }
     }
@@ -83,19 +66,14 @@ export interface E2eBridge {
   gridCellToScreen: (gx: number, gy: number) => { x: number; y: number };
   exportSaveCode: () => string;
   /** Drive one step of the floor service loop (for e2e smoke). */
-  advanceFloorServiceOnce: () => Promise<
-    'pending_review' | 'day_complete' | 'advanced' | 'idle'
-  >;
+  advanceFloorServiceOnce: () => Promise<'pending_review' | 'day_complete' | 'advanced' | 'idle'>;
   /** Run the full floor day to summary (dismisses reviews, closes day). */
   completeFloorServiceDay: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
-  prepareTicketPanelFixture: (
-    ticketCount: number,
-    carrying?: boolean,
-  ) => Promise<void>;
+  prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
   openComposeSheet: () => void;
   openFlavorInspector: (ingredientId: string) => void;
   /** Debug: live actor sprite sizes after floor sync (Playwright visual QA). */
@@ -111,6 +89,8 @@ export interface E2eBridge {
     y: number;
     zIndex: number;
   }>;
+  /** Debug: current rendered anchor for one guest actor. */
+  getGuestScreenAnchor: (guestId: string) => { x: number; y: number } | null;
   setFloorToast: (message: string | null) => void;
   enqueueCelebration: (celebration: Celebration) => void;
 }
@@ -122,9 +102,7 @@ declare global {
 }
 
 /** Hooks for Playwright when `?e2e=1` is present. */
-export function installE2eBridge(
-  getRestaurantApp: () => RestaurantApp | null,
-): void {
+export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): void {
   if (typeof window === 'undefined') return;
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
 
@@ -166,20 +144,13 @@ export function installE2eBridge(
     isRecipesReady: () => isRecipesContentReady(),
 
     gridCellToScreen(gx: number, gy: number) {
-      const canvas = document.querySelector(
-        '[data-testid="restaurant-canvas"]',
-      ) as HTMLCanvasElement | null;
+      const canvas = document.querySelector('[data-testid="restaurant-canvas"]') as HTMLCanvasElement | null;
       if (!canvas) {
         throw new Error('restaurant canvas not mounted');
       }
       const rect = canvas.getBoundingClientRect();
       const state = useGameStore.getState();
-      const camera = computeCameraCenter(
-        state.gridSize.w,
-        state.gridSize.h,
-        canvas.clientWidth,
-        canvas.clientHeight,
-      );
+      const camera = computeCameraCenter(state.gridSize.w, state.gridSize.h, canvas.clientWidth, canvas.clientHeight);
       const world = gridToWorld(gx, gy);
       const screen = worldToScreen(world.x + 8, world.y + 8, camera);
       return { x: rect.left + screen.x, y: rect.top + screen.y };
@@ -254,6 +225,10 @@ export function installE2eBridge(
       return out.sort((a, b) => a.y - b.y);
     },
 
+    getGuestScreenAnchor(guestId) {
+      return getRestaurantApp()?.getGuestScreenAnchor(guestId) ?? null;
+    },
+
     dismissPendingReview() {
       useGameStore.getState().dismissPendingReview();
     },
@@ -273,21 +248,18 @@ export function installE2eBridge(
           });
         }
       }
-      if (
-        useGameStore
-          .getState()
-          .activeDay!.floor!.pool.some((guest) => guest.stage === 'entering')
-      ) {
-        await useGameStore
-          .getState()
-          .dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+      if (useGameStore.getState().activeDay!.floor!.pool.some((guest) => guest.stage === 'entering')) {
+        await useGameStore.getState().dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
       }
-      if (
-        useGameStore
-          .getState()
-          .activeDay!.floor!.pool.some((guest) => guest.stage === 'waiting')
-      ) {
+      if (useGameStore.getState().activeDay!.floor!.pool.some((guest) => guest.stage === 'waiting')) {
         await useGameStore.getState().dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      }
+      const seatingGuest = useGameStore.getState().activeDay!.floor!.pool.find((guest) => guest.stage === 'seating');
+      if (seatingGuest) {
+        await useGameStore.getState().dispatch({
+          type: 'FLOOR_COMPLETE_SEATING',
+          guestId: seatingGuest.id,
+        });
       }
       const customerIds = useGameStore
         .getState()
@@ -296,13 +268,9 @@ export function installE2eBridge(
       if (customerIds.length > 0) {
         const target = useGameStore
           .getState()
-          .activeDay!.floor!.pool.find(
-            (guest) => guest.customer.id === customerIds[0],
-          );
+          .activeDay!.floor!.pool.find((guest) => guest.customer.id === customerIds[0]);
         if (target?.seat) {
-          useGameStore
-            .getState()
-            .setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
+          useGameStore.getState().setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
         }
         await useGameStore.getState().dispatch({
           type: 'FLOOR_TAKE_ORDERS',
@@ -311,21 +279,13 @@ export function installE2eBridge(
       }
 
       const current = useGameStore.getState();
-      const station = current.placements.find(
-        (placement) => placement.itemKey === 'prep_station',
-      );
-      const openTicket = current.activeDay!.floor!.tickets.find(
-        (ticket) => ticket.status === 'open',
-      );
+      const station = current.placements.find((placement) => placement.itemKey === 'prep_station');
+      const openTicket = current.activeDay!.floor!.tickets.find((ticket) => ticket.status === 'open');
       if (!station || !openTicket) {
-        throw new Error(
-          'cook UI fixture could not create a station and open ticket',
-        );
+        throw new Error('cook UI fixture could not create a station and open ticket');
       }
       useGameStore.setState({
-        unlockedIngredientIds: getDomainContext().ingredients.map(
-          (ingredient) => ingredient.id,
-        ),
+        unlockedIngredientIds: getDomainContext().ingredients.map((ingredient) => ingredient.id),
       });
       useGameStore.getState().setFloorSelectedTicket(openTicket.id);
       const cookPosition = { x: station.x - 1, y: station.y };
@@ -336,11 +296,7 @@ export function installE2eBridge(
     },
 
     async prepareTicketPanelFixture(ticketCount, carrying = false) {
-      if (
-        !Number.isInteger(ticketCount) ||
-        ticketCount < 0 ||
-        ticketCount > 4
-      ) {
+      if (!Number.isInteger(ticketCount) || ticketCount < 0 || ticketCount > 4) {
         throw new Error('ticket panel fixture count must be between 0 and 4');
       }
       if (!useGameStore.getState().activeDay) {
@@ -358,8 +314,7 @@ export function installE2eBridge(
         id: `ticket_${customer.id}`,
         customerId: customer.id,
         ingredientIds: [],
-        status:
-          carrying && index === 0 ? ('plated' as const) : ('open' as const),
+        status: carrying && index === 0 ? ('plated' as const) : ('open' as const),
       }));
       const carriedTicketId = carrying ? (tickets[0]?.id ?? null) : null;
       useGameStore.setState({
@@ -374,10 +329,7 @@ export function installE2eBridge(
             ),
             tickets,
             carriedTicketId,
-            selectedTicketId: carrying
-              ? null
-              : (tickets.find((ticket) => ticket.status === 'open')?.id ??
-                null),
+            selectedTicketId: carrying ? null : (tickets.find((ticket) => ticket.status === 'open')?.id ?? null),
           },
         },
       });
@@ -408,8 +360,7 @@ export function installE2eBridge(
       if (isDayComplete(store)) return 'day_complete';
 
       const ctx = getDomainContext();
-      const dispatch = (action: GameAction) =>
-        useGameStore.getState().dispatch(action);
+      const dispatch = (action: GameAction) => useGameStore.getState().dispatch(action);
 
       const floor = () => useGameStore.getState().activeDay!.floor!;
 
@@ -438,17 +389,21 @@ export function installE2eBridge(
         await dispatch({ type: 'FLOOR_SEAT_NEXT' });
       }
 
+      const seatingGuest = floor().pool.find((g) => g.stage === 'seating');
+      if (seatingGuest) {
+        await dispatch({
+          type: 'FLOOR_COMPLETE_SEATING',
+          guestId: seatingGuest.id,
+        });
+      }
+
       const toOrder = floor()
         .pool.filter((g) => g.stage === 'seated')
         .map((g) => g.customer.id);
       if (toOrder.length > 0) {
-        const target = floor().pool.find(
-          (guest) => guest.customer.id === toOrder[0],
-        );
+        const target = floor().pool.find((guest) => guest.customer.id === toOrder[0]);
         if (target?.seat) {
-          useGameStore
-            .getState()
-            .setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
+          useGameStore.getState().setFloorNavPosition(reachableMainFloorCellBeside(target.seat));
         }
         await dispatch({
           type: 'FLOOR_TAKE_ORDERS',
@@ -460,9 +415,7 @@ export function installE2eBridge(
 
       const open = floor().tickets.find((t) => t.status === 'open');
       if (open && !floor().carriedTicketId) {
-        const guest = floor().pool.find(
-          (g) => g.customer.id === open.customerId,
-        );
+        const guest = floor().pool.find((g) => g.customer.id === open.customerId);
         if (guest) {
           const unlocked = useGameStore.getState().unlockedIngredientIds;
           const combo = findBestMatchCombo(
@@ -477,9 +430,7 @@ export function installE2eBridge(
             ingredientIds: combo.ingredientIds,
           });
           if (guest.seat) {
-            useGameStore
-              .getState()
-              .setFloorNavPosition(reachableMainFloorCellBeside(guest.seat));
+            useGameStore.getState().setFloorNavPosition(reachableMainFloorCellBeside(guest.seat));
           }
           await dispatch({ type: 'FLOOR_DELIVER', ticketId: open.id });
         }
@@ -487,10 +438,16 @@ export function installE2eBridge(
 
       if (useGameStore.getState().pendingReview) return 'pending_review';
 
-      if (
-        floor().pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')
-      ) {
+      if (floor().pool.some((g) => g.stage === 'eating')) {
         await dispatch({ type: 'FLOOR_TICK_EATING' });
+      }
+
+      const leavingGuest = floor().pool.find((g) => g.stage === 'leaving');
+      if (leavingGuest) {
+        await dispatch({
+          type: 'FLOOR_COMPLETE_LEAVING',
+          guestId: leavingGuest.id,
+        });
       }
 
       if (isDayComplete(useGameStore.getState())) return 'day_complete';
