@@ -293,7 +293,12 @@ test('an elapsed tutorial cue does not replay after compose closes', async ({
   await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
 
   const notice = page.getByTestId('notice-banner');
+  const orderBubble = page.getByTestId('chat-bubble');
   await expect(notice).toContainText('Plate a ticket');
+  await expect(orderBubble).toBeVisible();
+  await expect(notice).toBeHidden();
+  await expect(orderBubble).toBeHidden({ timeout: 3_000 });
+  await expect(notice).toBeVisible();
   await expect(notice).toHaveCount(0, { timeout: 5000 });
 
   await page.evaluate(() => window.__E2E__!.openComposeSheet());

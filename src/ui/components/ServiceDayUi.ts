@@ -60,6 +60,7 @@ import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
+import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -146,6 +147,7 @@ export function mountServiceDayUi(
   let bubbleEl: HTMLElement | null = null;
   let orderBubbleGuestId: string | null = null;
   let orderBubbleTimer: ReturnType<typeof setTimeout> | null = null;
+  let orderBubbleBlocksNotice = false;
   let composeWasVisible = false;
   let composeTicketId: string | null = null;
   let composeFocusReturn: HTMLElement | null = null;
@@ -360,10 +362,20 @@ export function mountServiceDayUi(
     syncStatusHudHeight();
   };
 
+  const syncOrderBubbleNoticeBlock = () => {
+    const next = Boolean(
+      bubbleEl?.classList.contains('order-bubble') && !bubbleEl.hidden,
+    );
+    if (next === orderBubbleBlocksNotice) return;
+    orderBubbleBlocksNotice = next;
+    notifyNotificationBlockingSurfaceChanged();
+  };
+
   const positionChatBubble = () => {
     if (!bubbleEl) return;
     if (!serviceOverlay.hidden) {
       bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
     const app = getRestaurantApp();
@@ -373,6 +385,7 @@ export function mountServiceDayUi(
       : app.getCustomerScreenAnchor();
     if (!anchor) {
       bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
     bubbleEl.hidden = false;
@@ -388,6 +401,7 @@ export function mountServiceDayUi(
       '--vk-bubble-tail-offset-x',
       `${placement.tailOffsetX}px`,
     );
+    syncOrderBubbleNoticeBlock();
   };
 
   const renderChatBubble = () => {
@@ -396,6 +410,7 @@ export function mountServiceDayUi(
     // from competing visually with modifiers, cooking, reviews, or summaries.
     if (!serviceOverlay.hidden) {
       if (bubbleEl) bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
     const customer = selectCurrentCustomer(state);
@@ -415,6 +430,7 @@ export function mountServiceDayUi(
 
     if (!showBubble || (!customer && !orderGuest)) {
       if (bubbleEl) bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
 

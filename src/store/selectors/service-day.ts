@@ -84,6 +84,32 @@ export function selectFloorActive(state: GameState): boolean {
   return Boolean(state.activeDay?.floor);
 }
 
+/** World-space tap cues disappear whenever a sheet owns floor interaction. */
+export function selectShowFloorInteractionCues(
+  state: Pick<
+    GameStore,
+    | 'screen'
+    | 'activeDay'
+    | 'modifierDismissed'
+    | 'pendingReview'
+    | 'daySummary'
+    | 'ceremony'
+    | 'composeSheetOpen'
+    | 'editLayoutMode'
+  >,
+): boolean {
+  return Boolean(
+    state.screen === 'restaurant' &&
+    state.activeDay?.floor &&
+    state.modifierDismissed &&
+    !state.pendingReview &&
+    !state.daySummary &&
+    !state.ceremony &&
+    !state.composeSheetOpen &&
+    !state.editLayoutMode,
+  );
+}
+
 export function selectFloorPlayerGrid(
   state: GameStore,
 ): { x: number; y: number } | null {

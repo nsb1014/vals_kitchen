@@ -66,6 +66,7 @@ describe('notification service-overlay blocking', () => {
     expect(hasLocalNotificationBlockingSurface(openMenuDocument)).toBe(true);
     expect(selector).toContain('#floor-tickets-menu:not([hidden])');
     expect(selector).toContain('#layout-catalog-sheet:not([hidden])');
+    expect(selector).toContain('.chat-bubble.order-bubble:not([hidden])');
     expect(hasLocalNotificationBlockingSurface(closedMenuDocument)).toBe(false);
   });
 });

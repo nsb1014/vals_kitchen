@@ -306,6 +306,13 @@ test.describe('object tap controls', () => {
         }, guest),
       )
       .toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getInteractHintVisible()))
+      .toBe(true);
+    await page.locator('[data-testid="restaurant-canvas"]').screenshot({
+      path: 'test-results/interaction-order-ready.png',
+      animations: 'disabled',
+    });
     expect(
       await page.evaluate(
         (id) =>
@@ -328,6 +335,25 @@ test.describe('object tap controls', () => {
         ),
       )
       .toBe('ordered');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          ({ x, y }) =>
+            window.__E2E__!
+              .getInteractHintCells()
+              .some((cell) => cell.x === x && cell.y === y),
+          { x: guest.x, y: guest.y },
+        ),
+      )
+      .toBe(false);
+    await expect(page.getByTestId('chat-bubble')).toBeVisible();
+    await expect(page.getByTestId('notice-banner')).toBeHidden();
+    await page.locator('[data-testid="restaurant-canvas"]').screenshot({
+      path: 'test-results/interaction-order-complete.png',
+      animations: 'disabled',
+    });
+    await expect(page.getByTestId('chat-bubble')).toBeHidden({ timeout: 3_000 });
+    await expect(page.getByTestId('notice-banner')).toBeVisible();
   });
 
   test('approaches a remote station before opening its cooking workspace', async ({
@@ -356,6 +382,9 @@ test.describe('object tap controls', () => {
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().composeSheetOpen))
       .toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getInteractHintCells().length))
+      .toBe(0);
   });
 
   test('keeps delivery explicit and leaves adjacent floor cells available for movement', async ({

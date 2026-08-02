@@ -7,7 +7,7 @@ export function hasLocalNotificationBlockingSurface(
 ): boolean {
   return Boolean(
     doc.querySelector(
-      '#floor-tickets-menu:not([hidden]), #layout-catalog-sheet:not([hidden])',
+      '#floor-tickets-menu:not([hidden]), #layout-catalog-sheet:not([hidden]), .chat-bubble.order-bubble:not([hidden])',
     ),
   );
 }

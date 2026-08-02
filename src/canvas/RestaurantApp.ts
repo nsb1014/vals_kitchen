@@ -25,6 +25,7 @@ import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
 import { walkBlockedCells } from './world/blocked-cells.ts';
+import { guestHintAction } from './world/guest-interaction-hint.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
 import {
@@ -33,7 +34,10 @@ import {
   type FloorRoomId,
 } from '../domain/floor/starter-map.ts';
 import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
-import { selectCanOpenFloorCompose } from '../store/selectors/service-day.ts';
+import {
+  selectCanOpenFloorCompose,
+  selectShowFloorInteractionCues,
+} from '../store/selectors/service-day.ts';
 import {
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
@@ -148,6 +152,12 @@ export class RestaurantApp {
         state.kitchenAnnexOwned !== prev.kitchenAnnexOwned ||
         state.activeFloorRoom !== prev.activeFloorRoom ||
         state.editLayoutMode !== prev.editLayoutMode ||
+        state.screen !== prev.screen ||
+        state.modifierDismissed !== prev.modifierDismissed ||
+        state.pendingReview !== prev.pendingReview ||
+        state.daySummary !== prev.daySummary ||
+        state.ceremony !== prev.ceremony ||
+        state.composeSheetOpen !== prev.composeSheetOpen ||
         state.activeDay !== prev.activeDay ||
         state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
         state.activeDay?.floor !== prev.activeDay?.floor
@@ -353,21 +363,20 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
-    this.interactHintLayer.sync(
-      state.activeFloorRoom === 'main'
+    const stationNeedsAttention =
+      liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+      !liveFloor.carriedTicketId;
+    const interactionHints = !selectShowFloorInteractionCues(state)
+      ? []
+      : state.activeFloorRoom === 'main'
         ? this.computeInteractHints(
             liveFloor,
             roomPlacements,
             this.nav.position,
-            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
-              !liveFloor.carriedTicketId,
+            stationNeedsAttention,
           )
-        : this.computeStationHints(
-            roomPlacements,
-            liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
-              !liveFloor.carriedTicketId,
-          ),
-    );
+        : this.computeStationHints(roomPlacements, stationNeedsAttention);
+    this.interactHintLayer.sync(interactionHints);
   };
 
   private enterConnectingRoomNow(): boolean {
@@ -806,7 +815,7 @@ export class RestaurantApp {
       this.previewLayer.hide();
     }
 
-    if (!floor || state.editLayoutMode) {
+    if (!selectShowFloorInteractionCues(state)) {
       this.interactHintLayer.clear();
     }
   }
@@ -863,7 +872,11 @@ export class RestaurantApp {
         const guest = floor.pool.find(
           (g) => g.customer.id === ticket.customerId,
         );
-        if (guest?.seat && isAdjacent(player, guest.seat)) {
+        if (
+          guest?.seat &&
+          guestHintAction(guest.stage, isAdjacent(player, guest.seat), 'matching') ===
+            'deliver'
+        ) {
           add(guest.seat.x, guest.seat.y);
         }
       }
@@ -877,9 +890,9 @@ export class RestaurantApp {
 
       for (const guest of floor.pool) {
         if (
-          (guest.stage === 'seated' || guest.stage === 'ordered') &&
           guest.seat &&
-          isAdjacent(player, guest.seat)
+          guestHintAction(guest.stage, isAdjacent(player, guest.seat), 'none') ===
+            'order'
         ) {
           add(guest.seat.x, guest.seat.y);
         }

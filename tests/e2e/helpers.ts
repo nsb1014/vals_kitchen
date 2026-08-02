@@ -576,6 +576,8 @@ declare global {
         y: number;
         zIndex: number;
       }>;
+      getInteractHintVisible: () => boolean;
+      getInteractHintCells: () => Array<{ x: number; y: number }>;
       setFloorToast: (message: string | null) => void;
       enqueueCelebration: (celebration: {
         kind: 'recipe' | 'mastery' | 'achievement';

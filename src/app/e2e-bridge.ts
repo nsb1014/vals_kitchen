@@ -96,6 +96,10 @@ export interface E2eBridge {
   }>;
   /** Debug: current rendered anchor for one guest actor. */
   getGuestScreenAnchor: (guestId: string) => { x: number; y: number } | null;
+  /** Debug: whether a world-space tap affordance is currently rendered. */
+  getInteractHintVisible: () => boolean;
+  /** Debug: exact grid cells currently carrying tap affordances. */
+  getInteractHintCells: () => Array<{ x: number; y: number }>;
   setFloorToast: (message: string | null) => void;
   enqueueCelebration: (celebration: Celebration) => void;
 }
@@ -238,6 +242,14 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getGuestScreenAnchor(guestId) {
       return getRestaurantApp()?.getGuestScreenAnchor(guestId) ?? null;
+    },
+
+    getInteractHintVisible() {
+      return Boolean(getRestaurantApp()?.interactHintLayer.view.visible);
+    },
+
+    getInteractHintCells() {
+      return getRestaurantApp()?.interactHintLayer.getCells() ?? [];
     },
 
     dismissPendingReview() {
