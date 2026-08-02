@@ -355,6 +355,41 @@ describe('persistence', () => {
     );
   });
 
+  it('normalizes missing, invalid, and unowned floor rooms to main', () => {
+    const opened = gameReducer(
+      createNewGameState(8181),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+
+    const missing = structuredClone(opened);
+    delete missing.activeDay!.floor!.playerRoom;
+    expect(normalizeGameState(missing).activeDay!.floor!.playerRoom).toBe(
+      'main',
+    );
+
+    const invalid = structuredClone(opened);
+    (invalid.activeDay!.floor as unknown as { playerRoom: unknown }).playerRoom =
+      'pantry';
+    expect(normalizeGameState(invalid).activeDay!.floor!.playerRoom).toBe(
+      'main',
+    );
+
+    const unownedBackKitchen = structuredClone(opened);
+    unownedBackKitchen.activeDay!.floor!.playerRoom = 'back_kitchen';
+    unownedBackKitchen.kitchenAnnexOwned = false;
+    expect(
+      normalizeGameState(unownedBackKitchen).activeDay!.floor!.playerRoom,
+    ).toBe('main');
+
+    const ownedBackKitchen = structuredClone(opened);
+    ownedBackKitchen.activeDay!.floor!.playerRoom = 'back_kitchen';
+    ownedBackKitchen.kitchenAnnexOwned = true;
+    expect(
+      normalizeGameState(ownedBackKitchen).activeDay!.floor!.playerRoom,
+    ).toBe('back_kitchen');
+  });
+
   it('migrates v1 saves through to current with empty recipeMastery', () => {
     const v1 = createNewGameState(111);
     v1.prestige = 1;

@@ -459,7 +459,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       ...state,
       screen: 'restaurant',
       editLayoutMode: false,
-      activeFloorRoom: 'main',
+      activeFloorRoom: state.activeDay?.floor?.playerRoom ?? 'main',
       hydrated: true,
       persistGranted: persist.granted,
       modifierDismissed: state.activeDay ? true : false,
@@ -625,7 +625,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         ...imported,
         screen: 'restaurant',
         editLayoutMode: false,
-        activeFloorRoom: 'main',
+        activeFloorRoom: imported.activeDay?.floor?.playerRoom ?? 'main',
         hydrated: true,
         modifierDismissed: imported.activeDay ? true : false,
         pendingReview: null,
@@ -636,7 +636,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         recentReviews: [],
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
-        floorPlayerGrid: null,
+        floorPlayerGrid: imported.activeDay?.floor?.playerPosition ?? null,
         floorToast: null,
         noticeActive: null,
         noticeSticky: null,
@@ -685,11 +685,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setFloorNavPosition(pos) {
     const current = get();
     const prev = current.floorPlayerGrid;
-    const persisted = current.activeDay?.floor?.playerPosition;
+    const floor = current.activeDay?.floor;
+    const persisted = floor?.playerPosition;
+    const persistedRoom = floor?.playerRoom ?? 'main';
     if (
       prev?.x === pos.x &&
       prev?.y === pos.y &&
-      (!persisted || (persisted.x === pos.x && persisted.y === pos.y))
+      (!persisted ||
+        (persisted.x === pos.x &&
+          persisted.y === pos.y &&
+          persistedRoom === current.activeFloorRoom))
     ) {
       return;
     }
@@ -700,6 +705,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           floor: {
             ...current.activeDay.floor,
             playerPosition,
+            playerRoom: current.activeFloorRoom,
           },
         }
       : current.activeDay;
@@ -900,6 +906,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setActiveFloorRoom(room) {
     const current = get();
     if (room === 'back_kitchen' && !current.kitchenAnnexOwned) return;
+    if (current.activeDay?.floor) return;
     set({ activeFloorRoom: room });
   },
 
@@ -912,11 +919,25 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.gridSize.w,
       current.gridSize.h,
     );
+    const activeDay = current.activeDay?.floor
+      ? {
+          ...current.activeDay,
+          floor: {
+            ...current.activeDay.floor,
+            playerPosition: { ...spawn },
+            playerRoom: nextRoom,
+          },
+        }
+      : current.activeDay;
     set({
       activeFloorRoom: nextRoom,
       floorPlayerGrid: spawn,
+      activeDay,
       composeSheetOpen: false,
     });
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
     return true;
   },
 

@@ -1,4 +1,5 @@
 import type { Customer } from '../day/types.ts';
+import type { FloorRoomId } from './starter-map.ts';
 
 export type TableSurfaceState = 'unset' | 'ready' | 'occupied' | 'dirty';
 
@@ -53,4 +54,6 @@ export interface FloorDay {
   selectedTicketId: string | null;
   tutorialStep: string | null;
   playerPosition: { x: number; y: number };
+  /** Room containing playerPosition. Missing in older saves and defaults to main. */
+  playerRoom?: FloorRoomId;
 }
