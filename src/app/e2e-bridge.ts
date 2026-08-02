@@ -61,6 +61,7 @@ export interface E2eBridge {
     composeSheetOpen: boolean;
     pendingPlacementItemKey: string | null;
     screen: string;
+    activeFloorRoom: string;
     floorPlayerGrid: { x: number; y: number } | null;
   };
   getGameState: () => ReturnType<typeof getGameStateSnapshot>;
@@ -77,6 +78,7 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
+  unlockKitchenAnnexForTest: () => void;
   openComposeSheet: () => void;
   openFlavorInspector: (ingredientId: string) => void;
   /** Debug: live actor sprite sizes after floor sync (Playwright visual QA). */
@@ -141,6 +143,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         composeSheetOpen: s.composeSheetOpen,
         pendingPlacementItemKey: s.pendingPlacementItemKey,
         screen: s.screen,
+        activeFloorRoom: s.activeFloorRoom,
         floorPlayerGrid: s.floorPlayerGrid,
       };
     },
@@ -342,6 +345,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           },
         },
       });
+    },
+
+    unlockKitchenAnnexForTest() {
+      useGameStore.setState({ kitchenAnnexOwned: true });
     },
 
     openComposeSheet() {
