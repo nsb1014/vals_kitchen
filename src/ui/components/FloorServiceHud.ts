@@ -209,7 +209,7 @@ export function mountFloorServiceHud(
     const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
     const emphasizeClearTable = emphasize('clear', canClearTable);
     const emphasizeCloseDay = emphasize('close', canCloseDay);
-    const sticky =
+    const tutorialNotice =
       prompt && step
         ? {
             id: `tutorial:${step}`,
@@ -223,20 +223,26 @@ export function mountFloorServiceHud(
       state.day > 1
         ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
         : null;
-    const pacing = initialGuestArriving
-      ? {
-          id: `pacing:first-guest-arriving:${state.day}`,
-          source: 'pacing' as const,
-          body: 'The first guest is arriving…',
-        }
-      : pacingHint
+    // Day-one guidance introduces each state once, then yields the room to the
+    // contextual action emphasis and object highlights. Treat it as a paced
+    // notice instead of permanent chrome so experienced play does not require
+    // dismissing seven separate instructions.
+    const pacing =
+      tutorialNotice ??
+      (initialGuestArriving
         ? {
-            id: `pacing:day:${state.day}`,
+            id: `pacing:first-guest-arriving:${state.day}`,
             source: 'pacing' as const,
-            body: pacingHint,
+            body: 'The first guest is arriving…',
           }
-        : null;
-    state.syncFloorNoticesFromHud({ sticky, pacing });
+        : pacingHint
+          ? {
+              id: `pacing:day:${state.day}`,
+              source: 'pacing' as const,
+              body: pacingHint,
+            }
+          : null);
+    state.syncFloorNoticesFromHud({ sticky: null, pacing });
 
     const ctx = getDomainContext();
     const guestLabelByCustomerId: Record<string, string> = {};

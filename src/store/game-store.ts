@@ -772,7 +772,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   syncFloorNoticesFromHud({ sticky, pacing }) {
     const current = get();
     const pacingChanged = !sameNotice(lastHudPacingNotice, pacing);
-    lastHudPacingNotice = pacing;
     let tutorialDismissedStepId = current.tutorialDismissedStepId;
 
     if (!sticky?.stepId) {
@@ -794,8 +793,17 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const activeIsSticky =
       current.noticeActive === null ||
       current.noticeActive === current.noticeSticky;
+    const activeIsHudNotice =
+      current.noticeActive?.source === 'pacing' ||
+      current.noticeActive?.source === 'tutorial';
 
-    if (pacing && pacingChanged && !sameNotice(current.noticeActive, pacing)) {
+    if (
+      pacing &&
+      pacingChanged &&
+      (activeIsSticky || activeIsHudNotice) &&
+      !sameNotice(current.noticeActive, pacing)
+    ) {
+      lastHudPacingNotice = pacing;
       set({
         noticeActive: pacing,
         noticeSticky: nextSticky,
@@ -804,6 +812,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       });
       restartNoticeTimer(pacing);
     } else {
+      // A toast/system message owns the front until its timer completes. Keep
+      // a changed HUD notice pending so the next render may introduce it.
+      if (!pacing) lastHudPacingNotice = null;
       const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
       set({
         noticeActive: nextActive,

@@ -11,6 +11,7 @@ export interface Notice {
 }
 
 export const NOTICE_DURATION_MS = 2500;
+export const TUTORIAL_NOTICE_DURATION_MS = 4000;
 export const CELEBRATION_DURATION_MS = 4000;
 
 type TimerFields = {
@@ -50,6 +51,12 @@ function fieldsFor(target: RunningTarget): TimerFields | null {
   return target.kind === 'notice' ? noticeTimer : celebrationTimer;
 }
 
+function noticeDurationMs(notice: Notice): number {
+  return notice.source === 'tutorial'
+    ? TUTORIAL_NOTICE_DURATION_MS
+    : NOTICE_DURATION_MS;
+}
+
 function pauseRunningTimer(): void {
   if (!runningTarget) return;
   const fields = runningTimerFields;
@@ -79,10 +86,11 @@ function sameTarget(
  */
 export function restartNoticeTimer(notice: Notice): void {
   pauseRunningTimer();
+  const durationMs = noticeDurationMs(notice);
   timedNotice = notice;
   noticeTimer = {
-    durationMs: NOTICE_DURATION_MS,
-    remainingMs: NOTICE_DURATION_MS,
+    durationMs,
+    remainingMs: durationMs,
     runningSinceMs: null,
   };
 }
@@ -110,11 +118,14 @@ export function syncNotificationTimer<Celebration extends object>(
       : null;
 
   if (transientNotice !== timedNotice) {
+    const durationMs = transientNotice
+      ? noticeDurationMs(transientNotice)
+      : NOTICE_DURATION_MS;
     timedNotice = transientNotice;
     noticeTimer = transientNotice
       ? {
-          durationMs: NOTICE_DURATION_MS,
-          remainingMs: NOTICE_DURATION_MS,
+          durationMs,
+          remainingMs: durationMs,
           runningSinceMs: null,
         }
       : null;

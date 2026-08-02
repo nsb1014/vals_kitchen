@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
+import { TUTORIAL_NOTICE_DURATION_MS } from '../../store/notification-timer.ts';
 import { notificationSurfaceShouldRun } from '../../ui/components/CelebrationBanner.ts';
 import '../test-helpers.ts';
 
@@ -183,6 +184,42 @@ describe('notification timer', () => {
       pacing: null,
     });
     expect(useGameStore.getState().noticeSticky?.stepId).toBe('wait_seat');
+  });
+
+  it('shows paced tutorial guidance once per step and then clears it', () => {
+    const setTables = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: setTables,
+    });
+    expect(useGameStore.getState().noticeActive).toBe(setTables);
+    expect(useGameStore.getState().noticeSticky).toBeNull();
+
+    vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: setTables,
+    });
+    expect(useGameStore.getState().noticeActive).toBeNull();
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: {
+        id: 'tutorial:paced-seat-guest',
+        source: 'tutorial',
+        body: 'Seat the next guest',
+        stepId: 'wait_seat',
+      },
+    });
+    expect(useGameStore.getState().noticeActive?.stepId).toBe('wait_seat');
   });
 
   it('clears notices and stale timers when SERVE_DISH soft-resets the day', async () => {
