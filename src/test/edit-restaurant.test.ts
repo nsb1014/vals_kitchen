@@ -2,7 +2,9 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { validatePlacement } from '../domain/economy/purchases.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { createNewGameState, type Placement } from '../domain/state/game-state.ts';
+import { waitingGuestServicePositions } from '../domain/floor/interact.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import { keepsGuestServiceReachable } from '../domain/floor/service-access.ts';
 import {
   guestDoorwayLane,
   guestWaitingAlcove,
@@ -125,6 +127,46 @@ describe('edit restaurant placement rules', () => {
       }),
     ).toBe(false);
     expect(state.placements).toEqual(before);
+  });
+
+  it('rejects the sequential blocker that removes the final reachable greeting endpoint', () => {
+    const state = createNewGameState(10212);
+    const blockers = waitingGuestServicePositions(
+      state.gridSize.w,
+      state.gridSize.h,
+    ).map(
+      (position, index) =>
+        ({
+          id: `greeting_blocker_${index}`,
+          itemKey: 'decor_plant',
+          ...position,
+          rotation: 0,
+        }) satisfies Placement,
+    );
+    const finalBlocker = blockers.pop()!;
+
+    for (const blocker of blockers) {
+      expect(validatePlacement(state, blocker)).toBe(true);
+      state.placements.push(blocker);
+      expect(
+        keepsGuestServiceReachable(
+          state.gridSize,
+          state.placements,
+          state.kitchenAnnexOwned,
+        ),
+      ).toBe(true);
+    }
+
+    const before = structuredClone(state.placements);
+    expect(validatePlacement(state, finalBlocker)).toBe(false);
+    expect(state.placements).toEqual(before);
+    expect(
+      keepsGuestServiceReachable(
+        state.gridSize,
+        [...state.placements, finalBlocker],
+        state.kitchenAnnexOwned,
+      ),
+    ).toBe(false);
   });
 
   it('keeps the service-day spawn open even when the layout has no stools', () => {
@@ -276,5 +318,67 @@ describe('edit restaurant mode gating', () => {
         testContext,
       ),
     ).toThrow(/during service/);
+  });
+
+  it('rejects moving furniture onto the final reachable greeting endpoint', () => {
+    const state = createNewGameState(203);
+    const blockers = waitingGuestServicePositions(
+      state.gridSize.w,
+      state.gridSize.h,
+    ).map(
+      (position, index) =>
+        ({
+          id: `store_greeting_blocker_${index}`,
+          itemKey: 'decor_plant',
+          ...position,
+          rotation: 0,
+        }) satisfies Placement,
+    );
+    const finalBlocker = blockers.pop()!;
+
+    for (const blocker of blockers) {
+      expect(validatePlacement(state, blocker)).toBe(true);
+      state.placements.push(blocker);
+    }
+
+    const endpointKeys = new Set(
+      waitingGuestServicePositions(state.gridSize.w, state.gridSize.h).map(
+        (position) => `${position.x},${position.y}`,
+      ),
+    );
+    let movable: Placement | undefined;
+    for (let y = 0; y < state.gridSize.h && !movable; y += 1) {
+      for (let x = 0; x < state.gridSize.w; x += 1) {
+        if (endpointKeys.has(`${x},${y}`)) continue;
+        const candidate: Placement = {
+          id: 'movable_greeting_blocker',
+          itemKey: 'decor_plant',
+          x,
+          y,
+          rotation: 0,
+        };
+        if (validatePlacement(state, candidate)) {
+          movable = candidate;
+          break;
+        }
+      }
+    }
+    expect(movable).toBeDefined();
+    state.placements.push(movable!);
+    useGameStore.setState({
+      ...state,
+      screen: 'restaurant',
+      editLayoutMode: true,
+      activeFloorRoom: 'main',
+      hydrated: true,
+    });
+    const before = structuredClone(useGameStore.getState().placements);
+
+    expect(
+      useGameStore
+        .getState()
+        .movePlacement(movable!.id, finalBlocker.x, finalBlocker.y),
+    ).toBe(false);
+    expect(useGameStore.getState().placements).toEqual(before);
   });
 });

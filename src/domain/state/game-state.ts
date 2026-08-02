@@ -305,21 +305,55 @@ export function normalizeMainFloorPlacements(
   // owned table or décor item is the only excess. Prefer returning excess
   // décor to inventory before a table, and never omit a cooking station that
   // could make an active service day unwinnable.
-  const omissionCandidates = entranceSafe
-    .filter(
-      (placement) =>
-        placement.itemKey.startsWith('table') || isDecorItemKey(placement.itemKey),
-    )
-    .sort(
-      (a, b) => Number(!isDecorItemKey(a.itemKey)) - Number(!isDecorItemKey(b.itemKey)),
-    );
-  for (const omitted of omissionCandidates) {
-    const subsetRepair = findCompleteRepair(
-      blockers.filter((placement) => placement.id !== omitted.id),
-      passive.filter((placement) => placement.id !== omitted.id),
-    );
-    if (subsetRepair) return restoreOriginalOrder(subsetRepair);
-  }
+  const omissionCandidates = entranceSafe.filter(
+    (placement) =>
+      placement.itemKey.startsWith('table') || isDecorItemKey(placement.itemKey),
+  );
+  const isCompleteStaticLayout = (layout: Placement[]): boolean => {
+    const occupied = new Set<string>();
+    for (const placement of layout) {
+      if (!staticLegal(placement)) return false;
+      for (const cell of placementCells(placement)) {
+        const cellKey = `${cell.x},${cell.y}`;
+        if (occupied.has(cellKey)) return false;
+        occupied.add(cellKey);
+      }
+    }
+    return keepsGuestServiceReachable(gridSize, layout, kitchenAnnexOwned);
+  };
+  const repairForOmissionTier = (
+    candidates: Placement[],
+  ): Placement[] | null => {
+    // Prefer a valid omission that leaves every retained item untouched. This
+    // stable preflight is independent of DFS pruning and avoids needless churn.
+    for (const omitted of candidates) {
+      const retained = entranceSafe.filter(
+        (placement) => placement.id !== omitted.id,
+      );
+      if (isCompleteStaticLayout(retained)) return retained;
+    }
+    for (const omitted of candidates) {
+      const repair = findCompleteRepair(
+        blockers.filter((placement) => placement.id !== omitted.id),
+        passive.filter((placement) => placement.id !== omitted.id),
+      );
+      if (repair) return repair;
+    }
+    return null;
+  };
+
+  // Preserve the ownership policy between item classes. Source order remains
+  // the deterministic tie-break among equally stable repairs.
+  const decorOmissionRepair = repairForOmissionTier(
+    omissionCandidates.filter((placement) => isDecorItemKey(placement.itemKey)),
+  );
+  if (decorOmissionRepair) return restoreOriginalOrder(decorOmissionRepair);
+  const tableOmissionRepair = repairForOmissionTier(
+    omissionCandidates.filter((placement) =>
+      placement.itemKey.startsWith('table'),
+    ),
+  );
+  if (tableOmissionRepair) return restoreOriginalOrder(tableOmissionRepair);
 
   // No arrangement can preserve the complete set. Keep the longest legal
   // prefix; omitted ownership remains available in edit mode for manual placement.

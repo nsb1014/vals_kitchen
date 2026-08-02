@@ -1,7 +1,10 @@
 import type { Placement } from '../state/game-state.ts';
 import { isWalkBlockingDecorItemKey } from '../economy/decor.ts';
 import { EQUIPMENT_IDS } from '../types.ts';
-import { guestServicePositions } from './interact.ts';
+import {
+  guestServicePositions,
+  waitingGuestServicePositions,
+} from './interact.ts';
 import { seatsFromPlacements } from './seats.ts';
 import {
   doorForGrid,
@@ -149,6 +152,13 @@ export function keepsGuestServiceReachable(
       guestServicePositions(seat).some((position) =>
         playerReachable.has(`${position.x},${position.y}`),
       ),
+    )
+  ) {
+    return false;
+  }
+  if (
+    !waitingGuestServicePositions(gridSize.w, gridSize.h).some((position) =>
+      playerReachable.has(`${position.x},${position.y}`),
     )
   ) {
     return false;
