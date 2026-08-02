@@ -4,9 +4,13 @@ import { carryPlateGeometry } from '../../canvas/world/carry-plate.ts';
 describe('carryPlateGeometry', () => {
   const feet = { x: 100, y: 200 };
 
-  it('hides the plate when facing up (occluded from behind)', () => {
+  it('shows a side-peeking plate behind the cook when facing up', () => {
     const geo = carryPlateGeometry(feet, 'up');
-    expect(geo.visible).toBe(false);
+    expect(geo.visible).toBe(true);
+    if (!geo.visible) return;
+    expect(geo.plate.x).toBeGreaterThan(feet.x);
+    expect(geo.plate.y).toBeGreaterThanOrEqual(feet.y - 20);
+    expect(geo.sortY).toBeLessThan(feet.y);
   });
 
   it('holds the plate in front of the torso when facing down', () => {

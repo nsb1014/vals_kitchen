@@ -26,7 +26,30 @@ CANONICAL_PLAYER_FRAMES = tuple(
     f"player_{facing}_{frame}.png"
     for facing in FACINGS
     for frame in range(3)
-) + tuple(f"player_carry_{facing}.png" for facing in FACINGS)
+) + tuple(f"player_carry_{facing}.png" for facing in FACINGS) + tuple(
+    f"player_carry_{facing}_{frame}.png"
+    for facing in FACINGS
+    for frame in (1, 2)
+)
+NEUTRAL_CARRY_SHA256 = {
+    "down": "884623409a406689981949bc063e0b76498ac43cc9e7d9a0ba8502879e6ea485",
+    "left": "24aed5c5704a1051541ab7f4b7b133e6265a5bebd38da1cffc252228b27bfba2",
+    "right": "e09f40626145dc5abf06410116b13ce8d182aa95705e22ce1636924bc9c724ac",
+    "up": "5a6bd67d1fe1fef662d82367aa33729f52254ce1d5426ff738ed397866680c6c",
+}
+CARRY_BLEND_TOP = 128
+CARRY_BLEND_FULL_WALK_Y = 148
+CARRY_BLEND_HEIGHT = 3
+CARRY_BLEND_CURVE = 0.004
+
+
+def zero_hidden_rgb(image: Image.Image) -> Image.Image:
+    normalized = image.copy()
+    normalized.putdata([
+        (red, green, blue, alpha) if alpha else (0, 0, 0, 0)
+        for red, green, blue, alpha in image.get_flattened_data()
+    ])
+    return normalized
 
 
 def load_rgba(path: Path) -> Image.Image:
@@ -75,14 +98,119 @@ def exposed_neutral_matte_pixels(image: Image.Image) -> list[tuple[int, int]]:
     return exposed
 
 
+def expected_carry_walk_pixel(
+    carry_pixel: tuple[int, int, int, int],
+    walk_pixel: tuple[int, int, int, int],
+    x: int,
+    y: int,
+) -> tuple[int, int, int, int]:
+    """Independently reproduce the builder's approved seam pixel."""
+    center_x = (FRAME_SIZE[0] - 1) / 2
+    seam_y = CARRY_BLEND_TOP + ((x - center_x) ** 2) * CARRY_BLEND_CURVE
+    walk_mix = max(0.0, min(1.0, (y - seam_y) / CARRY_BLEND_HEIGHT))
+    carry_mix = 1.0 - walk_mix
+    carry_red, carry_green, carry_blue, carry_alpha = carry_pixel
+    walk_red, walk_green, walk_blue, walk_alpha = walk_pixel
+    out_alpha = carry_alpha * carry_mix + walk_alpha * walk_mix
+    if out_alpha < 120:
+        return (0, 0, 0, 0)
+    return (
+        max(
+            0,
+            min(
+                255,
+                round(
+                    (
+                        carry_red * carry_alpha * carry_mix
+                        + walk_red * walk_alpha * walk_mix
+                    )
+                    / out_alpha
+                ),
+            ),
+        ),
+        max(
+            0,
+            min(
+                255,
+                round(
+                    (
+                        carry_green * carry_alpha * carry_mix
+                        + walk_green * walk_alpha * walk_mix
+                    )
+                    / out_alpha
+                ),
+            ),
+        ),
+        max(
+            0,
+            min(
+                255,
+                round(
+                    (
+                        carry_blue * carry_alpha * carry_mix
+                        + walk_blue * walk_alpha * walk_mix
+                    )
+                    / out_alpha
+                ),
+            ),
+        ),
+        max(0, min(255, round(out_alpha))),
+    )
+
+
+def unproven_matte_pixels(
+    image: Image.Image,
+    frame_name: str,
+) -> list[tuple[int, int]]:
+    """Retain every matte finding except an exactly reproducible seam pixel.
+
+    Neutral carry and walk inputs are checked independently under the same
+    three-pixel global limit. This exemption is restricted to the compositor's
+    20-row transition band and requires the generated RGBA to exactly match
+    the corresponding source pixels plus the fixed mask.
+    """
+    exposed = exposed_neutral_matte_pixels(image)
+    stem = frame_name.removesuffix(".png")
+    parts = stem.split("_")
+    if len(parts) != 4 or parts[:2] != ["player", "carry"] or parts[3] not in {
+        "1",
+        "2",
+    }:
+        return exposed
+
+    facing = parts[2]
+    frame = int(parts[3])
+    carry = load_rgba(PLAYER_FRAMES / f"player_carry_{facing}.png")
+    walk = load_rgba(PLAYER_FRAMES / f"player_{facing}_{frame}.png")
+    return [
+        (x, y)
+        for x, y in exposed
+        if not (
+            CARRY_BLEND_TOP <= y < CARRY_BLEND_FULL_WALK_Y
+            and image.getpixel((x, y))
+            == expected_carry_walk_pixel(
+                carry.getpixel((x, y)),
+                walk.getpixel((x, y)),
+                x,
+                y,
+            )
+        )
+    ]
+
+
 class ValSourceIntegrityTests(unittest.TestCase):
     def test_exact_project_owner_chef_source(self) -> None:
         digest = hashlib.sha256(CHEF_SOURCE.read_bytes()).hexdigest()
         self.assertEqual(digest, CHEF_SOURCE_SHA256)
 
     def test_canonical_walk_and_carry_frames_preserve_canvas_and_silhouette(self) -> None:
-        self.assertEqual(len(CANONICAL_PLAYER_FRAMES), 16)
-        self.assertEqual(len(set(CANONICAL_PLAYER_FRAMES)), 16)
+        self.assertEqual(len(CANONICAL_PLAYER_FRAMES), 24)
+        self.assertEqual(len(set(CANONICAL_PLAYER_FRAMES)), 24)
+        self.assertEqual(
+            {path.name for path in PLAYER_FRAMES.glob("*.png")},
+            set(CANONICAL_PLAYER_FRAMES) | {"player.png", "player_walk.png"},
+            "player output must contain 24 canonical frames and two aliases only",
+        )
 
         for frame_name in CANONICAL_PLAYER_FRAMES:
             with self.subTest(frame=frame_name):
@@ -116,12 +244,102 @@ class ValSourceIntegrityTests(unittest.TestCase):
                     f"visible sprite is too short: {bottom - top}px",
                 )
 
-                matte_pixels = exposed_neutral_matte_pixels(image)
+                matte_pixels = unproven_matte_pixels(image, frame_name)
                 self.assertLessEqual(
                     len(matte_pixels),
                     3,
                     f"exposed neutral matte remains at {matte_pixels[:12]}",
                 )
+
+    def test_neutral_carry_frames_remain_exact_authored_files(self) -> None:
+        for facing, expected_digest in NEUTRAL_CARRY_SHA256.items():
+            with self.subTest(facing=facing):
+                path = PLAYER_FRAMES / f"player_carry_{facing}.png"
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), expected_digest)
+
+    def test_carry_seam_provenance_does_not_hide_arbitrary_matte(self) -> None:
+        frame_name = "player_carry_right_1.png"
+        tampered = load_rgba(PLAYER_FRAMES / frame_name)
+        injected = {(0, 140), (10, 140), (117, 140), (127, 140)}
+        for coordinate in injected:
+            tampered.putpixel(coordinate, (220, 220, 220, 255))
+
+        findings = set(unproven_matte_pixels(tampered, frame_name))
+        self.assertTrue(
+            injected <= findings,
+            "arbitrary neutral pixels inside the blend band must remain matte findings",
+        )
+        self.assertGreater(
+            len(findings),
+            3,
+            "four arbitrary matte pixels must fail the unchanged global limit",
+        )
+
+    def test_carry_strides_preserve_upper_pose_and_use_walk_lower_legs(self) -> None:
+        for facing in FACINGS:
+            neutral = load_rgba(PLAYER_FRAMES / f"player_carry_{facing}.png")
+            neutral_upper = zero_hidden_rgb(neutral.crop((0, 0, 128, CARRY_BLEND_TOP)))
+            for frame in (1, 2):
+                with self.subTest(facing=facing, frame=frame):
+                    stride = load_rgba(
+                        PLAYER_FRAMES / f"player_carry_{facing}_{frame}.png"
+                    )
+                    walk = load_rgba(PLAYER_FRAMES / f"player_{facing}_{frame}.png")
+                    stride_upper = zero_hidden_rgb(
+                        stride.crop((0, 0, 128, CARRY_BLEND_TOP))
+                    )
+                    self.assertEqual(
+                        stride_upper.tobytes(),
+                        neutral_upper.tobytes(),
+                        "face, hair, hands, plate, and upper pose must remain exact",
+                    )
+                    self.assertEqual(
+                        stride.crop((0, CARRY_BLEND_FULL_WALK_Y, 128, 160)).tobytes(),
+                        zero_hidden_rgb(
+                            walk.crop((0, CARRY_BLEND_FULL_WALK_Y, 128, 160))
+                        ).tobytes(),
+                        "pixels below the curved feather must be the walk stride",
+                    )
+                    for y in range(CARRY_BLEND_TOP, CARRY_BLEND_FULL_WALK_Y):
+                        for x in range(FRAME_SIZE[0]):
+                            self.assertEqual(
+                                stride.getpixel((x, y)),
+                                expected_carry_walk_pixel(
+                                    neutral.getpixel((x, y)),
+                                    walk.getpixel((x, y)),
+                                    x,
+                                    y,
+                                ),
+                                f"unproven carry seam pixel at ({x}, {y})",
+                            )
+                    self.assertNotEqual(
+                        stride.tobytes(),
+                        neutral.tobytes(),
+                        "stride frame must animate the lower body",
+                    )
+                    hidden_rgb = [
+                        (red, green, blue)
+                        for red, green, blue, alpha in stride.get_flattened_data()
+                        if alpha == 0 and (red or green or blue)
+                    ]
+                    self.assertEqual(hidden_rgb, [], "transparent pixels must have zero RGB")
+
+                    stride_bounds = stride.getchannel("A").getbbox()
+                    walk_bounds = walk.getchannel("A").getbbox()
+                    neutral_bounds = neutral.getchannel("A").getbbox()
+                    assert stride_bounds is not None
+                    assert walk_bounds is not None
+                    assert neutral_bounds is not None
+                    self.assertEqual(
+                        stride_bounds[3],
+                        walk_bounds[3],
+                        "carry stride must keep the walk frame's feet baseline",
+                    )
+                    self.assertLessEqual(
+                        abs(stride_bounds[3] - neutral_bounds[3]),
+                        1,
+                        "carry cycle feet baseline must remain stable",
+                    )
 
     def test_legacy_player_aliases_are_pixel_exact(self) -> None:
         aliases = {
@@ -145,7 +363,7 @@ class CharacterAtlasIntegrityTests(unittest.TestCase):
 
     def test_all_manifest_sources_are_present_and_frame_metadata_is_canonical(self) -> None:
         self.assertIsInstance(self.manifest, dict)
-        self.assertEqual(len(self.manifest), 100)
+        self.assertEqual(len(self.manifest), 108)
 
         frames = self.atlas_data["frames"]
         self.assertEqual(set(frames), set(self.manifest))

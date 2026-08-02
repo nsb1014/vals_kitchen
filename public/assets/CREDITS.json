@@ -944,6 +944,30 @@
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
+      "path": "atlases/characters.json#player_carry_left_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_left_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_left_2",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_left_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
       "path": "atlases/characters.json#player_down_0",
       "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
@@ -989,6 +1013,30 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "player_carry_down.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_down_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_down_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_down_2",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_down_2.png",
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
@@ -1040,6 +1088,30 @@
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {
+      "path": "atlases/characters.json#player_carry_up_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_up_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_up_2",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_up_2.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
       "path": "atlases/characters.json#player_right_0",
       "pack": "Val's Kitchen Chibi UI Art",
       "author": "Val's Kitchen project",
@@ -1085,6 +1157,30 @@
         "canvas:ActorLayer"
       ],
       "sourceFile": "player_carry_right.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_right_1",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_right_1.png",
+      "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/characters.json#player_carry_right_2",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:ActorLayer"
+      ],
+      "sourceFile": "player_carry_right_2.png",
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
     },
     {

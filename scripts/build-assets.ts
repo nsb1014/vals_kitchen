@@ -183,6 +183,10 @@ for (const facing of ['left', 'down', 'up', 'right']) {
     CHARACTER_SPRITES[name] = `${name}.png`;
   }
   CHARACTER_SPRITES[`player_carry_${facing}`] = `player_carry_${facing}.png`;
+  for (const frame of [1, 2]) {
+    const name = `player_carry_${facing}_${frame}`;
+    CHARACTER_SPRITES[name] = `${name}.png`;
+  }
 }
 for (const variant of ['a', 'b', 'c', 'd', 'e']) {
   for (const facing of ['left', 'down', 'up', 'right']) {

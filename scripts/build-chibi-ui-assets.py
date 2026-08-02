@@ -27,6 +27,10 @@ PROP_OUT = OUT / "restaurant-props"
 
 ACTOR_FRAME_SIZE = (128, 160)
 PORTRAIT_SIZE = (96, 96)
+CARRY_LEG_BLEND_TOP = 128
+CARRY_LEG_BLEND_HEIGHT = 3
+CARRY_LEG_CURVE = 0.004
+CARRY_LEG_BLEND_END = 148
 
 
 def chroma_alpha(image: Image.Image) -> Image.Image:
@@ -225,6 +229,83 @@ def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     return rgba
 
 
+def carry_walk_pixel(
+    carry_pixel: tuple[int, int, int, int],
+    walk_pixel: tuple[int, int, int, int],
+    x: int,
+    y: int,
+) -> tuple[int, int, int, int]:
+    """Return one deterministic premultiplied-alpha carry/walk seam pixel."""
+    center_x = (ACTOR_FRAME_SIZE[0] - 1) / 2
+    seam_y = CARRY_LEG_BLEND_TOP + ((x - center_x) ** 2) * CARRY_LEG_CURVE
+    walk_mix = max(
+        0.0,
+        min(1.0, (y - seam_y) / CARRY_LEG_BLEND_HEIGHT),
+    )
+    carry_mix = 1.0 - walk_mix
+    carry_red, carry_green, carry_blue, carry_alpha = carry_pixel
+    walk_red, walk_green, walk_blue, walk_alpha = walk_pixel
+    out_alpha = carry_alpha * carry_mix + walk_alpha * walk_mix
+    # Match the firm alpha cutoff already applied to both authored inputs.
+    # Interpolation can otherwise resurrect their discarded matte as a handful
+    # of low-opacity tan/white seam pixels.
+    if out_alpha < 120:
+        return (0, 0, 0, 0)
+    out_red = (
+        carry_red * carry_alpha * carry_mix
+        + walk_red * walk_alpha * walk_mix
+    ) / out_alpha
+    out_green = (
+        carry_green * carry_alpha * carry_mix
+        + walk_green * walk_alpha * walk_mix
+    ) / out_alpha
+    out_blue = (
+        carry_blue * carry_alpha * carry_mix
+        + walk_blue * walk_alpha * walk_mix
+    ) / out_alpha
+    return (
+        max(0, min(255, round(out_red))),
+        max(0, min(255, round(out_green))),
+        max(0, min(255, round(out_blue))),
+        max(0, min(255, round(out_alpha))),
+    )
+
+
+def carry_walk_frame(carry: Image.Image, walk: Image.Image) -> Image.Image:
+    """Keep the authored carry pose while borrowing one walk frame's stride.
+
+    The fixed, shallow curved seam stays below Val's hands, plate, face, and
+    dress detail. A short feather prevents the skirt/leg join from flashing as
+    the cycle advances. Blend in premultiplied-alpha space so transparent edge
+    colors can never create a pale or dark fringe in the packed atlas.
+    """
+    if carry.size != ACTOR_FRAME_SIZE or walk.size != ACTOR_FRAME_SIZE:
+        raise ValueError(
+            f"Carry/walk frames must both be {ACTOR_FRAME_SIZE}: "
+            f"{carry.size}, {walk.size}"
+        )
+
+    carry_rgba = carry.convert("RGBA")
+    walk_rgba = walk.convert("RGBA")
+    result = Image.new("RGBA", ACTOR_FRAME_SIZE, (0, 0, 0, 0))
+    carry_pixels = carry_rgba.load()
+    walk_pixels = walk_rgba.load()
+    result_pixels = result.load()
+    assert carry_pixels is not None
+    assert walk_pixels is not None
+    assert result_pixels is not None
+
+    for y in range(ACTOR_FRAME_SIZE[1]):
+        for x in range(ACTOR_FRAME_SIZE[0]):
+            result_pixels[x, y] = carry_walk_pixel(
+                carry_pixels[x, y],
+                walk_pixels[x, y],
+                x,
+                y,
+            )
+    return result
+
+
 def alpha_content_runs(
     image: Image.Image,
     axis: str,
@@ -306,7 +387,12 @@ def save(image: Image.Image, path: Path) -> None:
     image.save(path, optimize=True)
 
 
-def validate_player_frame(image: Image.Image, name: str) -> None:
+def validate_player_frame(
+    image: Image.Image,
+    name: str,
+    *,
+    composite_sources: tuple[Image.Image, Image.Image] | None = None,
+) -> None:
     """Fail the asset build if matte noise or a bad crop shrinks an actor again."""
     bounds = image.getchannel("A").getbbox()
     if bounds is None:
@@ -334,6 +420,21 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
                 for nx in range(max(0, x - 1), min(image.width, x + 2))
                 for ny in range(max(0, y - 1), min(image.height, y + 2))
             ):
+                if (
+                    composite_sources is not None
+                    and CARRY_LEG_BLEND_TOP <= y < CARRY_LEG_BLEND_END
+                    and image.getpixel((x, y))
+                    == carry_walk_pixel(
+                        composite_sources[0].getpixel((x, y)),
+                        composite_sources[1].getpixel((x, y)),
+                        x,
+                        y,
+                    )
+                ):
+                    # The inputs are validated independently. A neutral seam
+                    # edge is therefore accepted only when its exact RGBA is
+                    # reproducibly derived from those source pixels and mask.
+                    continue
                 neutral_matte_fringe += 1
     # A carried white plate can contribute an isolated legitimate edge pixel;
     # the failed source matte appears as a continuous multi-pixel halo.
@@ -621,9 +722,11 @@ def build_player() -> None:
         )
 
     for facing in facing_rows:
+        walk_frames: dict[int, Image.Image] = {}
         for frame in range(3):
             name = f"player_{facing}_{frame}"
             sprite = player_frame(frame, facing)
+            walk_frames[frame] = sprite
             validate_player_frame(sprite, name)
             save(sprite, PLAYER_OUT / f"{name}.png")
 
@@ -631,6 +734,19 @@ def build_player() -> None:
         carry_sprite = player_frame(4, facing)
         validate_player_frame(carry_sprite, carry_name)
         save(carry_sprite, PLAYER_OUT / f"{carry_name}.png")
+
+        # Frame zero remains the exact authored neutral carry image. The two
+        # stride variants retain that upper body and use the matching walk
+        # cycle's lower legs, with no per-frame horizontal registration shift.
+        for frame in (1, 2):
+            stride_name = f"{carry_name}_{frame}"
+            stride_sprite = carry_walk_frame(carry_sprite, walk_frames[frame])
+            validate_player_frame(
+                stride_sprite,
+                stride_name,
+                composite_sources=(carry_sprite, walk_frames[frame]),
+            )
+            save(stride_sprite, PLAYER_OUT / f"{stride_name}.png")
 
     # Stable compatibility keys used while atlases are loading.
     save(Image.open(PLAYER_OUT / "player_down_0.png"), PLAYER_OUT / "player.png")

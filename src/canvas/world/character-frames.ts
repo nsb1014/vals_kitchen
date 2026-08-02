@@ -20,8 +20,8 @@ export function playerFrameKey(facing: string, frame: number): string {
   return `player_${facing}_${frame}`;
 }
 
-export function playerCarryFrameKey(facing: string): string {
-  return `player_carry_${facing}`;
+export function playerCarryFrameKey(facing: string, frame = 0): string {
+  return frame === 0 ? `player_carry_${facing}` : `player_carry_${facing}_${frame}`;
 }
 
 export function playerPoseFrame(
@@ -30,12 +30,9 @@ export function playerPoseFrame(
   isMoving: boolean,
   carrying: boolean,
 ): { textureKey: string; usesAuthoredCarryPose: boolean } {
-  // The supplied sheet has one held-plate pose per direction, not a carry
-  // cycle. Keep it while stopped, then retain the leg cycle while walking;
-  // ActorLayer adds its held-dish overlay during motion.
-  if (carrying && !isMoving) {
+  if (carrying) {
     return {
-      textureKey: playerCarryFrameKey(facing),
+      textureKey: playerCarryFrameKey(facing, isMoving ? walkFrame : 0),
       usesAuthoredCarryPose: true,
     };
   }
@@ -43,6 +40,25 @@ export function playerPoseFrame(
     textureKey: playerFrameKey(facing, isMoving ? walkFrame : 0),
     usesAuthoredCarryPose: false,
   };
+}
+
+/**
+ * Ordered texture fallbacks for a requested player pose. Carry art remains
+ * preferred even while its stride frames are still arriving from a lazy atlas.
+ */
+export function playerTextureKeyCandidates(
+  facing: string,
+  walkFrame: number,
+  isMoving: boolean,
+  carrying: boolean,
+): string[] {
+  const requested = playerPoseFrame(facing, walkFrame, isMoving, carrying).textureKey;
+  const regularCurrent = playerFrameKey(facing, isMoving ? walkFrame : 0);
+  const regularNeutral = playerFrameKey(facing, 0);
+  const candidates = carrying
+    ? [requested, playerCarryFrameKey(facing), regularCurrent, regularNeutral, 'player', 'customer']
+    : [requested, regularNeutral, 'player', 'customer'];
+  return candidates.filter((key, index) => candidates.indexOf(key) === index);
 }
 
 export function guestWalkFrameKey(variant: GuestVariant, facing: string, frame: number): string {

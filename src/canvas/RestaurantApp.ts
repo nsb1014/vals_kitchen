@@ -484,6 +484,37 @@ export class RestaurantApp {
     };
   }
 
+  /** Read-only snapshot of the player sprite selected for visual checks. */
+  getPlayerVisualDebug(): Readonly<{
+    requestedTextureKey: string;
+    boundTextureKey: string;
+    authoredCarry: boolean;
+    plateOverlayVisible: boolean;
+    spriteVisible: boolean;
+    spriteAlpha: number;
+    frameWidth: number;
+    frameHeight: number;
+    feet: { x: number; y: number } | null;
+    facing: 'right' | 'down' | 'up' | 'left';
+    isMoving: boolean;
+  }> {
+    const visual = this.actorLayer.getPlayerVisualDebug();
+    const facing = (['right', 'down', 'up', 'left'] as const)[this.nav.facing];
+    return {
+      requestedTextureKey: visual.requestedTextureKey,
+      boundTextureKey: visual.boundTextureKey,
+      authoredCarry: visual.authoredCarry,
+      plateOverlayVisible: visual.plateOverlayVisible,
+      spriteVisible: visual.spriteVisible,
+      spriteAlpha: visual.spriteAlpha,
+      frameWidth: visual.frameWidth,
+      frameHeight: visual.frameHeight,
+      feet: visual.feet,
+      facing,
+      isMoving: this.nav.isMoving,
+    };
+  }
+
   private waitingGuestHitAtWorldPoint(
     floor: FloorDay,
     world: { x: number; y: number },
@@ -639,6 +670,7 @@ export class RestaurantApp {
     } else {
       this.actorLayer.sync(null, this.nav, null, {
         showPlayerWithoutFloor: true,
+        playerCarrying: liveFloor.carriedTicketId != null,
       });
     }
 
@@ -1149,6 +1181,7 @@ export class RestaurantApp {
       } else {
         this.actorLayer.sync(null, this.nav, null, {
           showPlayerWithoutFloor: true,
+          playerCarrying: floor.carriedTicketId != null,
         });
       }
       if (!state.editLayoutMode) {

@@ -26,9 +26,8 @@ import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
-  playerCarryFrameKey,
-  playerFrameKey,
   playerPoseFrame,
+  playerTextureKeyCandidates,
 } from './character-frames.ts';
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
@@ -72,7 +71,9 @@ export class ActorLayer {
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
   private lastPlayerFrameKey = '';
+  private lastPlayerBoundTextureKey = '';
   private playerUsesCarryTexture = false;
+  private plateOverlayVisible = false;
 
   constructor(actorContainer?: Container) {
     this.actorContainer = actorContainer ?? new Container();
@@ -103,17 +104,20 @@ export class ActorLayer {
     opts: {
       showPlayerWithoutFloor?: boolean;
       showGuests?: boolean;
+      playerCarrying?: boolean;
     } = {},
   ): void {
     this.markerLayer.clear();
     if (!floor) {
       this.clearGuests();
-      this.plateGraphics.clear();
       if (opts.showPlayerWithoutFloor) {
         this.drawDestination(nav.destination);
-        this.syncPlayer(nav, false);
+        const carrying = opts.playerCarrying === true;
+        const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
+        this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
         return;
       }
+      this.syncCarryPlate(false, nav.facing);
       this.playerSprite.visible = false;
       this.playerFallback.clear();
       return;
@@ -136,6 +140,32 @@ export class ActorLayer {
 
   getPlayerFeetWorldPosition(): { x: number; y: number } {
     return { x: this.playerWorld.x, y: this.playerFeetY };
+  }
+
+  getPlayerVisualDebug(): Readonly<{
+    requestedTextureKey: string;
+    boundTextureKey: string;
+    authoredCarry: boolean;
+    plateOverlayVisible: boolean;
+    spriteVisible: boolean;
+    spriteAlpha: number;
+    frameWidth: number;
+    frameHeight: number;
+    scale: { x: number; y: number };
+    feet: { x: number; y: number };
+  }> {
+    return {
+      requestedTextureKey: this.lastPlayerFrameKey,
+      boundTextureKey: this.lastPlayerBoundTextureKey,
+      authoredCarry: this.playerUsesCarryTexture,
+      plateOverlayVisible: this.plateOverlayVisible,
+      spriteVisible: this.playerSprite.visible,
+      spriteAlpha: this.playerSprite.alpha,
+      frameWidth: this.playerSprite.visible ? this.playerSprite.texture.orig.width : 0,
+      frameHeight: this.playerSprite.visible ? this.playerSprite.texture.orig.height : 0,
+      scale: { x: this.playerSprite.scale.x, y: this.playerSprite.scale.y },
+      feet: { x: this.playerWorld.x, y: this.playerFeetY },
+    };
   }
 
   getGuestWorldPosition(guestId: string): { x: number; y: number } | null {
@@ -244,20 +274,22 @@ export class ActorLayer {
         frameKey,
         lastFrameKey: this.lastPlayerFrameKey,
         hadTexture: this.playerSprite.visible,
-      })
+      }) || this.lastPlayerBoundTextureKey !== frameKey
     ) {
-      const carryTexture = pose.usesAuthoredCarryPose
-        ? getCharacterTexture(playerCarryFrameKey(facing))
-        : null;
-      const texture =
-        carryTexture ??
-        getCharacterTexture(pose.textureKey) ??
-        getCharacterTexture(playerFrameKey(facing, 0)) ??
-        getCharacterTexture('player') ??
-        getCharacterTexture('customer');
+      const candidates = playerTextureKeyCandidates(facing, frame, nav.isMoving, carrying);
+      let boundTextureKey = '';
+      let texture = null;
+      for (const candidate of candidates) {
+        texture = getCharacterTexture(candidate);
+        if (texture) {
+          boundTextureKey = candidate;
+          break;
+        }
+      }
       if (texture) {
         this.lastPlayerFrameKey = frameKey;
-        this.playerUsesCarryTexture = carryTexture != null;
+        this.lastPlayerBoundTextureKey = boundTextureKey;
+        this.playerUsesCarryTexture = boundTextureKey.startsWith('player_carry_');
         this.playerSprite.texture = texture;
         this.playerSprite.scale.set(
           scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
@@ -267,6 +299,7 @@ export class ActorLayer {
       } else {
         // Leave lastPlayerFrameKey stale/empty so the next sync retries after atlas load.
         this.lastPlayerFrameKey = '';
+        this.lastPlayerBoundTextureKey = '';
         this.playerUsesCarryTexture = false;
         this.playerSprite.visible = false;
       }
@@ -290,19 +323,16 @@ export class ActorLayer {
 
   private syncCarryPlate(carrying: boolean, facing: 0 | 1 | 2 | 3): void {
     this.plateGraphics.clear();
+    this.plateOverlayVisible = false;
     if (!carrying) {
       this.plateGraphics.y = 0;
       return;
     }
     const facingName = FACING_NAMES[facing];
     const geo = carryPlateGeometry({ x: this.playerWorld.x, y: this.playerFeetY }, facingName);
-    if (!geo.visible) {
-      // Facing up: plate is behind the cook — omit rather than punch through the torso.
-      this.plateGraphics.y = 0;
-      return;
-    }
-    // Geometry is world-space; shift local Y so container.y participates in feet sort
-    // and the plate paints in front of the body (not under it at y=0).
+    if (!geo.visible) return;
+    // Geometry is world-space; shift local Y so container.y participates in
+    // feet sorting (the up-facing fallback paints behind the body).
     this.plateGraphics.y = geo.sortY;
     this.plateGraphics.zIndex = geo.sortY;
     const plateLocalY = geo.plate.y - geo.sortY;
@@ -313,6 +343,7 @@ export class ActorLayer {
     this.plateGraphics
       .circle(Math.round(geo.food.x), Math.round(foodLocalY), geo.food.r)
       .fill(geo.food.color);
+    this.plateOverlayVisible = true;
   }
 
   private syncGuests(floor: FloorDay, guestMotion: GuestMotion | null): void {

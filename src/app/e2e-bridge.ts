@@ -8,7 +8,10 @@ import { getGameStateSnapshot, useGameStore, type Celebration } from '../store/g
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
-import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
+import {
+  playerWalkBlockedCells,
+  walkBlockedCells,
+} from '../canvas/world/blocked-cells.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import {
   guestServicePositions,
@@ -149,6 +152,36 @@ export interface E2eBridge {
     remote: { x: number; y: number };
     ticketId: string | null;
   }>;
+  prepareCarryInteractionBoundaryFixture: () => Promise<{
+    station: { x: number; y: number };
+    stationServicePosition: { x: number; y: number };
+    ticketId: string;
+    matchingGuest: {
+      guestId: string;
+      seat: { x: number; y: number };
+      servicePosition: { x: number; y: number };
+    };
+    wrongGuest: {
+      guestId: string;
+      seat: { x: number; y: number };
+      servicePosition: { x: number; y: number };
+    };
+  }>;
+  /**
+   * Place Val on a deterministic clear five-cell cross without changing the
+   * currently carried plated ticket. This fixture intentionally leaves the
+   * actual walk to pointer input.
+   */
+  prepareCarryAnimationCross: () => {
+    center: { x: number; y: number };
+    targets: {
+      right: { x: number; y: number };
+      down: { x: number; y: number };
+      up: { x: number; y: number };
+      left: { x: number; y: number };
+    };
+    ticketId: string;
+  };
   prepareDecorVisualFixture: () => void;
   prepareEquipmentVisualFixture: () => void;
   unlockKitchenAnnexForTest: () => void;
@@ -171,6 +204,20 @@ export interface E2eBridge {
   getGuestScreenAnchor: (guestId: string) => { x: number; y: number } | null;
   /** Debug: current rendered feet anchor for Val. */
   getPlayerScreenFeetAnchor: () => { x: number; y: number } | null;
+  /** Debug: requested and bound player art for carry-animation assertions. */
+  getPlayerVisualDebug: () => {
+    requestedTextureKey: string;
+    boundTextureKey: string;
+    authoredCarry: boolean;
+    plateOverlayVisible: boolean;
+    spriteVisible: boolean;
+    spriteAlpha: number;
+    frameWidth: number;
+    frameHeight: number;
+    feet: { x: number; y: number } | null;
+    facing: 'right' | 'down' | 'up' | 'left';
+    isMoving: boolean;
+  } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
   /** Debug: current unexpanded rendered frame bounds for one guest actor. */
@@ -368,6 +415,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPlayerScreenFeetAnchor() {
       return getRestaurantApp()?.getPlayerScreenFeetAnchor() ?? null;
+    },
+
+    getPlayerVisualDebug() {
+      return getRestaurantApp()?.getPlayerVisualDebug() ?? null;
     },
 
     getGuestScreenFeetAnchor(guestId) {
@@ -903,6 +954,239 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         station: { x: station.x, y: station.y },
         remote,
         ticketId: ticket?.id ?? null,
+      };
+    },
+
+    async prepareCarryInteractionBoundaryFixture() {
+      if (!useGameStore.getState().activeDay) {
+        await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }
+      await useGameStore.getState().dismissModifier();
+
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('carry boundary fixture requires an active floor day');
+      }
+      const station = current.placements.find(
+        (placement) =>
+          isCookStationItemKey(placement.itemKey) &&
+          current.purchasedEquipmentIds.includes(placement.itemKey),
+      );
+      const matchingCustomer = activeDay.customers[0];
+      const wrongCustomer = activeDay.customers[1];
+      const matchingGuest = floor.pool.find(
+        (guest) => guest.customer.id === matchingCustomer?.id,
+      );
+      const wrongGuest = floor.pool.find(
+        (guest) => guest.customer.id === wrongCustomer?.id,
+      );
+      const matchingSeat = floor.seats[0];
+      const wrongSeat = floor.seats[1];
+      const ingredientIds = current.unlockedIngredientIds.slice(0, 3);
+      if (
+        !station ||
+        !matchingCustomer ||
+        !wrongCustomer ||
+        !matchingGuest ||
+        !wrongGuest ||
+        !matchingSeat ||
+        !wrongSeat ||
+        ingredientIds.length !== 3
+      ) {
+        throw new Error('carry boundary fixture is missing station, guests, seats, or ingredients');
+      }
+
+      const blocked = walkBlockedCells(
+        current.placements,
+        current.gridSize.w,
+        current.gridSize.h,
+        { kitchenAnnexOwned: current.kitchenAnnexOwned, room: 'main' },
+      );
+      const servicePositionFor = (seat: Pick<SeatSlot, 'x' | 'y'>) => {
+        const position = guestServicePositions(seat).find(
+          (candidate) =>
+            candidate.x >= 0 &&
+            candidate.y >= 0 &&
+            candidate.x < current.gridSize.w &&
+            candidate.y < current.gridSize.h &&
+            !blocked.has(`${candidate.x},${candidate.y}`),
+        );
+        if (!position) {
+          throw new Error('carry boundary fixture guest has no service position');
+        }
+        return position;
+      };
+      const stationServicePosition = reachableMainFloorCellBeside(station);
+      const matchingServicePosition = servicePositionFor(matchingSeat);
+      const wrongServicePosition = servicePositionFor(wrongSeat);
+      const ticket = {
+        id: `ticket_${matchingCustomer.id}`,
+        customerId: matchingCustomer.id,
+        ingredientIds,
+        status: 'open' as const,
+      };
+      const occupiedTableIds = new Set([
+        matchingSeat.tablePlacementId,
+        wrongSeat.tablePlacementId,
+      ]);
+      const pool = floor.pool.map((guest) => {
+        if (guest.customer.id === matchingCustomer.id) {
+          return {
+            ...guest,
+            stage: 'ordered' as const,
+            seat: matchingSeat,
+            motionPosition: undefined,
+          };
+        }
+        if (guest.customer.id === wrongCustomer.id) {
+          return {
+            ...guest,
+            stage: 'ordered' as const,
+            seat: wrongSeat,
+            motionPosition: undefined,
+          };
+        }
+        return {
+          ...guest,
+          stage: 'queued' as const,
+          seat: undefined,
+          motionPosition: undefined,
+        };
+      });
+
+      useGameStore.setState({
+        activeFloorRoom: 'main',
+        floorPlayerGrid: stationServicePosition,
+        composeSheetOpen: false,
+        activeDay: {
+          ...activeDay,
+          floor: {
+            ...floor,
+            pool,
+            tables: floor.tables.map((table) => ({
+              ...table,
+              state: occupiedTableIds.has(table.placementId)
+                ? ('occupied' as const)
+                : ('ready' as const),
+            })),
+            tickets: [ticket],
+            carriedTicketId: null,
+            selectedTicketId: ticket.id,
+            playerPosition: stationServicePosition,
+            playerRoom: 'main',
+          },
+        },
+      });
+      getRestaurantApp()?.nav.snapTo(stationServicePosition);
+
+      return {
+        station: { x: station.x, y: station.y },
+        stationServicePosition,
+        ticketId: ticket.id,
+        matchingGuest: {
+          guestId: matchingGuest.id,
+          seat: { x: matchingSeat.x, y: matchingSeat.y },
+          servicePosition: matchingServicePosition,
+        },
+        wrongGuest: {
+          guestId: wrongGuest.id,
+          seat: { x: wrongSeat.x, y: wrongSeat.y },
+          servicePosition: wrongServicePosition,
+        },
+      };
+    },
+
+    prepareCarryAnimationCross() {
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('carry animation fixture requires an active floor day');
+      }
+      if (current.activeFloorRoom !== 'main') {
+        throw new Error('carry animation fixture must begin on the main floor');
+      }
+      const carriedTicket = floor.tickets.find(
+        (ticket) =>
+          ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+      );
+      if (!carriedTicket) {
+        throw new Error('carry animation fixture requires a valid carried plated ticket');
+      }
+
+      const blocked = playerWalkBlockedCells(
+        current.placements,
+        current.gridSize.w,
+        current.gridSize.h,
+        {
+          kitchenAnnexOwned: current.kitchenAnnexOwned,
+          room: 'main',
+        },
+      );
+      const guestCells = new Set<string>();
+      for (const guest of floor.pool) {
+        if (guest.seat) guestCells.add(`${guest.seat.x},${guest.seat.y}`);
+        if (guest.motionPosition) {
+          guestCells.add(`${guest.motionPosition.x},${guest.motionPosition.y}`);
+        }
+      }
+      const offsets = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+        { x: -1, y: 0 },
+      ] as const;
+      const candidates: Array<{ x: number; y: number }> = [];
+      for (let y = 1; y < current.gridSize.h - 1; y += 1) {
+        for (let x = 1; x < current.gridSize.w - 1; x += 1) {
+          if (
+            offsets.every((offset) => {
+              const key = `${x + offset.x},${y + offset.y}`;
+              return !blocked.has(key) && !guestCells.has(key);
+            })
+          ) {
+            candidates.push({ x, y });
+          }
+        }
+      }
+      candidates.sort((a, b) => {
+        const centerX = (current.gridSize.w - 1) / 2;
+        const centerY = (current.gridSize.h - 1) / 2;
+        const distanceA = Math.abs(a.x - centerX) + Math.abs(a.y - centerY);
+        const distanceB = Math.abs(b.x - centerX) + Math.abs(b.y - centerY);
+        return distanceA - distanceB || a.y - b.y || a.x - b.x;
+      });
+      const center = candidates[0];
+      if (!center) {
+        throw new Error('carry animation fixture could not find a clear movement cross');
+      }
+
+      useGameStore.setState({
+        activeFloorRoom: 'main',
+        floorPlayerGrid: center,
+        activeDay: {
+          ...activeDay,
+          floor: {
+            ...floor,
+            playerPosition: center,
+            playerRoom: 'main',
+          },
+        },
+      });
+      getRestaurantApp()?.nav.snapTo(center);
+
+      return {
+        center,
+        targets: {
+          right: { x: center.x + 1, y: center.y },
+          down: { x: center.x, y: center.y + 1 },
+          up: { x: center.x, y: center.y - 1 },
+          left: { x: center.x - 1, y: center.y },
+        },
+        ticketId: carriedTicket.id,
       };
     },
 

@@ -569,6 +569,38 @@ declare global {
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
+      prepareStationCarryFixture: (
+        mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
+      ) => Promise<{
+        station: { x: number; y: number };
+        remote: { x: number; y: number };
+        ticketId: string | null;
+      }>;
+      prepareCarryInteractionBoundaryFixture: () => Promise<{
+        station: { x: number; y: number };
+        stationServicePosition: { x: number; y: number };
+        ticketId: string;
+        matchingGuest: {
+          guestId: string;
+          seat: { x: number; y: number };
+          servicePosition: { x: number; y: number };
+        };
+        wrongGuest: {
+          guestId: string;
+          seat: { x: number; y: number };
+          servicePosition: { x: number; y: number };
+        };
+      }>;
+      prepareCarryAnimationCross: () => {
+        center: { x: number; y: number };
+        targets: {
+          right: { x: number; y: number };
+          down: { x: number; y: number };
+          up: { x: number; y: number };
+          left: { x: number; y: number };
+        };
+        ticketId: string;
+      };
       prepareDecorVisualFixture: () => void;
       prepareEquipmentVisualFixture: () => void;
       openComposeSheet: () => void;
@@ -584,6 +616,19 @@ declare global {
         y: number;
         zIndex: number;
       }>;
+      getPlayerVisualDebug: () => {
+        requestedTextureKey: string;
+        boundTextureKey: string;
+        authoredCarry: boolean;
+        plateOverlayVisible: boolean;
+        spriteVisible: boolean;
+        spriteAlpha: number;
+        frameWidth: number;
+        frameHeight: number;
+        feet: { x: number; y: number } | null;
+        facing: 'right' | 'down' | 'up' | 'left';
+        isMoving: boolean;
+      } | null;
       getInteractHintVisible: () => boolean;
       getInteractHintCells: () => Array<{ x: number; y: number }>;
       setFloorToast: (message: string | null) => void;
