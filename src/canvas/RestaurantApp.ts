@@ -108,6 +108,7 @@ export class RestaurantApp {
       this.furnitureLayer,
       this.previewLayer,
       this.app.canvas,
+      (changeRoom) => this.beginRoomTransition(changeRoom),
     );
   }
 
@@ -383,22 +384,25 @@ export class RestaurantApp {
     return true;
   }
 
-  private beginRoomTransition(): void {
+  private beginRoomTransition(
+    changeRoom: () => boolean = () => this.enterConnectingRoomNow(),
+  ): void {
     if (this.roomTransitionInFlight) return;
     const canvas = this.app.canvas;
     if (
       typeof canvas.animate !== 'function' ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      this.enterConnectingRoomNow();
+      changeRoom();
       return;
     }
 
     this.roomTransitionInFlight = true;
-    void this.runRoomTransition();
+    canvas.style.pointerEvents = 'none';
+    void this.runRoomTransition(changeRoom);
   }
 
-  private async runRoomTransition(): Promise<void> {
+  private async runRoomTransition(changeRoom: () => boolean): Promise<void> {
     const canvas = this.app.canvas;
     let roomChanged = false;
     try {
@@ -416,7 +420,7 @@ export class RestaurantApp {
       fadeOut.cancel();
 
       if (!this.mounted) return;
-      roomChanged = this.enterConnectingRoomNow();
+      roomChanged = changeRoom();
       if (!roomChanged) return;
 
       canvas.dataset.roomTransition = 'in';
@@ -434,12 +438,13 @@ export class RestaurantApp {
     } catch {
       // Cancellation during teardown is expected. If animation support fails
       // while still mounted, preserve the doorway action without the effect.
-      if (this.mounted && !roomChanged) this.enterConnectingRoomNow();
+      if (this.mounted && !roomChanged) changeRoom();
     } finally {
       this.roomTransitionAnimation = null;
       this.roomTransitionInFlight = false;
       delete canvas.dataset.roomTransition;
       canvas.style.removeProperty('opacity');
+      canvas.style.removeProperty('pointer-events');
     }
   }
 
@@ -913,6 +918,7 @@ export class RestaurantApp {
     this.roomTransitionInFlight = false;
     delete this.app.canvas.dataset.roomTransition;
     this.app.canvas.style.removeProperty('opacity');
+    this.app.canvas.style.removeProperty('pointer-events');
     window.removeEventListener('resize', this.handleResize);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;

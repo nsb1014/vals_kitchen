@@ -29,6 +29,7 @@ export class DragPlacement {
     private readonly furnitureLayer: FurnitureLayer,
     private readonly previewLayer: PreviewLayer,
     private readonly canvas: HTMLCanvasElement,
+    private readonly requestRoomTransition: (changeRoom: () => boolean) => void,
   ) {}
 
   attach(): void {
@@ -78,7 +79,7 @@ export class DragPlacement {
 
     // Tap connecting door (without a drag) to switch rooms while editing.
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
-      store.enterConnectingDoor();
+      this.requestRoomTransition(() => this.getStore().enterConnectingDoor());
       return;
     }
 
@@ -113,9 +114,11 @@ export class DragPlacement {
     const { gx, gy } = screenToDragGrid(sx, sy, this.camera.state, this.drag.grabOffset);
     const store = this.getStore();
     const existing = store.activeRoomPlacements().find((item) => item.id === this.drag!.placementId);
+    let roomChange: (() => boolean) | null = null;
     if (existing) {
       if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
-        store.transferPlacementViaDoor(this.drag.placementId);
+        const placementId = this.drag.placementId;
+        roomChange = () => this.getStore().transferPlacementViaDoor(placementId);
       } else if (existing.x !== gx || existing.y !== gy) {
         const candidate: Placement = {
           id: this.drag.placementId,
@@ -135,6 +138,7 @@ export class DragPlacement {
     }
     this.drag = null;
     this.previewLayer.hide();
+    if (roomChange) this.requestRoomTransition(roomChange);
   };
 
   private updatePreview(sx: number, sy: number): void {
