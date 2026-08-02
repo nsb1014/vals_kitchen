@@ -433,6 +433,7 @@ test.describe('object tap controls', () => {
     );
     expect(overlap?.tablePlacementId).toBe(behindTable!.seat.tablePlacementId);
     expect(overlap?.usesTableOverhang).toBe(true);
+    expect(overlap?.occlusionSource).toBe('texture-alpha');
     expect(overlap?.gridCell).toEqual({
       x: behindTable!.seat.x,
       y: behindTable!.seat.y,

@@ -47,6 +47,7 @@ export interface OpaqueTableOcclusion {
   placementId: string;
   zIndex: number;
   paintOrder: number;
+  source: 'texture-alpha' | 'sprite-bounds-fallback' | 'graphics-fallback';
 }
 
 export interface SeatingDepthDebug {
@@ -215,23 +216,28 @@ export class FurnitureLayer {
         zIndex: entry.root.zIndex,
         paintOrder: this.view.getChildIndex(entry.root),
       };
+      const source = this.tablePaintSourceAtWorldPoint(entry, wx, wy);
       if (
         !renderedNodePaintsAbove(
           { sortY: candidate.zIndex, paintOrder: candidate.paintOrder },
           actorOrder,
         ) ||
-        !this.tablePaintsAtWorldPoint(entry, wx, wy)
+        !source
       ) {
         continue;
       }
+      const paintedCandidate: OpaqueTableOcclusion = { ...candidate, source };
       if (
         !topmost ||
         renderedNodePaintsAbove(
-          { sortY: candidate.zIndex, paintOrder: candidate.paintOrder },
+          {
+            sortY: paintedCandidate.zIndex,
+            paintOrder: paintedCandidate.paintOrder,
+          },
           { sortY: topmost.zIndex, paintOrder: topmost.paintOrder },
         )
       ) {
-        topmost = candidate;
+        topmost = paintedCandidate;
       }
     }
     return topmost;
@@ -241,7 +247,12 @@ export class FurnitureLayer {
   findOpaqueTableOcclusionPoint(
     bounds: GuestWorldBounds,
     actorOrder: RenderedNodeOrder,
-  ): ({ x: number; y: number; usesTableOverhang: boolean } & OpaqueTableOcclusion) | null {
+  ): ({
+    x: number;
+    y: number;
+    usesTableOverhang: boolean;
+    source: 'texture-alpha';
+  } & Omit<OpaqueTableOcclusion, 'source'>) | null {
     for (const entry of this.sprites.values()) {
       if (!entry.itemKey.startsWith('table')) continue;
       const sprite = entry.sprite;
@@ -273,8 +284,17 @@ export class FurnitureLayer {
               y >= entry.root.y + TILE_PX;
             if (overhangOnly && !usesTableOverhang) continue;
             const occluder = this.getOpaqueTableOccluderAtWorld(x, y, actorOrder);
-            if (occluder?.placementId === entry.placementId) {
-              return { ...occluder, x, y, usesTableOverhang };
+            if (
+              occluder?.placementId === entry.placementId &&
+              occluder.source === 'texture-alpha'
+            ) {
+              return {
+                ...occluder,
+                source: 'texture-alpha',
+                x,
+                y,
+                usesTableOverhang,
+              };
             }
           }
         }
@@ -433,11 +453,11 @@ export class FurnitureLayer {
     sprite.position.set(x, y);
   }
 
-  private tablePaintsAtWorldPoint(
+  private tablePaintSourceAtWorldPoint(
     entry: FurnitureSprite,
     wx: number,
     wy: number,
-  ): boolean {
+  ): OpaqueTableOcclusion['source'] | null {
     const sprite = entry.sprite;
     if (sprite?.visible && sprite.texture !== Texture.EMPTY) {
       const mask = this.alphaMaskForTexture(sprite.texture);
@@ -453,13 +473,18 @@ export class FurnitureLayer {
       // Canvas readback can fail independently of the texture that Pixi has
       // already painted. Keep that visible sprite conservative instead of
       // allowing input to pass through to an actor underneath it.
-      if (!mask) return renderedSpriteBoundsContainWorldPoint(point, geometry);
-      return renderedAlphaMaskContainsWorldPoint(point, {
+      if (!mask) {
+        return renderedSpriteBoundsContainWorldPoint(point, geometry)
+          ? 'sprite-bounds-fallback'
+          : null;
+      }
+      const alphaPaints = renderedAlphaMaskContainsWorldPoint(point, {
         ...geometry,
         maskWidth: mask.width,
         maskHeight: mask.height,
         alpha: mask.alpha,
       });
+      return alphaPaints ? 'texture-alpha' : null;
     }
 
     // The no-atlas fallback paints two nested rectangles whose union is this inset box.
@@ -470,7 +495,9 @@ export class FurnitureLayer {
       localX < TILE_PX - 2 &&
       localY >= 2 &&
       localY < TILE_PX - 2
-    );
+    )
+      ? 'graphics-fallback'
+      : null;
   }
 
   private alphaMaskForTexture(texture: Texture): TextureAlphaMask | null {

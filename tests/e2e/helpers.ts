@@ -700,6 +700,7 @@ declare global {
         tablePlacementId: string;
         usesTableOverhang: boolean;
         gridCell: { x: number; y: number };
+        occlusionSource: 'texture-alpha';
       } | null;
       getInteractHintVisible: () => boolean;
       getInteractHintCells: () => Array<{ x: number; y: number }>;

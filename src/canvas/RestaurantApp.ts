@@ -606,6 +606,7 @@ export class RestaurantApp {
     tablePlacementId: string;
     usesTableOverhang: boolean;
     gridCell: { x: number; y: number };
+    occlusionSource: 'texture-alpha';
   }> | null {
     const target = this.actorLayer
       .getGuestWorldHitTargets()
@@ -638,6 +639,7 @@ export class RestaurantApp {
       y: rect.top + screen.y,
       tablePlacementId: overlap.placementId,
       usesTableOverhang: overlap.usesTableOverhang,
+      occlusionSource: overlap.source,
       gridCell: {
         x: Math.floor(overlap.x / TILE_PX),
         y: Math.floor(overlap.y / TILE_PX),

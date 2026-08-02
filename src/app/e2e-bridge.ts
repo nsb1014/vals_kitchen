@@ -284,6 +284,7 @@ export interface E2eBridge {
     tablePlacementId: string;
     usesTableOverhang: boolean;
     gridCell: { x: number; y: number };
+    occlusionSource: 'texture-alpha';
   } | null;
   /** Debug: current rendered feet anchor for one guest actor. */
   getGuestScreenFeetAnchor: (guestId: string) => { x: number; y: number } | null;
