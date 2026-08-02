@@ -2,10 +2,9 @@ import { expect, test } from '@playwright/test';
 import { assertCanvasHasRenderedContent, assertNoDiagnostics, gotoFreshGame } from './helpers.ts';
 
 /**
- * Capture a seated floor frame for agent visual QA.
- * Stops after seating (before cook/deliver) so diners are still at tables.
+ * Capture the same table before and after delivery for agent visual QA.
  */
-test('captures seated floor for visual QA', async ({ page }) => {
+test('captures pre- and post-delivery floor states for visual QA', async ({ page }) => {
   const diagnostics = await gotoFreshGame(page);
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -75,6 +74,42 @@ test('captures seated floor for visual QA', async ({ page }) => {
 
   await page.locator('[data-testid="restaurant-canvas"]').screenshot({
     path: 'test-results/floor-seated-qa.png',
+    animations: 'disabled',
+  });
+
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  const orderBubble = page.getByTestId('chat-bubble');
+  await expect(orderBubble).toBeVisible();
+  const orderBubbleBox = await orderBubble.boundingBox();
+  expect(orderBubbleBox).not.toBeNull();
+  expect(orderBubbleBox!.x).toBeGreaterThanOrEqual(8);
+  expect(orderBubbleBox!.x + orderBubbleBox!.width).toBeLessThanOrEqual(382);
+  await page.locator('[data-testid="restaurant-canvas"]').screenshot({
+    path: 'test-results/floor-order-bubble-qa.png',
+    animations: 'disabled',
+  });
+
+  expect(
+    await page.evaluate(() => window.__E2E__!.advanceFloorServiceOnce()),
+  ).toBe('pending_review');
+  await expect(page.getByTestId('review-sheet')).toBeVisible();
+  await page.waitForTimeout(2_500);
+  await page.evaluate(() => window.__E2E__!.dismissPendingReview());
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          window.__E2E__!.getGameState().activeDay!.floor!.pool.some(
+            (guest) => guest.stage === 'eating',
+          ),
+        ),
+      { timeout: 2_000 },
+    )
+    .toBe(true);
+  await page.waitForTimeout(100);
+  await page.locator('[data-testid="restaurant-canvas"]').screenshot({
+    path: 'test-results/floor-served-qa.png',
     animations: 'disabled',
   });
   assertNoDiagnostics(diagnostics);

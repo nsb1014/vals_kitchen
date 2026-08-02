@@ -39,6 +39,7 @@ import {
   selectFloorRuntimeRunning,
 } from '../store/selectors/floor-runtime.ts';
 import { screenToGrid, TILE_PX, worldToScreen } from './coordinates.ts';
+import { tableServiceVisualStates } from './table-service-visual.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   return Math.max(1, Math.round(dpr));
@@ -704,11 +705,7 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
-    const tableStates = new Map(
-      (state.activeDay?.floor?.tables ?? []).map(
-        (t) => [t.placementId, t.state] as const,
-      ),
-    );
+    const tableStates = tableServiceVisualStates(state.activeDay?.floor);
     this.furnitureLayer.sync(
       roomPlacements,
       state.editLayoutMode,

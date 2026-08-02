@@ -59,6 +59,7 @@ import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
+import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -334,8 +335,18 @@ export function mountServiceDayUi(
       return;
     }
     bubbleEl.hidden = false;
-    bubbleEl.style.left = `${anchor.x}px`;
-    bubbleEl.style.top = `${anchor.y}px`;
+    const mountRect = bubbleMount.getBoundingClientRect();
+    const placement = computeChatBubblePlacement(
+      anchor,
+      mountRect,
+      { width: bubbleEl.offsetWidth, height: bubbleEl.offsetHeight },
+    );
+    bubbleEl.style.left = `${placement.left}px`;
+    bubbleEl.style.top = `${placement.top}px`;
+    bubbleEl.style.setProperty(
+      '--vk-bubble-tail-offset-x',
+      `${placement.tailOffsetX}px`,
+    );
   };
 
   const renderChatBubble = () => {
