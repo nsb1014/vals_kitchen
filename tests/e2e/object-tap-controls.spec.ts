@@ -331,9 +331,61 @@ test.describe('object tap controls', () => {
     expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe('main');
 
     await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              document.querySelector<HTMLCanvasElement>(
+                '[data-testid="restaurant-canvas"]',
+              )?.dataset.roomTransition ?? null,
+          ),
+        { timeout: 10_000, intervals: [20, 20, 20, 50] },
+      )
+      .toBe('out');
+    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe('main');
+
+    await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom), {
         timeout: 10_000,
       })
       .toBe('back_kitchen');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.querySelector<HTMLCanvasElement>(
+              '[data-testid="restaurant-canvas"]',
+            )?.dataset.roomTransition ?? null,
+        ),
+      )
+      .toBeNull();
+  });
+
+  test('honors reduced motion while keeping annex travel functional', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openRunningFloor(page);
+    const door = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      bridge.unlockKitchenAnnexForTest();
+      const state = bridge.getGameState();
+      return { x: state.gridSize.w - 1, y: Math.floor(state.gridSize.h / 2) };
+    });
+
+    await tapGridCell(page, door.x, door.y);
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom), {
+        timeout: 10_000,
+      })
+      .toBe('back_kitchen');
+    expect(
+      await page.evaluate(
+        () =>
+          document.querySelector<HTMLCanvasElement>(
+            '[data-testid="restaurant-canvas"]',
+          )?.dataset.roomTransition ?? null,
+      ),
+    ).toBeNull();
   });
 });
