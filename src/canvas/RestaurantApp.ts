@@ -21,6 +21,10 @@ import {
 import type { FloorDay } from '../domain/floor/types.ts';
 import type { Placement } from '../domain/state/game-state.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import {
+  canEnqueue,
+  formatTicketCapacityFullMessage,
+} from '../domain/floor/tickets.ts';
 import { CustomerLayer } from './layers/CustomerLayer.ts';
 import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
@@ -623,9 +627,13 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
+    const hasValidCarriedTicket = liveFloor.tickets.some(
+      (ticket) =>
+        ticket.id === liveFloor.carriedTicketId && ticket.status === 'plated',
+    );
     const stationNeedsAttention =
       liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
-      !liveFloor.carriedTicketId;
+      !hasValidCarriedTicket;
     const interactionHints = !selectShowFloorInteractionCues(state)
       ? []
       : state.activeFloorRoom === 'main'
@@ -829,6 +837,10 @@ export class RestaurantApp {
       }
 
       if (!floor.carriedTicketId && tappedGuest?.stage === 'seated') {
+        if (!canEnqueue(floor.tickets, 1)) {
+          store.setFloorToast(formatTicketCapacityFullMessage(floor.tickets));
+          return;
+        }
         if (!playerNearGuestSeat(player, tappedGuest)) {
           this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
           return;
@@ -843,6 +855,18 @@ export class RestaurantApp {
 
     const station = findCookStationPlacementAtCell(roomPlacements, tapCell);
     if (station) {
+      const validCarriedTicket = floor.tickets.find(
+        (ticket) =>
+          ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+      );
+      if (validCarriedTicket) {
+        store.setFloorToast('Deliver the carried dish first');
+        return;
+      }
+      if (!floor.tickets.some((ticket) => ticket.status === 'open')) {
+        store.setFloorToast('No open ticket to cook');
+        return;
+      }
       const player = store.floorPlayerGrid ?? floor.playerPosition;
       if (!playerNearPlacement(player, station)) {
         this.pathToAdjacentCell(store, roomPlacements, tapCell);
@@ -1147,6 +1171,7 @@ export class RestaurantApp {
   ): { x: number; y: number }[] {
     const hints: { x: number; y: number }[] = [];
     const seen = new Set<string>();
+    const orderAvailable = canEnqueue(floor.tickets, 1);
     const add = (x: number, y: number): void => {
       const key = `${x},${y}`;
       if (seen.has(key)) return;
@@ -1172,19 +1197,24 @@ export class RestaurantApp {
       }
     }
 
-    if (floor.carriedTicketId) {
-      const ticket = floor.tickets.find((t) => t.id === floor.carriedTicketId);
-      if (ticket) {
-        const guest = floor.pool.find(
-          (g) => g.customer.id === ticket.customerId,
-        );
-        if (
-          guest?.seat &&
-          guestHintAction(guest.stage, playerNearGuestSeat(player, guest), 'matching') ===
-            'deliver'
-        ) {
-          add(guest.seat.x, guest.seat.y);
-        }
+    const carriedTicket = floor.tickets.find(
+      (ticket) =>
+        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+    );
+    if (carriedTicket) {
+      const guest = floor.pool.find(
+        (candidate) => candidate.customer.id === carriedTicket.customerId,
+      );
+      if (
+        guest?.seat &&
+        guestHintAction(
+          guest.stage,
+          playerNearGuestSeat(player, guest),
+          'matching',
+          orderAvailable,
+        ) === 'deliver'
+      ) {
+        add(guest.seat.x, guest.seat.y);
       }
     } else {
       if (stationNeedsAttention) {
@@ -1197,8 +1227,12 @@ export class RestaurantApp {
       for (const guest of floor.pool) {
         if (
           guest.seat &&
-          guestHintAction(guest.stage, playerNearGuestSeat(player, guest), 'none') ===
-            'order'
+          guestHintAction(
+            guest.stage,
+            playerNearGuestSeat(player, guest),
+            'none',
+            orderAvailable,
+          ) === 'order'
         ) {
           add(guest.seat.x, guest.seat.y);
         }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyFlavorProfile } from '../../domain/flavor/axis-labels.ts';
+import { formatTicketCapacityFullMessage } from '../../domain/floor/tickets.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
 import { buildFloorTicketPanelViewModel } from '../../ui/presentation/floor-ticket-panel.ts';
 import {
@@ -180,8 +181,16 @@ describe('floor ticket panel view model', () => {
       activeCount: 4,
       capacity: 4,
       capacityFull: true,
-      capacityMessage: 'Tickets full (4/4) — cook or deliver first.',
+      capacityMessage: formatTicketCapacityFullMessage([
+        ticket('one', 'c1', 'open'),
+        ticket('two', 'c2', 'open'),
+        ticket('three', 'c3', 'open'),
+        ticket('four', 'c4', 'plated'),
+      ]),
     });
+    expect(model.capacityMessage).toBe(
+      'Tickets full (4/4) — cook or deliver first.',
+    );
   });
 
   it('renders all 15 continuous Ideal axes with numbers and no temperature', () => {

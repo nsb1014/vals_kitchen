@@ -4,12 +4,23 @@ export const MAX_TICKETS = 4;
 /** @deprecated Use {@link MAX_TICKETS} */
 export const MAX_FLOOR_TICKETS = MAX_TICKETS;
 
+export function countActiveTickets(tickets: readonly FloorTicket[]): number {
+  return tickets.filter((ticket) => ticket.status !== 'delivered').length;
+}
+
+export function formatTicketCapacityFullMessage(
+  tickets: readonly FloorTicket[],
+  max: number = MAX_TICKETS,
+): string {
+  return `Tickets full (${countActiveTickets(tickets)}/${max}) — cook or deliver first.`;
+}
+
 export function canEnqueue(
-  tickets: FloorTicket[],
+  tickets: readonly FloorTicket[],
   addCount: number,
   max: number = MAX_TICKETS,
 ): boolean {
-  const active = tickets.filter((t) => t.status !== 'delivered').length;
+  const active = countActiveTickets(tickets);
   return active + addCount <= max;
 }
 

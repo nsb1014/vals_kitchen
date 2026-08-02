@@ -2,6 +2,7 @@ import { computeCameraCenter, gridToWorld, worldToScreen } from '../canvas/coord
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { isDayComplete } from '../domain/day/serve.ts';
 import type { GameAction } from '../domain/reducer.ts';
+import { validatePlacement } from '../domain/economy/purchases.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
 import { getGameStateSnapshot, useGameStore, type Celebration } from '../store/game-store.ts';
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
@@ -11,9 +12,13 @@ import { walkBlockedCells } from '../canvas/world/blocked-cells.ts';
 import { findPath } from '../domain/floor/pathfinding.ts';
 import {
   guestServicePositions,
+  isCookStationItemKey,
   waitingGuestServicePositions,
 } from '../domain/floor/interact.ts';
+import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import { tablesFromPlacements } from '../domain/floor/sim.ts';
 import type { SeatSlot } from '../domain/floor/types.ts';
+import { seatingFromPlacements, type Placement } from '../domain/state/game-state.ts';
 
 const E2E_WAITING_SERVICE_BLOCKER_PREFIX =
   '__e2e_waiting_service_blocker__:';
@@ -125,6 +130,18 @@ export interface E2eBridge {
   dismissPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
+  prepareFullTicketRemoteSeatedGuestFixture: () => Promise<{
+    guestId: string;
+    seat: { x: number; y: number };
+    remote: { x: number; y: number };
+  }>;
+  prepareStationCarryFixture: (
+    mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
+  ) => Promise<{
+    station: { x: number; y: number };
+    remote: { x: number; y: number };
+    ticketId: string | null;
+  }>;
   prepareDecorVisualFixture: () => void;
   prepareEquipmentVisualFixture: () => void;
   unlockKitchenAnnexForTest: () => void;
@@ -464,6 +481,294 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           },
         },
       });
+    },
+
+    async prepareFullTicketRemoteSeatedGuestFixture() {
+      if (!useGameStore.getState().activeDay) {
+        await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }
+      await useGameStore.getState().dismissModifier();
+
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('full ticket fixture requires an active floor day');
+      }
+      const ticketCustomers = activeDay.customers.slice(0, 4);
+      if (ticketCustomers.length !== 4) {
+        throw new Error('full ticket fixture requires four ticket customers');
+      }
+
+      let fixtureTable: Placement | null = null;
+      for (let y = 1; y < current.gridSize.h - 1 && !fixtureTable; y += 1) {
+        for (let x = 1; x < current.gridSize.w - 1; x += 1) {
+          const candidate: Placement = {
+            id: '__e2e_capacity_table__',
+            itemKey: 'table_2seat',
+            x,
+            y,
+            rotation: 0,
+          };
+          if (validatePlacement(current, candidate)) {
+            fixtureTable = candidate;
+            break;
+          }
+        }
+      }
+      if (!fixtureTable) {
+        throw new Error('full ticket fixture could not place an extra table');
+      }
+
+      const placements = [...current.placements, fixtureTable];
+      const seats = seatsFromPlacements(placements);
+      const assignedSeats = seats.slice(0, 5);
+      if (assignedSeats.length !== 5) {
+        throw new Error('full ticket fixture requires five distinct seats');
+      }
+      const baseCustomer = ticketCustomers[0]!;
+      const targetCustomer = {
+        ...baseCustomer,
+        id: '__e2e_capacity_target_customer__',
+      };
+      const targetGuest = {
+        id: '__e2e_capacity_target_guest__',
+        customer: targetCustomer,
+        stage: 'seated' as const,
+        seat: assignedSeats[4]!,
+        eatTicksRemaining: 0,
+      };
+      const customerSeatById = new Map(
+        ticketCustomers.map((customer, index) => [
+          customer.id,
+          assignedSeats[index]!,
+        ] as const),
+      );
+      const occupiedTableIds = new Set(
+        assignedSeats.map((seat) => seat.tablePlacementId),
+      );
+      const tables = tablesFromPlacements(placements).map((table) => ({
+        ...table,
+        state: occupiedTableIds.has(table.placementId)
+          ? ('occupied' as const)
+          : ('ready' as const),
+      }));
+      const tickets = ticketCustomers.map((customer) => ({
+        id: `ticket_${customer.id}`,
+        customerId: customer.id,
+        ingredientIds: [],
+        status: 'open' as const,
+      }));
+
+      const blocked = walkBlockedCells(
+        placements,
+        current.gridSize.w,
+        current.gridSize.h,
+        { kitchenAnnexOwned: current.kitchenAnnexOwned, room: 'main' },
+      );
+      const serviceCells = guestServicePositions(targetGuest.seat).filter(
+        (cell) => !blocked.has(`${cell.x},${cell.y}`),
+      );
+      let remote: { x: number; y: number } | null = null;
+      for (let y = current.gridSize.h - 2; y >= 1 && !remote; y -= 1) {
+        for (let x = current.gridSize.w - 2; x >= 1; x -= 1) {
+          const candidate = { x, y };
+          if (
+            blocked.has(`${x},${y}`) ||
+            serviceCells.some((cell) => cell.x === x && cell.y === y)
+          ) {
+            continue;
+          }
+          if (
+            serviceCells.some((serviceCell) =>
+              findPath(
+                {
+                  w: current.gridSize.w,
+                  h: current.gridSize.h,
+                  blocked,
+                },
+                candidate,
+                serviceCell,
+              ),
+            )
+          ) {
+            remote = candidate;
+            break;
+          }
+        }
+      }
+      if (!remote) {
+        throw new Error('full ticket fixture could not find a remote player cell');
+      }
+
+      useGameStore.setState({
+        placements,
+        seatingCapacity: seatingFromPlacements(placements),
+        tableCount: tables.length,
+        floorPlayerGrid: remote,
+        activeFloorRoom: 'main',
+        activeDay: {
+          ...activeDay,
+          customers: [...ticketCustomers, targetCustomer],
+          floor: {
+            ...floor,
+            pool: [
+              ...floor.pool
+                .filter((guest) => customerSeatById.has(guest.customer.id))
+                .map((guest) => ({
+                  ...guest,
+                  stage: 'ordered' as const,
+                  seat: customerSeatById.get(guest.customer.id)!,
+                  motionPosition: undefined,
+                })),
+              targetGuest,
+            ],
+            tables,
+            seats,
+            tickets,
+            carriedTicketId: null,
+            selectedTicketId: tickets[0]!.id,
+            playerPosition: remote,
+            playerRoom: 'main',
+          },
+        },
+      });
+      getRestaurantApp()?.nav.snapTo(remote);
+
+      return {
+        guestId: targetGuest.id,
+        seat: { x: targetGuest.seat.x, y: targetGuest.seat.y },
+        remote,
+      };
+    },
+
+    async prepareStationCarryFixture(mode) {
+      if (!useGameStore.getState().activeDay) {
+        await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+      }
+      await useGameStore.getState().dismissModifier();
+
+      const current = useGameStore.getState();
+      const activeDay = current.activeDay;
+      const floor = activeDay?.floor;
+      if (!activeDay || !floor) {
+        throw new Error('station carry fixture requires an active floor day');
+      }
+      const station = current.placements.find(
+        (placement) =>
+          isCookStationItemKey(placement.itemKey) &&
+          current.purchasedEquipmentIds.includes(placement.itemKey),
+      );
+      if (!station) {
+        throw new Error('station carry fixture requires an owned cook station');
+      }
+
+      const blocked = walkBlockedCells(
+        current.placements,
+        current.gridSize.w,
+        current.gridSize.h,
+        { kitchenAnnexOwned: current.kitchenAnnexOwned, room: 'main' },
+      );
+      const stationServiceCell = reachableMainFloorCellBeside(station);
+      let remote: { x: number; y: number } | null = null;
+      for (let y = current.gridSize.h - 2; y >= 1 && !remote; y -= 1) {
+        for (let x = 1; x < current.gridSize.w - 1; x += 1) {
+          const candidate = { x, y };
+          if (
+            blocked.has(`${x},${y}`) ||
+            Math.max(Math.abs(x - station.x), Math.abs(y - station.y)) <= 1
+          ) {
+            continue;
+          }
+          if (
+            findPath(
+              {
+                w: current.gridSize.w,
+                h: current.gridSize.h,
+                blocked,
+              },
+              candidate,
+              stationServiceCell,
+            )
+          ) {
+            remote = candidate;
+            break;
+          }
+        }
+      }
+      if (!remote) {
+        throw new Error('station carry fixture could not find a remote player cell');
+      }
+
+      const customer = activeDay.customers[0];
+      const seat = floor.seats[0];
+      if (!customer || !seat) {
+        throw new Error('station carry fixture requires a customer and seat');
+      }
+      const ticket = mode === 'stale_without_open'
+        ? null
+        : {
+            id: `ticket_${customer.id}`,
+            customerId: customer.id,
+            ingredientIds:
+              mode === 'valid_carry'
+                ? current.unlockedIngredientIds.slice(0, 3)
+                : [],
+            status: mode === 'valid_carry'
+              ? ('plated' as const)
+              : ('open' as const),
+          };
+      const pool = ticket
+        ? floor.pool.map((guest) =>
+            guest.customer.id === customer.id
+              ? {
+                  ...guest,
+                  stage: 'ordered' as const,
+                  seat,
+                  motionPosition: undefined,
+                }
+              : guest,
+          )
+        : floor.pool;
+      const tables = ticket
+        ? floor.tables.map((table) => ({
+            ...table,
+            state: table.placementId === seat.tablePlacementId
+              ? ('occupied' as const)
+              : table.state === 'unset'
+                ? ('ready' as const)
+                : table.state,
+          }))
+        : floor.tables;
+      const carriedTicketId = mode === 'valid_carry'
+        ? ticket!.id
+        : '__e2e_stale_carried_ticket__';
+
+      useGameStore.setState({
+        activeFloorRoom: 'main',
+        floorPlayerGrid: remote,
+        composeSheetOpen: false,
+        activeDay: {
+          ...activeDay,
+          floor: {
+            ...floor,
+            pool,
+            tables,
+            tickets: ticket ? [ticket] : [],
+            carriedTicketId,
+            selectedTicketId: ticket?.status === 'open' ? ticket.id : null,
+            playerPosition: remote,
+            playerRoom: 'main',
+          },
+        },
+      });
+      getRestaurantApp()?.nav.snapTo(remote);
+
+      return {
+        station: { x: station.x, y: station.y },
+        remote,
+        ticketId: ticket?.id ?? null,
+      };
     },
 
     prepareDecorVisualFixture() {

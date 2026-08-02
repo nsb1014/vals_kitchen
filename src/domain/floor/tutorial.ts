@@ -52,8 +52,6 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
   const allSetOrBusy = day.tables.every((t) => t.state !== 'unset');
   if (!allSetOrBusy) return 'set_tables';
 
-  const notYetServed = new Set(['queued', 'entering', 'waiting', 'seating', 'done']);
-  const anySeatedOrFurther = day.pool.some((g) => !notYetServed.has(g.stage));
   const anyWaiting = day.pool.some(
     (g) => g.stage === 'waiting' || g.stage === 'entering' || g.stage === 'seating',
   );
@@ -69,11 +67,7 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
   if (day.carriedTicketId) return 'deliver';
   if (day.tables.some((t) => t.state === 'dirty')) return 'clear';
 
-  if (anySeatedOrFurther || anyWaiting) {
-    // Mid-loop: prefer seat/order/cook cycle
-    if (anyWaiting) return 'wait_seat';
-    return 'take_orders';
-  }
+  if (anyWaiting) return 'wait_seat';
 
   if (isFloorDayComplete(day)) return 'close';
 

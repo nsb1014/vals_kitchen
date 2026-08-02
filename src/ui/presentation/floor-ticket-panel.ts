@@ -1,4 +1,8 @@
-import { MAX_TICKETS } from '../../domain/floor/tickets.ts';
+import {
+  countActiveTickets,
+  formatTicketCapacityFullMessage,
+  MAX_TICKETS,
+} from '../../domain/floor/tickets.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
 import { formatTicketStatusLabel } from './floor-ticket.ts';
 
@@ -59,7 +63,7 @@ export function buildFloorTicketPanelViewModel(
   const carryingGuestLabel = carriedTicket
     ? (input.guestLabelByCustomerId[carriedTicket.customerId] ?? 'Guest')
     : null;
-  const activeCount = activeTickets.length;
+  const activeCount = countActiveTickets(input.tickets);
   const countText = `${activeCount}/${MAX_TICKETS}`;
   const capacityFull = activeCount === MAX_TICKETS;
 
@@ -68,7 +72,7 @@ export function buildFloorTicketPanelViewModel(
     capacity: MAX_TICKETS,
     capacityFull,
     capacityMessage: capacityFull
-      ? `Tickets full (${countText}) — cook or deliver first.`
+      ? formatTicketCapacityFullMessage(input.tickets)
       : null,
     toggleText: carryingGuestLabel
       ? `Carrying ${carryingGuestLabel} · ${countText}`

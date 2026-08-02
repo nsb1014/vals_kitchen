@@ -61,6 +61,7 @@ import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
+import { isOrderBubbleOwnedByFloor } from '../presentation/order-bubble.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -375,13 +376,23 @@ export function mountServiceDayUi(
     notifyNotificationBlockingSurfaceChanged();
   };
 
-  const positionChatBubble = () => {
-    if (!bubbleEl) return;
-    if (!serviceOverlay.hidden) {
+  const clearOrderBubble = () => {
+    orderBubbleGuestId = null;
+    if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+    orderBubbleTimer = null;
+    if (bubbleEl) {
       bubbleEl.hidden = true;
-      syncOrderBubbleNoticeBlock();
+      bubbleEl.classList.remove('order-bubble');
+    }
+    syncOrderBubbleNoticeBlock();
+  };
+
+  const positionChatBubble = () => {
+    if (!serviceOverlay.hidden) {
+      clearOrderBubble();
       return;
     }
+    if (!bubbleEl) return;
     const app = getRestaurantApp();
     if (!app) return;
     const anchor = orderBubbleGuestId
@@ -410,23 +421,32 @@ export function mountServiceDayUi(
 
   const renderChatBubble = () => {
     const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    if (
+      orderBubbleGuestId &&
+      !isOrderBubbleOwnedByFloor(floor, orderBubbleGuestId)
+    ) {
+      clearOrderBubble();
+    }
     // A service sheet owns the current conversation. Keep older order speech
     // from competing visually with modifiers, cooking, reviews, or summaries.
     if (!serviceOverlay.hidden) {
-      if (bubbleEl) bubbleEl.hidden = true;
-      syncOrderBubbleNoticeBlock();
+      clearOrderBubble();
       return;
     }
     const customer = selectCurrentCustomer(state);
     const orderGuest = orderBubbleGuestId
-      ? state.activeDay?.floor?.pool.find(
+      ? floor?.pool.find(
           (guest) => guest.customer.id === orderBubbleGuestId,
         )
       : undefined;
-    const showOrderBubble = Boolean(orderGuest && state.activeDay?.floor);
+    const showOrderBubble = Boolean(
+      orderGuest && isOrderBubbleOwnedByFloor(floor, orderBubbleGuestId),
+    );
     const showBubble =
       showOrderBubble ||
-      (state.activeDay &&
+      (!floor &&
+        state.activeDay &&
         state.modifierDismissed &&
         customer &&
         !state.pendingReview &&
@@ -1283,10 +1303,17 @@ export function mountServiceDayUi(
       orderBubbleGuestId = newTicket.customerId;
       if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
       orderBubbleTimer = setTimeout(() => {
-        orderBubbleGuestId = null;
-        orderBubbleTimer = null;
+        clearOrderBubble();
         renderChatBubble();
       }, 2400);
+    }
+    const floorChanged = state.activeDay?.floor !== prev.activeDay?.floor;
+    if (
+      floorChanged &&
+      orderBubbleGuestId &&
+      !isOrderBubbleOwnedByFloor(state.activeDay?.floor, orderBubbleGuestId)
+    ) {
+      clearOrderBubble();
     }
     const domainChanged =
       state.screen !== prev.screen ||
@@ -1305,7 +1332,7 @@ export function mountServiceDayUi(
       state.composeSheetOpen !== prev.composeSheetOpen ||
       state.composeDraftIngredientIds !== prev.composeDraftIngredientIds ||
       state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
-      state.activeDay?.floor !== prev.activeDay?.floor ||
+      floorChanged ||
       state.floorPlayerGrid !== prev.floorPlayerGrid;
 
     if (domainChanged) {
@@ -1328,7 +1355,7 @@ export function mountServiceDayUi(
     window.removeEventListener('resize', positionChatBubble);
     document.removeEventListener('keydown', onComposeKeydown);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
-    if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+    clearOrderBubble();
     setComposeBackgroundIsolation(false);
     bubbleEl?.remove();
     statusMount.innerHTML = '';

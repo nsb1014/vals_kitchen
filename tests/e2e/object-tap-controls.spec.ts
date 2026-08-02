@@ -196,6 +196,283 @@ async function prepareOrderedGuest(
 }
 
 test.describe('object tap controls', () => {
+  test('retires a still-actionable order bubble behind compose and releases its notice block', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+    const bubble = page.getByTestId('chat-bubble');
+    await expect(bubble).toBeVisible();
+    const visibleAt = Date.now();
+    const ownershipBefore = await page.evaluate(() => {
+      const floor = window.__E2E__!.getGameState().activeDay!.floor!;
+      const ticket = floor.tickets.find((candidate) => candidate.status === 'open');
+      if (!ticket) throw new Error('expected an open ticket');
+      return {
+        ticket: {
+          id: ticket.id,
+          customerId: ticket.customerId,
+          status: ticket.status,
+        },
+        guestStage: floor.pool.find(
+          (guest) => guest.customer.id === ticket.customerId,
+        )?.stage,
+      };
+    });
+    expect(ownershipBefore.guestStage).toBe('ordered');
+
+    await page.evaluate(() => window.__E2E__!.openComposeSheet());
+    await expect(page.getByTestId('compose-sheet')).toBeVisible();
+    await expect(bubble).toBeHidden();
+
+    const queuedNotice = page
+      .getByTestId('notice-banner')
+      .filter({ hasText: 'Order bubble released its notice block' });
+    await page.evaluate(() =>
+      window.__E2E__!.setFloorToast(
+        'Order bubble released its notice block',
+      ),
+    );
+    await expect(queuedNotice).toBeHidden();
+
+    await page.getByTestId('compose-close').click();
+    await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
+    const closedAt = Date.now();
+    expect(closedAt - visibleAt).toBeLessThan(2_400);
+    const ownershipAfterClose = await page.evaluate((customerId) => {
+      const floor = window.__E2E__!.getGameState().activeDay!.floor!;
+      const ticket = floor.tickets.find(
+        (candidate) => candidate.customerId === customerId,
+      );
+      return {
+        ticket: ticket
+          ? {
+              id: ticket.id,
+              customerId: ticket.customerId,
+              status: ticket.status,
+            }
+          : null,
+        guestStage: floor.pool.find(
+          (guest) => guest.customer.id === customerId,
+        )?.stage,
+      };
+    }, ownershipBefore.ticket.customerId);
+    expect(ownershipAfterClose).toEqual(ownershipBefore);
+    await expect(bubble).toBeHidden();
+    await expect(queuedNotice).toBeVisible();
+
+    await page.waitForTimeout(Math.max(0, 2_450 - (Date.now() - visibleAt)));
+    await expect(bubble).toBeHidden();
+    await expect(queuedNotice).toBeVisible();
+    const ownershipAfterTimer = await page.evaluate((customerId) => {
+      const floor = window.__E2E__!.getGameState().activeDay!.floor!;
+      const ticket = floor.tickets.find(
+        (candidate) => candidate.customerId === customerId,
+      );
+      return {
+        ticket: ticket
+          ? {
+              id: ticket.id,
+              customerId: ticket.customerId,
+              status: ticket.status,
+            }
+          : null,
+        guestStage: floor.pool.find(
+          (guest) => guest.customer.id === customerId,
+        )?.stage,
+      };
+    }, ownershipBefore.ticket.customerId);
+    expect(ownershipAfterTimer).toEqual(ownershipBefore);
+  });
+
+  test('rejects a remote seated-guest tap at 4/4 without starting a path', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const fixture = await page.evaluate(() =>
+      window.__E2E__!.prepareFullTicketRemoteSeatedGuestFixture(),
+    );
+    const before = await page.evaluate((guestId) => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        guestStage: floor.pool.find((guest) => guest.id === guestId)?.stage,
+        tickets: floor.tickets.map((ticket) => ({
+          id: ticket.id,
+          customerId: ticket.customerId,
+          status: ticket.status,
+        })),
+      };
+    }, fixture.guestId);
+    expect(before.player).toEqual(fixture.remote);
+    expect(before.guestStage).toBe('seated');
+    expect(before.tickets).toHaveLength(4);
+    expect(before.tickets.map((ticket) => ticket.status)).toEqual([
+      'open',
+      'open',
+      'open',
+      'open',
+    ]);
+    expect(new Set(before.tickets.map((ticket) => ticket.id)).size).toBe(4);
+    expect(new Set(before.tickets.map((ticket) => ticket.customerId)).size).toBe(4);
+
+    await tapScreenPoint(
+      page,
+      await waitingGuestHitPoint(page, fixture.guestId),
+    );
+
+    await expect(page.locator('.notice-banner-body')).toHaveText(
+      'Tickets full (4/4) — cook or deliver first.',
+    );
+    await page.waitForTimeout(500);
+    const after = await page.evaluate((guestId) => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        guestStage: floor.pool.find((guest) => guest.id === guestId)?.stage,
+        tickets: floor.tickets.map((ticket) => ({
+          id: ticket.id,
+          customerId: ticket.customerId,
+          status: ticket.status,
+        })),
+      };
+    }, fixture.guestId);
+    expect(after).toEqual(before);
+  });
+
+  test('rejects a remote station tap while carrying a valid plated dish', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const fixture = await page.evaluate(() =>
+      window.__E2E__!.prepareStationCarryFixture('valid_carry'),
+    );
+    const before = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        carriedTicketId: floor.carriedTicketId,
+        tickets: floor.tickets.map((ticket) => ({
+          id: ticket.id,
+          status: ticket.status,
+        })),
+      };
+    });
+    expect(before).toEqual({
+      player: fixture.remote,
+      carriedTicketId: fixture.ticketId,
+      tickets: [{ id: fixture.ticketId, status: 'plated' }],
+    });
+
+    await tapGridCell(page, fixture.station.x, fixture.station.y);
+    await expect(page.locator('.notice-banner-body')).toHaveText(
+      'Deliver the carried dish first',
+    );
+    await page.waitForTimeout(500);
+
+    const after = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        carriedTicketId: floor.carriedTicketId,
+        tickets: floor.tickets.map((ticket) => ({
+          id: ticket.id,
+          status: ticket.status,
+        })),
+        composeSheetOpen: bridge.getState().composeSheetOpen,
+      };
+    });
+    expect(after).toEqual({ ...before, composeSheetOpen: false });
+  });
+
+  test('ignores a stale carried id and reaches a real open ticket', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const fixture = await page.evaluate(() =>
+      window.__E2E__!.prepareStationCarryFixture('stale_with_open'),
+    );
+    const floorBefore = await page.evaluate(
+      () => window.__E2E__!.getGameState().activeDay!.floor!,
+    );
+    expect(floorBefore.carriedTicketId).not.toBeNull();
+    expect(
+      floorBefore.tickets.some(
+        (ticket) =>
+          ticket.id === floorBefore.carriedTicketId && ticket.status === 'plated',
+      ),
+    ).toBe(false);
+    expect(floorBefore.tickets).toEqual([
+      expect.objectContaining({ id: fixture.ticketId, status: 'open' }),
+    ]);
+
+    await tapGridCell(page, fixture.station.x, fixture.station.y);
+    await expect
+      .poll(() =>
+        page.evaluate(({ x, y }) => {
+          const player = window.__E2E__!.getState().floorPlayerGrid;
+          return Boolean(
+            player &&
+              Math.max(Math.abs(player.x - x), Math.abs(player.y - y)) <= 1,
+          );
+        }, fixture.station),
+      )
+      .toBe(true);
+    expect(
+      await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
+    ).toBe(false);
+
+    await tapGridCell(page, fixture.station.x, fixture.station.y);
+    await expect(page.getByTestId('compose-sheet')).toBeVisible();
+    expect(
+      await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
+    ).toBe(true);
+  });
+
+  test('rejects a remote station tap when a stale carried id has no open ticket', async ({
+    page,
+  }) => {
+    await openRunningFloor(page);
+    const fixture = await page.evaluate(() =>
+      window.__E2E__!.prepareStationCarryFixture('stale_without_open'),
+    );
+    const before = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        carriedTicketId: floor.carriedTicketId,
+        tickets: floor.tickets,
+      };
+    });
+    expect(before.player).toEqual(fixture.remote);
+    expect(before.carriedTicketId).not.toBeNull();
+    expect(before.tickets).toEqual([]);
+
+    await tapGridCell(page, fixture.station.x, fixture.station.y);
+    await expect(page.locator('.notice-banner-body')).toHaveText(
+      'No open ticket to cook',
+    );
+    await page.waitForTimeout(500);
+
+    const after = await page.evaluate(() => {
+      const bridge = window.__E2E__!;
+      const floor = bridge.getGameState().activeDay!.floor!;
+      return {
+        player: bridge.getState().floorPlayerGrid,
+        carriedTicketId: floor.carriedTicketId,
+        tickets: floor.tickets,
+        composeSheetOpen: bridge.getState().composeSheetOpen,
+      };
+    });
+    expect(after).toEqual({ ...before, composeSheetOpen: false });
+  });
+
   test('turns duplicate HUD seating requests into one physical seating action', async ({
     page,
   }) => {

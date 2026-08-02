@@ -27,6 +27,34 @@ function withSetTables(day: FloorDay): FloorDay {
   return { ...day, tables: day.tables.map(setTable) };
 }
 
+function withGuestStage(
+  day: FloorDay,
+  stage: FloorDay['pool'][number]['stage'],
+): FloorDay {
+  return {
+    ...day,
+    pool: day.pool.map((guest, index) =>
+      index === 0
+        ? { ...guest, stage, eatTicksRemaining: stage === 'eating' ? 2 : 0 }
+        : guest,
+    ),
+  };
+}
+
+function withDeliveredTicket(day: FloorDay): FloorDay {
+  return {
+    ...day,
+    tickets: [
+      {
+        id: 't1',
+        customerId: customer.id,
+        ingredientIds: ['i1'],
+        status: 'delivered',
+      },
+    ],
+  };
+}
+
 describe('tutorial', () => {
   it('starts at set_tables until tables are set', () => {
     const day = baseDay();
@@ -134,6 +162,43 @@ describe('tutorial', () => {
     };
     expect(nextTutorialStep(clearing, true)).toBe('clear');
     expect(tutorialPrompt('clear')).toMatch(/Clear dirty tables/);
+  });
+
+  it('does not invent an action while the only guest is eating or leaving', () => {
+    const day = withSetTables(baseDay());
+
+    const eating = withDeliveredTicket(withGuestStage(day, 'eating'));
+    expect(nextTutorialStep(eating, true)).toBe('done');
+    expect(tutorialPrompt(nextTutorialStep(eating, true))).toBeNull();
+
+    const leaving = withDeliveredTicket(withGuestStage(day, 'leaving'));
+    expect(nextTutorialStep(leaving, true)).toBe('done');
+    expect(tutorialPrompt(nextTutorialStep(leaving, true))).toBeNull();
+  });
+
+  it('keeps real waiting and cleanup actions ahead of passive guests', () => {
+    const day = withSetTables(baseDay());
+    const secondCustomer: Customer = { ...customer, id: 'c2' };
+    const eating = withDeliveredTicket(withGuestStage(day, 'eating'));
+    const waitingAndEating: FloorDay = {
+      ...eating,
+      pool: [
+        ...eating.pool,
+        {
+          id: secondCustomer.id,
+          customer: secondCustomer,
+          stage: 'waiting',
+          eatTicksRemaining: 0,
+        },
+      ],
+    };
+    expect(nextTutorialStep(waitingAndEating, true)).toBe('wait_seat');
+
+    const dirtyAndLeaving: FloorDay = {
+      ...withDeliveredTicket(withGuestStage(day, 'leaving')),
+      tables: day.tables.map((table) => ({ ...table, state: 'dirty' as const })),
+    };
+    expect(nextTutorialStep(dirtyAndLeaving, true)).toBe('clear');
   });
 
   it('prompts close when the floor day is complete', () => {

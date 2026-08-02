@@ -8,9 +8,12 @@ export function guestHintAction(
   stage: GuestStage,
   adjacent: boolean,
   carriedDish: CarriedDishRelation,
+  orderAvailable: boolean,
 ): GuestHintAction {
   if (!adjacent) return null;
   if (carriedDish === 'matching' && stage === 'ordered') return 'deliver';
-  if (carriedDish === 'none' && stage === 'seated') return 'order';
+  if (carriedDish === 'none' && stage === 'seated' && orderAvailable) {
+    return 'order';
+  }
   return null;
 }
