@@ -29,14 +29,14 @@
   --vk-floor-chrome-pad-y: 0.75rem;
   --vk-floor-chrome-gap: 0.5rem;
   --vk-floor-chrome-min-h-1: calc(
-    var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+    var(--vk-cta-h) + var(--vk-floor-chrome-pad-y) + 1px
   );
   --vk-floor-chrome-min-h-2: calc(
-    var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+    var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y) + 1px
   );
   --vk-floor-chrome-min-h-3: calc(
     var(--vk-cta-h) + var(--vk-floor-chrome-gap) + var(--vk-cta-h) + var(--vk-floor-chrome-gap)
-      + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y)
+      + var(--vk-cta-h) + var(--vk-floor-chrome-pad-y) + 1px
   );
   --vk-floor-chrome-min-h: var(--vk-floor-chrome-min-h-1);
 }

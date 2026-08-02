@@ -141,6 +141,8 @@ export interface E2eBridge {
   getInteractHintVisible: () => boolean;
   /** Debug: exact grid cells currently carrying tap affordances. */
   getInteractHintCells: () => Array<{ x: number; y: number }>;
+  /** Debug: whether a ticket currently owns the async delivery boundary. */
+  isDeliveryPending: (ticketId: string) => boolean;
   setFloorToast: (message: string | null) => void;
   enqueueCelebration: (celebration: Celebration) => void;
 }
@@ -206,7 +208,9 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       }
       const rect = canvas.getBoundingClientRect();
       const state = useGameStore.getState();
-      const camera = computeCameraCenter(state.gridSize.w, state.gridSize.h, canvas.clientWidth, canvas.clientHeight);
+      const camera =
+        getRestaurantApp()?.camera.state ??
+        computeCameraCenter(state.gridSize.w, state.gridSize.h, canvas.clientWidth, canvas.clientHeight);
       const world = gridToWorld(gx, gy);
       const screen = worldToScreen(world.x + 8, world.y + 8, camera);
       return { x: rect.left + screen.x, y: rect.top + screen.y };
@@ -301,6 +305,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       return getRestaurantApp()?.interactHintLayer.getCells() ?? [];
     },
 
+    isDeliveryPending(ticketId) {
+      return getRestaurantApp()?.isDeliveryPending(ticketId) ?? false;
+    },
+
     dismissPendingReview() {
       useGameStore.getState().dismissPendingReview();
     },
@@ -309,7 +317,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       if (!useGameStore.getState().activeDay) {
         await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
       }
-      useGameStore.getState().dismissModifier();
+      await useGameStore.getState().dismissModifier();
 
       const floor = useGameStore.getState().activeDay!.floor!;
       for (const table of floor.tables) {
@@ -375,7 +383,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       if (!useGameStore.getState().activeDay) {
         await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
       }
-      useGameStore.getState().dismissModifier();
+      await useGameStore.getState().dismissModifier();
 
       const activeDay = useGameStore.getState().activeDay!;
       const floor = activeDay.floor!;

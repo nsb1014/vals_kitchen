@@ -191,6 +191,66 @@ test.describe('service visual continuity', () => {
     ).toBe(false);
   });
 
+  test('keeps the restaurant viewport fixed when service controls replace their reserve', async ({
+    page,
+  }) => {
+    const viewports = [
+      { width: 390, height: 720 },
+      { width: 360, height: 720 },
+      { width: 321, height: 568 },
+      { width: 320, height: 568 },
+      { width: 667, height: 375 },
+      { width: 1280, height: 800 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await gotoFreshGame(page);
+      await page.getByTestId('open-day-btn').click();
+      await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+
+      const reserve = {
+        canvas: await rect(page.getByTestId('restaurant-canvas')),
+        mount: await rect(page.locator('.canvas-mount')),
+        chrome: await rect(page.getByTestId('chrome-mount')),
+      };
+
+      await page.getByTestId('start-service-btn').click();
+      await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+      await expect(page.getByTestId('floor-service-panel')).toBeVisible();
+
+      const active = {
+        canvas: await rect(page.getByTestId('restaurant-canvas')),
+        mount: await rect(page.locator('.canvas-mount')),
+        chrome: await rect(page.getByTestId('chrome-mount')),
+      };
+      expect(active.canvas.height).toBeCloseTo(reserve.canvas.height, 0);
+      expect(active.mount.height).toBeCloseTo(reserve.mount.height, 0);
+      expect(active.chrome.height).toBeCloseTo(reserve.chrome.height, 0);
+
+      const controls = await page.locator('.floor-actions .service-btn:visible').evaluateAll(
+        (buttons) => ({
+          expectedHeight: Number.parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue('--vk-cta-h'),
+          ),
+          buttons: buttons.map((button) => {
+            const label = button.querySelector<HTMLElement>('.floor-action-label');
+            return {
+              height: button.getBoundingClientRect().height,
+              labelClientHeight: label?.clientHeight ?? 0,
+              labelScrollHeight: label?.scrollHeight ?? 0,
+            };
+          }),
+        }),
+      );
+      expect(controls.buttons.length).toBeGreaterThan(0);
+      for (const control of controls.buttons) {
+        expect(control.height).toBeCloseTo(controls.expectedHeight, 0);
+        expect(control.labelScrollHeight).toBeLessThanOrEqual(control.labelClientHeight);
+      }
+    }
+  });
+
   test('carries the served guest identity into review without reframing the restaurant', async ({
     page,
   }) => {

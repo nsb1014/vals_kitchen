@@ -1,6 +1,9 @@
 import { Application, Container } from 'pixi.js';
 import type { GameStore } from '../store/game-store.ts';
-import { useGameStore } from '../store/game-store.ts';
+import {
+  getGameplayInteractionGeneration,
+  useGameStore,
+} from '../store/game-store.ts';
 import {
   findPath,
   findShortestPathToAny,
@@ -32,6 +35,7 @@ import {
 import { guestHintAction } from './world/guest-interaction-hint.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
+import { PerKeyAsyncGuard } from './world/per-key-async-guard.ts';
 import {
   connectingDoorInterior,
   doorForGrid,
@@ -55,6 +59,8 @@ function integerResolution(): number {
 
 const ROOM_FADE_OUT_MS = 100;
 const ROOM_FADE_IN_MS = 140;
+const DELIVERY_RETRY_TOAST =
+  'Could not deliver that dish — tap the guest to retry';
 
 export class RestaurantApp {
   readonly app: Application;
@@ -81,6 +87,7 @@ export class RestaurantApp {
   private resizeFrame: number | null = null;
   private roomTransitionInFlight = false;
   private roomTransitionAnimation: Animation | null = null;
+  private readonly deliveryAttempts = new PerKeyAsyncGuard();
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
@@ -555,7 +562,34 @@ export class RestaurantApp {
             this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
             return;
           }
-          void store.dispatch({ type: 'FLOOR_DELIVER', ticketId: ticket.id });
+          const deliveryGeneration = getGameplayInteractionGeneration();
+          this.deliveryAttempts.start(
+            ticket.id,
+            async () => {
+              await store.dispatch({
+                type: 'FLOOR_DELIVER',
+                ticketId: ticket.id,
+              });
+              const current = useGameStore.getState();
+              if (
+                this.mounted &&
+                getGameplayInteractionGeneration() === deliveryGeneration &&
+                current.floorToast === DELIVERY_RETRY_TOAST
+              ) {
+                current.setFloorToast(null);
+              }
+            },
+            () => {
+              const current = useGameStore.getState();
+              if (
+                this.mounted &&
+                getGameplayInteractionGeneration() === deliveryGeneration &&
+                current.screen === 'restaurant'
+              ) {
+                current.setFloorToast(DELIVERY_RETRY_TOAST);
+              }
+            },
+          );
           return;
         }
 
@@ -975,6 +1009,11 @@ export class RestaurantApp {
       x: rect.left + screen.x,
       y: rect.top + screen.y,
     };
+  }
+
+  /** Test/debug visibility into the keyed async interaction boundary. */
+  isDeliveryPending(ticketId: string): boolean {
+    return this.deliveryAttempts.isPending(ticketId);
   }
 
   destroy(): void {

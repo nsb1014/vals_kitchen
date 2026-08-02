@@ -235,8 +235,21 @@ let gameSaveRepository: Pick<SaveRepository, 'load' | 'save'> =
   defaultSaveRepository;
 let serviceStartFence: Promise<void> | null = null;
 let serviceStartGeneration = 0;
+let gameplayInteractionGeneration = 0;
+
+/**
+ * Identifies the current ephemeral gameplay interaction context.
+ *
+ * Consumers may capture this before beginning an asynchronous interaction and
+ * compare it after the work settles. The value is deliberately module-local
+ * state rather than GameStore state so it can never leak into a save.
+ */
+export function getGameplayInteractionGeneration(): number {
+  return gameplayInteractionGeneration;
+}
 
 function invalidateServiceStartTransition(): Promise<void> | null {
+  gameplayInteractionGeneration += 1;
   serviceStartGeneration += 1;
   const superseded = serviceStartFence;
   serviceStartFence = null;
@@ -544,9 +557,18 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   async dispatch(action) {
+    const interactionGeneration = gameplayInteractionGeneration;
     const contentLoad = ensureContentForAction(action.type);
     if (contentLoad) {
       await contentLoad;
+    }
+    if (
+      action.type === 'FLOOR_DELIVER' &&
+      gameplayInteractionGeneration !== interactionGeneration
+    ) {
+      throw new Error(
+        'Delivery was cancelled because the gameplay context changed',
+      );
     }
     const ctx = getDomainContext();
     const current = get();
@@ -760,6 +782,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   navigateTo(screen) {
     const current = get();
     if (!selectCanNavigateTo(current, screen)) return;
+    if (current.screen !== screen) {
+      gameplayInteractionGeneration += 1;
+    }
     set({ screen, flavorInspectorIngredientId: null, composeSheetOpen: false });
   },
 
@@ -774,6 +799,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   startPlacement(itemKey) {
     const current = get();
     if (current.activeDay) return;
+    if (current.screen !== 'restaurant') {
+      gameplayInteractionGeneration += 1;
+    }
     set({
       pendingPlacementItemKey: itemKey,
       screen: 'restaurant',
