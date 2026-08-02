@@ -263,6 +263,7 @@ export function mountFloorServiceHud(
         ? {
             id: tutorialPresentation.id,
             source: 'tutorial' as const,
+            scope: 'floor' as const,
             body: tutorialPresentation.body,
             stepId: step,
           }
@@ -282,12 +283,14 @@ export function mountFloorServiceHud(
         ? {
             id: `pacing:first-guest-arriving:${state.day}`,
             source: 'pacing' as const,
+            scope: 'floor' as const,
             body: 'The first guest is arriving…',
           }
         : pacingHint
           ? {
               id: `pacing:day:${state.day}`,
               source: 'pacing' as const,
+              scope: 'floor' as const,
               body: pacingHint,
             }
           : null);
@@ -577,6 +580,7 @@ export function mountFloorServiceHud(
 
     if (
       state.activeDay?.floor !== prev.activeDay?.floor ||
+      state.screen !== prev.screen ||
       state.floorPlayerGrid !== prev.floorPlayerGrid ||
       state.floorToast !== prev.floorToast ||
       state.modifierDismissed !== prev.modifierDismissed ||

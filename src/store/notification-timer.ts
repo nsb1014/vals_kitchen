@@ -1,13 +1,23 @@
 import type { TutorialStepId } from '../domain/floor/tutorial.ts';
 
 export type NoticeSource = 'tutorial' | 'pacing' | 'toast' | 'system';
+export type NoticeScope = 'floor' | 'global';
 
 export interface Notice {
   id: string;
   source: NoticeSource;
+  /** Where the notice may be presented. Older saved/runtime notices fall back by source. */
+  scope?: NoticeScope;
   title?: string;
   body: string;
   stepId?: TutorialStepId;
+}
+
+export function resolveNoticeScope(notice: Notice): NoticeScope {
+  if (notice.scope) return notice.scope;
+  return notice.source === 'tutorial' || notice.source === 'pacing'
+    ? 'floor'
+    : 'global';
 }
 
 export const NOTICE_DURATION_MS = 2500;

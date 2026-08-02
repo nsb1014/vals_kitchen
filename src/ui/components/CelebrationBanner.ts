@@ -9,6 +9,10 @@ import {
 } from '../../domain/achievements/catalog.ts';
 import { bindNotificationSurfaceLifecycle } from '../notifications/surface-lifecycle.ts';
 import {
+  resolveNoticeScope,
+  type Notice,
+} from '../../store/notification-timer.ts';
+import {
   hasLocalNotificationBlockingSurface,
   NOTIFICATION_BLOCKING_SURFACE_CHANGE,
 } from '../notifications/blocking-surface.ts';
@@ -39,8 +43,16 @@ export function selectNotificationUiBlocked(state: GameStore): boolean {
 export function notificationSurfaceShouldRun(
   pageLifecycleActive: boolean,
   uiBlocked: boolean,
+  frontContentVisible = true,
 ): boolean {
-  return pageLifecycleActive && !uiBlocked;
+  return pageLifecycleActive && !uiBlocked && frontContentVisible;
+}
+
+export function noticeIsVisibleOnScreen(
+  notice: Notice,
+  screen: GameStore['screen'],
+): boolean {
+  return resolveNoticeScope(notice) === 'global' || screen === 'restaurant';
 }
 
 export function mountCelebrationBanner(mount: HTMLElement): () => void {
@@ -57,25 +69,41 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     hasLocalNotificationBlockingSurface();
   let uiBlocked = computeUiBlocked();
 
+  const isFrontContentVisible = () => {
+    const state = useGameStore.getState();
+    return state.noticeActive
+      ? noticeIsVisibleOnScreen(state.noticeActive, state.screen)
+      : true;
+  };
+
   const syncNotificationSurface = () => {
     useGameStore
       .getState()
       .setNotificationSurfaceActive(
-        notificationSurfaceShouldRun(pageLifecycleActive, uiBlocked),
+        notificationSurfaceShouldRun(
+          pageLifecycleActive,
+          uiBlocked,
+          isFrontContentVisible(),
+        ),
       );
   };
 
   const syncHostVisibility = () => {
     const state = useGameStore.getState();
     host.hidden =
-      uiBlocked || (!state.noticeActive && !state.celebrationQueue[0]);
+      uiBlocked ||
+      !isFrontContentVisible() ||
+      (!state.noticeActive && !state.celebrationQueue[0]);
   };
 
   const render = () => {
     const state = useGameStore.getState();
     const notice = state.noticeActive;
     const celebration = state.celebrationQueue[0];
-    host.hidden = uiBlocked || (!notice && !celebration);
+    host.hidden =
+      uiBlocked ||
+      (notice ? !noticeIsVisibleOnScreen(notice, state.screen) : false) ||
+      (!notice && !celebration);
     if (!notice && !celebration) {
       host.innerHTML = '';
       return;
@@ -157,9 +185,19 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     }
     if (
       state.noticeActive !== previous.noticeActive ||
-      state.celebrationQueue !== previous.celebrationQueue
+      state.celebrationQueue !== previous.celebrationQueue ||
+      state.screen !== previous.screen
     ) {
       render();
+      syncNotificationSurface();
+    }
+    if (state.screen !== previous.screen) {
+      // The screen router subscribes after this component, so CSS visibility
+      // still reflects the previous screen during the synchronous store turn.
+      // Reconcile once every subscriber has updated the root data attribute.
+      queueMicrotask(() => {
+        if (host.isConnected) syncLocalBlockingSurface();
+      });
     }
   });
   window.addEventListener(

@@ -370,6 +370,7 @@ export function mountServiceDayUi(
   const renderHud = () => {
     const state = useGameStore.getState();
     const activeDay = state.activeDay;
+    const displayDay = state.daySummary?.completedDay ?? state.day;
     const ratingModel = buildRatingDisplayModel(state.rating, state.prestige);
     const customersTotal = activeDay?.customers.length ?? 0;
     const customersServed = activeDay?.customersServed ?? 0;
@@ -404,7 +405,7 @@ export function mountServiceDayUi(
                <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
                <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
             : hudDetail === 'day'
-              ? `<h2>Day ${state.day}</h2>
+              ? `<h2>Day ${displayDay}</h2>
                  <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
                  <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
                  <p>Customers served: <strong>${customersServed}</strong></p>
@@ -425,7 +426,7 @@ export function mountServiceDayUi(
       </button>
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-label="Day details">
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
-        <strong>${state.day}</strong>
+        <strong>${displayDay}</strong>
       </button>
       <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${

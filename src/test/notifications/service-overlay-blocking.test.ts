@@ -25,12 +25,12 @@ describe('notification service-overlay blocking', () => {
     const review = {} as ServeReview;
     const summary = {} as NonNullable<GameStore['daySummary']>;
 
-    expect(selectNotificationUiBlocked(stateWith({ pendingReview: review }))).toBe(
-      true,
-    );
-    expect(selectNotificationUiBlocked(stateWith({ daySummary: summary }))).toBe(
-      true,
-    );
+    expect(
+      selectNotificationUiBlocked(stateWith({ pendingReview: review })),
+    ).toBe(true);
+    expect(
+      selectNotificationUiBlocked(stateWith({ daySummary: summary })),
+    ).toBe(true);
     expect(
       selectNotificationUiBlocked(
         stateWith({ screen: 'settings', pendingReview: review }),
@@ -64,9 +64,76 @@ describe('notification service-overlay blocking', () => {
     } as unknown as Document;
 
     expect(hasLocalNotificationBlockingSurface(openMenuDocument)).toBe(true);
-    expect(selector).toContain('#floor-tickets-menu:not([hidden])');
-    expect(selector).toContain('#layout-catalog-sheet:not([hidden])');
-    expect(selector).toContain('.chat-bubble.order-bubble:not([hidden])');
+    expect(selector).toContain('#floor-tickets-menu');
+    expect(selector).toContain('#layout-catalog-sheet');
+    expect(selector).toContain('.chat-bubble.order-bubble');
     expect(hasLocalNotificationBlockingSurface(closedMenuDocument)).toBe(false);
+  });
+
+  it('ignores candidates hidden by their own state or an ancestor', () => {
+    const element = (
+      attributes: Record<string, string>,
+      parentElement: Element | null = null,
+    ) =>
+      ({
+        parentElement,
+        hasAttribute: (name: string) => name in attributes,
+        getAttribute: (name: string) => attributes[name] ?? null,
+      }) as unknown as Element;
+    const ariaHiddenParent = element({ 'aria-hidden': 'true' });
+    const inertParent = element({ inert: '' });
+    const candidates = [
+      element({}, ariaHiddenParent),
+      element({}, inertParent),
+      element({ hidden: '' }),
+    ];
+    const hiddenDocument = {
+      querySelectorAll: () => candidates,
+      defaultView: {
+        getComputedStyle: () => ({
+          display: 'block',
+          visibility: 'visible',
+        }),
+      },
+    } as unknown as Document;
+
+    expect(hasLocalNotificationBlockingSurface(hiddenDocument)).toBe(false);
+  });
+
+  it('ignores computed-hidden candidates and finds a later visible candidate', () => {
+    type FakeElement = Element & {
+      computedDisplay?: string;
+      computedVisibility?: string;
+    };
+    const element = (
+      computedDisplay = 'block',
+      computedVisibility = 'visible',
+      parentElement: Element | null = null,
+    ) =>
+      ({
+        parentElement,
+        computedDisplay,
+        computedVisibility,
+        hasAttribute: () => false,
+        getAttribute: () => null,
+      }) as unknown as FakeElement;
+    const hiddenParent = element('none');
+    const displayHidden = element('block', 'visible', hiddenParent);
+    const visibilityHidden = element('block', 'hidden');
+    const visible = element();
+    let candidates = [displayHidden, visibilityHidden, visible];
+    const computedDocument = {
+      querySelectorAll: () => candidates,
+      defaultView: {
+        getComputedStyle: (candidate: FakeElement) => ({
+          display: candidate.computedDisplay,
+          visibility: candidate.computedVisibility,
+        }),
+      },
+    } as unknown as Document;
+
+    expect(hasLocalNotificationBlockingSurface(computedDocument)).toBe(true);
+    candidates = [displayHidden, visibilityHidden];
+    expect(hasLocalNotificationBlockingSurface(computedDocument)).toBe(false);
   });
 });

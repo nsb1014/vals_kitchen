@@ -51,6 +51,7 @@ import { selectCanOpenFloorCompose } from './selectors/service-day.ts';
 import { mapReducerEventsToUi } from './service-events.ts';
 import {
   clearNotificationTimers,
+  resolveNoticeScope,
   restartNoticeTimer,
   syncNotificationTimer as syncNotificationTimerController,
   type Notice,
@@ -962,6 +963,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
             source: 'toast' as const,
             body: message,
           };
+    if (
+      current.noticeActive &&
+      resolveNoticeScope(current.noticeActive) === 'floor'
+    ) {
+      // A global toast temporarily owns the banner. Allow the HUD to reinstall
+      // its contextual pacing notice when the toast completes instead of
+      // treating that guidance as already delivered and losing it forever.
+      lastHudPacingNotice = null;
+    }
     set({ floorToast: message, noticeActive: notice });
     restartNoticeTimer(notice);
     syncStoreNotificationTimer();

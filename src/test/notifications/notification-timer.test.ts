@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
-import { TUTORIAL_NOTICE_DURATION_MS } from '../../store/notification-timer.ts';
-import { notificationSurfaceShouldRun } from '../../ui/components/CelebrationBanner.ts';
+import {
+  resolveNoticeScope,
+  TUTORIAL_NOTICE_DURATION_MS,
+} from '../../store/notification-timer.ts';
+import {
+  noticeIsVisibleOnScreen,
+  notificationSurfaceShouldRun,
+} from '../../ui/components/CelebrationBanner.ts';
 import '../test-helpers.ts';
 
 describe('notification timer', () => {
@@ -72,6 +78,39 @@ describe('notification timer', () => {
     useGameStore.getState().setNotificationSurfaceActive(true);
     vi.advanceTimersByTime(2500);
     expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('scopes floor guidance while keeping toast and system notices global', () => {
+    const floorNotice = {
+      id: 'tutorial:seat',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Seat the guest',
+    };
+    const toast = {
+      id: 'toast:blocked',
+      source: 'toast' as const,
+      body: 'That destination is locked',
+    };
+    const system = {
+      id: 'system:saved',
+      source: 'system' as const,
+      scope: 'global' as const,
+      body: 'Save imported',
+    };
+
+    expect(resolveNoticeScope(floorNotice)).toBe('floor');
+    expect(noticeIsVisibleOnScreen(floorNotice, 'restaurant')).toBe(true);
+    expect(noticeIsVisibleOnScreen(floorNotice, 'settings')).toBe(false);
+    expect(resolveNoticeScope(toast)).toBe('global');
+    expect(noticeIsVisibleOnScreen(toast, 'settings')).toBe(true);
+    expect(noticeIsVisibleOnScreen(system, 'recipes')).toBe(true);
+  });
+
+  it('pauses a hidden floor notice surface without pausing visible global content', () => {
+    expect(notificationSurfaceShouldRun(true, false, false)).toBe(false);
+    expect(notificationSurfaceShouldRun(true, false, true)).toBe(true);
+    expect(notificationSurfaceShouldRun(true, true, true)).toBe(false);
   });
 
   it('resumes remainingMs after pause mid-dwell', () => {
@@ -150,6 +189,31 @@ describe('notification timer', () => {
       useGameStore.getState().noticeSticky,
     );
     expect(useGameStore.getState().noticeActive?.stepId).toBe('set_tables');
+  });
+
+  it('reinstalls paced floor guidance after a global toast displaces it', () => {
+    const pacing = {
+      id: 'tutorial:paced-seat',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Seat the waiting guest.',
+      stepId: 'wait_seat' as const,
+    };
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing,
+    });
+    useGameStore.getState().setFloorToast('Recipe Book is locked.');
+    expect(useGameStore.getState().noticeActive?.source).toBe('toast');
+
+    vi.advanceTimersByTime(2500);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing,
+    });
+
+    expect(useGameStore.getState().noticeActive).toBe(pacing);
   });
 
   it('does not re-show dismissed tutorial until step changes', () => {

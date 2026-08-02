@@ -518,6 +518,12 @@
   background: rgba(0, 0, 0, 0.55);
 }
 
+/* The ingredient flavor inspector is opened from the blocking cook sheet, so
+ * it alone must clear both that sheet and the ticket dock above it. */
+#flavor-inspector-modal {
+  z-index: 71;
+}
+
 .modal-card {
   width: min(100%, 22rem);
   padding: 1.25rem;
@@ -2289,6 +2295,43 @@
 }
 
 @media (max-width: 899px) and (max-height: 520px) {
+  .service-panel.review-service-panel {
+    height: min(var(--vk-sheet-mid-h), 17rem);
+    max-height: var(--vk-sheet-mid-h);
+    padding: 0.45rem;
+  }
+
+  .review-service-panel .service-card {
+    padding: 0.5rem 0.65rem;
+  }
+
+  .review-service-panel .sheet-header {
+    min-height: 36px;
+  }
+
+  .review-service-panel .review-identity {
+    gap: 0.5rem;
+  }
+
+  .review-service-panel .review-identity .guest-portrait {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .review-service-panel .review-stars {
+    margin-block: 0.2rem 0.1rem;
+    font-size: 18px;
+  }
+
+  .review-service-panel .review-detail {
+    margin-block: 0.15rem;
+  }
+
+  .review-service-panel .sheet-footer {
+    margin-top: 0.35rem;
+  }
+
   .service-panel.sheet-tier-near-full {
     height: 96%;
     max-height: 96%;

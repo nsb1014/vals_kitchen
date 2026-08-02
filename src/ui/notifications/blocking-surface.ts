@@ -5,11 +5,43 @@ export const NOTIFICATION_BLOCKING_SURFACE_CHANGE =
 export function hasLocalNotificationBlockingSurface(
   doc: Document = document,
 ): boolean {
-  return Boolean(
-    doc.querySelector(
-      '#floor-tickets-menu:not([hidden]), #layout-catalog-sheet:not([hidden]), .chat-bubble.order-bubble:not([hidden])',
-    ),
-  );
+  const selector =
+    '#floor-tickets-menu, #layout-catalog-sheet, .chat-bubble.order-bubble';
+  const candidates = doc.querySelectorAll?.(selector);
+  if (!candidates) {
+    // Keep the helper usable by narrow DOM test doubles.
+    return Boolean(doc.querySelector(selector));
+  }
+
+  return Array.from(candidates).some((candidate) => {
+    for (
+      let current: Element | null = candidate;
+      current;
+      current = current.parentElement
+    ) {
+      if (
+        current.hasAttribute('hidden') ||
+        current.hasAttribute('inert') ||
+        current.getAttribute('aria-hidden') === 'true'
+      ) {
+        return false;
+      }
+
+      try {
+        const style = doc.defaultView?.getComputedStyle(current);
+        if (
+          style?.display === 'none' ||
+          style?.visibility === 'hidden' ||
+          style?.visibility === 'collapse'
+        ) {
+          return false;
+        }
+      } catch {
+        // Lightweight DOM implementations may not provide computed styles.
+      }
+    }
+    return true;
+  });
 }
 
 export function notifyNotificationBlockingSurfaceChanged(
