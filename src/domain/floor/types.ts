@@ -39,6 +39,8 @@ export interface FloorGuest {
   customer: Customer;
   stage: GuestStage;
   seat?: SeatSlot;
+  /** Last fully reached grid cell while an enter, seating, or exit walk is in flight. */
+  motionPosition?: { x: number; y: number };
   eatTicksRemaining: number;
 }
 

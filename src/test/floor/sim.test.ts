@@ -12,6 +12,7 @@ import {
   tablesFromPlacements,
   takeOrdersForSeated,
   tickEating,
+  updateGuestMotionPosition,
 } from '../../domain/floor/sim.ts';
 import { clearTable, setTable } from '../../domain/floor/tables.ts';
 import type { Customer } from '../../domain/day/types.ts';
@@ -142,6 +143,41 @@ describe('floor sim', () => {
     expect(completed.pool.find((guest) => guest.id === 'c1')?.stage).toBe('seated');
     expect(completed.pool.find((guest) => guest.id === 'c2')?.stage).toBe('entering');
     expect(completeGuestSeating(completed, 'c1')).toBe(completed);
+  });
+
+  it('persists motion anchors only for the targeted moving guest and clears them on completion', () => {
+    const tables = tablesFromPlacements(placements).map(setTable);
+    const seats = seatsFromPlacements(placements);
+    let day = createFloorDayFromCustomers([customer('c1'), customer('c2')], tables, seats);
+    const enteringAnchor = { x: 4, y: 5 };
+
+    const missing = updateGuestMotionPosition(day, 'missing', enteringAnchor);
+    expect(missing).toBe(day);
+    const invalid = updateGuestMotionPosition(day, 'c1', { x: 4.5, y: 5 });
+    expect(invalid).toBe(day);
+
+    day = updateGuestMotionPosition(day, 'c1', enteringAnchor);
+    expect(day.pool[0]!.motionPosition).toEqual(enteringAnchor);
+    expect(day.pool[1]!.motionPosition).toBeUndefined();
+    expect(updateGuestMotionPosition(day, 'c1', enteringAnchor)).toBe(day);
+
+    day = completeGuestEntering(day);
+    expect(day.pool[0]!.stage).toBe('waiting');
+    expect(day.pool[0]!.motionPosition).toBeUndefined();
+    expect(updateGuestMotionPosition(day, 'c1', { x: 3, y: 4 })).toBe(day);
+
+    day = seatNextWaiting(day);
+    day = updateGuestMotionPosition(day, 'c1', { x: 2, y: 3 });
+    expect(day.pool[0]!.motionPosition).toEqual({ x: 2, y: 3 });
+    day = completeGuestSeating(day, 'c1');
+    expect(day.pool[0]!.motionPosition).toBeUndefined();
+
+    day = beginEating(day, 'c1', 1);
+    day = tickEating(day);
+    day = updateGuestMotionPosition(day, 'c1', { x: 3, y: 4 });
+    expect(day.pool[0]!.motionPosition).toEqual({ x: 3, y: 4 });
+    day = completeGuestLeaving(day, 'c1');
+    expect(day.pool[0]!.motionPosition).toBeUndefined();
   });
 
   it('keeps a shared table occupied until its final leaving guest exits', () => {

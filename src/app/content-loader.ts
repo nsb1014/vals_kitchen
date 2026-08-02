@@ -101,16 +101,12 @@ export function preloadDeferredContent(): void {
   void ensureRecipesLoaded();
 }
 
-export async function ensureContentForAction(
-  actionType: string,
-): Promise<void> {
+export function ensureContentForAction(actionType: string): Promise<void> | void {
   if (actionType === 'OPEN_DAY') {
-    await ensureScoringContentLoaded();
-    return;
+    return ensureScoringContentLoaded();
   }
   if (actionType === 'SERVE_DISH') {
-    await ensureScoringContentLoaded();
-    await ensureRecipesLoaded();
+    return ensureScoringContentLoaded().then(() => ensureRecipesLoaded());
   }
 }
 

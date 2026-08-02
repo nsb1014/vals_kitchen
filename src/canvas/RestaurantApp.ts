@@ -245,6 +245,16 @@ export class RestaurantApp {
       grid: { w: state.gridSize.w, h: state.gridSize.h, blocked: mainBlocked },
       dtMs: deltaMs,
     });
+    // Persist cell arrivals before lifecycle completions. Completion actions
+    // clear the anchor, and the motion update's stage guard also makes a stale
+    // update harmless if dispatch ordering ever changes.
+    for (const update of motionResult.motionPositionUpdates) {
+      void useGameStore.getState().dispatch({
+        type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION',
+        guestId: update.guestId,
+        position: update.position,
+      });
+    }
     if (motionResult.enteredGuestIds.length > 0) {
       void useGameStore
         .getState()

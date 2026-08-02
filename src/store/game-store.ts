@@ -453,7 +453,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   async dispatch(action) {
-    await ensureContentForAction(action.type);
+    const contentLoad = ensureContentForAction(action.type);
+    if (contentLoad) {
+      await contentLoad;
+    }
     const ctx = getDomainContext();
     const current = get();
     if (

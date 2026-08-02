@@ -54,6 +54,44 @@ function sync(
 }
 
 describe('GuestMotion', () => {
+  it('reconstructs an entering guest from its persisted cell instead of the door', () => {
+    const motion = new GuestMotion();
+    const anchor = { x: 3, y: 5 };
+    const entering = guest({
+      id: 'g1',
+      stage: 'entering',
+      motionPosition: anchor,
+    });
+
+    const result = sync(motion, [entering], 0);
+    const pose = motion.pose('g1')!;
+    expect(result.enteredGuestIds).toEqual([]);
+    expect(result.motionPositionUpdates).toEqual([]);
+    expect(pose.worldX).toBe(anchor.x * TILE_PX + TILE_PX / 2);
+    expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
+    expect(pose.isMoving).toBe(true);
+  });
+
+  it('reconstructs a seating guest from its persisted mid-walk cell', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 0, 2);
+    const anchor = { x: 2, y: 4 };
+    const seating = guest({
+      id: 'g1',
+      stage: 'seating',
+      seat: assignedSeat,
+      motionPosition: anchor,
+    });
+
+    const result = sync(motion, [seating], 0);
+    const pose = motion.pose('g1')!;
+    expect(result.seatedGuestIds).toEqual([]);
+    expect(result.motionPositionUpdates).toEqual([]);
+    expect(pose.worldX).toBe(anchor.x * TILE_PX + TILE_PX / 2);
+    expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
+    expect(pose.isMoving).toBe(true);
+  });
+
   it('reports seating only after the guest walks from the waiting anchor to the seat', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 0, 2);
@@ -142,6 +180,48 @@ describe('GuestMotion', () => {
     expect(end.worldX).toBe(door.x * TILE_PX + TILE_PX / 2);
     expect(end.worldY).toBe(door.y * TILE_PX + TILE_PX / 2);
     expect(sync(motion, [leaving]).exitedGuestIds).toEqual([]);
+  });
+
+  it('reconstructs a leaving guest from its persisted mid-walk cell', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 0, 2);
+    const anchor = { x: 2, y: 5 };
+    const leaving = guest({
+      id: 'g1',
+      stage: 'leaving',
+      seat: assignedSeat,
+      motionPosition: anchor,
+    });
+
+    const result = sync(motion, [leaving], 0);
+    const pose = motion.pose('g1')!;
+    expect(result.exitedGuestIds).toEqual([]);
+    expect(result.motionPositionUpdates).toEqual([]);
+    expect(pose.worldX).toBe(anchor.x * TILE_PX + TILE_PX / 2);
+    expect(pose.worldY).toBe(anchor.y * TILE_PX + TILE_PX / 2);
+    expect(pose.isMoving).toBe(true);
+  });
+
+  it('reports a newly reached discrete cell without reporting sub-tile progress', () => {
+    const motion = new GuestMotion();
+    const assignedSeat = seat('table_1', 0, 2);
+    let seating = guest({ id: 'g1', stage: 'seating', seat: assignedSeat });
+
+    const first = sync(motion, [seating], 16);
+    expect(first.motionPositionUpdates).toHaveLength(1);
+    const initialAnchor = first.motionPositionUpdates[0]!;
+    seating = { ...seating, motionPosition: initialAnchor.position };
+
+    expect(sync(motion, [seating], 50).motionPositionUpdates).toEqual([]);
+
+    let nextAnchor: GuestMotionSyncResult['motionPositionUpdates'][number] | undefined;
+    for (let i = 0; i < 20; i++) {
+      const result = sync(motion, [seating], 50);
+      nextAnchor = result.motionPositionUpdates[0];
+      if (nextAnchor) break;
+    }
+    expect(nextAnchor?.guestId).toBe('g1');
+    expect(nextAnchor?.position).not.toEqual(initialAnchor.position);
   });
 
   it('cleans up completion state so a reused guest id can report a later lifecycle', () => {

@@ -29,6 +29,7 @@ export {
   tablesFromPlacements,
   takeOrdersForSeated,
   tickEating,
+  updateGuestMotionPosition,
 } from './sim.ts';
 export { waitingAreaOccupied, entryPipelineGuest } from './entry.ts';
 export {

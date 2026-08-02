@@ -14,6 +14,12 @@ const ACTIVE_AT_TABLE: ReadonlySet<FloorGuest['stage']> = new Set([
   'leaving',
 ]);
 
+const MOTION_STAGES: ReadonlySet<FloorGuest['stage']> = new Set([
+  'entering',
+  'seating',
+  'leaving',
+]);
+
 /** Promote the next queued guest to `entering` if the waiting area is free. */
 export function admitNextGuest(day: FloorDay): FloorDay {
   if (waitingAreaOccupied(day)) return day;
@@ -34,7 +40,36 @@ export function completeGuestEntering(day: FloorDay): FloorDay {
   return {
     ...day,
     pool: day.pool.map((g) =>
-      g.id === entering.id ? { ...g, stage: 'waiting' as const } : g,
+      g.id === entering.id
+        ? { ...g, stage: 'waiting' as const, motionPosition: undefined }
+        : g,
+    ),
+  };
+}
+
+/** Persist a moving guest's last reached grid cell without storing sub-tile animation state. */
+export function updateGuestMotionPosition(
+  day: FloorDay,
+  guestId: FloorGuest['id'],
+  position: { x: number; y: number },
+): FloorDay {
+  const moving = day.pool.find((guest) => guest.id === guestId);
+  if (
+    !moving ||
+    !MOTION_STAGES.has(moving.stage) ||
+    !Number.isInteger(position.x) ||
+    !Number.isInteger(position.y) ||
+    (moving.motionPosition?.x === position.x && moving.motionPosition.y === position.y)
+  ) {
+    return day;
+  }
+
+  return {
+    ...day,
+    pool: day.pool.map((guest) =>
+      guest.id === guestId
+        ? { ...guest, motionPosition: { x: position.x, y: position.y } }
+        : guest,
     ),
   };
 }
@@ -130,7 +165,9 @@ export function completeGuestSeating(day: FloorDay, guestId: FloorGuest['id']): 
   if (!seating || seating.stage !== 'seating') return day;
 
   const pool = day.pool.map((guest) =>
-    guest.id === guestId ? { ...guest, stage: 'seated' as const } : guest,
+    guest.id === guestId
+      ? { ...guest, stage: 'seated' as const, motionPosition: undefined }
+      : guest,
   );
   return admitNextGuest({ ...day, pool });
 }
@@ -213,7 +250,13 @@ export function completeGuestLeaving(day: FloorDay, guestId: FloorGuest['id']): 
   const tableId = leaving.seat?.tablePlacementId;
   const pool = day.pool.map((guest) =>
     guest.id === guestId
-      ? { ...guest, stage: 'done' as const, eatTicksRemaining: 0, seat: undefined }
+      ? {
+          ...guest,
+          stage: 'done' as const,
+          eatTicksRemaining: 0,
+          seat: undefined,
+          motionPosition: undefined,
+        }
       : guest,
   );
   const afterExit = { ...day, pool };
