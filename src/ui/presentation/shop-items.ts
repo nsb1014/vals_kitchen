@@ -54,7 +54,7 @@ const DECOR_NAMES: Readonly<Record<DecorItemKey, string>> = {
   decor_flowers: 'Flowers',
   decor_rug: 'Rug',
   decor_lamp: 'Lamp',
-  decor_sign: 'Wall Sign',
+  decor_sign: 'Menu Sign',
 };
 
 function deriveAvailability(
@@ -87,22 +87,41 @@ export function buildEquipmentShopRows(
   equipmentCatalog: Array<{ id: string; name: string; ingredientGroupName: string; purchaseIndex: number | null }>,
   ctx: DomainContext,
 ): ShopEquipmentRow[] {
+  const availabilityOrder: Record<ShopItemAvailability, number> = {
+    available: 0,
+    unaffordable: 1,
+    owned: 2,
+    gate_locked: 3,
+    limit_reached: 4,
+  };
   return equipmentCatalog
     .filter((item) => item.purchaseIndex !== null)
-    .map((item) => {
+    .map((item, sourceIndex) => {
       const purchase: PurchaseKind = { type: 'equipment', equipmentId: item.id };
       const cost = purchaseCost(state, purchase);
       const owned = state.purchasedEquipmentIds.includes(item.id);
       return {
-        kind: 'equipment' as const,
-        id: item.id,
-        name: item.name,
-        groupName: item.ingredientGroupName,
-        cost: owned ? 0 : cost,
-        availability: owned ? 'owned' : deriveAvailability(state, purchase, ctx, false),
-        purchase,
+        row: {
+          kind: 'equipment' as const,
+          id: item.id,
+          name: item.name,
+          groupName: item.ingredientGroupName,
+          cost: owned ? 0 : cost,
+          availability: owned ? 'owned' as const : deriveAvailability(state, purchase, ctx, false),
+          purchase,
+        },
+        purchaseIndex: item.purchaseIndex!,
+        sourceIndex,
       };
-    });
+    })
+    .sort(
+      (left, right) =>
+        availabilityOrder[left.row.availability] -
+          availabilityOrder[right.row.availability] ||
+        left.purchaseIndex - right.purchaseIndex ||
+        left.sourceIndex - right.sourceIndex,
+    )
+    .map(({ row }) => row);
 }
 
 export function buildIngredientShopRows(
@@ -112,10 +131,10 @@ export function buildIngredientShopRows(
   ctx: DomainContext,
 ): ShopIngredientRow[] {
   const availabilityOrder: Record<ShopItemAvailability, number> = {
-    owned: 0,
-    available: 1,
-    unaffordable: 2,
-    gate_locked: 3,
+    available: 0,
+    unaffordable: 1,
+    gate_locked: 2,
+    owned: 3,
     limit_reached: 4,
   };
   return ingredients
@@ -217,6 +236,17 @@ export function shopAvailabilityLabel(availability: ShopItemAvailability): strin
     case 'available':
       return 'Buy';
   }
+}
+
+export function shopRowActionLabel(
+  row: Pick<ShopRow, 'kind' | 'availability'>,
+): string {
+  if (row.availability !== 'available') {
+    return shopAvailabilityLabel(row.availability);
+  }
+  return row.kind === 'equipment' || row.kind === 'table' || row.kind === 'decor'
+    ? 'Buy & place'
+    : 'Buy';
 }
 
 export function shopAvailabilityClass(availability: ShopItemAvailability): string {

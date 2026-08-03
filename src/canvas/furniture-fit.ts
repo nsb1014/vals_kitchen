@@ -9,6 +9,14 @@ export const TABLE_DRAW_WIDTH_PX = 44;
 export const TABLE_MAX_HEIGHT_PX = 56;
 /** Kitchen stations keep taller ¾ silhouettes. */
 export const STATION_DRAW_WIDTH_PX = 34;
+/** Décor keeps real relative scale instead of forcing every prop into one box. */
+export const DECOR_DRAW_WIDTH_PX: Readonly<Record<string, number>> = {
+  decor_plant: 30,
+  decor_flowers: 20,
+  decor_rug: 46,
+  decor_lamp: 32,
+  decor_sign: 32,
+};
 
 export function furnitureDrawSize(
   texture: { width: number; height: number },
@@ -21,7 +29,9 @@ export function furnitureDrawSize(
     );
     return { w: texture.width * scale, h: texture.height * scale };
   }
-  const targetWidth = itemKey.length > 0 ? STATION_DRAW_WIDTH_PX : TILE_PX;
+  const targetWidth =
+    DECOR_DRAW_WIDTH_PX[itemKey] ??
+    (itemKey.length > 0 ? STATION_DRAW_WIDTH_PX : TILE_PX);
   const scale = targetWidth / Math.max(1, texture.width);
   return { w: texture.width * scale, h: texture.height * scale };
 }
@@ -32,11 +42,12 @@ export function furnitureDrawOffset(w: number, h: number): { x: number; y: numbe
 
 /**
  * Depth for Y-sorted props.
- * Flat tabletops sort under actors (they are floor-plane surfaces, not tall occluders).
- * Tall stations keep south-edge sorting so the player can walk behind them.
+ * Tables and tall stations sort at their tile's south edge so nearby actors
+ * pass behind or in front according to their feet. Rugs alone stay on the
+ * raw floor plane and therefore never occlude an actor.
  */
 export function furnitureDepthY(gridY: number, itemKey = ''): number {
-  if (itemKey.startsWith('table')) {
+  if (itemKey === 'decor_rug') {
     return gridY;
   }
   return (gridY + 1) * TILE_PX;
@@ -46,7 +57,7 @@ export function chairDepthY(seatedFeetY: number): number {
   return seatedFeetY - 1;
 }
 
-/** Seated guests use natural feet Y; tables no longer compete in the actor band. */
+/** Seated guests use natural feet Y around the table's south-edge depth. */
 export function seatedActorDepthY(seatedFeetY: number): number {
   return seatedFeetY;
 }

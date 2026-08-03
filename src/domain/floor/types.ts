@@ -1,4 +1,5 @@
 import type { Customer } from '../day/types.ts';
+import type { FloorRoomId } from './starter-map.ts';
 
 export type TableSurfaceState = 'unset' | 'ready' | 'occupied' | 'dirty';
 
@@ -20,6 +21,7 @@ export type GuestStage =
   | 'queued'
   | 'entering'
   | 'waiting'
+  | 'seating'
   | 'seated'
   | 'ordered'
   | 'eating'
@@ -38,6 +40,8 @@ export interface FloorGuest {
   customer: Customer;
   stage: GuestStage;
   seat?: SeatSlot;
+  /** Last fully reached grid cell while an enter, seating, or exit walk is in flight. */
+  motionPosition?: { x: number; y: number };
   eatTicksRemaining: number;
 }
 
@@ -50,4 +54,6 @@ export interface FloorDay {
   selectedTicketId: string | null;
   tutorialStep: string | null;
   playerPosition: { x: number; y: number };
+  /** Room containing playerPosition. Missing in older saves and defaults to main. */
+  playerRoom?: FloorRoomId;
 }

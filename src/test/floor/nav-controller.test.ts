@@ -32,6 +32,24 @@ describe('NavController', () => {
     expect(nav.walkFrame()).toBeGreaterThanOrEqual(0);
   });
 
+  it('returns through the neutral pose between opposite strides', () => {
+    const nav = new NavController({ x: 0, y: 0 }, 4);
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 2, y: 0 },
+    ]);
+
+    expect(nav.walkFrame()).toBe(0);
+    nav.update(62.5);
+    expect(nav.walkFrame()).toBe(1);
+    nav.update(62.5);
+    expect(nav.walkFrame()).toBe(0);
+    nav.update(62.5);
+    expect(nav.walkFrame()).toBe(2);
+    nav.update(62.5);
+    expect(nav.walkFrame()).toBe(0);
+  });
+
   it('snapTo clears path and centers on the cell', () => {
     const nav = new NavController({ x: 0, y: 0 }, 10);
     nav.setPath([

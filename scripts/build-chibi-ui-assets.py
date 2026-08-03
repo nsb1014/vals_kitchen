@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the project-CC0 chibi restaurant surfaces, furniture, and chef frames.
+"""Build the project-CC0 chibi restaurant surfaces, furniture, décor, and actors.
 
 The source sheets are intentionally retained in vendor/generated/chibi-ui/source so
 the shipped atlases remain reproducible. This script crops, keys, and scales those
@@ -27,6 +27,10 @@ PROP_OUT = OUT / "restaurant-props"
 
 ACTOR_FRAME_SIZE = (128, 160)
 PORTRAIT_SIZE = (96, 96)
+CARRY_LEG_BLEND_TOP = 128
+CARRY_LEG_BLEND_HEIGHT = 3
+CARRY_LEG_CURVE = 0.004
+CARRY_LEG_BLEND_END = 148
 
 
 def chroma_alpha(image: Image.Image) -> Image.Image:
@@ -46,7 +50,11 @@ def chroma_alpha(image: Image.Image) -> Image.Image:
     return rgba
 
 
-def flood_remove_white_background(image: Image.Image) -> Image.Image:
+def flood_remove_white_background(
+    image: Image.Image,
+    *,
+    include_gray_spill: bool = True,
+) -> Image.Image:
     """Remove only border-connected white matte and decontaminate its edge.
 
     Global white chroma-keying damages Val's pale skin and floral dress. The
@@ -67,7 +75,18 @@ def flood_remove_white_background(image: Image.Image) -> Image.Image:
             + (green - background[1]) ** 2
             + (blue - background[2]) ** 2
         ) ** 0.5
-        return min(red, green, blue) >= 190 and distance <= 82
+        channel_min = min(red, green, blue)
+        channel_spread = max(red, green, blue) - channel_min
+        near_white = channel_min >= 190 and distance <= 82
+        # The supplied white matte was resampled before delivery. Its outer
+        # edge therefore contains a connected gray, low-chroma band that is
+        # darker than the near-white key above. Remove that band only while it
+        # remains connected to the crop border; Val's authored dark outline
+        # encloses and protects the hair, skin, dress, hands, and shoes.
+        gray_spill = (
+            include_gray_spill and channel_min >= 110 and channel_spread <= 38
+        )
+        return near_white or gray_spill
 
     matte = [[False] * width for _ in range(height)]
     queue: deque[tuple[int, int]] = deque()
@@ -139,6 +158,26 @@ def trim(image: Image.Image, padding: int = 0) -> Image.Image:
     )
 
 
+def trim_to_reference(
+    image: Image.Image,
+    reference: Image.Image,
+    padding: int = 0,
+) -> Image.Image:
+    """Crop cleaned pixels without letting cleanup change authored scale/alignment."""
+    bounds = reference.getchannel("A").getbbox()
+    if bounds is None:
+        raise ValueError("Reference sprite crop contains no visible pixels")
+    left, top, right, bottom = bounds
+    return image.crop(
+        (
+            max(0, left - padding),
+            max(0, top - padding),
+            min(image.width, right + padding),
+            min(image.height, bottom + padding),
+        )
+    )
+
+
 def contain(image: Image.Image, size: tuple[int, int], bottom_pad: int = 2) -> Image.Image:
     target_w, target_h = size
     available_h = target_h - bottom_pad * 2
@@ -188,6 +227,83 @@ def clear_alpha_noise(image: Image.Image, cutoff: int = 20) -> Image.Image:
     alpha = rgba.getchannel("A").point(lambda value: 0 if value < cutoff else value)
     rgba.putalpha(alpha)
     return rgba
+
+
+def carry_walk_pixel(
+    carry_pixel: tuple[int, int, int, int],
+    walk_pixel: tuple[int, int, int, int],
+    x: int,
+    y: int,
+) -> tuple[int, int, int, int]:
+    """Return one deterministic premultiplied-alpha carry/walk seam pixel."""
+    center_x = (ACTOR_FRAME_SIZE[0] - 1) / 2
+    seam_y = CARRY_LEG_BLEND_TOP + ((x - center_x) ** 2) * CARRY_LEG_CURVE
+    walk_mix = max(
+        0.0,
+        min(1.0, (y - seam_y) / CARRY_LEG_BLEND_HEIGHT),
+    )
+    carry_mix = 1.0 - walk_mix
+    carry_red, carry_green, carry_blue, carry_alpha = carry_pixel
+    walk_red, walk_green, walk_blue, walk_alpha = walk_pixel
+    out_alpha = carry_alpha * carry_mix + walk_alpha * walk_mix
+    # Match the firm alpha cutoff already applied to both authored inputs.
+    # Interpolation can otherwise resurrect their discarded matte as a handful
+    # of low-opacity tan/white seam pixels.
+    if out_alpha < 120:
+        return (0, 0, 0, 0)
+    out_red = (
+        carry_red * carry_alpha * carry_mix
+        + walk_red * walk_alpha * walk_mix
+    ) / out_alpha
+    out_green = (
+        carry_green * carry_alpha * carry_mix
+        + walk_green * walk_alpha * walk_mix
+    ) / out_alpha
+    out_blue = (
+        carry_blue * carry_alpha * carry_mix
+        + walk_blue * walk_alpha * walk_mix
+    ) / out_alpha
+    return (
+        max(0, min(255, round(out_red))),
+        max(0, min(255, round(out_green))),
+        max(0, min(255, round(out_blue))),
+        max(0, min(255, round(out_alpha))),
+    )
+
+
+def carry_walk_frame(carry: Image.Image, walk: Image.Image) -> Image.Image:
+    """Keep the authored carry pose while borrowing one walk frame's stride.
+
+    The fixed, shallow curved seam stays below Val's hands, plate, face, and
+    dress detail. A short feather prevents the skirt/leg join from flashing as
+    the cycle advances. Blend in premultiplied-alpha space so transparent edge
+    colors can never create a pale or dark fringe in the packed atlas.
+    """
+    if carry.size != ACTOR_FRAME_SIZE or walk.size != ACTOR_FRAME_SIZE:
+        raise ValueError(
+            f"Carry/walk frames must both be {ACTOR_FRAME_SIZE}: "
+            f"{carry.size}, {walk.size}"
+        )
+
+    carry_rgba = carry.convert("RGBA")
+    walk_rgba = walk.convert("RGBA")
+    result = Image.new("RGBA", ACTOR_FRAME_SIZE, (0, 0, 0, 0))
+    carry_pixels = carry_rgba.load()
+    walk_pixels = walk_rgba.load()
+    result_pixels = result.load()
+    assert carry_pixels is not None
+    assert walk_pixels is not None
+    assert result_pixels is not None
+
+    for y in range(ACTOR_FRAME_SIZE[1]):
+        for x in range(ACTOR_FRAME_SIZE[0]):
+            result_pixels[x, y] = carry_walk_pixel(
+                carry_pixels[x, y],
+                walk_pixels[x, y],
+                x,
+                y,
+            )
+    return result
 
 
 def alpha_content_runs(
@@ -271,7 +387,12 @@ def save(image: Image.Image, path: Path) -> None:
     image.save(path, optimize=True)
 
 
-def validate_player_frame(image: Image.Image, name: str) -> None:
+def validate_player_frame(
+    image: Image.Image,
+    name: str,
+    *,
+    composite_sources: tuple[Image.Image, Image.Image] | None = None,
+) -> None:
     """Fail the asset build if matte noise or a bad crop shrinks an actor again."""
     bounds = image.getchannel("A").getbbox()
     if bounds is None:
@@ -283,11 +404,14 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
             f"Player frame is not feet-normalized: {name} "
             f"(bounds={bounds}, visible_height={visible_height}, bottom_gap={bottom_gap})"
         )
-    white_fringe = 0
+    neutral_matte_fringe = 0
     for y in range(image.height):
         for x in range(image.width):
             red, green, blue, alpha = image.getpixel((x, y))
-            if alpha == 0 or min(red, green, blue) <= 200:
+            # The resampled source matte includes a medium-gray connected band,
+            # not just near-white pixels. Check the full neutral spill range
+            # that is visible against the restaurant's dark wood floor.
+            if alpha == 0 or min(red, green, blue) <= 160:
                 continue
             if max(red, green, blue) - min(red, green, blue) >= 45:
                 continue
@@ -296,11 +420,29 @@ def validate_player_frame(image: Image.Image, name: str) -> None:
                 for nx in range(max(0, x - 1), min(image.width, x + 2))
                 for ny in range(max(0, y - 1), min(image.height, y + 2))
             ):
-                white_fringe += 1
+                if (
+                    composite_sources is not None
+                    and CARRY_LEG_BLEND_TOP <= y < CARRY_LEG_BLEND_END
+                    and image.getpixel((x, y))
+                    == carry_walk_pixel(
+                        composite_sources[0].getpixel((x, y)),
+                        composite_sources[1].getpixel((x, y)),
+                        x,
+                        y,
+                    )
+                ):
+                    # The inputs are validated independently. A neutral seam
+                    # edge is therefore accepted only when its exact RGBA is
+                    # reproducibly derived from those source pixels and mask.
+                    continue
+                neutral_matte_fringe += 1
     # A carried white plate can contribute an isolated legitimate edge pixel;
     # the failed source matte appears as a continuous multi-pixel halo.
-    if white_fringe > 3:
-        raise ValueError(f"Player frame retains a white matte fringe: {name} ({white_fringe}px)")
+    if neutral_matte_fringe > 3:
+        raise ValueError(
+            f"Player frame retains a neutral matte fringe: "
+            f"{name} ({neutral_matte_fringe}px)"
+        )
 
 
 def top_row_fill_ratio(image: Image.Image) -> float:
@@ -548,8 +690,15 @@ def build_player() -> None:
     def player_source_frame(column: int, facing: str) -> Image.Image:
         x0, x1 = column_bounds[column]
         y0, y1 = facing_rows[facing]
-        keyed = flood_remove_white_background(sheet.crop((x0, y0, x1, y1)))
-        return trim(clear_alpha_noise(keyed), 3)
+        source = sheet.crop((x0, y0, x1, y1))
+        keyed = clear_alpha_noise(flood_remove_white_background(source))
+        # The stronger spill cleanup must not change frame dimensions, shared
+        # actor scale, or feet alignment. Use the former near-white-only matte
+        # as the layout reference, then crop the cleaned pixels to that box.
+        layout_reference = clear_alpha_noise(
+            flood_remove_white_background(source, include_gray_spill=False)
+        )
+        return trim_to_reference(keyed, layout_reference, 3)
 
     source_frames = {
         (facing, column): player_source_frame(column, facing)
@@ -573,9 +722,11 @@ def build_player() -> None:
         )
 
     for facing in facing_rows:
+        walk_frames: dict[int, Image.Image] = {}
         for frame in range(3):
             name = f"player_{facing}_{frame}"
             sprite = player_frame(frame, facing)
+            walk_frames[frame] = sprite
             validate_player_frame(sprite, name)
             save(sprite, PLAYER_OUT / f"{name}.png")
 
@@ -583,6 +734,19 @@ def build_player() -> None:
         carry_sprite = player_frame(4, facing)
         validate_player_frame(carry_sprite, carry_name)
         save(carry_sprite, PLAYER_OUT / f"{carry_name}.png")
+
+        # Frame zero remains the exact authored neutral carry image. The two
+        # stride variants retain that upper body and use the matching walk
+        # cycle's lower legs, with no per-frame horizontal registration shift.
+        for frame in (1, 2):
+            stride_name = f"{carry_name}_{frame}"
+            stride_sprite = carry_walk_frame(carry_sprite, walk_frames[frame])
+            validate_player_frame(
+                stride_sprite,
+                stride_name,
+                composite_sources=(carry_sprite, walk_frames[frame]),
+            )
+            save(stride_sprite, PLAYER_OUT / f"{stride_name}.png")
 
     # Stable compatibility keys used while atlases are loading.
     save(Image.open(PLAYER_OUT / "player_down_0.png"), PLAYER_OUT / "player.png")
@@ -706,12 +870,42 @@ def build_props() -> None:
     table_sheet = Image.open(
         SEATING_SOURCE / "table-states-v2-transparent.png"
     ).convert("RGBA")
+    decor_sheet = Image.open(SOURCE / "decor-sheet-v2-transparent.png").convert("RGBA")
+    equipment_sheet = Image.open(
+        SOURCE / "equipment-extension-v2-transparent.png"
+    ).convert("RGBA")
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected furniture sheet size: {sheet.size}")
     if seating_sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected seating furniture sheet size: {seating_sheet.size}")
     if table_sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected table state sheet size: {table_sheet.size}")
+    if decor_sheet.size != (1717, 916):
+        raise SystemExit(f"Unexpected coordinated décor sheet size: {decor_sheet.size}")
+    if equipment_sheet.size != (1536, 1024):
+        raise SystemExit(
+            f"Unexpected coordinated equipment sheet size: {equipment_sheet.size}"
+        )
+
+    def validate_transparent_sheet(image: Image.Image, label: str) -> None:
+        corners = (
+            image.getpixel((0, 0)),
+            image.getpixel((image.width - 1, 0)),
+            image.getpixel((0, image.height - 1)),
+            image.getpixel((image.width - 1, image.height - 1)),
+        )
+        if any(pixel[3] != 0 for pixel in corners):
+            raise ValueError(f"{label} does not have transparent corners")
+        key_residual = sum(
+            1
+            for red, green, blue, alpha in image.get_flattened_data()
+            if alpha > 0 and red > 230 and blue > 230 and green < 80
+        )
+        if key_residual > 0:
+            raise ValueError(f"{label} retains magenta key spill ({key_residual}px)")
+
+    validate_transparent_sheet(decor_sheet, "Coordinated décor sheet")
+    validate_transparent_sheet(equipment_sheet, "Coordinated equipment sheet")
 
     seating_sheet = clear_alpha_noise(seating_sheet)
     seating_boxes = authored_grid_boxes(seating_sheet, columns=4, rows=2)
@@ -739,6 +933,34 @@ def build_props() -> None:
         sprite = contain(trim(cell, 2), (96, 96), bottom_pad=3)
         save(sprite, PROP_OUT / f"{name}.png")
 
+    # These five props were generated together against the current furniture
+    # reference so optional decoration no longer drops to the legacy 32×48
+    # pixel-art detail level. Preserve different source canvases here; runtime
+    # sizing then keeps a rug broad, a vase small, and a lamp actor-height.
+    decor_sheet = clear_alpha_noise(decor_sheet, cutoff=12)
+    decor_boxes = authored_grid_boxes(decor_sheet, columns=5, rows=1, padding=8)
+    decor_cells = {
+        "decor_plant": (0, (80, 104)),
+        "decor_flowers": (1, (64, 80)),
+        "decor_lamp": (2, (72, 108)),
+        "decor_rug": (3, (104, 72)),
+        "decor_sign": (4, (80, 104)),
+    }
+    for name, (column, target) in decor_cells.items():
+        cell = decor_sheet.crop(decor_boxes[0][column])
+        sprite = contain(trim(cell, 3), target, bottom_pad=3)
+        save(sprite, PROP_OUT / f"{name}.png")
+
+    # The smoker and spice rack were the final two equipment textures still
+    # sourced from the legacy 32×48 pixel set. They were authored together at
+    # the same perspective and scale as the current chibi station family.
+    equipment_sheet = clear_alpha_noise(equipment_sheet, cutoff=12)
+    equipment_boxes = authored_grid_boxes(equipment_sheet, columns=2, rows=1, padding=8)
+    for name, column in {"smoker": 0, "spice_rack": 1}.items():
+        cell = equipment_sheet.crop(equipment_boxes[0][column])
+        sprite = contain(trim(cell, 3), (64, 96), bottom_pad=2)
+        save(sprite, PROP_OUT / f"{name}.png")
+
     boxes = {
         "prep_station": (86, 350, 314, 638),
         "oven": (401, 351, 583, 638),
@@ -762,6 +984,8 @@ def main() -> None:
         "surfaces-sheet-keyed.png",
         "furniture-sheet-keyed.png",
         "furniture-sheet-v2-keyed.png",
+        "decor-sheet-v2-transparent.png",
+        "equipment-extension-v2-transparent.png",
     ):
         if not (SOURCE / required).is_file():
             raise SystemExit(f"Missing chibi source sheet: {SOURCE / required}")

@@ -24,6 +24,35 @@ export interface MapZones {
   door: { x: number; y: number };
 }
 
+export interface GridCell {
+  x: number;
+  y: number;
+}
+
+/** Clear interior lane shared by arriving and departing guests at the main door. */
+export function guestDoorwayLane(door: GridCell): GridCell {
+  return { x: door.x, y: Math.max(0, door.y - 1) };
+}
+
+/**
+ * Single waiting alcove beside the main entrance. Prefer west so the guest is
+ * outside the doorway lane; narrow layouts whose lane is already at x=1 use
+ * the east cell instead of the west perimeter wall.
+ */
+export function guestWaitingAlcove(door: GridCell): GridCell {
+  const lane = guestDoorwayLane(door);
+  return { x: lane.x > 1 ? lane.x - 1 : lane.x + 1, y: lane.y };
+}
+
+/** Door, shared doorway lane, and waiting alcove kept free on the main floor. */
+export function mainGuestEntranceReservedCells(
+  gridW: number,
+  gridH: number,
+): GridCell[] {
+  const door = doorForGrid(gridW, gridH);
+  return [door, guestDoorwayLane(door), guestWaitingAlcove(door)];
+}
+
 /** Eastmost kitchen column count on the main floor (fixed; annex is a separate room). */
 export function kitchenWidthForGrid(_opts: MapZoneOptions = {}): number {
   return STARTER_KITCHEN_WIDTH;

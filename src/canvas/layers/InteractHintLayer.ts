@@ -5,8 +5,10 @@ const HINT_FILL = 0xc4a35a;
 
 export class InteractHintLayer {
   readonly view = new Graphics();
+  private cells: { x: number; y: number }[] = [];
 
   sync(hints: { x: number; y: number }[]): void {
+    this.cells = hints.map((hint) => ({ ...hint }));
     this.view.clear();
     if (hints.length === 0) {
       this.view.visible = false;
@@ -30,7 +32,12 @@ export class InteractHintLayer {
   }
 
   clear(): void {
+    this.cells = [];
     this.view.clear();
     this.view.visible = false;
+  }
+
+  getCells(): { x: number; y: number }[] {
+    return this.cells.map((cell) => ({ ...cell }));
   }
 }

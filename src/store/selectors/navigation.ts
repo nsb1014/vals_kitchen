@@ -34,7 +34,8 @@ export function navigationLockReason(state: GameStore): string | null {
  */
 export function shouldShowNavigationLockHint(state: GameStore): boolean {
   if (!state.activeDay) return false;
-  const navHidden =
-    Boolean(state.activeDay) && !state.daySummary && state.screen === 'restaurant';
-  return !navHidden;
+  // Settings is deliberately available during service. A persistent warning
+  // there reads like an error and can cover the settings actions; only retain
+  // the hint on the restaurant summary where the bottom nav is actually useful.
+  return state.screen === 'restaurant' && Boolean(state.daySummary);
 }

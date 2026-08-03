@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import type { E2eBridge } from '../../src/app/e2e-bridge.ts';
 
 export const E2E_PATH = '/?e2e=1';
 
@@ -451,7 +452,9 @@ export async function assertFloorChromeBelowCanvas(page: Page): Promise<void> {
 export async function assertCanvasHeightStableAcrossFloorChrome(
   page: Page,
 ): Promise<void> {
-  await expect(page.locator('[data-testid="floor-service-panel"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="floor-service-panel"]'),
+  ).toBeVisible();
   const beforeBox = await page.locator('#canvas-mount').boundingBox();
   expect(beforeBox).not.toBeNull();
   const before = Math.round(beforeBox!.height);
@@ -489,9 +492,14 @@ export async function assertStatusHudAboveCanvas(page: Page): Promise<void> {
 /** Tickets toggle sits below Cash/status HUD (not overlapping it on the overlay). */
 export async function assertTicketsBelowStatusHud(page: Page): Promise<void> {
   const hud = await page.locator('[data-testid="game-hud"]').boundingBox();
-  const tickets = await page
-    .locator('[data-testid="floor-tickets-toggle"]')
-    .boundingBox();
+  const ticketsToggle = page.locator('[data-testid="floor-tickets-toggle"]');
+  let tickets = await ticketsToggle.boundingBox();
+  await expect
+    .poll(async () => {
+      tickets = await ticketsToggle.boundingBox();
+      return tickets !== null;
+    })
+    .toBe(true);
   expect(hud).not.toBeNull();
   expect(tickets).not.toBeNull();
   expect(tickets!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height - 1);
@@ -525,14 +533,22 @@ export async function assertFloorChromeAboveSafeBottom(
 declare global {
   interface Window {
     __E2E__?: {
-      getPlacements: () => Array<{ id: string; x: number; y: number }>;
+      getPlacements: () => Array<{
+        id: string;
+        itemKey: string;
+        x: number;
+        y: number;
+      }>;
       getState: () => {
         day: number;
         cash: number;
         hydrated: boolean;
         activeDay: { queueIndex: number; customerCount: number } | null;
         composeDraftIngredientIds: string[];
+        floorTicketDrafts: Record<string, string[]>;
+        selectedTicketId: string | null;
         screen: string;
+        floorPlayerGrid: { x: number; y: number } | null;
       };
       getGameState: () => {
         day: number;
@@ -554,6 +570,63 @@ declare global {
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       dismissPendingReview: () => void;
       prepareCookUiFixture: () => Promise<void>;
+      prepareFourFacingSeatedGuestsFixture: () => Promise<
+        Array<{
+          guestId: string;
+          seat: {
+            x: number;
+            y: number;
+            facing: 0 | 90 | 180 | 270;
+            tablePlacementId: string;
+            slotIndex: number;
+          };
+        }>
+      >;
+      prepareQueuedDepartureVisualFixture: () => Promise<{
+        firstGuestId: string;
+        heldGuestId: string;
+        heldSeat: {
+          x: number;
+          y: number;
+          facing: 0 | 90 | 180 | 270;
+          tablePlacementId: string;
+          slotIndex: number;
+        };
+      }>;
+      prepareStationCarryFixture: (
+        mode: 'valid_carry' | 'stale_with_open' | 'stale_without_open',
+      ) => Promise<{
+        station: { x: number; y: number };
+        remote: { x: number; y: number };
+        ticketId: string | null;
+      }>;
+      prepareCarryInteractionBoundaryFixture: () => Promise<{
+        station: { x: number; y: number };
+        stationServicePosition: { x: number; y: number };
+        ticketId: string;
+        matchingGuest: {
+          guestId: string;
+          seat: { x: number; y: number };
+          servicePosition: { x: number; y: number };
+        };
+        wrongGuest: {
+          guestId: string;
+          seat: { x: number; y: number };
+          servicePosition: { x: number; y: number };
+        };
+      }>;
+      prepareCarryAnimationCross: () => {
+        center: { x: number; y: number };
+        targets: {
+          right: { x: number; y: number };
+          down: { x: number; y: number };
+          up: { x: number; y: number };
+          left: { x: number; y: number };
+        };
+        ticketId: string;
+      };
+      prepareDecorVisualFixture: () => void;
+      prepareEquipmentVisualFixture: () => void;
       openComposeSheet: () => void;
       getActorSpriteMetrics: () => Array<{
         kind: string;
@@ -567,6 +640,142 @@ declare global {
         y: number;
         zIndex: number;
       }>;
+      getPlayerVisualDebug: () => {
+        requestedTextureKey: string;
+        boundTextureKey: string;
+        authoredCarry: boolean;
+        plateOverlayVisible: boolean;
+        spriteVisible: boolean;
+        spriteAlpha: number;
+        frameWidth: number;
+        frameHeight: number;
+        feet: { x: number; y: number } | null;
+        facing: 'right' | 'down' | 'up' | 'left';
+        isMoving: boolean;
+      } | null;
+      getGuestDoorwayTransitionDebug: (guestId: string) => {
+        guestId: string;
+        stage:
+          | 'queued'
+          | 'entering'
+          | 'waiting'
+          | 'seating'
+          | 'seated'
+          | 'ordered'
+          | 'eating'
+          | 'leaving'
+          | 'done'
+          | null;
+        guest: {
+          requestedFrameKey: string;
+          actualBoundFrameKey: string;
+          textureMatchesActualBoundFrame: boolean;
+          actualMaskWorldBounds: {
+            left: number;
+            top: number;
+            right: number;
+            bottom: number;
+          } | null;
+          isMoving: boolean;
+          facing: 'right' | 'down' | 'up' | 'left';
+          visible: boolean;
+          alpha: number;
+          feet: { x: number; y: number };
+          doorwayCrop: {
+            progress: number;
+            visibleFraction: number;
+            apertureWorldY: number;
+            visualOffsetY: number;
+            maskApplied: boolean;
+            contentRenderable: boolean;
+            unclippedWorldBounds: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            };
+            clippedWorldBounds: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            } | null;
+          } | null;
+        } | null;
+        door: {
+          cell: { x: number; y: number } | null;
+          requestedOpen: boolean;
+          paintedOpen: boolean;
+          spriteCount: number;
+        };
+        authoritativeOpen: boolean;
+        exitLingerRemainingMs: number;
+        camera: {
+          x: number;
+          y: number;
+          scale: number;
+          stageOffsetX: number;
+          stageOffsetY: number;
+        };
+      } | null;
+      startServiceAndCaptureGuestDoorwayFrame: (
+        guestId: string,
+      ) => Promise<
+        NonNullable<ReturnType<E2eBridge['getGuestDoorwayTransitionDebug']>>
+      >;
+      repaintRestaurantFromStoreForTest: () => void;
+      getSeatingSceneDebug: () => {
+        depthParent: {
+          shared: boolean;
+          sortable: boolean;
+        };
+        tables: Array<{
+          placementId: string;
+          itemKey: string;
+          zIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
+          x: number;
+          y: number;
+        }>;
+        chairs: Array<{
+          tablePlacementId: string;
+          slotIndex: number;
+          zIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
+          x: number;
+          y: number;
+        }>;
+        guests: Array<{
+          guestId: string;
+          tablePlacementId: string;
+          slotIndex: number;
+          seatFacing: 0 | 90 | 180 | 270;
+          rootZIndex: number;
+          paintOrder: number;
+          inDepthParent: boolean;
+          requestedFrameKey: string;
+          actualBoundFrameKey: string;
+          isSeated: boolean;
+          isMoving: boolean;
+          walkFrame: number;
+          facing: 'right' | 'down' | 'up' | 'left';
+          visible: boolean;
+          alpha: number;
+          feet: { x: number; y: number };
+        }>;
+      } | null;
+      getOpaqueTableOverlapScreenPoint: (guestId: string) => {
+        x: number;
+        y: number;
+        tablePlacementId: string;
+        usesTableOverhang: boolean;
+        gridCell: { x: number; y: number };
+        occlusionSource: 'texture-alpha';
+      } | null;
+      getInteractHintVisible: () => boolean;
+      getInteractHintCells: () => Array<{ x: number; y: number }>;
       setFloorToast: (message: string | null) => void;
       enqueueCelebration: (celebration: {
         kind: 'recipe' | 'mastery' | 'achievement';

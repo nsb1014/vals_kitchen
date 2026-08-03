@@ -25,6 +25,11 @@ import {
   type FloorRoomId,
 } from '../domain/floor/starter-map.ts';
 import {
+  isCookStationItemKey,
+  playerNearPlacement,
+  resolveFloorComposeTicket,
+} from '../domain/floor/index.ts';
+import {
   createNewGameState,
   type GameState,
   type Placement,
@@ -34,6 +39,7 @@ import {
   defaultSaveRepository,
   requestPersistentStorage,
 } from '../persistence/index.ts';
+import type { SaveRepository } from '../persistence/SaveRepository.ts';
 import type { RecentReviewEntry } from '../ui/presentation/rating-display.ts';
 import {
   buildDaySummaryDisplay,
@@ -45,6 +51,7 @@ import { selectCanOpenFloorCompose } from './selectors/service-day.ts';
 import { mapReducerEventsToUi } from './service-events.ts';
 import {
   clearNotificationTimers,
+  resolveNoticeScope,
   restartNoticeTimer,
   syncNotificationTimer as syncNotificationTimerController,
   type Notice,
@@ -60,6 +67,7 @@ export type ScreenId =
   'restaurant' | 'shop' | 'inspector' | 'recipes' | 'rating' | 'settings';
 
 export interface ServeReview {
+  customerId?: string;
   matchStars: number;
   tip: number;
   ratingDelta: number;
@@ -93,6 +101,8 @@ interface StoreMeta {
   hydrated: boolean;
   persistGranted: boolean;
   modifierDismissed: boolean;
+  serviceStartPending: boolean;
+  serviceStartError: string | null;
   pendingReview: ServeReview | null;
   daySummary: DaySummaryDisplay | null;
   ceremony: CeremonyKind | null;
@@ -117,7 +127,7 @@ interface StoreMeta {
 export interface GameStore extends GameState, StoreMeta {
   hydrate: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
-  dismissModifier: () => void;
+  dismissModifier: () => Promise<void>;
   dismissPendingReview: () => void;
   dismissDaySummary: () => void;
   dismissCeremony: () => void;
@@ -206,6 +216,8 @@ const META_KEYS = [
   'hydrated',
   'persistGranted',
   'modifierDismissed',
+  'serviceStartPending',
+  'serviceStartError',
   'pendingReview',
   'daySummary',
   'ceremony',
@@ -220,6 +232,60 @@ const META_KEYS = [
 
 let toastNoticeSequence = 0;
 let lastHudPacingNotice: Notice | null = null;
+let gameSaveRepository: Pick<SaveRepository, 'load' | 'save'> =
+  defaultSaveRepository;
+let serviceStartFence: Promise<void> | null = null;
+let serviceStartGeneration = 0;
+let gameplayInteractionGeneration = 0;
+
+/**
+ * Identifies the current ephemeral gameplay interaction context.
+ *
+ * Consumers may capture this before beginning an asynchronous interaction and
+ * compare it after the work settles. The value is deliberately module-local
+ * state rather than GameStore state so it can never leak into a save.
+ */
+export function getGameplayInteractionGeneration(): number {
+  return gameplayInteractionGeneration;
+}
+
+function invalidateServiceStartTransition(): Promise<void> | null {
+  gameplayInteractionGeneration += 1;
+  serviceStartGeneration += 1;
+  const superseded = serviceStartFence;
+  serviceStartFence = null;
+  return superseded;
+}
+
+async function waitForSupersededServiceStart(
+  superseded: Promise<void> | null,
+): Promise<void> {
+  if (!superseded) return;
+  try {
+    await superseded;
+  } catch {
+    // The superseded caller still receives its own failure. Replacement state
+    // persistence must proceed independently after the old write settles.
+  }
+}
+
+/** Replaces persistence for deterministic store integration tests. */
+export function setGameSaveRepositoryForTests(
+  repository: Pick<SaveRepository, 'load' | 'save'> | null,
+): void {
+  gameSaveRepository = repository ?? defaultSaveRepository;
+  invalidateServiceStartTransition();
+}
+
+async function persistGameSnapshot(state: GameState): Promise<void> {
+  if (
+    typeof indexedDB === 'undefined' &&
+    gameSaveRepository === defaultSaveRepository
+  ) {
+    return;
+  }
+  await gameSaveRepository.save(state);
+}
 
 function sameNotice(left: Notice | null, right: Notice | null): boolean {
   return (
@@ -295,6 +361,8 @@ function mergeReducerState(
     hydrated: current.hydrated,
     persistGranted: current.persistGranted,
     modifierDismissed: current.modifierDismissed,
+    serviceStartPending: current.serviceStartPending,
+    serviceStartError: current.serviceStartError,
     pendingReview: current.pendingReview,
     daySummary: current.daySummary,
     ceremony: current.ceremony,
@@ -348,6 +416,34 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
   );
 }
 
+function canPlateFromCurrentInteraction(
+  state: GameStore,
+  ticketId: string,
+): boolean {
+  if (
+    state.screen !== 'restaurant' ||
+    !selectCanOpenFloorCompose(state)
+  ) {
+    return false;
+  }
+  const floor = state.activeDay?.floor;
+  const player = state.floorPlayerGrid ?? floor?.playerPosition;
+  if (!floor || !player) return false;
+  if (resolveFloorComposeTicket(floor)?.id !== ticketId) return false;
+
+  const roomPlacements =
+    state.activeFloorRoom === 'back_kitchen'
+      ? state.backKitchenPlacements
+      : state.placements;
+  const ownedEquipment = new Set(state.purchasedEquipmentIds);
+  return roomPlacements.some(
+    (placement) =>
+      isCookStationItemKey(placement.itemKey) &&
+      ownedEquipment.has(placement.itemKey) &&
+      playerNearPlacement(player, placement),
+  );
+}
+
 function buildDaySummary(
   before: GameState,
   after: GameState,
@@ -373,6 +469,8 @@ function buildDaySummary(
     }
   }
   return buildDaySummaryDisplay({
+    completedDay: before.day,
+    nextDay: after.day,
     dayEarnings: activeDay.dayEarnings,
     dayBonus,
     volumeBonus,
@@ -397,6 +495,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   hydrated: false,
   persistGranted: false,
   modifierDismissed: false,
+  serviceStartPending: false,
+  serviceStartError: null,
   pendingReview: null,
   daySummary: null,
   ceremony: null,
@@ -417,17 +517,20 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   composeSheetOpen: false,
 
   async hydrate() {
+    const supersededServiceStart = invalidateServiceStartTransition();
     const persist = await requestPersistentStorage();
-    const loaded = await defaultSaveRepository.load();
+    const loaded = await gameSaveRepository.load();
     const state = loaded.state ?? createNewGameState();
     set({
       ...state,
       screen: 'restaurant',
       editLayoutMode: false,
-      activeFloorRoom: 'main',
+      activeFloorRoom: state.activeDay?.floor?.playerRoom ?? 'main',
       hydrated: true,
       persistGranted: persist.granted,
-      modifierDismissed: state.activeDay ? true : false,
+      modifierDismissed: state.activeDay?.serviceStarted ?? false,
+      serviceStartPending: false,
+      serviceStartError: null,
       pendingReview: null,
       daySummary: null,
       ceremony: null,
@@ -448,14 +551,56 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     });
     clearStoreNotificationTimers();
     syncStoreNotificationTimer();
+    if (supersededServiceStart) {
+      await waitForSupersededServiceStart(supersededServiceStart);
+      await persistGameSnapshot(pickGameState(get()));
+    }
   },
 
   async dispatch(action) {
-    await ensureContentForAction(action.type);
+    const interactionGeneration = gameplayInteractionGeneration;
+    const contentLoad = ensureContentForAction(action.type);
+    if (contentLoad) {
+      await contentLoad;
+    }
+    if (
+      action.type === 'FLOOR_DELIVER' &&
+      gameplayInteractionGeneration !== interactionGeneration
+    ) {
+      throw new Error(
+        'Delivery was cancelled because the gameplay context changed',
+      );
+    }
     const ctx = getDomainContext();
     const current = get();
+    if (
+      action.type === 'FLOOR_DELIVER' &&
+      current.activeFloorRoom !== 'main'
+    ) {
+      throw new Error('Dishes can only be delivered on the main dining floor');
+    }
+    if (
+      action.type === 'FLOOR_PLATE' &&
+      !canPlateFromCurrentInteraction(current, action.ticketId)
+    ) {
+      throw new Error(
+        'The selected ticket can only be plated beside an owned station in the current room',
+      );
+    }
     const before = pickGameState(current);
     const result = gameReducer(before, action, ctx);
+    if (
+      action.type === 'START_SERVICE' &&
+      before.activeDay?.serviceStarted === true &&
+      result.state.activeDay?.serviceStarted === true
+    ) {
+      if (serviceStartFence) {
+        await serviceStartFence;
+      } else if (!current.modifierDismissed) {
+        set({ modifierDismissed: true });
+      }
+      return;
+    }
     const patch: Partial<GameStore> = mergeReducerState(current, result.state);
     const mappedCelebrations = applyReducerEvents(
       result.events,
@@ -468,10 +613,14 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       action.type === 'OPEN_DAY' ||
       action.type === 'CLOSE_DAY' ||
       (before.activeDay !== null && result.state.activeDay === null);
+    const supersededServiceStart = resetsNotificationLifecycle
+      ? invalidateServiceStartTransition()
+      : null;
 
     switch (action.type) {
       case 'OPEN_DAY':
-        patch.modifierDismissed = false;
+        patch.serviceStartPending = false;
+        patch.serviceStartError = null;
         patch.pendingReview = null;
         patch.daySummary = null;
         patch.ceremony = null;
@@ -491,12 +640,13 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           result.state,
           current.dayStartRating ?? before.rating,
         );
-        patch.modifierDismissed = false;
         patch.pendingReview = null;
         patch.dayStartRating = null;
         patch.editLayoutMode = false;
         patch.activeFloorRoom = 'main';
         patch.floorPlayerGrid = null;
+        patch.serviceStartPending = false;
+        patch.serviceStartError = null;
         break;
       case 'SET_COMPOSE_DRAFT':
       case 'SERVE_DISH':
@@ -507,6 +657,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         break;
       default:
         break;
+    }
+
+    patch.modifierDismissed = Boolean(
+      result.state.activeDay?.serviceStarted &&
+        !current.serviceStartPending,
+    );
+    if (action.type === 'START_SERVICE') {
+      patch.modifierDismissed = false;
+      patch.serviceStartPending = true;
+      patch.serviceStartError = null;
     }
 
     if (resetsNotificationLifecycle) {
@@ -533,14 +693,99 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     }
     syncStoreNotificationTimer();
 
+    if (action.type === 'START_SERVICE') {
+      const startedDay = result.state.activeDay!;
+      const transitionGeneration = ++serviceStartGeneration;
+      const transition = (async () => {
+        try {
+          await persistGameSnapshot(pickGameState(get()));
+          if (serviceStartGeneration !== transitionGeneration) return;
+          const succeeded = get();
+          if (
+            succeeded.activeDay?.seed === startedDay.seed &&
+            succeeded.activeDay.serviceStarted
+          ) {
+            set({
+              modifierDismissed: true,
+              serviceStartPending: false,
+              serviceStartError: null,
+            });
+          }
+        } catch (error) {
+          if (serviceStartGeneration !== transitionGeneration) {
+            throw error;
+          }
+          const failed = get();
+          if (
+            failed.activeDay?.seed === startedDay.seed &&
+            failed.activeDay.serviceStarted
+          ) {
+            set({
+              activeDay: { ...failed.activeDay, serviceStarted: false },
+              modifierDismissed: false,
+            });
+          }
+
+          // Ordinary autosaves wait on the transition fence. Persist the
+          // rolled-back boundary directly so no queued started snapshot can
+          // become the durable winner after this promise rejects.
+          let reportedError = error;
+          try {
+            await persistGameSnapshot(pickGameState(get()));
+          } catch (compensationError) {
+            const transitionMessage =
+              error instanceof Error ? error.message : String(error);
+            const compensationMessage =
+              compensationError instanceof Error
+                ? compensationError.message
+                : String(compensationError);
+            reportedError = new Error(
+              `${transitionMessage} Rollback save also failed: ${compensationMessage}`,
+              { cause: error },
+            );
+          }
+          if (serviceStartGeneration !== transitionGeneration) {
+            throw reportedError;
+          }
+          set({
+            serviceStartPending: false,
+            serviceStartError:
+              reportedError instanceof Error
+                ? reportedError.message
+                : 'Could not save service progress.',
+          });
+          throw reportedError;
+        }
+      })();
+      serviceStartFence = transition;
+      try {
+        await transition;
+      } finally {
+        if (
+          serviceStartGeneration === transitionGeneration &&
+          serviceStartFence === transition
+        ) {
+          serviceStartFence = null;
+        }
+      }
+      return;
+    }
     if (shouldAutosaveAfterDispatch(action.type)) {
-      void get().autosave();
+      if (supersededServiceStart) {
+        await waitForSupersededServiceStart(supersededServiceStart);
+        await get().autosave();
+      } else {
+        void get().autosave();
+      }
     }
   },
 
   navigateTo(screen) {
     const current = get();
     if (!selectCanNavigateTo(current, screen)) return;
+    if (current.screen !== screen) {
+      gameplayInteractionGeneration += 1;
+    }
     set({ screen, flavorInspectorIngredientId: null, composeSheetOpen: false });
   },
 
@@ -555,6 +800,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   startPlacement(itemKey) {
     const current = get();
     if (current.activeDay) return;
+    if (current.screen !== 'restaurant') {
+      gameplayInteractionGeneration += 1;
+    }
     set({
       pendingPlacementItemKey: itemKey,
       screen: 'restaurant',
@@ -569,13 +817,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   async importSaveCode(code) {
     try {
       const imported = parseSaveCode(code);
+      const supersededServiceStart = invalidateServiceStartTransition();
       set({
         ...imported,
         screen: 'restaurant',
         editLayoutMode: false,
-        activeFloorRoom: 'main',
+        activeFloorRoom: imported.activeDay?.floor?.playerRoom ?? 'main',
         hydrated: true,
-        modifierDismissed: imported.activeDay ? true : false,
+        modifierDismissed: imported.activeDay?.serviceStarted ?? false,
+        serviceStartPending: false,
+        serviceStartError: null,
         pendingReview: null,
         daySummary: null,
         ceremony: null,
@@ -584,7 +835,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         recentReviews: [],
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
-        floorPlayerGrid: null,
+        floorPlayerGrid: imported.activeDay?.floor?.playerPosition ?? null,
         floorToast: null,
         noticeActive: null,
         noticeSticky: null,
@@ -594,6 +845,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       });
       clearStoreNotificationTimers();
       syncStoreNotificationTimer();
+      await waitForSupersededServiceStart(supersededServiceStart);
       await get().autosave();
       return { ok: true as const };
     } catch (error) {
@@ -633,11 +885,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setFloorNavPosition(pos) {
     const current = get();
     const prev = current.floorPlayerGrid;
-    const persisted = current.activeDay?.floor?.playerPosition;
+    const floor = current.activeDay?.floor;
+    const persisted = floor?.playerPosition;
+    const persistedRoom = floor?.playerRoom ?? 'main';
     if (
       prev?.x === pos.x &&
       prev?.y === pos.y &&
-      (!persisted || (persisted.x === pos.x && persisted.y === pos.y))
+      (!persisted ||
+        (persisted.x === pos.x &&
+          persisted.y === pos.y &&
+          persistedRoom === current.activeFloorRoom))
     ) {
       return;
     }
@@ -648,6 +905,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           floor: {
             ...current.activeDay.floor,
             playerPosition,
+            playerRoom: current.activeFloorRoom,
           },
         }
       : current.activeDay;
@@ -656,18 +914,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
     }
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
   },
 
   setFloorSelectedTicket(ticketId) {
-    const current = get();
-    const floor = current.activeDay?.floor;
-    if (!floor) return;
-    set({
-      activeDay: {
-        ...current.activeDay!,
-        floor: { ...floor, selectedTicketId: ticketId },
-      },
-    });
+    if (!get().activeDay?.floor) return;
+    void get()
+      .dispatch({ type: 'FLOOR_SELECT_TICKET', ticketId })
+      .catch(() => undefined);
     const next = get();
     if (next.composeSheetOpen && !selectCanOpenFloorCompose(next)) {
       set({ composeSheetOpen: false });
@@ -707,6 +963,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
             source: 'toast' as const,
             body: message,
           };
+    if (
+      current.noticeActive &&
+      resolveNoticeScope(current.noticeActive) === 'floor'
+    ) {
+      // A global toast temporarily owns the banner. Allow the HUD to reinstall
+      // its contextual pacing notice when the toast completes instead of
+      // treating that guidance as already delivered and losing it forever.
+      lastHudPacingNotice = null;
+    }
     set({ floorToast: message, noticeActive: notice });
     restartNoticeTimer(notice);
     syncStoreNotificationTimer();
@@ -715,7 +980,6 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   syncFloorNoticesFromHud({ sticky, pacing }) {
     const current = get();
     const pacingChanged = !sameNotice(lastHudPacingNotice, pacing);
-    lastHudPacingNotice = pacing;
     let tutorialDismissedStepId = current.tutorialDismissedStepId;
 
     if (!sticky?.stepId) {
@@ -737,8 +1001,17 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     const activeIsSticky =
       current.noticeActive === null ||
       current.noticeActive === current.noticeSticky;
+    const activeIsHudNotice =
+      current.noticeActive?.source === 'pacing' ||
+      current.noticeActive?.source === 'tutorial';
 
-    if (pacing && pacingChanged && !sameNotice(current.noticeActive, pacing)) {
+    if (
+      pacing &&
+      pacingChanged &&
+      (activeIsSticky || activeIsHudNotice) &&
+      !sameNotice(current.noticeActive, pacing)
+    ) {
+      lastHudPacingNotice = pacing;
       set({
         noticeActive: pacing,
         noticeSticky: nextSticky,
@@ -747,6 +1020,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       });
       restartNoticeTimer(pacing);
     } else {
+      // A toast/system message owns the front until its timer completes. Keep
+      // a changed HUD notice pending so the next render may introduce it.
+      if (!pacing) lastHudPacingNotice = null;
       const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
       set({
         noticeActive: nextActive,
@@ -813,8 +1089,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     syncStoreNotificationTimer();
   },
 
-  dismissModifier() {
-    set({ modifierDismissed: true });
+  async dismissModifier() {
+    await get().dispatch({ type: 'START_SERVICE' });
   },
 
   dismissPendingReview() {
@@ -850,6 +1126,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setActiveFloorRoom(room) {
     const current = get();
     if (room === 'back_kitchen' && !current.kitchenAnnexOwned) return;
+    if (current.activeDay?.floor) return;
     set({ activeFloorRoom: room });
   },
 
@@ -862,11 +1139,25 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       current.gridSize.w,
       current.gridSize.h,
     );
+    const activeDay = current.activeDay?.floor
+      ? {
+          ...current.activeDay,
+          floor: {
+            ...current.activeDay.floor,
+            playerPosition: { ...spawn },
+            playerRoom: nextRoom,
+          },
+        }
+      : current.activeDay;
     set({
       activeFloorRoom: nextRoom,
       floorPlayerGrid: spawn,
+      activeDay,
       composeSheetOpen: false,
     });
+    if (activeDay?.floor) {
+      void get().autosave();
+    }
     return true;
   },
 
@@ -945,8 +1236,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   async autosave() {
-    if (typeof indexedDB === 'undefined') return;
-    await defaultSaveRepository.save(pickGameState(get()));
+    const fence = serviceStartFence;
+    if (fence) {
+      try {
+        await fence;
+      } catch {
+        // The transition performs its rollback save before rejecting.
+      }
+    }
+    await persistGameSnapshot(pickGameState(get()));
   },
 }));
 

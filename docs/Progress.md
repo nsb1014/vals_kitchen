@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-02
 **Purpose:** Living status table — not a narrative. Update as phases complete.
 
 ---
@@ -20,7 +20,7 @@
 | Implementation Phase 6 — UI screens | **Done** |
 | Implementation Phase 7 — CC0 art + audio | **Done** — project-CC0 chibi chef/guests/restaurant + generated ingredient icons + Kenney audio |
 | Implementation Phase 8 — balance tuning | **Partial** — analytic proxy / prestige pacing shipped; live retune still open |
-| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (26 tests) green; real iPhone QA not done |
+| Implementation Phase 9 — device QA / PWA hardening | **Partial** — headless Chromium e2e (55 tests) green; real iPhone QA not done |
 | Implementation Phase 10 — production deploy | **Done** — Cloudflare Workers Static Assets (`vals-kitchen`) |
 | Implementation Phase 11 — immersive floor service | **Done** (vertical slice) — concurrent floor service, station compose/deliver, adjacency interacts, character frames; measured initial JS gzip **173,070** / 280k cap ([design](./superpowers/specs/2026-07-25-immersive-floor-service-design.md), [plan](./superpowers/plans/2026-07-25-immersive-floor-vertical-slice.md)) |
 | Overnight program Track A — visual identity | **Done** — generated 32×32 floors/walls + 32×48 furniture/stations, feet-align, guest walk frames, warm diner UI tokens; gzip **179,236** ([design](./superpowers/specs/2026-07-26-cozy-restaurant-professional-program-design.md), [plan](./superpowers/plans/2026-07-26-track-a-visual-identity.md)) |
@@ -91,6 +91,10 @@
 
 | Date | Change |
 |------|--------|
+| 2026-08-02 | Mobile transition cohesion: kept the ingredient inspector visibly above compose, paused floor-scoped guidance while Settings is active without suppressing global feedback, removed the obstructive Settings lock banner, kept summary/HUD day labels consistent, and compacted short-landscape reviews without changing service simulation or outcomes |
+| 2026-08-02 | Gameplay cohesion: made each rendered opaque guest body a zoom-stable 44px service target for seating, orders, and delivery; prioritized visible pixels over neighboring touch padding, preserved seat-cell controls and table-center ownership, and verified real-pointer head/torso/lower taps at 320/1280px plus all four seat facings |
+| 2026-08-02 | Visual continuity: kept the desktop restaurant canvas and world projection fixed through modifier, review, Continue, and day-summary overlays while preserving the dedicated side workspace for active cooking |
+| 2026-08-02 | Visual cohesion: removed Val's border-connected gray/white source matte without changing her supplied source, identity, 128×160 frame canvases, scale, or feet alignment; repacked the shipped character atlas and added pre-build matte/artifact integrity coverage |
 | 2026-07-28 | Tickets Order/Ideal views; requests use Flavors-tab axis labels + witness idealProfile; cooking dish bars without numbers |
 | 2026-07-28 | Cooking UI + shared chrome Done: explicit station-tap compose, 100-item flavor/search pantry, fixed responsive sheet regions, shared meta panels; fast suite 297 |
 | 2026-07-29 | Rolled back Storybook v2 migration; retained orthographic walls/furniture, corrected chair facings, and content-sized open-service panel |
@@ -102,6 +106,15 @@
 | 2026-07-30 | Guest scale matched to chef; chairs grown to fit; diners sink onto cushion (chair stays planted) |
 | 2026-08-01 | Rebuilt seating art as one coordinated high-resolution chibi system: Val-preserving 128×160 player frames, five guest walk/sit sheets, dedicated ticket portraits, proportion-matched table states and backless stools, content-aware gutter slicing, fixed actor scale, shared stool/feet baseline, and separated south-door spawn lanes; food art intentionally deferred |
 | 2026-08-01 | Corrected seating composition with corner-free oval tables and side-centered place settings, shifted seated hips from stool centers toward the table, and replaced Val's global white key with border-connected matte removal and fringe cleanup |
+| 2026-08-01 | UX loop 1: deferred notifications behind service sheets without losing timer state, restored a legible mobile request → pantry → Plate hierarchy, and added compose focus isolation plus 44px popup targets |
+| 2026-08-01 | UX loop 2: restored required Order/Ideal ticket planning with all 15 numeric flavor axes, exposed live 0/4–4/4 capacity and carried-dish state, rejected over-capacity orders before guest mutation, and added keyboard/focus-safe responsive ticket controls; gameplay rules unchanged |
+| 2026-08-01 | UX loop 3: made Shop & Edit a named pre-day and post-day path, sorted purchases by immediate actionability, kept ingredient shopping in context, made physical purchases flow directly into named/cancellable placement, clarified completed/next-day summary labels, and hardened shop keyboard, 320px, and 200% zoom behavior; gameplay rules and prices unchanged |
+| 2026-08-01 | Gameplay loop 1: made Start Service/review/ceremony/navigation true runtime boundaries without hidden-time catch-up, enabled cooking at all canonical equipment stations, enforced carried-ticket and guest-adjacency delivery in the domain, restored Dirty → Ready clearing, and required complete morning setup before seating; scoring and economy unchanged |
+| 2026-08-01 | Gameplay loop 2: made seating and departure animation-authoritative states, prevented orders before physical seat arrival, retained occupied seats/tables through the exit walk, and dirtied tables only after the final diner reaches the door; service pacing and scoring unchanged |
+| 2026-08-01 | Gameplay loop 3: made compose drafts ticket-owned and interruption-safe, validated selected-ticket plating at an owned nearby station, restored qualitative nonnumeric cooking guidance with explicit ingredient inspection, selected the next ticket after delivery, and serialized autosaves so the newest service checkpoint wins; scoring and economy unchanged |
+| 2026-08-02 | Gameplay loop 4: made seating a physical main-floor interaction shared by the waiting guest and HUD, routed Val to a truly adjacent non-door service cell, enforced proximity in the reducer, accepted full visible-character taps, canceled stale approach intents safely, and clarified entering/waiting/seating guidance; assignment, capacity, pacing, scoring, and economy unchanged |
+| 2026-08-02 | Gameplay loop 5: aligned order cues and taps with live 4-ticket capacity, retired order bubbles when state or service overlays take ownership, made passive eating/leaving guidance non-actionable, and distinguished valid plated carries from stale carry IDs at cooking stations; ticket capacity, service pacing, scoring, and economy unchanged |
+| 2026-08-02 | Gameplay loop 6: made customer reviews, day summaries, and ceremonies accessible blocking focus scopes with meaningful dialog names, deterministic focus handoffs, trapped mandatory actions, ceremony precedence, and ownership-safe background isolation; service simulation, outcomes, transitions, scoring, and economy unchanged |
 | 2026-07-30 | UI: fixed compose food-icon bleed (24→32); removed duplicate floor ticket strip; tickets menu fixed height + single scroll; Order/Ideal share shell |
 | 2026-07-24 | Initial 7 design docs written |
 | 2026-07-24 | PRD reconciled with Rulings 7–12 |

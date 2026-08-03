@@ -29,7 +29,7 @@ export const DECOR_DISPLAY_NAMES: Readonly<Record<DecorItemKey, string>> = {
   decor_flowers: 'Flowers',
   decor_rug: 'Rug',
   decor_lamp: 'Lamp',
-  decor_sign: 'Wall Sign',
+  decor_sign: 'Menu Sign',
 };
 
 export type LayoutCatalogAvailability = 'available' | 'unaffordable' | 'cap_reached';

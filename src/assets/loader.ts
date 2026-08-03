@@ -5,31 +5,63 @@ type SheetMap = Partial<Record<AtlasId, Spritesheet>>;
 
 let restaurantLoaded = false;
 const sheets: SheetMap = {};
+export interface CharacterContentBounds {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+let characterContentBoundsByTexture = new WeakMap<
+  Texture,
+  CharacterContentBounds
+>();
 
 function textureFromSheet(sheet: Spritesheet, name: string): Texture | null {
   const textures = sheet.textures as Record<string, Texture | undefined>;
   return textures[name] ?? null;
 }
 
-async function loadTexture(url: string): Promise<Texture> {
+export function restaurantAtlasScaleMode(id: AtlasId): 'nearest' | 'linear' {
+  // Room surfaces are edge-to-edge repeating tiles, so nearest filtering keeps
+  // adjacent atlas cells from bleeding into their seams. Illustrated actors
+  // and furniture have transparent padding and need smooth downsampling.
+  return id === 'tiles' ? 'nearest' : 'linear';
+}
+
+async function loadTexture(url: string, scaleMode: 'nearest' | 'linear'): Promise<Texture> {
   const image = new Image();
   image.src = url;
   await image.decode();
-  // Pixel art must use nearest filtering. Linear downscale of soft atlas edges
-  // smears mid-alpha into the silhouette and reads as see-through characters.
   const texture = Texture.from(image);
-  texture.source.scaleMode = 'nearest';
+  texture.source.scaleMode = scaleMode;
   // Binary-hardened atlases are straight alpha; avoid double-multiply haze.
   texture.source.alphaMode = 'no-premultiply-alpha';
   return texture;
 }
 
-async function loadSpritesheet(jsonUrl: string): Promise<Spritesheet> {
-  const data = (await fetch(jsonUrl).then((res) => res.json())) as Spritesheet['data'];
+async function loadSpritesheet(
+  id: AtlasId,
+  jsonUrl: string,
+  scaleMode: 'nearest' | 'linear',
+): Promise<Spritesheet> {
+  const data = (await fetch(jsonUrl).then((res) => res.json())) as Spritesheet['data'] & {
+    frames: Record<string, { contentBounds?: CharacterContentBounds }>;
+  };
   const pngUrl = jsonUrl.replace(/\.json$/, '.png');
-  const texture = await loadTexture(pngUrl);
+  const texture = await loadTexture(pngUrl, scaleMode);
   const sheet = new Spritesheet(texture, data);
   await sheet.parse();
+  if (id === 'characters') {
+    for (const [name, frame] of Object.entries(data.frames)) {
+      const frameTexture = textureFromSheet(sheet, name);
+      if (frameTexture && frame.contentBounds) {
+        characterContentBoundsByTexture.set(frameTexture, {
+          ...frame.contentBounds,
+        });
+      }
+    }
+  }
   return sheet;
 }
 
@@ -38,7 +70,11 @@ export async function loadRestaurantAtlases(): Promise<void> {
   const ids: AtlasId[] = ['tiles', 'furniture', 'characters'];
   await Promise.all(
     ids.map(async (id) => {
-      sheets[id] = await loadSpritesheet(ATLAS_MANIFEST[id]);
+      sheets[id] = await loadSpritesheet(
+        id,
+        ATLAS_MANIFEST[id],
+        restaurantAtlasScaleMode(id),
+      );
     }),
   );
   restaurantLoaded = true;
@@ -79,10 +115,18 @@ export function getCharacterTexture(name = 'customer'): Texture | null {
   return textureFromSheet(sheet, name);
 }
 
+export function getCharacterContentBounds(
+  texture: Texture,
+): CharacterContentBounds | null {
+  const bounds = characterContentBoundsByTexture.get(texture);
+  return bounds ? { ...bounds } : null;
+}
+
 export function destroyAtlases(): void {
   for (const id of Object.keys(sheets) as AtlasId[]) {
     sheets[id]?.destroy(true);
     delete sheets[id];
   }
+  characterContentBoundsByTexture = new WeakMap();
   restaurantLoaded = false;
 }

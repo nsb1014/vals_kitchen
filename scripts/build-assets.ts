@@ -183,6 +183,10 @@ for (const facing of ['left', 'down', 'up', 'right']) {
     CHARACTER_SPRITES[name] = `${name}.png`;
   }
   CHARACTER_SPRITES[`player_carry_${facing}`] = `player_carry_${facing}.png`;
+  for (const frame of [1, 2]) {
+    const name = `player_carry_${facing}_${frame}`;
+    CHARACTER_SPRITES[name] = `${name}.png`;
+  }
 }
 for (const variant of ['a', 'b', 'c', 'd', 'e']) {
   for (const facing of ['left', 'down', 'up', 'right']) {
@@ -230,6 +234,10 @@ function assertVendor(): void {
     path.join(GENERATED_CHIBI, 'source', 'surfaces-sheet-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-keyed.png'),
     path.join(GENERATED_CHIBI, 'source', 'furniture-sheet-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'decor-sheet-v2-transparent.png'),
+    path.join(GENERATED_CHIBI, 'source', 'equipment-extension-v2-keyed.png'),
+    path.join(GENERATED_CHIBI, 'source', 'equipment-extension-v2-transparent.png'),
     path.join(GENERATED_CHIBI_GUESTS, 'guest_a_down_0.png'),
     vendorPath('audio/kenney_rpgaudio/Audio/knifeSlice.ogg'),
     path.join(GENERATED_SHEETS, 'manifest.json'),
@@ -283,7 +291,14 @@ function copyGuestPortraits(): void {
 }
 
 function writeManifest(entries: Record<string, string>, file: string): void {
-  writeFileSync(file, JSON.stringify(entries, null, 2));
+  const manifestDir = path.dirname(file);
+  const portable = Object.fromEntries(
+    Object.entries(entries).map(([name, source]) => [
+      name,
+      path.relative(manifestDir, source).split(path.sep).join('/'),
+    ]),
+  );
+  writeFileSync(file, JSON.stringify(portable, null, 2));
 }
 
 function runIngredientIconBuilder(): void {
@@ -298,6 +313,7 @@ function runPacker(
   outJson: string,
   cell?: number,
   scale?: number,
+  includeContentBounds = false,
 ): void {
   const args = [path.join(__dirname, 'pack-atlas.py'), manifestFile, outPng, outJson];
   if (cell !== undefined) args.push(String(cell));
@@ -306,6 +322,12 @@ function runPacker(
       throw new Error('runPacker: cell is required when scale is set');
     }
     args.push(String(scale));
+  }
+  if (includeContentBounds) {
+    if (cell === undefined || scale === undefined) {
+      throw new Error('runPacker: cell and scale are required for content bounds');
+    }
+    args.push('content-bounds');
   }
   execFileSync('python3', args, { stdio: 'inherit' });
 }
@@ -475,7 +497,10 @@ function buildCredits(shippedFiles: string[]): void {
     shippedFiles,
   };
 
-  writeFileSync(path.join(OUT, 'CREDITS.json'), JSON.stringify(manifest, null, 2));
+  writeFileSync(
+    path.join(OUT, 'CREDITS.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
 }
 
 function listShippedFiles(dir: string, prefix = ''): string[] {
@@ -551,6 +576,7 @@ function main(): void {
     path.join(OUT, 'atlases', 'characters.json'),
     160,
     1,
+    true,
   );
 
   runIngredientIconBuilder();

@@ -20,7 +20,7 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   root.innerHTML = `
     <section class="screen-panel sheet-tier-meta-full meta-screen" id="settings-screen" data-testid="settings-screen" hidden>
       <header class="screen-header">
-        <h1 class="screen-title">Settings</h1>
+        <h1 class="screen-title" data-testid="settings-title" tabindex="-1">Settings</h1>
       </header>
       <div class="settings-body" id="settings-body">
         <section class="settings-section">
@@ -56,6 +56,9 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   `;
 
   const panel = root.querySelector('#settings-screen') as HTMLElement;
+  const title = root.querySelector(
+    '[data-testid="settings-title"]',
+  ) as HTMLElement;
   const feedbackEl = root.querySelector('#save-feedback') as HTMLElement;
   const importInput = root.querySelector(
     '#import-save-input',
@@ -117,9 +120,73 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     useGameStore.getState().setMusicEnabled(musicToggle.checked);
   });
 
+  let visible = false;
+  let focusReturnTestId: string | null = null;
+  let focusReturnElement: HTMLElement | null = null;
+
+  const isUsableFocusTarget = (
+    target: HTMLElement | null,
+  ): target is HTMLElement => {
+    if (
+      !target?.isConnected ||
+      target === document.body ||
+      target === document.documentElement ||
+      target.closest('[hidden], [inert], [aria-hidden="true"]')
+    ) {
+      return false;
+    }
+    const style = getComputedStyle(target);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  };
+
+  const resolveFocusReturn = (): HTMLElement | null => {
+    const byTestId = focusReturnTestId
+      ? document.querySelector<HTMLElement>(
+          `[data-testid="${CSS.escape(focusReturnTestId)}"]`,
+        )
+      : null;
+    const target = byTestId ?? focusReturnElement;
+    if (!isUsableFocusTarget(target)) {
+      return document.querySelector<HTMLElement>(
+        '[data-testid="restaurant-canvas"]',
+      );
+    }
+    return target;
+  };
+
   const syncVisibility = () => {
     const state = useGameStore.getState();
-    panel.hidden = state.screen !== 'settings';
+    const nextVisible = state.screen === 'settings';
+    if (nextVisible && !visible) {
+      const active =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      focusReturnTestId = active?.dataset.testid ?? null;
+      focusReturnElement = active;
+      queueMicrotask(() => {
+        if (!panel.hidden && title.isConnected) {
+          title.focus({ preventScroll: true });
+        }
+      });
+    } else if (!nextVisible && visible) {
+      queueMicrotask(() => {
+        const active =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        if (isUsableFocusTarget(active)) {
+          focusReturnTestId = null;
+          focusReturnElement = null;
+          return;
+        }
+        resolveFocusReturn()?.focus({ preventScroll: true });
+        focusReturnTestId = null;
+        focusReturnElement = null;
+      });
+    }
+    panel.hidden = !nextVisible;
+    visible = nextVisible;
     audioToggle.checked = state.audioEnabled;
     musicToggle.checked = state.musicEnabled;
   };

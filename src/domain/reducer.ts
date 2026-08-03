@@ -9,15 +9,25 @@ import {
 import { deliverAndScore } from './floor/deliver.ts';
 import {
   completeGuestEntering,
+  completeGuestLeaving,
+  completeGuestSeating,
   createFloorDayFromCustomers,
+  hasAvailableSeatForWaitingGuest,
   seatNextWaiting,
   tablesFromPlacements,
   takeOrdersForSeated,
   tickEating,
+  updateGuestMotionPosition,
 } from './floor/sim.ts';
-import { plateTicket } from './floor/tickets.ts';
+import {
+  plateTicket,
+  resolveFloorComposeTicket,
+  selectFloorTicket,
+  setFloorTicketDraft,
+} from './floor/tickets.ts';
 import { clearTable, setTable } from './floor/tables.ts';
 import { seatsFromPlacements } from './floor/seats.ts';
+import { playerNearWaitingGuest } from './floor/interact.ts';
 import {
   applyMoveItem,
   applyPlaceItem,
@@ -28,12 +38,17 @@ import {
 } from './economy/purchases.ts';
 import { servicePlayerSpawn, type FloorRoomId } from './floor/starter-map.ts';
 import type { GameState, Placement } from './state/game-state.ts';
-import { cloneGameState } from './state/game-state.ts';
+import {
+  cloneGameState,
+  MAX_DISH_INGREDIENTS,
+  MIN_DISH_INGREDIENTS,
+} from './state/game-state.ts';
 import { applyAchievementUnlocks } from './achievements/evaluate.ts';
 import type { AchievementId } from './achievements/catalog.ts';
 
 export type GameAction =
   | { type: 'OPEN_DAY' }
+  | { type: 'START_SERVICE' }
   | { type: 'SET_COMPOSE_DRAFT'; ingredientIds: string[] }
   | { type: 'SERVE_DISH'; ingredientIds: string[] }
   | { type: 'NEXT_CUSTOMER' }
@@ -54,8 +69,17 @@ export type GameAction =
   | { type: 'FLOOR_CLEAR_TABLE'; placementId: string }
   | { type: 'FLOOR_SEAT_NEXT' }
   | { type: 'FLOOR_COMPLETE_ENTERING' }
+  | { type: 'FLOOR_COMPLETE_SEATING'; guestId: string }
+  | { type: 'FLOOR_COMPLETE_LEAVING'; guestId: string }
+  | {
+      type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION';
+      guestId: string;
+      position: { x: number; y: number };
+    }
   | { type: 'FLOOR_TAKE_ORDERS'; customerIds: string[] }
-  | { type: 'FLOOR_PLATE'; ticketId: string; ingredientIds: string[] }
+  | { type: 'FLOOR_SELECT_TICKET'; ticketId: string | null }
+  | { type: 'FLOOR_SET_TICKET_DRAFT'; ticketId: string; ingredientIds: string[] }
+  | { type: 'FLOOR_PLATE'; ticketId: string }
   | { type: 'FLOOR_DELIVER'; ticketId: string }
   | { type: 'FLOOR_TICK_EATING' };
 
@@ -81,6 +105,7 @@ export type ReducerEvent =
     }
   | {
       type: 'CUSTOMER_SERVED';
+      customerId?: string;
       matchStars: number;
       tip: number;
       ratingDelta: number;
@@ -105,11 +130,38 @@ function withFloor(state: GameState, floor: NonNullable<GameState['activeDay']>[
   return next;
 }
 
+function assertValidFloorIngredients(
+  state: GameState,
+  ingredientIds: string[],
+  ctx: DomainContext,
+  minimum: number,
+): void {
+  if (
+    ingredientIds.length < minimum ||
+    ingredientIds.length > MAX_DISH_INGREDIENTS
+  ) {
+    throw new Error(`Dish requires ${minimum}-${MAX_DISH_INGREDIENTS} ingredients`);
+  }
+  if (new Set(ingredientIds).size !== ingredientIds.length) {
+    throw new Error('Dish ingredients must be unique');
+  }
+  const unlocked = new Set(state.unlockedIngredientIds);
+  for (const ingredientId of ingredientIds) {
+    if (!ctx.ingredientsById.has(ingredientId)) {
+      throw new Error(`Unknown ingredient: ${ingredientId}`);
+    }
+    if (!unlocked.has(ingredientId)) {
+      throw new Error(`Ingredient is locked: ${ingredientId}`);
+    }
+  }
+}
+
 function serveEvents(
   beforeRecipes: Set<string>,
   result: ReturnType<typeof serveCustomer>,
   events: ReducerEvent[],
   ctx: DomainContext,
+  customerId?: string,
 ): ReducerResult {
   const recipe = result.recipeId
     ? ctx.recipes.find((item) => item.id === result.recipeId)
@@ -124,6 +176,7 @@ function serveEvents(
   }
   events.push({
     type: 'CUSTOMER_SERVED',
+    ...(customerId ? { customerId } : {}),
     matchStars: result.matchStars,
     tip: result.tip,
     ratingDelta: result.ratingDelta,
@@ -206,6 +259,7 @@ export function gameReducer(
         seed: generated.seed,
         modifierId: generated.modifier.id,
         customers: generated.customers,
+        serviceStarted: false,
         queueIndex: 0,
         dayEarnings: 0,
         dayMatchSum: 0,
@@ -218,17 +272,31 @@ export function gameReducer(
       return { state: next, events };
     }
 
+    case 'START_SERVICE': {
+      requireFloor(state);
+      if (state.activeDay!.serviceStarted) {
+        return { state, events };
+      }
+      const next = cloneGameState(state);
+      next.activeDay = { ...next.activeDay!, serviceStarted: true };
+      return { state: next, events };
+    }
+
     case 'SET_COMPOSE_DRAFT': {
+      if (state.activeDay?.floor) {
+        throw new Error('Floor drafts must be saved on their selected ticket');
+      }
       const next = cloneGameState(state);
       next.composeDraftIngredientIds = [...action.ingredientIds];
       return { state: next, events };
     }
 
     case 'SERVE_DISH': {
+      const customerId = state.activeDay?.customers[state.activeDay.queueIndex]?.id;
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = serveCustomer(state, action.ingredientIds, ctx);
       return withAchievementEvents(
-        serveEvents(beforeRecipes, result, events, ctx),
+        serveEvents(beforeRecipes, result, events, ctx, customerId),
       );
     }
 
@@ -319,6 +387,17 @@ export function gameReducer(
 
     case 'FLOOR_SEAT_NEXT': {
       const floor = requireFloor(state);
+      if (
+        (floor.playerRoom ?? 'main') !== 'main' ||
+        !hasAvailableSeatForWaitingGuest(floor) ||
+        !playerNearWaitingGuest(
+          floor.playerPosition,
+          state.gridSize.w,
+          state.gridSize.h,
+        )
+      ) {
+        return { state, events };
+      }
       return { state: withFloor(state, seatNextWaiting(floor)), events };
     }
 
@@ -327,30 +406,78 @@ export function gameReducer(
       return { state: withFloor(state, completeGuestEntering(floor)), events };
     }
 
+    case 'FLOOR_COMPLETE_SEATING': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, completeGuestSeating(floor, action.guestId)), events };
+    }
+
+    case 'FLOOR_COMPLETE_LEAVING': {
+      const floor = requireFloor(state);
+      return { state: withFloor(state, completeGuestLeaving(floor, action.guestId)), events };
+    }
+
+    case 'FLOOR_UPDATE_GUEST_MOTION_POSITION': {
+      const floor = requireFloor(state);
+      return {
+        state: withFloor(
+          state,
+          updateGuestMotionPosition(floor, action.guestId, action.position),
+        ),
+        events,
+      };
+    }
+
     case 'FLOOR_TAKE_ORDERS': {
       const floor = requireFloor(state);
       return { state: withFloor(state, takeOrdersForSeated(floor, action.customerIds)), events };
     }
 
+    case 'FLOOR_SELECT_TICKET': {
+      const floor = requireFloor(state);
+      return {
+        state: withFloor(state, selectFloorTicket(floor, action.ticketId)),
+        events,
+      };
+    }
+
+    case 'FLOOR_SET_TICKET_DRAFT': {
+      const floor = requireFloor(state);
+      assertValidFloorIngredients(state, action.ingredientIds, ctx, 0);
+      return {
+        state: withFloor(
+          state,
+          setFloorTicketDraft(floor, action.ticketId, action.ingredientIds),
+        ),
+        events,
+      };
+    }
+
     case 'FLOOR_PLATE': {
       const floor = requireFloor(state);
-      const plated = plateTicket(floor.tickets, action.ticketId, action.ingredientIds);
+      const ticket = resolveFloorComposeTicket(floor);
+      if (!ticket || ticket.id !== action.ticketId) {
+        throw new Error(`Ticket is not selected for plating: ${action.ticketId}`);
+      }
+      assertValidFloorIngredients(
+        state,
+        ticket.ingredientIds,
+        ctx,
+        MIN_DISH_INGREDIENTS,
+      );
       return {
-        state: withFloor(state, {
-          ...floor,
-          tickets: plated.tickets,
-          carriedTicketId: plated.carriedTicketId,
-          selectedTicketId: null,
-        }),
+        state: withFloor(state, plateTicket(floor, action.ticketId)),
         events,
       };
     }
 
     case 'FLOOR_DELIVER': {
+      const ticket = requireFloor(state).tickets.find(
+        (candidate) => candidate.id === action.ticketId,
+      );
       const beforeRecipes = new Set(state.discoveredRecipeIds);
       const result = deliverAndScore(state, action.ticketId, ctx);
       return withAchievementEvents(
-        serveEvents(beforeRecipes, result, events, ctx),
+        serveEvents(beforeRecipes, result, events, ctx, ticket?.customerId),
       );
     }
 

@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
 import {
   WAIT_LINE_SPACING_PX,
+  doorwayLaneGridAnchor,
   waitingGuestGridAnchor,
   waitingGuestWorldPosition,
   waitingLineGuestSpacingPx,
 } from '../../canvas/world/waiting-line.ts';
 
 describe('waiting guest anchor', () => {
-  it('stands inside the room, north of the door wall tile', () => {
+  it('stands inside the room beside the clear doorway lane', () => {
+    const lane = doorwayLaneGridAnchor(STARTER_DOOR);
     const anchor = waitingGuestGridAnchor(STARTER_DOOR);
-    expect(anchor).toEqual({ x: STARTER_DOOR.x, y: STARTER_DOOR.y - 1 });
+    expect(lane).toEqual({ x: STARTER_DOOR.x, y: STARTER_DOOR.y - 1 });
+    expect(anchor).toEqual({ x: STARTER_DOOR.x - 1, y: STARTER_DOOR.y - 1 });
+    expect(anchor).not.toEqual(lane);
   });
 
   it('spreads wait-line guests so four customers do not share one world point', () => {

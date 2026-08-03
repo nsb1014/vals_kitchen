@@ -12,9 +12,10 @@ export function setTable(table: FloorTable): FloorTable {
 }
 
 export function clearTable(table: FloorTable): FloorTable {
-  // Clearing removes dirty dishes/place settings → bare table (unset art).
-  // Next party must set the table again before seating.
-  return transition(table, 'dirty', 'unset');
+  // Clearing removes the previous party's dishes while leaving the table
+  // prepared for the next guest. `unset` is reserved for morning setup (and
+  // legacy saves that still need to finish that setup).
+  return transition(table, 'dirty', 'ready');
 }
 
 export function occupyTable(table: FloorTable): FloorTable {

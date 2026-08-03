@@ -1,17 +1,18 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   applyPageZoom,
   assertFinalFloorActionActivatable,
   assertScrollportAtLeastCta,
   gotoFreshGame,
 } from './helpers.ts';
+import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
 
 // Default Playwright project is Chromium (matches CI). Firefox is opt-in via
 // PLAYWRIGHT_BROWSERS. WebKit/iOS remains unverified in this environment.
 const VIEWPORT_MATRIX = [
-  { width: 390, height: 844, rows: 2 },
-  { width: 320, height: 568, rows: 3 },
-  { width: 320, height: 480, rows: 3 },
+  { width: 390, height: 844, rows: 1 },
+  { width: 320, height: 568, rows: 2 },
+  { width: 320, height: 480, rows: 2 },
   { width: 667, height: 375, rows: 1 },
   { width: 768, height: 1024, rows: 1 },
   { width: 1280, height: 800, rows: 1 },
@@ -35,6 +36,62 @@ async function dismissInitialNotice(page: Page): Promise<void> {
   }
   await expect(notice).toHaveCount(0);
 }
+
+async function expectMinimumTargetSize(
+  target: Locator,
+  minimum = 44,
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const box = await target.boundingBox();
+      return box ? Math.min(box.width, box.height) : 0;
+    })
+    .toBeGreaterThanOrEqual(minimum);
+}
+
+test('uses distinct guidance while a guest arrives, waits, and walks to a table', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  const gridSize = await page.evaluate(async () => {
+    const bridge = window.__E2E__!;
+    const floor = () => bridge.getGameState().activeDay!.floor!;
+    for (const table of floor().tables) {
+      await bridge.dispatch({
+        type: 'FLOOR_SET_TABLE',
+        placementId: table.placementId,
+      });
+    }
+    return bridge.getGameState().gridSize;
+  });
+
+  const noticeBody = page.locator('.notice-banner-body');
+  const seatGuest = page.getByTestId('floor-seat-next');
+  await expect(noticeBody).toHaveText('The first guest is arriving…');
+  await expect(seatGuest).toBeDisabled();
+  await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
+
+  await page.evaluate(() =>
+    window.__E2E__!.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' }),
+  );
+  await expect(noticeBody).toHaveText('Seat the waiting guest.');
+  await expect(seatGuest).toBeEnabled();
+  await expect(seatGuest).toHaveClass(/\bprimary\b/);
+
+  const nearWaiting = waitingGuestServicePositions(
+    gridSize.w,
+    gridSize.h,
+  )[0]!;
+  await page.evaluate(async (position) => {
+    const bridge = window.__E2E__!;
+    bridge.setFloorNavPosition(position);
+    await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+  }, nearWaiting);
+  await expect(noticeBody).toHaveText('Guest is heading to the table…');
+  await expect(seatGuest).toBeDisabled();
+  await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
+});
 
 async function readFloorLayout(
   page: Page,
@@ -106,7 +163,7 @@ for (const viewport of VIEWPORT_MATRIX) {
     await expect(closeDay).toBeHidden();
     await expect(closeDay).toBeDisabled();
     await expect(closeDay).toHaveAttribute('aria-hidden', 'true');
-    await expect(closeDay).toHaveCSS('visibility', 'hidden');
+    await expect(closeDay).toHaveAttribute('hidden', '');
 
     const layout = await readFloorLayout(page, viewport.rows);
     expect(layout.chromeMinHeight).toBeCloseTo(layout.activeTokenHeight, 5);
@@ -132,6 +189,14 @@ for (const viewport of VIEWPORT_MATRIX) {
     }
 
     await dismissInitialNotice(page);
+    const ticketsToggle = page.getByTestId('floor-tickets-toggle');
+    await expect(ticketsToggle).toBeVisible();
+    await expectMinimumTargetSize(ticketsToggle);
+    await ticketsToggle.click();
+    const ticketsClose = page.getByTestId('floor-tickets-close');
+    await expect(ticketsClose).toBeVisible();
+    await expectMinimumTargetSize(ticketsClose);
+    await ticketsClose.click();
     const canvas = page.locator('#canvas-mount');
     const before = (await canvas.boundingBox())?.height;
     expect(before).toBeTruthy();
@@ -260,6 +325,107 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   await expect(notice).toHaveCount(0);
   await expect(celebration).toBeVisible();
   await expect(celebration).not.toHaveAttribute('aria-hidden', 'true');
+
+  const dismissHitBoxes = await page.evaluate(() => {
+    const celebrationDismiss = document.querySelector(
+      '.celebration-banner-dismiss',
+    ) as HTMLElement;
+    const rect = celebrationDismiss.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(dismissHitBoxes.width).toBeGreaterThanOrEqual(44);
+  expect(dismissHitBoxes.height).toBeGreaterThanOrEqual(44);
+});
+
+test('an elapsed tutorial cue does not replay after compose closes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  await dismissInitialNotice(page);
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  const notice = page.getByTestId('notice-banner');
+  const orderBubble = page.getByTestId('chat-bubble');
+  await expect(notice).toContainText('Plate a ticket');
+  await expect(orderBubble).toBeVisible();
+  await expect(notice).toBeHidden();
+  await expect(orderBubble).toBeHidden({ timeout: 3_000 });
+  await expect(notice).toBeVisible();
+  await expect(notice).toHaveCount(0, { timeout: 5000 });
+
+  await page.evaluate(() => window.__E2E__!.openComposeSheet());
+  await expect(page.getByTestId('compose-sheet')).toBeVisible();
+  await page.getByTestId('compose-close').click();
+  await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
+  await page.waitForTimeout(250);
+  await expect(notice).toHaveCount(0);
+});
+
+test('transient notices pause behind compose and review sheets, then resume', async ({
+  page,
+}) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFloorDay(page);
+  await dismissInitialNotice(page);
+  await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
+
+  await page.evaluate(() => window.__E2E__!.openComposeSheet());
+  await expect(page.locator('[data-testid="compose-sheet"]')).toBeVisible();
+  await page.evaluate(() =>
+    window.__E2E__!.setFloorToast('Paused behind compose fixture'),
+  );
+
+  const host = page.locator('[data-testid="celebration-banner-host"]');
+  const composeNotice = page
+    .locator('[data-testid="notice-banner"]')
+    .filter({ hasText: 'Paused behind compose fixture' });
+  await expect(host).toBeHidden();
+  await expect(composeNotice).toBeHidden();
+  await page.waitForTimeout(2_750);
+  await expect(composeNotice).toHaveCount(1);
+
+  await page.locator('[data-testid="compose-close"]').click();
+  await expect(page.locator('[data-testid="compose-sheet"]')).toHaveCount(0);
+  await expect(composeNotice).toBeVisible();
+  const noticeDismissHitBox = await page
+    .getByRole('button', { name: 'Dismiss notice' })
+    .evaluate((button) => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+  expect(noticeDismissHitBox.width).toBeGreaterThanOrEqual(44);
+  expect(noticeDismissHitBox.height).toBeGreaterThanOrEqual(44);
+  await expect(composeNotice).toHaveCount(0, { timeout: 3_500 });
+
+  await page.evaluate(async () => {
+    for (let guard = 0; guard < 80; guard += 1) {
+      const step = await window.__E2E__!.advanceFloorServiceOnce();
+      if (step === 'pending_review') return;
+      if (step === 'day_complete' || step === 'idle') {
+        throw new Error(`service reached ${step} before review`);
+      }
+    }
+    throw new Error('service did not reach review');
+  });
+  await expect(page.locator('[data-testid="review-sheet"]')).toBeVisible();
+  await page.evaluate(() =>
+    window.__E2E__!.setFloorToast('Paused behind review fixture'),
+  );
+
+  const reviewNotice = page
+    .locator('[data-testid="notice-banner"]')
+    .filter({ hasText: 'Paused behind review fixture' });
+  await expect(host).toBeHidden();
+  await expect(reviewNotice).toBeHidden();
+  await page.waitForTimeout(2_750);
+  await expect(reviewNotice).toHaveCount(1);
+
+  await page.locator('[data-testid="continue-service-btn"]').click();
+  await expect(page.locator('[data-testid="review-sheet"]')).toHaveCount(0);
+  await expect(reviewNotice).toBeVisible();
+  await expect(reviewNotice).toHaveCount(0, { timeout: 3_500 });
 });
 
 test('final floor action remains activatable at 200% page zoom', async ({
@@ -288,6 +454,9 @@ test('final floor action remains activatable at 200% page zoom', async ({
   const closeDay = page.locator('[data-testid="close-day-btn"]');
   await expect(closeDay).toBeVisible();
   await expect(closeDay).toBeEnabled();
+  await expect(
+    page.locator('.floor-actions .service-btn:visible'),
+  ).toHaveCount(1);
 
   await applyPageZoom(page, 2);
   const actionMetrics = await page

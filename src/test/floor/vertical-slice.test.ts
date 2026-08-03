@@ -3,7 +3,61 @@ import { findBestMatchCombo } from '../../domain/day/customer-request-generator.
 import { isDayComplete } from '../../domain/day/serve.ts';
 import { gameReducer } from '../../domain/reducer.ts';
 import { createNewGameState } from '../../domain/state/game-state.ts';
+import type { GameState } from '../../domain/state/game-state.ts';
+import type { SeatSlot } from '../../domain/floor/types.ts';
+import { findPath } from '../../domain/floor/pathfinding.ts';
+import {
+  guestServicePositions,
+  waitingGuestServicePositions,
+} from '../../domain/floor/interact.ts';
+import { walkBlockedCells } from '../../canvas/world/blocked-cells.ts';
 import { testContext } from '../test-helpers.ts';
+
+function reachableAdjacentCell(state: GameState, seat: SeatSlot) {
+  const floor = state.activeDay!.floor!;
+  const blocked = walkBlockedCells(
+    state.placements,
+    state.gridSize.w,
+    state.gridSize.h,
+    { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
+  );
+  for (const candidate of guestServicePositions(seat)) {
+    if (
+      candidate.x < 0 ||
+      candidate.y < 0 ||
+      candidate.x >= state.gridSize.w ||
+      candidate.y >= state.gridSize.h ||
+      blocked.has(`${candidate.x},${candidate.y}`)
+    ) {
+      continue;
+    }
+    const path = findPath(
+      { w: state.gridSize.w, h: state.gridSize.h, blocked },
+      floor.playerPosition,
+      candidate,
+    );
+    if (path) return candidate;
+  }
+  throw new Error('No reachable service position near guest seat');
+}
+
+function moveStatePlayerToWaitingGuest(state: GameState): GameState {
+  const playerPosition = waitingGuestServicePositions(
+    state.gridSize.w,
+    state.gridSize.h,
+  )[0]!;
+  return {
+    ...state,
+    activeDay: {
+      ...state.activeDay!,
+      floor: {
+        ...state.activeDay!.floor!,
+        playerPosition,
+        playerRoom: 'main',
+      },
+    },
+  };
+}
 
 describe('floor vertical slice loop', () => {
   it('set → seat → order → plate → deliver → eat → clear → complete', () => {
@@ -20,7 +74,15 @@ describe('floor vertical slice loop', () => {
     }
 
     state = gameReducer(state, { type: 'FLOOR_COMPLETE_ENTERING' }, testContext).state;
+    state = moveStatePlayerToWaitingGuest(state);
     state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+    const seating = state.activeDay!.floor!.pool.find((g) => g.stage === 'seating');
+    expect(seating).toBeTruthy();
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_COMPLETE_SEATING', guestId: seating!.id },
+      testContext,
+    ).state;
     const seated = state.activeDay!.floor!.pool.find((g) => g.stage === 'seated');
     expect(seated).toBeTruthy();
     state = {
@@ -29,7 +91,7 @@ describe('floor vertical slice loop', () => {
         ...state.activeDay!,
         floor: {
           ...state.activeDay!.floor!,
-          playerPosition: { ...seated!.seat! },
+          playerPosition: reachableAdjacentCell(state, seated!.seat!),
         },
       },
     };
@@ -51,11 +113,30 @@ describe('floor vertical slice loop', () => {
 
     state = gameReducer(
       state,
-      { type: 'FLOOR_PLATE', ticketId: ticket.id, ingredientIds: best.ingredientIds },
+      {
+        type: 'FLOOR_SET_TICKET_DRAFT',
+        ticketId: ticket.id,
+        ingredientIds: best.ingredientIds,
+      },
+      testContext,
+    ).state;
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_PLATE', ticketId: ticket.id },
       testContext,
     ).state;
     expect(state.activeDay!.floor!.carriedTicketId).toBe(ticket.id);
 
+    state = {
+      ...state,
+      activeDay: {
+        ...state.activeDay!,
+        floor: {
+          ...state.activeDay!.floor!,
+          playerPosition: reachableAdjacentCell(state, seated!.seat!),
+        },
+      },
+    };
     const cashBefore = state.cash;
     state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: ticket.id }, testContext).state;
     expect(state.cash).toBeGreaterThanOrEqual(cashBefore);
@@ -70,6 +151,11 @@ describe('floor vertical slice loop', () => {
     ) {
       state = gameReducer(state, { type: 'FLOOR_TICK_EATING' }, testContext).state;
     }
+    state = gameReducer(
+      state,
+      { type: 'FLOOR_COMPLETE_LEAVING', guestId: seated!.id },
+      testContext,
+    ).state;
 
     const dirty = state.activeDay!.floor!.tables.find((t) => t.state === 'dirty');
     expect(dirty).toBeTruthy();
@@ -101,7 +187,19 @@ describe('floor vertical slice loop', () => {
 
       const waiting = state.activeDay!.floor!.pool.some((g) => g.stage === 'waiting');
       if (waiting) {
+        state = moveStatePlayerToWaitingGuest(state);
         state = gameReducer(state, { type: 'FLOOR_SEAT_NEXT' }, testContext).state;
+      }
+
+      const seatingGuests = state.activeDay!.floor!.pool.filter(
+        (guest) => guest.stage === 'seating',
+      );
+      for (const guest of seatingGuests) {
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_COMPLETE_SEATING', guestId: guest.id },
+          testContext,
+        ).state;
       }
 
       const toOrder = state.activeDay!.floor!.pool
@@ -117,7 +215,7 @@ describe('floor vertical slice loop', () => {
             ...state.activeDay!,
             floor: {
               ...state.activeDay!.floor!,
-              playerPosition: { ...target.seat! },
+              playerPosition: reachableAdjacentCell(state, target.seat!),
             },
           },
         };
@@ -136,16 +234,49 @@ describe('floor vertical slice loop', () => {
         );
         state = gameReducer(
           state,
-          { type: 'FLOOR_PLATE', ticketId: open.id, ingredientIds: combo.ingredientIds },
+          { type: 'FLOOR_SELECT_TICKET', ticketId: open.id },
           testContext,
         ).state;
+        state = gameReducer(
+          state,
+          {
+            type: 'FLOOR_SET_TICKET_DRAFT',
+            ticketId: open.id,
+            ingredientIds: combo.ingredientIds,
+          },
+          testContext,
+        ).state;
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_PLATE', ticketId: open.id },
+          testContext,
+        ).state;
+        state = {
+          ...state,
+          activeDay: {
+            ...state.activeDay!,
+            floor: {
+              ...state.activeDay!.floor!,
+              playerPosition: reachableAdjacentCell(state, guest.seat!),
+            },
+          },
+        };
         state = gameReducer(state, { type: 'FLOOR_DELIVER', ticketId: open.id }, testContext).state;
       }
 
-      if (
-        state.activeDay!.floor!.pool.some((g) => g.stage === 'eating' || g.stage === 'leaving')
-      ) {
+      if (state.activeDay!.floor!.pool.some((g) => g.stage === 'eating')) {
         state = gameReducer(state, { type: 'FLOOR_TICK_EATING' }, testContext).state;
+      }
+
+      const leavingGuests = state.activeDay!.floor!.pool.filter(
+        (guest) => guest.stage === 'leaving',
+      );
+      for (const guest of leavingGuests) {
+        state = gameReducer(
+          state,
+          { type: 'FLOOR_COMPLETE_LEAVING', guestId: guest.id },
+          testContext,
+        ).state;
       }
     }
 

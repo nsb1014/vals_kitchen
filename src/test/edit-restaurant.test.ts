@@ -2,7 +2,15 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { validatePlacement } from '../domain/economy/purchases.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import { createNewGameState, type Placement } from '../domain/state/game-state.ts';
+import { waitingGuestServicePositions } from '../domain/floor/interact.ts';
 import { seatsFromPlacements } from '../domain/floor/seats.ts';
+import { keepsGuestServiceReachable } from '../domain/floor/service-access.ts';
+import {
+  guestDoorwayLane,
+  guestWaitingAlcove,
+  mainGuestEntranceReservedCells,
+  servicePlayerSpawn,
+} from '../domain/floor/starter-map.ts';
 import { useGameStore } from '../store/game-store.ts';
 import { testContext } from './test-helpers.ts';
 
@@ -76,6 +84,107 @@ describe('edit restaurant placement rules', () => {
     expect(validatePlacement(state, { ...table, x: 3, y: 4 }, table.id)).toBe(true);
   });
 
+  it('rejects a layout that strands every service position around a stool', () => {
+    const state = createNewGameState(1021);
+    const secondTable = state.placements.find((placement) => placement.id === 'table_2')!;
+
+    // The west stool of table_1 is at (1,2). In this otherwise collision-free
+    // move its service cells become wall, table_1, wall, and table_2's stool.
+    expect(
+      validatePlacement(
+        state,
+        { ...secondTable, x: 2, y: 4 },
+        secondTable.id,
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects exact blockers that isolate the guest alcove and departure lane', () => {
+    const state = createNewGameState(10211);
+    const blockerPositions = [
+      { x: 1, y: 6 },
+      { x: 2, y: 5 },
+      { x: 3, y: 5 },
+    ];
+    state.placements = [
+      ...state.placements,
+      ...blockerPositions.map((position, index) => ({
+        id: `route_blocker_${index}`,
+        itemKey: 'decor_plant',
+        ...position,
+        rotation: 0,
+      })),
+    ];
+    const before = structuredClone(state.placements);
+
+    expect(
+      validatePlacement(state, {
+        id: 'route_blocker_3',
+        itemKey: 'decor_plant',
+        x: 4,
+        y: 6,
+        rotation: 0,
+      }),
+    ).toBe(false);
+    expect(state.placements).toEqual(before);
+  });
+
+  it('rejects the sequential blocker that removes the final reachable greeting endpoint', () => {
+    const state = createNewGameState(10212);
+    const blockers = waitingGuestServicePositions(
+      state.gridSize.w,
+      state.gridSize.h,
+    ).map(
+      (position, index) =>
+        ({
+          id: `greeting_blocker_${index}`,
+          itemKey: 'decor_plant',
+          ...position,
+          rotation: 0,
+        }) satisfies Placement,
+    );
+    const finalBlocker = blockers.pop()!;
+
+    for (const blocker of blockers) {
+      expect(validatePlacement(state, blocker)).toBe(true);
+      state.placements.push(blocker);
+      expect(
+        keepsGuestServiceReachable(
+          state.gridSize,
+          state.placements,
+          state.kitchenAnnexOwned,
+        ),
+      ).toBe(true);
+    }
+
+    const before = structuredClone(state.placements);
+    expect(validatePlacement(state, finalBlocker)).toBe(false);
+    expect(state.placements).toEqual(before);
+    expect(
+      keepsGuestServiceReachable(
+        state.gridSize,
+        [...state.placements, finalBlocker],
+        state.kitchenAnnexOwned,
+      ),
+    ).toBe(false);
+  });
+
+  it('keeps the service-day spawn open even when the layout has no stools', () => {
+    const state = createNewGameState(1022);
+    state.gridSize = { w: 4, h: 4 };
+    state.placements = [];
+    const spawn = servicePlayerSpawn(state.gridSize.w, state.gridSize.h);
+
+    expect(
+      validatePlacement(state, {
+        id: 'spawn_station',
+        itemKey: 'prep_station',
+        ...spawn,
+        rotation: 0,
+      }),
+    ).toBe(false);
+  });
+
   it('moves a table and keeps relative side seats attached', () => {
     const state = createNewGameState(103);
     const table = state.placements.find((p) => p.id === 'table_1')!;
@@ -93,6 +202,75 @@ describe('edit restaurant placement rules', () => {
     expect(afterSeats.map((s) => ({ dx: s.x - after.x, dy: s.y - after.y, facing: s.facing }))).toEqual(
       beforeSeats.map((s) => ({ dx: s.x - table.x, dy: s.y - table.y, facing: s.facing })),
     );
+  });
+
+  it('keeps the main guest door, doorway lane, and waiting alcove free', () => {
+    const state = createNewGameState(104);
+    const reserved = mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h);
+    const [door, lane, alcove] = reserved;
+
+    expect(lane).toEqual(guestDoorwayLane(door!));
+    expect(alcove).toEqual(guestWaitingAlcove(door!));
+    expect(guestWaitingAlcove({ x: 1, y: 3 })).toEqual({ x: 2, y: 2 });
+    expect(new Set(reserved.map((cell) => `${cell.x},${cell.y}`)).size).toBe(3);
+
+    for (const [index, cell] of reserved.entries()) {
+      expect(
+        validatePlacement(state, {
+          id: `reserved_${index}`,
+          itemKey: 'decor_plant',
+          x: cell.x,
+          y: cell.y,
+          rotation: 0,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('rejects a table when any derived seat occupies the entrance corridor', () => {
+    const state = createNewGameState(105);
+    const [, lane, alcove] = mainGuestEntranceReservedCells(
+      state.gridSize.w,
+      state.gridSize.h,
+    );
+
+    const seatOnLane: Placement = {
+      id: 'seat_on_lane',
+      itemKey: 'table_4seat',
+      x: lane!.x,
+      y: lane!.y - 1,
+      rotation: 0,
+    };
+    const seatInAlcove: Placement = {
+      id: 'seat_in_alcove',
+      itemKey: 'table_4seat',
+      x: alcove!.x,
+      y: alcove!.y - 1,
+      rotation: 0,
+    };
+
+    expect(seatsFromPlacements([seatOnLane])).toContainEqual(
+      expect.objectContaining({ x: lane!.x, y: lane!.y }),
+    );
+    expect(seatsFromPlacements([seatInAlcove])).toContainEqual(
+      expect.objectContaining({ x: alcove!.x, y: alcove!.y }),
+    );
+    expect(validatePlacement(state, seatOnLane)).toBe(false);
+    expect(validatePlacement(state, seatInAlcove)).toBe(false);
+  });
+
+  it('does not apply the main entrance reservation to the back kitchen', () => {
+    const state = { ...createNewGameState(106), kitchenAnnexOwned: true };
+    const [, lane] = mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h);
+    const station: Placement = {
+      id: 'back_prep',
+      itemKey: 'prep_station',
+      x: lane!.x,
+      y: lane!.y,
+      rotation: 0,
+    };
+
+    expect(validatePlacement(state, station, undefined, 'back_kitchen')).toBe(true);
   });
 });
 
@@ -140,5 +318,67 @@ describe('edit restaurant mode gating', () => {
         testContext,
       ),
     ).toThrow(/during service/);
+  });
+
+  it('rejects moving furniture onto the final reachable greeting endpoint', () => {
+    const state = createNewGameState(203);
+    const blockers = waitingGuestServicePositions(
+      state.gridSize.w,
+      state.gridSize.h,
+    ).map(
+      (position, index) =>
+        ({
+          id: `store_greeting_blocker_${index}`,
+          itemKey: 'decor_plant',
+          ...position,
+          rotation: 0,
+        }) satisfies Placement,
+    );
+    const finalBlocker = blockers.pop()!;
+
+    for (const blocker of blockers) {
+      expect(validatePlacement(state, blocker)).toBe(true);
+      state.placements.push(blocker);
+    }
+
+    const endpointKeys = new Set(
+      waitingGuestServicePositions(state.gridSize.w, state.gridSize.h).map(
+        (position) => `${position.x},${position.y}`,
+      ),
+    );
+    let movable: Placement | undefined;
+    for (let y = 0; y < state.gridSize.h && !movable; y += 1) {
+      for (let x = 0; x < state.gridSize.w; x += 1) {
+        if (endpointKeys.has(`${x},${y}`)) continue;
+        const candidate: Placement = {
+          id: 'movable_greeting_blocker',
+          itemKey: 'decor_plant',
+          x,
+          y,
+          rotation: 0,
+        };
+        if (validatePlacement(state, candidate)) {
+          movable = candidate;
+          break;
+        }
+      }
+    }
+    expect(movable).toBeDefined();
+    state.placements.push(movable!);
+    useGameStore.setState({
+      ...state,
+      screen: 'restaurant',
+      editLayoutMode: true,
+      activeFloorRoom: 'main',
+      hydrated: true,
+    });
+    const before = structuredClone(useGameStore.getState().placements);
+
+    expect(
+      useGameStore
+        .getState()
+        .movePlacement(movable!.id, finalBlocker.x, finalBlocker.y),
+    ).toBe(false);
+    expect(useGameStore.getState().placements).toEqual(before);
   });
 });

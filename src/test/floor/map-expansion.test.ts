@@ -7,6 +7,7 @@ import {
   isKitchenCell,
   isPerimeterWallCell,
   mapZonesForGrid,
+  mainGuestEntranceReservedCells,
   perimeterWallEdge,
 } from '../../domain/floor/starter-map.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
@@ -104,11 +105,45 @@ describe('grid expansion keeps walls functional', () => {
     const ok = {
       id: 'ok_table',
       itemKey: 'table_2seat',
-      x: 3,
+      // Interior, with both stools and the existing tables' service lanes clear.
+      x: 6,
       y: 4,
       rotation: 0,
     };
     expect(isPerimeterWallCell(ok.x, ok.y, w, h)).toBe(false);
     expect(validatePlacement(state, ok)).toBe(true);
+  });
+
+  it('grows both dimensions without moving a valid layout into the new entrance corridor', () => {
+    let state = createNewGameState(2);
+    const table = state.placements.find((placement) => placement.id === 'table_1')!;
+    const nearSouthWall = { ...table, x: 5, y: 6 };
+    expect(validatePlacement(state, nearSouthWall, table.id)).toBe(true);
+    state = {
+      ...state,
+      cash: 50_000,
+      placements: state.placements.map((placement) =>
+        placement.id === table.id ? nearSouthWall : placement,
+      ),
+    };
+    const before = { ...state.gridSize };
+
+    state = applyPurchase(state, { type: 'grid_expansion' }, testContext);
+
+    expect(state.gridSize).toEqual({ w: before.w + 1, h: before.h + 1 });
+    expect(state.placements.find((placement) => placement.id === table.id)).toEqual(
+      nearSouthWall,
+    );
+    const reserved = new Set(
+      mainGuestEntranceReservedCells(state.gridSize.w, state.gridSize.h).map(
+        (cell) => `${cell.x},${cell.y}`,
+      ),
+    );
+    for (const placement of state.placements) {
+      expect(reserved.has(`${placement.x},${placement.y}`)).toBe(false);
+    }
+    for (const seat of seatsFromPlacements(state.placements)) {
+      expect(reserved.has(`${seat.x},${seat.y}`)).toBe(false);
+    }
   });
 });

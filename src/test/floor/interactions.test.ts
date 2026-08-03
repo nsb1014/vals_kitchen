@@ -4,11 +4,15 @@ import {
   adjacentSeatedCustomerIds,
   adjacentUnsetTablePlacementIds,
   findCookStationPlacementAtCell,
+  guestServicePositions,
   isAdjacent,
+  isCookStationItemKey,
+  playerNearWaitingGuest,
   playerNearGuestSeat,
   playerNearPlacement,
   playerNearStation,
   seatedUnorderedCustomerIds,
+  waitingGuestServicePositions,
 } from '../../domain/floor/interact.ts';
 import {
   createFloorDayFromCustomers,
@@ -19,6 +23,12 @@ import { setTable } from '../../domain/floor/tables.ts';
 import type { Customer } from '../../domain/day/types.ts';
 import type { CustomerPreference } from '../../domain/types.ts';
 import type { FloorGuest } from '../../domain/floor/types.ts';
+import {
+  doorForGrid,
+  guestWaitingAlcove,
+  isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
+} from '../../domain/floor/starter-map.ts';
 
 const pref = (): CustomerPreference => ({
   primary: { UM: 'high' },
@@ -72,10 +82,41 @@ describe('floor interact helpers', () => {
     });
   });
 
+  describe('isCookStationItemKey', () => {
+    it('recognizes every canonical equipment item as a cook station', () => {
+      const equipmentItemKeys = [
+        'prep_station',
+        'grill',
+        'oven',
+        'fryer',
+        'stockpot',
+        'cold_station',
+        'pastry_bench',
+        'smoker',
+        'wok',
+        'fermentation_crock',
+        'barista_station',
+        'spice_rack',
+      ];
+
+      expect(equipmentItemKeys).toHaveLength(12);
+      for (const itemKey of equipmentItemKeys) {
+        expect(isCookStationItemKey(itemKey), itemKey).toBe(true);
+      }
+    });
+
+    it('rejects tables, decor, and unknown item keys', () => {
+      expect(isCookStationItemKey('table_2seat')).toBe(false);
+      expect(isCookStationItemKey('table_4seat')).toBe(false);
+      expect(isCookStationItemKey('decor_plant')).toBe(false);
+      expect(isCookStationItemKey('mystery_station')).toBe(false);
+    });
+  });
+
   describe('findCookStationPlacementAtCell', () => {
-    it('resolves only a prep station at the tapped cell', () => {
+    it('resolves canonical cook stations, but not other placements, at the tapped cell', () => {
       const placements = [
-        { id: 'station', itemKey: 'prep_station', x: 8, y: 2, rotation: 0 },
+        { id: 'station', itemKey: 'wok', x: 8, y: 2, rotation: 0 },
         { id: 'table', itemKey: 'table_2seat', x: 3, y: 3, rotation: 0 },
       ];
       expect(
@@ -91,7 +132,7 @@ describe('floor interact helpers', () => {
   });
 
   describe('playerNearGuestSeat', () => {
-    it('is true when player is adjacent to guest seat', () => {
+    it('keeps vertical chibi silhouettes two cells apart while allowing side service', () => {
       const guest: FloorGuest = {
         id: 'g1',
         customer: customer('c1'),
@@ -99,7 +140,16 @@ describe('floor interact helpers', () => {
         seat: { tablePlacementId: 't1', slotIndex: 0, x: 1, y: 3, facing: 0 },
         eatTicksRemaining: 0,
       };
-      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(true);
+      expect(guestServicePositions(guest.seat!)).toEqual([
+        { x: 0, y: 3 },
+        { x: 2, y: 3 },
+        { x: 1, y: 1 },
+        { x: 1, y: 5 },
+      ]);
+      expect(playerNearGuestSeat({ x: 0, y: 3 }, guest)).toBe(true);
+      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(false);
+      expect(playerNearGuestSeat({ x: 1, y: 5 }, guest)).toBe(true);
+      expect(playerNearGuestSeat({ x: 1, y: 3 }, guest)).toBe(false);
       expect(playerNearGuestSeat({ x: 5, y: 5 }, guest)).toBe(false);
     });
 
@@ -111,6 +161,49 @@ describe('floor interact helpers', () => {
         eatTicksRemaining: 0,
       };
       expect(playerNearGuestSeat({ x: 1, y: 1 }, guest)).toBe(false);
+    });
+  });
+
+  describe('waiting guest service geometry', () => {
+    it('uses only adjacent, walkable-looking cells outside the reserved entrance', () => {
+      const gridW = 10;
+      const gridH = 8;
+      const waiting = guestWaitingAlcove(doorForGrid(gridW, gridH));
+      const reserved = new Set(
+        mainGuestEntranceReservedCells(gridW, gridH).map(
+          ({ x, y }) => `${x},${y}`,
+        ),
+      );
+      const positions = waitingGuestServicePositions(gridW, gridH);
+
+      expect(positions.length).toBeGreaterThan(0);
+      for (const position of positions) {
+        expect(
+          Math.max(
+            Math.abs(position.x - waiting.x),
+            Math.abs(position.y - waiting.y),
+          ),
+        ).toBe(1);
+        expect(reserved.has(`${position.x},${position.y}`)).toBe(false);
+        expect(
+          isPerimeterWallCell(position.x, position.y, gridW, gridH),
+        ).toBe(false);
+        expect(playerNearWaitingGuest(position, gridW, gridH)).toBe(true);
+      }
+      expect(playerNearWaitingGuest({ x: 4, y: 5 }, gridW, gridH)).toBe(
+        false,
+      );
+      expect(playerNearWaitingGuest(waiting, gridW, gridH)).toBe(false);
+    });
+
+    it('keeps all candidates within narrow expanded floor bounds', () => {
+      const positions = waitingGuestServicePositions(7, 6);
+      expect(positions.length).toBeGreaterThan(0);
+      expect(
+        positions.every(
+          ({ x, y }) => x >= 0 && y >= 0 && x < 7 && y < 6,
+        ),
+      ).toBe(true);
     });
   });
 

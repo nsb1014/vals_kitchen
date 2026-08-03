@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
+import {
+  resolveNoticeScope,
+  TUTORIAL_NOTICE_DURATION_MS,
+} from '../../store/notification-timer.ts';
+import {
+  noticeIsVisibleOnScreen,
+  notificationSurfaceShouldRun,
+} from '../../ui/components/CelebrationBanner.ts';
 import '../test-helpers.ts';
 
 describe('notification timer', () => {
@@ -72,6 +80,39 @@ describe('notification timer', () => {
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
+  it('scopes floor guidance while keeping toast and system notices global', () => {
+    const floorNotice = {
+      id: 'tutorial:seat',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Seat the guest',
+    };
+    const toast = {
+      id: 'toast:blocked',
+      source: 'toast' as const,
+      body: 'That destination is locked',
+    };
+    const system = {
+      id: 'system:saved',
+      source: 'system' as const,
+      scope: 'global' as const,
+      body: 'Save imported',
+    };
+
+    expect(resolveNoticeScope(floorNotice)).toBe('floor');
+    expect(noticeIsVisibleOnScreen(floorNotice, 'restaurant')).toBe(true);
+    expect(noticeIsVisibleOnScreen(floorNotice, 'settings')).toBe(false);
+    expect(resolveNoticeScope(toast)).toBe('global');
+    expect(noticeIsVisibleOnScreen(toast, 'settings')).toBe(true);
+    expect(noticeIsVisibleOnScreen(system, 'recipes')).toBe(true);
+  });
+
+  it('pauses a hidden floor notice surface without pausing visible global content', () => {
+    expect(notificationSurfaceShouldRun(true, false, false)).toBe(false);
+    expect(notificationSurfaceShouldRun(true, false, true)).toBe(true);
+    expect(notificationSurfaceShouldRun(true, true, true)).toBe(false);
+  });
+
   it('resumes remainingMs after pause mid-dwell', () => {
     useGameStore.getState().setFloorToast('Partial');
     (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(1000);
@@ -85,6 +126,46 @@ describe('notification timer', () => {
     useGameStore.getState().setNotificationSurfaceActive(true);
     vi.advanceTimersByTime(1499);
     expect(useGameStore.getState().noticeActive?.body).toBe('Partial');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('does not let a page lifecycle resume bypass a blocking service sheet', () => {
+    let pageLifecycleActive = true;
+    let uiBlocked = false;
+    const syncSurface = () => {
+      useGameStore
+        .getState()
+        .setNotificationSurfaceActive(
+          notificationSurfaceShouldRun(pageLifecycleActive, uiBlocked),
+        );
+    };
+
+    useGameStore.getState().setFloorToast('Wait behind the sheet');
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(900);
+    vi.advanceTimersByTime(900);
+
+    uiBlocked = true;
+    syncSurface();
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(19_100);
+
+    pageLifecycleActive = false;
+    syncSurface();
+    pageLifecycleActive = true;
+    syncSurface();
+    vi.advanceTimersByTime(10_000);
+    expect(useGameStore.getState().noticeActive?.body).toBe(
+      'Wait behind the sheet',
+    );
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(30_000);
+    uiBlocked = false;
+    syncSurface();
+    vi.advanceTimersByTime(1599);
+    expect(useGameStore.getState().noticeActive?.body).toBe(
+      'Wait behind the sheet',
+    );
     vi.advanceTimersByTime(1);
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
@@ -108,6 +189,31 @@ describe('notification timer', () => {
       useGameStore.getState().noticeSticky,
     );
     expect(useGameStore.getState().noticeActive?.stepId).toBe('set_tables');
+  });
+
+  it('reinstalls paced floor guidance after a global toast displaces it', () => {
+    const pacing = {
+      id: 'tutorial:paced-seat',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Seat the waiting guest.',
+      stepId: 'wait_seat' as const,
+    };
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing,
+    });
+    useGameStore.getState().setFloorToast('Recipe Book is locked.');
+    expect(useGameStore.getState().noticeActive?.source).toBe('toast');
+
+    vi.advanceTimersByTime(2500);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing,
+    });
+
+    expect(useGameStore.getState().noticeActive).toBe(pacing);
   });
 
   it('does not re-show dismissed tutorial until step changes', () => {
@@ -142,6 +248,42 @@ describe('notification timer', () => {
       pacing: null,
     });
     expect(useGameStore.getState().noticeSticky?.stepId).toBe('wait_seat');
+  });
+
+  it('shows paced tutorial guidance once per step and then clears it', () => {
+    const setTables = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: setTables,
+    });
+    expect(useGameStore.getState().noticeActive).toBe(setTables);
+    expect(useGameStore.getState().noticeSticky).toBeNull();
+
+    vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: setTables,
+    });
+    expect(useGameStore.getState().noticeActive).toBeNull();
+
+    useGameStore.getState().syncFloorNoticesFromHud({
+      sticky: null,
+      pacing: {
+        id: 'tutorial:paced-seat-guest',
+        source: 'tutorial',
+        body: 'Seat the next guest',
+        stepId: 'wait_seat',
+      },
+    });
+    expect(useGameStore.getState().noticeActive?.stepId).toBe('wait_seat');
   });
 
   it('clears notices and stale timers when SERVE_DISH soft-resets the day', async () => {

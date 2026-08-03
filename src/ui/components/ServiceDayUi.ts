@@ -4,12 +4,11 @@ import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
-import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
+import { AXIS_KEYS, type AxisKey, type Band } from '../../domain/types.ts';
 import {
   AXIS_LABELS,
   emptyFlavorProfile,
 } from '../../domain/flavor/axis-labels.ts';
-import { computeRequestSatisfaction } from '../../domain/flavor/scoring.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
   selectCanAdvanceCustomer,
@@ -55,13 +54,42 @@ import {
   toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
+import { requestRestaurantShopOpen } from '../events/restaurant-shop.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountFloorServiceHud } from './FloorServiceHud.ts';
 import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
+import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
+import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
+import { isOrderBubbleOwnedByFloor } from '../presentation/order-bubble.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
+const SERVICE_PANEL_ENTER_MS = 180;
+
+type ServicePanelKind =
+  | 'open-service'
+  | 'modifier'
+  | 'review'
+  | 'day-summary'
+  | 'floor-compose'
+  | 'queue-compose';
+
+type RequestBandPosition = 'below' | 'in-range' | 'above';
+
+function requestBandPosition(value: number, band: Band): RequestBandPosition {
+  if (band === 'low') return value <= 3 ? 'in-range' : 'above';
+  if (band === 'mid') {
+    if (value < 3) return 'below';
+    return value <= 7 ? 'in-range' : 'above';
+  }
+  return value >= 6 ? 'in-range' : 'below';
+}
+
+function requestBandPositionLabel(position: RequestBandPosition): string {
+  if (position === 'in-range') return 'In range';
+  return position === 'below' ? 'Below request' : 'Above request';
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -77,7 +105,7 @@ export function mountServiceDayUi(
   getRestaurantApp: () => RestaurantApp | null,
   chromeMount: HTMLElement,
   statusMount: HTMLElement,
-  _canvasMount: HTMLElement,
+  canvasMount: HTMLElement,
 ): () => void {
   statusMount.innerHTML = `
     <div class="game-hud" id="game-hud" data-testid="game-hud"></div>
@@ -114,39 +142,235 @@ export function mountServiceDayUi(
 
   const cleanupCelebrationBanner = mountCelebrationBanner(overlayMount);
   // Tickets dock must live under overlay-mount so it stacks above the cooking panel.
-  const cleanupFloorHud = mountFloorServiceHud(chromeMount, overlayMount);
+  const cleanupFloorHud = mountFloorServiceHud(
+    chromeMount,
+    overlayMount,
+    getRestaurantApp,
+  );
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
   let orderBubbleGuestId: string | null = null;
   let orderBubbleTimer: ReturnType<typeof setTimeout> | null = null;
+  let orderBubbleBlocksNotice = false;
   let composeWasVisible = false;
   let composeTicketId: string | null = null;
-  let composeFocusReturn: HTMLElement | null = null;
+  let blockingFocusReturn: HTMLElement | null = null;
+  let summaryFocusExit: 'open-day' | 'shop' | null = null;
   let composeFlavorDetailsOpen = false;
   let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
+  let servicePanelKind: ServicePanelKind | null = null;
+  let servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
+
+  const revealServicePanel = (kind: ServicePanelKind) => {
+    const now = performance.now();
+    if (servicePanelKind !== kind) servicePanelEnteredAt = now;
+    servicePanelKind = kind;
+    serviceOverlay.hidden = false;
+    const panel = serviceOverlay.firstElementChild;
+    const entryElapsed = now - servicePanelEnteredAt;
+    if (
+      entryElapsed < SERVICE_PANEL_ENTER_MS &&
+      panel instanceof HTMLElement
+    ) {
+      panel.dataset.panelEntering = '';
+      panel.style.setProperty(
+        '--vk-service-panel-enter-delay',
+        `${-Math.max(0, entryElapsed)}ms`,
+      );
+    }
+  };
+
+  const hideServicePanel = () => {
+    servicePanelKind = null;
+    servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
+    serviceOverlay.hidden = true;
+    serviceOverlay.innerHTML = '';
+  };
+
+  type BlockingScopeKind =
+    | 'ceremony'
+    | 'day-summary'
+    | 'review'
+    | 'floor-compose';
+
+  type BlockingScope = {
+    kind: BlockingScopeKind;
+    key: string;
+    root: HTMLElement;
+    title: HTMLElement;
+  };
+
+  type FocusIdentity = {
+    attributes: Array<{
+      name:
+        | 'data-testid'
+        | 'data-compose-ingredient-id'
+        | 'data-compose-axis'
+        | 'aria-label'
+        | 'id';
+      value: string;
+    }>;
+  };
+
+  const blockingFocusableSelector =
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  let activeBlockingScope: BlockingScope | null = null;
+  const isolationSnapshots = new Map<
+    HTMLElement,
+    {
+      ownedInert: boolean;
+      ownedAriaHidden: boolean;
+      previousAriaHidden: string | null;
+    }
+  >();
+
+  const focusIdentity = (scope: BlockingScope): FocusIdentity | null => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !scope.root.contains(active))
+      return null;
+    const attributes = [
+      'data-testid',
+      'data-compose-ingredient-id',
+      'data-compose-axis',
+      'aria-label',
+      'id',
+    ] as const;
+    const values = attributes.flatMap((name) => {
+      const value = active.getAttribute(name);
+      return value ? [{ name, value }] : [];
+    });
+    return values.length > 0 ? { attributes: values } : null;
+  };
+
+  const focusIdentityInScope = (
+    scope: BlockingScope,
+    identity: FocusIdentity | null,
+  ) => {
+    const match = identity
+      ? Array.from(
+          scope.root.querySelectorAll<HTMLElement>('*'),
+        ).find((element) =>
+          identity.attributes.every(
+            ({ name, value }) => element.getAttribute(name) === value,
+          ),
+        )
+      : null;
+    const target = match ?? scope.title;
+    target?.focus({ preventScroll: true });
+  };
+
+  const restoreIsolation = (element: HTMLElement) => {
+    const snapshot = isolationSnapshots.get(element);
+    if (!snapshot) return;
+    if (snapshot.ownedInert && element.inert) element.inert = false;
+    if (
+      snapshot.ownedAriaHidden &&
+      element.getAttribute('aria-hidden') === 'true'
+    ) {
+      if (snapshot.previousAriaHidden === null) {
+        element.removeAttribute('aria-hidden');
+      } else {
+        element.setAttribute('aria-hidden', snapshot.previousAriaHidden);
+      }
+    }
+    isolationSnapshots.delete(element);
+  };
+
+  const syncBackgroundIsolation = (scope: BlockingScope | null) => {
+    const targets = new Set<HTMLElement>();
+    if (scope) {
+      if (surface) {
+        for (const child of Array.from(surface.children)) {
+          if (child instanceof HTMLElement && child !== overlayMount) {
+            targets.add(child);
+          }
+        }
+      } else {
+        for (const element of [statusMount, chromeMount, canvasMount]) {
+          targets.add(element);
+        }
+      }
+      targets.add(bubbleMount);
+      for (const child of Array.from(overlayMount.children)) {
+        if (!(child instanceof HTMLElement)) continue;
+        if (child.id === 'flavor-inspector-modal') continue;
+        if (child.contains(scope.root)) continue;
+        targets.add(child);
+      }
+    }
+
+    for (const element of Array.from(isolationSnapshots.keys())) {
+      if (!targets.has(element) || !element.isConnected) {
+        restoreIsolation(element);
+      }
+    }
+    for (const element of targets) {
+      const existing = isolationSnapshots.get(element);
+      if (existing) {
+        if (!element.inert) {
+          existing.ownedInert = true;
+          element.inert = true;
+        }
+        if (element.getAttribute('aria-hidden') !== 'true') {
+          existing.ownedAriaHidden = true;
+          existing.previousAriaHidden = element.getAttribute('aria-hidden');
+          element.setAttribute('aria-hidden', 'true');
+        }
+        continue;
+      }
+      const previousAriaHidden = element.getAttribute('aria-hidden');
+      const ownedInert = !element.inert;
+      const ownedAriaHidden = previousAriaHidden !== 'true';
+      isolationSnapshots.set(element, {
+        ownedInert,
+        ownedAriaHidden,
+        previousAriaHidden,
+      });
+      if (ownedInert) element.inert = true;
+      if (ownedAriaHidden) element.setAttribute('aria-hidden', 'true');
+    }
+  };
 
   const resetComposeUi = () => {
     composeFlavorDetailsOpen = false;
     composeFilters = emptyComposePantryFilters();
   };
 
-  const focusFloorAfterCompose = () => {
-    const target =
-      composeFocusReturn?.isConnected &&
-      !serviceOverlay.contains(composeFocusReturn)
-        ? composeFocusReturn
-        : (document.querySelector(
-            '[data-testid="restaurant-canvas"]',
-          ) as HTMLElement | null);
+  const isSafeFocusReturn = (
+    target: HTMLElement | null,
+  ): target is HTMLElement => {
+    if (
+      !target ||
+      target === document.body ||
+      target === document.documentElement ||
+      !target.isConnected ||
+      overlayMount.contains(target) ||
+      target.hidden ||
+      target.closest('[hidden], [inert], [aria-hidden="true"]')
+    ) {
+      return false;
+    }
+    const style = getComputedStyle(target);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  };
+
+  const focusAfterBlockingScope = () => {
+    const target = isSafeFocusReturn(blockingFocusReturn)
+      ? blockingFocusReturn
+      : (document.querySelector(
+          '[data-testid="restaurant-canvas"]',
+        ) as HTMLElement | null);
     target?.focus({ preventScroll: true });
-    composeFocusReturn = null;
+    blockingFocusReturn = null;
   };
 
   const renderHud = () => {
     const state = useGameStore.getState();
     const activeDay = state.activeDay;
+    const displayDay = state.daySummary?.completedDay ?? state.day;
     const ratingModel = buildRatingDisplayModel(state.rating, state.prestige);
     const customersTotal = activeDay?.customers.length ?? 0;
     const customersServed = activeDay?.customersServed ?? 0;
@@ -168,7 +392,10 @@ export function mountServiceDayUi(
                state.recentReviews.length > 0
                  ? state.recentReviews
                      .slice(0, 4)
-                     .map((review) => `<li>${escapeHtml(formatRecentReview(review))}</li>`)
+                     .map(
+                       (review) =>
+                         `<li>${escapeHtml(formatRecentReview(review))}</li>`,
+                     )
                      .join('')
                  : '<li>No reviews yet.</li>'
              }</ul>`
@@ -178,11 +405,17 @@ export function mountServiceDayUi(
                <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
                <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
             : hudDetail === 'day'
-              ? `<h2>Day ${state.day}</h2>
-                 <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
-                 <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
-                 <p>Customers served: <strong>${customersServed}</strong></p>
-                 <p>Customers left: <strong>${customersLeft}</strong></p>`
+              ? state.daySummary
+                ? `<h2>Day ${displayDay}</h2>
+                   <p data-testid="hud-day-earnings">${escapeHtml(state.daySummary.earningsLine)}</p>
+                   <p data-testid="hud-day-rating-change">${escapeHtml(state.daySummary.ratingDeltaText)}</p>
+                   <p data-testid="hud-day-customers-served">${escapeHtml(state.daySummary.customersServedText)}</p>
+                   <p>${escapeHtml(state.daySummary.averageMatchText)}</p>`
+                : `<h2>Day ${displayDay}</h2>
+                   <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
+                   <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
+                   <p>Customers served: <strong>${customersServed}</strong></p>
+                   <p>Customers left: <strong>${customersLeft}</strong></p>`
               : '';
     hud.innerHTML = `
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-label="Cash details">
@@ -199,7 +432,7 @@ export function mountServiceDayUi(
       </button>
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-label="Day details">
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
-        <strong>${state.day}</strong>
+        <strong>${displayDay}</strong>
       </button>
       <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${
@@ -220,10 +453,12 @@ export function mountServiceDayUi(
           renderHud();
         });
       });
-    hud.querySelector('[data-testid="hud-settings"]')?.addEventListener('click', () => {
-      hudDetail = null;
-      useGameStore.getState().navigateTo('settings');
-    });
+    hud
+      .querySelector('[data-testid="hud-settings"]')
+      ?.addEventListener('click', () => {
+        hudDetail = null;
+        useGameStore.getState().navigateTo('settings');
+      });
     hud.querySelector('.hud-detail-close')?.addEventListener('click', () => {
       hudDetail = null;
       renderHud();
@@ -231,7 +466,31 @@ export function mountServiceDayUi(
     syncStatusHudHeight();
   };
 
+  const syncOrderBubbleNoticeBlock = () => {
+    const next = Boolean(
+      bubbleEl?.classList.contains('order-bubble') && !bubbleEl.hidden,
+    );
+    if (next === orderBubbleBlocksNotice) return;
+    orderBubbleBlocksNotice = next;
+    notifyNotificationBlockingSurfaceChanged();
+  };
+
+  const clearOrderBubble = () => {
+    orderBubbleGuestId = null;
+    if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+    orderBubbleTimer = null;
+    if (bubbleEl) {
+      bubbleEl.hidden = true;
+      bubbleEl.classList.remove('order-bubble');
+    }
+    syncOrderBubbleNoticeBlock();
+  };
+
   const positionChatBubble = () => {
+    if (!serviceOverlay.hidden || !ceremonyModal.hidden) {
+      clearOrderBubble();
+      return;
+    }
     if (!bubbleEl) return;
     const app = getRestaurantApp();
     if (!app) return;
@@ -240,25 +499,53 @@ export function mountServiceDayUi(
       : app.getCustomerScreenAnchor();
     if (!anchor) {
       bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
     bubbleEl.hidden = false;
-    bubbleEl.style.left = `${anchor.x}px`;
-    bubbleEl.style.top = `${anchor.y}px`;
+    const mountRect = bubbleMount.getBoundingClientRect();
+    const placement = computeChatBubblePlacement(
+      anchor,
+      mountRect,
+      { width: bubbleEl.offsetWidth, height: bubbleEl.offsetHeight },
+    );
+    bubbleEl.style.left = `${placement.left}px`;
+    bubbleEl.style.top = `${placement.top}px`;
+    bubbleEl.style.setProperty(
+      '--vk-bubble-tail-offset-x',
+      `${placement.tailOffsetX}px`,
+    );
+    syncOrderBubbleNoticeBlock();
   };
 
   const renderChatBubble = () => {
     const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    if (
+      orderBubbleGuestId &&
+      !isOrderBubbleOwnedByFloor(floor, orderBubbleGuestId)
+    ) {
+      clearOrderBubble();
+    }
+    // A service sheet owns the current conversation. Keep older order speech
+    // from competing visually with modifiers, cooking, reviews, or summaries.
+    if (!serviceOverlay.hidden || !ceremonyModal.hidden) {
+      clearOrderBubble();
+      return;
+    }
     const customer = selectCurrentCustomer(state);
     const orderGuest = orderBubbleGuestId
-      ? state.activeDay?.floor?.pool.find(
+      ? floor?.pool.find(
           (guest) => guest.customer.id === orderBubbleGuestId,
         )
       : undefined;
-    const showOrderBubble = Boolean(orderGuest && state.activeDay?.floor);
+    const showOrderBubble = Boolean(
+      orderGuest && isOrderBubbleOwnedByFloor(floor, orderBubbleGuestId),
+    );
     const showBubble =
       showOrderBubble ||
-      (state.activeDay &&
+      (!floor &&
+        state.activeDay &&
         state.modifierDismissed &&
         customer &&
         !state.pendingReview &&
@@ -266,6 +553,7 @@ export function mountServiceDayUi(
 
     if (!showBubble || (!customer && !orderGuest)) {
       if (bubbleEl) bubbleEl.hidden = true;
+      syncOrderBubbleNoticeBlock();
       return;
     }
 
@@ -296,16 +584,16 @@ export function mountServiceDayUi(
     ceremonyModal.hidden = false;
     if (state.ceremony === 'prestige') {
       ceremonyModal.innerHTML = `
-        <div class="modal-card" role="dialog" aria-labelledby="ceremony-title">
-          <h2 id="ceremony-title">Prestige Achieved!</h2>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
+          <h2 id="ceremony-title" tabindex="-1">Prestige Achieved!</h2>
           <p>Your restaurant reached 6★. Prestige level is now <strong>P${state.ceremonyPrestige ?? state.prestige}</strong>. Rating resets to 3.0★ and all future payouts scale up permanently.</p>
           <button type="button" class="service-btn primary" id="dismiss-ceremony">Continue</button>
         </div>
       `;
     } else {
       ceremonyModal.innerHTML = `
-        <div class="modal-card" role="dialog" aria-labelledby="ceremony-title">
-          <h2 id="ceremony-title">Soft Reset</h2>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
+          <h2 id="ceremony-title" tabindex="-1">Soft Reset</h2>
           <p>Rating hit 0★. You keep prestige <strong>P${state.prestige}</strong> and your recipe book, but cash, ingredients (except starters), equipment, and layout were reset.</p>
           <button type="button" class="service-btn primary" id="dismiss-ceremony">Rebuild</button>
         </div>
@@ -330,14 +618,9 @@ export function mountServiceDayUi(
       : null;
 
     if (composeOpenedNow) {
-      composeFocusReturn =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
       resetComposeUi();
     } else if (!composeVisible && composeWasVisible) {
       resetComposeUi();
-      queueMicrotask(focusFloorAfterCompose);
     } else if (
       composeVisible &&
       composeTicketId !== null &&
@@ -348,63 +631,71 @@ export function mountServiceDayUi(
     composeWasVisible = composeVisible;
     composeTicketId = nextComposeTicketId;
 
+    if (state.ceremony) {
+      hideServicePanel();
+      return;
+    }
+
     if (!selectShowServiceDayOverlay(state)) {
-      serviceOverlay.hidden = true;
-      serviceOverlay.innerHTML = '';
+      hideServicePanel();
       return;
     }
 
     if (state.daySummary) {
       const masteryLine =
         'masteryLine' in state.daySummary ? state.daySummary.masteryLine : null;
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="day-summary-sheet">
+        <div class="service-panel sheet-tier-near-full summary-service-panel" data-testid="day-summary-sheet" role="dialog" aria-modal="true" aria-labelledby="day-summary-title">
           <div class="service-card sheet-card-layout">
             <header class="sheet-header">
-              <h2 class="service-title" data-testid="day-summary-title">Day Summary</h2>
+              <h2 id="day-summary-title" class="service-title" data-testid="day-summary-title" tabindex="-1">Day ${state.daySummary.completedDay} Summary</h2>
             </header>
             <div class="sheet-body-scroll">
-            <p class="review-detail">${state.daySummary.earningsLine}</p>
+            <p class="review-detail" data-testid="summary-earnings">${state.daySummary.earningsLine}</p>
             ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${state.daySummary.bonusLine}</p>` : ''}
             ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${state.daySummary.volumeBonusLine}</p>` : ''}
             <p class="review-detail">${state.daySummary.averageMatchText}</p>
-            <p class="review-detail">${state.daySummary.ratingDeltaText}</p>
+            <p class="review-detail" data-testid="summary-rating-change">${state.daySummary.ratingDeltaText}</p>
             <p class="review-detail">${state.daySummary.unlockProgressText}</p>
-            <p class="review-detail">${state.daySummary.customersServedText}</p>
+            <p class="review-detail" data-testid="summary-customers-served">${state.daySummary.customersServedText}</p>
             ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
             </div>
             <footer class="sheet-footer service-actions day-summary-actions">
-              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Back to floor</button>
-              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Edit Restaurant</button>
+              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Continue to Day ${state.daySummary.nextDay}</button>
+              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Shop &amp; Edit</button>
             </footer>
           </div>
         </div>
       `;
+      revealServicePanel('day-summary');
       serviceOverlay.querySelector('#summary-back-floor')?.addEventListener(
         'click',
         () => {
+          summaryFocusExit = 'open-day';
           const store = useGameStore.getState();
           store.dismissDaySummary();
           store.navigateTo('restaurant');
         },
         { once: true },
       );
-      serviceOverlay.querySelector('#summary-edit-restaurant')?.addEventListener(
-        'click',
-        () => {
-          const store = useGameStore.getState();
-          store.dismissDaySummary();
-          store.navigateTo('restaurant');
-          if (!store.editLayoutMode) store.toggleEditLayout();
-        },
-        { once: true },
-      );
+      serviceOverlay
+        .querySelector('#summary-edit-restaurant')
+        ?.addEventListener(
+          'click',
+          () => {
+            summaryFocusExit = 'shop';
+            const store = useGameStore.getState();
+            store.dismissDaySummary();
+            store.navigateTo('restaurant');
+            if (!store.editLayoutMode) store.toggleEditLayout();
+            requestRestaurantShopOpen();
+          },
+          { once: true },
+        );
       return;
     }
 
     if (selectShowOpenForService(state)) {
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel open-service-panel" data-testid="open-service-sheet">
           <div class="service-card">
@@ -412,11 +703,12 @@ export function mountServiceDayUi(
             <p class="service-subtitle">Set tables, seat guests from the door, cook at the station, and deliver.</p>
             <div class="service-actions">
               <button type="button" class="service-btn primary" id="open-day-btn" data-testid="open-day-btn">Open Restaurant</button>
-              <button type="button" class="service-btn" id="edit-restaurant-btn" data-testid="edit-restaurant-btn">Edit Restaurant</button>
+              <button type="button" class="service-btn" id="edit-restaurant-btn" data-testid="edit-restaurant-btn">Shop &amp; Edit</button>
             </div>
           </div>
         </div>
       `;
+      revealServicePanel('open-service');
       serviceOverlay.querySelector('#open-day-btn')?.addEventListener(
         'click',
         () => {
@@ -429,6 +721,7 @@ export function mountServiceDayUi(
         () => {
           const store = useGameStore.getState();
           if (!store.editLayoutMode) store.toggleEditLayout();
+          requestRestaurantShopOpen();
         },
         { once: true },
       );
@@ -436,14 +729,12 @@ export function mountServiceDayUi(
     }
 
     if (!state.activeDay) {
-      serviceOverlay.hidden = true;
-      serviceOverlay.innerHTML = '';
+      hideServicePanel();
       return;
     }
 
     if (!state.modifierDismissed) {
       const modifier = selectActiveModifier(state);
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid" data-testid="modifier-sheet">
           <div class="service-card">
@@ -451,24 +742,59 @@ export function mountServiceDayUi(
             <p class="service-subtitle"><strong>${modifier?.name ?? 'Normal Day'}</strong></p>
             <p class="service-subtitle">${modifier?.description ?? 'No special effects today.'}</p>
             <p class="queue-badge">${state.activeDay.customers.length} customers expected</p>
+            ${
+              state.serviceStartError
+                ? `<p class="save-feedback save-feedback-error" data-testid="service-start-error" role="alert">Could not save service progress. ${escapeHtml(state.serviceStartError)} Please try again.</p>`
+                : ''
+            }
             <div class="service-actions">
-              <button type="button" class="service-btn primary" id="start-service-btn" data-testid="start-service-btn">Start Service</button>
+              <button type="button" class="service-btn primary" id="start-service-btn" data-testid="start-service-btn" ${state.serviceStartPending ? 'disabled aria-busy="true"' : ''}>${state.serviceStartPending ? 'Saving…' : 'Start Service'}</button>
             </div>
           </div>
         </div>
       `;
-      serviceOverlay.querySelector('#start-service-btn')?.addEventListener(
-        'click',
-        () => {
-          useGameStore.getState().dismissModifier();
-        },
-        { once: true },
+      revealServicePanel('modifier');
+      const startServiceButton = serviceOverlay.querySelector<HTMLButtonElement>(
+        '#start-service-btn',
       );
+      startServiceButton?.addEventListener('click', async () => {
+        if (startServiceButton.disabled) return;
+        startServiceButton.disabled = true;
+        try {
+          await useGameStore.getState().dismissModifier();
+        } catch {
+          // The store restores a retryable modifier sheet with an alert.
+        }
+      });
       return;
     }
 
     if (state.pendingReview) {
       const review = buildReviewDisplay(state.pendingReview);
+      const reviewCustomer = state.activeDay?.customers.find(
+        (customer) => customer.id === state.pendingReview?.customerId,
+      );
+      const reviewGuest = state.activeDay?.floor?.pool.find(
+        (guest) => guest.customer.id === state.pendingReview?.customerId,
+      );
+      const reviewArchetype = reviewCustomer
+        ? getDomainContext().archetypes.find(
+            (archetype) => archetype.id === reviewCustomer.archetypeId,
+          )
+        : undefined;
+      const reviewIdentity = reviewCustomer
+        ? `
+              <header class="sheet-header review-identity" data-testid="review-guest-identity">
+                ${renderGuestPortraitHtml(reviewGuest?.id ?? reviewCustomer.id)}
+                <span class="review-identity-copy">
+                  <span id="review-context-title" class="review-identity-kicker" role="heading" aria-level="2" tabindex="-1">Review from</span>
+                  <h2 id="review-guest-title" class="service-title" data-testid="review-guest-name">${escapeHtml(reviewArchetype?.name ?? 'Customer')}</h2>
+                </span>
+              </header>`
+        : `
+              <header class="sheet-header">
+                <h2 id="review-title" class="service-title" tabindex="-1">Customer Review</h2>
+              </header>`;
       const ratingModifierLine = formatReviewModifierLine(
         selectActiveModifier(state),
         state.pendingReview.matchStars,
@@ -479,13 +805,10 @@ export function mountServiceDayUi(
       const canAdvance =
         selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-mid" data-testid="review-sheet">
+        <div class="service-panel sheet-tier-mid review-service-panel" data-testid="review-sheet" role="dialog" aria-modal="true" aria-labelledby="${reviewCustomer ? 'review-context-title review-guest-title' : 'review-title'}">
           <div class="service-card sheet-card-layout">
-            <header class="sheet-header">
-              <h2 class="service-title">Customer Review</h2>
-            </header>
+            ${reviewIdentity}
             <div class="sheet-body-scroll">
             ${progress && !floorActive ? `<p class="queue-badge">Customer ${progress.current} of ${progress.total}</p>` : ''}
             <p class="review-stars" data-testid="review-stars" aria-label="${review.starsText}">${renderStarGlyphs(review.starsFilled)}</p>
@@ -510,6 +833,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('review');
       serviceOverlay.querySelector('#next-customer-btn')?.addEventListener(
         'click',
         () => {
@@ -551,14 +875,6 @@ export function mountServiceDayUi(
             (guest) => guest.customer.id === ticket.customerId,
           )
         : undefined;
-      const requestMatch =
-        preview.profile && ticketGuest
-          ? 10 *
-            computeRequestSatisfaction(
-              preview.profile,
-              ticketGuest.customer.preference,
-            )
-          : null;
       const canPlate =
         preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
       const unlocked = state.unlockedIngredientIds.flatMap((id) => {
@@ -595,7 +911,10 @@ export function mountServiceDayUi(
             const toggle = canToggleIngredient(item.id, currentDraft);
             const disabled = !selected && !toggle.allowed;
             const name = escapeHtml(item.name);
-            return `<button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 32)}<span>${name}</span></button>`;
+            return `<div class="compose-ingredient-card">
+              <button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 32)}<span>${name}</span></button>
+              <button type="button" class="compose-ingredient-inspect" id="ingredient-inspect-${item.id}" data-compose-inspect-id="${item.id}" data-testid="ingredient-inspect" aria-label="Inspect ${name}" title="Inspect ${name}"><span aria-hidden="true">i</span></button>
+            </div>`;
           })
           .join('');
       };
@@ -633,14 +952,13 @@ export function mountServiceDayUi(
 
       const flavorPreview = buildFlavorBarsViewModel(
         preview.profile ?? emptyFlavorProfile(),
-      ).axes
-        .map(
+      )
+        .axes.map(
           (axis) => `<div class="compose-flavor-mini">
                 <span>${escapeHtml(axis.label)}</span>
-                <span class="compose-flavor-mini-track" role="meter" aria-label="${escapeHtml(axis.label)}" aria-valuemin="0" aria-valuemax="${axis.max}" aria-valuenow="${axis.value}">
+                <span class="compose-flavor-mini-track" aria-hidden="true">
                   <span class="compose-flavor-mini-fill" style="width:${Math.min(100, Math.max(0, (axis.value / axis.max) * 100)).toFixed(1)}%"></span>
                 </span>
-                <span class="compose-flavor-mini-value">${axis.displayValue}</span>
               </div>`,
         )
         .join('');
@@ -649,8 +967,9 @@ export function mountServiceDayUi(
       let orderPanel = '';
       if (ticket) {
         const archetypeName = ticketGuest
-          ? ctx.archetypes.find((a) => a.id === ticketGuest.customer.archetypeId)
-              ?.name
+          ? ctx.archetypes.find(
+              (a) => a.id === ticketGuest.customer.archetypeId,
+            )?.name
           : undefined;
         const label = formatFloorTicketLabel({
           ticket,
@@ -669,16 +988,18 @@ export function mountServiceDayUi(
               const band = requestedBands[axis]!;
               const targetValue = ideal[axis];
               const currentValue = preview.profile?.[axis] ?? 0;
+              const position = requestBandPosition(currentValue, band);
+              const positionLabel = requestBandPositionLabel(position);
               return `<div class="compose-request-axis" data-testid="compose-request-axis">
                 <div class="compose-request-axis-head">
                   <strong>${escapeHtml(`${bandLabel(band)} ${AXIS_LABELS[axis]}`)}</strong>
-                  <span>${currentValue.toFixed(1)} dish · ${targetValue.toFixed(1)} target</span>
+                  <span class="compose-request-status ${position}">${escapeHtml(positionLabel)}</span>
                 </div>
-                <div class="compose-request-bars">
-                  <span class="compose-request-bar target" title="Achievable target ${targetValue.toFixed(1)}">
+                <div class="compose-request-bars" aria-hidden="true">
+                  <span class="compose-request-bar target">
                     <span style="width:${Math.min(100, Math.max(0, targetValue * 10)).toFixed(1)}%"></span>
                   </span>
-                  <span class="compose-request-bar current" title="Current dish ${currentValue.toFixed(1)}">
+                  <span class="compose-request-bar current">
                     <span style="width:${Math.min(100, Math.max(0, currentValue * 10)).toFixed(1)}%"></span>
                   </span>
                 </div>
@@ -693,18 +1014,18 @@ export function mountServiceDayUi(
               </div>
               <span class="compose-order-legend"><i></i> target <i></i> dish</span>
             </div>
+            <span class="compose-order-mobile-legend"><i></i> target <i></i> dish</span>
             <div class="compose-request-axis-list">${requestRows}</div>
           </aside>`;
         }
       }
 
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-labelledby="compose-title">
+        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
           <div class="service-card sheet-card-layout compose-sheet-card">
             <header class="sheet-header compose-sheet-header">
               <div>
-                <h2 id="compose-title" class="service-title">Plate Dish</h2>
+                <h2 id="compose-title" class="service-title" tabindex="-1">Plate Dish</h2>
                 ${ticketBadge}
               </div>
               <button type="button" class="icon-btn" data-testid="compose-close" aria-label="Close cooking sheet">✕</button>
@@ -731,15 +1052,24 @@ export function mountServiceDayUi(
             <footer class="sheet-footer compose-sheet-footer">
               <div class="compose-footer-copy">
                 <span>Dish flavor</span>
-                <span>${requestMatch === null ? `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients` : `Current request match ${requestMatch.toFixed(1)} / 10`}</span>
+                <span>${preview.profile ? 'Tune each requested flavor into range' : `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients`}</span>
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
-              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview">${flavorPreview}</div>
+              <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
               <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
             </footer>
           </div>
         </div>
       `;
+      revealServicePanel('floor-compose');
+      const composePanel = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="compose-sheet"]',
+      );
+      const inspectorOpen = Boolean(state.flavorInspectorIngredientId);
+      if (composePanel && inspectorOpen) {
+        composePanel.inert = true;
+        composePanel.setAttribute('aria-hidden', 'true');
+      }
 
       let cancelActiveLongPress: (() => void) | null = null;
       const bindIngredientButtons = (root: HTMLElement) => {
@@ -789,15 +1119,26 @@ export function mountServiceDayUi(
               }
               const id = button.dataset.composeIngredientId;
               if (!id) return;
-              const currentDraft = selectComposeDraftIds(
-                useGameStore.getState(),
-              );
+              const current = useGameStore.getState();
+              const activeTicket = selectFloorComposeTicket(current);
+              if (!activeTicket) return;
+              const currentDraft = selectComposeDraftIds(current);
               const toggle = canToggleIngredient(id, currentDraft);
               if (!toggle.allowed) return;
-              void useGameStore.getState().dispatch({
-                type: 'SET_COMPOSE_DRAFT',
+              void current.dispatch({
+                type: 'FLOOR_SET_TICKET_DRAFT',
+                ticketId: activeTicket.id,
                 ingredientIds: toggle.nextIds,
               });
+            });
+          });
+
+        root
+          .querySelectorAll<HTMLButtonElement>('[data-compose-inspect-id]')
+          .forEach((button) => {
+            button.addEventListener('click', () => {
+              const id = button.dataset.composeInspectId;
+              if (id) useGameStore.getState().openFlavorInspector(id);
             });
           });
       };
@@ -852,8 +1193,14 @@ export function mountServiceDayUi(
             ? 'Hide flavor details'
             : 'Flavor details';
           serviceOverlay
-            .querySelector('.compose-flavor-strip')
+            .querySelector<HTMLElement>('.compose-flavor-strip')
             ?.classList.toggle('expanded', composeFlavorDetailsOpen);
+          const flavorStrip = serviceOverlay.querySelector<HTMLElement>(
+            '.compose-flavor-strip',
+          );
+          if (composeFlavorDetailsOpen)
+            flavorStrip?.setAttribute('tabindex', '0');
+          else flavorStrip?.removeAttribute('tabindex');
         });
       serviceOverlay
         .querySelector('[data-testid="compose-pantry"]')
@@ -888,11 +1235,9 @@ export function mountServiceDayUi(
           const activeTicket = selectFloorComposeTicket(current);
           if (!activeTicket) return;
           serveLockedUntil = Date.now() + SERVE_LOCK_MS;
-          const ids = selectComposeDraftIds(current);
           void current.dispatch({
             type: 'FLOOR_PLATE',
             ticketId: activeTicket.id,
-            ingredientIds: ids,
           });
         },
         { once: true },
@@ -924,7 +1269,6 @@ export function mountServiceDayUi(
           )}</div>`
         : '';
 
-      serviceOverlay.hidden = false;
       serviceOverlay.innerHTML = `
         <div class="service-panel">
           <div class="service-card">
@@ -939,6 +1283,7 @@ export function mountServiceDayUi(
           </div>
         </div>
       `;
+      revealServicePanel('queue-compose');
 
       serviceOverlay
         .querySelectorAll<HTMLButtonElement>('[data-ingredient-id]')
@@ -991,28 +1336,205 @@ export function mountServiceDayUi(
       return;
     }
 
-    serviceOverlay.hidden = true;
-    serviceOverlay.innerHTML = '';
+    hideServicePanel();
+  };
+
+  const currentBlockingScope = (): BlockingScope | null => {
+    const state = useGameStore.getState();
+    if (state.ceremony) {
+      const root = ceremonyModal.querySelector<HTMLElement>('[role="dialog"]');
+      const title = ceremonyModal.querySelector<HTMLElement>('#ceremony-title');
+      return root && title
+        ? { kind: 'ceremony', key: state.ceremony, root, title }
+        : null;
+    }
+    if (state.daySummary) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="day-summary-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>(
+        '#day-summary-title',
+      );
+      return root && title
+        ? {
+            kind: 'day-summary',
+            key: String(state.daySummary.completedDay),
+            root,
+            title,
+          }
+        : null;
+    }
+    if (state.pendingReview) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="review-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>(
+        '#review-context-title, #review-title',
+      );
+      return root && title
+        ? {
+            kind: 'review',
+            key: state.pendingReview.customerId ?? 'customer-review',
+            root,
+            title,
+          }
+        : null;
+    }
+    if (selectShowFloorCompose(state)) {
+      const root = serviceOverlay.querySelector<HTMLElement>(
+        '[data-testid="compose-sheet"]',
+      );
+      const title = serviceOverlay.querySelector<HTMLElement>('#compose-title');
+      return root && title
+        ? {
+            kind: 'floor-compose',
+            key: selectFloorComposeTicket(state)?.id ?? 'untargeted',
+            root,
+            title,
+          }
+        : null;
+    }
+    return null;
+  };
+
+  const sameBlockingScope = (
+    left: BlockingScope | null,
+    right: BlockingScope | null,
+  ) => left?.kind === right?.kind && left?.key === right?.key;
+
+  const queueScopeFocus = (
+    scope: BlockingScope,
+    identity: FocusIdentity | null,
+  ) => {
+    queueMicrotask(() => {
+      const current = activeBlockingScope;
+      if (
+        useGameStore.getState().flavorInspectorIngredientId ||
+        !current ||
+        !sameBlockingScope(current, scope) ||
+        !current.root.isConnected
+      ) {
+        return;
+      }
+      focusIdentityInScope(current, identity);
+    });
+  };
+
+  const initialScopeFocus = (scope: BlockingScope): FocusIdentity | null =>
+    scope.kind === 'floor-compose'
+      ? {
+          attributes: [
+            { name: 'data-testid', value: 'compose-close' },
+          ],
+        }
+      : null;
+
+  const reconcileBlockingScope = (
+    previous: BlockingScope | null,
+    next: BlockingScope | null,
+    retainedFocus: FocusIdentity | null,
+    focusBeforeRender: HTMLElement | null,
+  ) => {
+    syncBackgroundIsolation(next);
+    activeBlockingScope = next;
+
+    if (!previous && next) {
+      blockingFocusReturn = focusBeforeRender;
+      queueScopeFocus(next, initialScopeFocus(next));
+      return;
+    }
+    if (previous && next) {
+      if (!sameBlockingScope(previous, next)) {
+        queueScopeFocus(next, initialScopeFocus(next));
+      } else if (retainedFocus) {
+        queueScopeFocus(next, retainedFocus);
+      }
+      return;
+    }
+    if (!previous || next) return;
+
+    const summaryExit =
+      previous.kind === 'day-summary' ? summaryFocusExit : null;
+    summaryFocusExit = null;
+    if (summaryExit === 'shop') {
+      blockingFocusReturn = null;
+      return;
+    }
+    if (summaryExit === 'open-day') {
+      blockingFocusReturn = null;
+      queueMicrotask(() => {
+        serviceOverlay
+          .querySelector<HTMLElement>('[data-testid="open-day-btn"]')
+          ?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    queueMicrotask(focusAfterBlockingScope);
   };
 
   const sync = () => {
+    const previousScope = activeBlockingScope;
+    const retainedFocus = previousScope
+      ? focusIdentity(previousScope)
+      : null;
+    const focusBeforeRender =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     renderHud();
     renderCeremony();
     renderServiceOverlay();
     renderChatBubble();
+    reconcileBlockingScope(
+      previousScope,
+      currentBlockingScope(),
+      retainedFocus,
+      focusBeforeRender,
+    );
   };
 
-  const onComposeKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
+  const onBlockingScopeKeydown = (event: KeyboardEvent) => {
     const state = useGameStore.getState();
-    if (state.flavorInspectorIngredientId || !selectShowFloorCompose(state)) {
+    if (state.flavorInspectorIngredientId) return;
+    const scope = activeBlockingScope;
+    if (!scope) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (scope.kind === 'floor-compose') {
+        state.closeComposeSheet();
+      } else {
+        event.stopPropagation();
+      }
       return;
     }
-    event.preventDefault();
-    state.closeComposeSheet();
+    if (event.key !== 'Tab') return;
+    const focusable = Array.from(
+      scope.root.querySelectorAll<HTMLElement>(blockingFocusableSelector),
+    ).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (active === scope.title || !scope.root.contains(active)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
+    if (
+      prev.flavorInspectorIngredientId &&
+      !state.flavorInspectorIngredientId &&
+      activeBlockingScope?.kind === 'ceremony'
+    ) {
+      queueScopeFocus(activeBlockingScope, null);
+    }
     const previousTicketIds = new Set(
       prev.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
     );
@@ -1023,15 +1545,24 @@ export function mountServiceDayUi(
       orderBubbleGuestId = newTicket.customerId;
       if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
       orderBubbleTimer = setTimeout(() => {
-        orderBubbleGuestId = null;
-        orderBubbleTimer = null;
+        clearOrderBubble();
         renderChatBubble();
       }, 2400);
+    }
+    const floorChanged = state.activeDay?.floor !== prev.activeDay?.floor;
+    if (
+      floorChanged &&
+      orderBubbleGuestId &&
+      !isOrderBubbleOwnedByFloor(state.activeDay?.floor, orderBubbleGuestId)
+    ) {
+      clearOrderBubble();
     }
     const domainChanged =
       state.screen !== prev.screen ||
       state.activeDay !== prev.activeDay ||
       state.modifierDismissed !== prev.modifierDismissed ||
+      state.serviceStartPending !== prev.serviceStartPending ||
+      state.serviceStartError !== prev.serviceStartError ||
       state.pendingReview !== prev.pendingReview ||
       state.daySummary !== prev.daySummary ||
       state.ceremony !== prev.ceremony ||
@@ -1043,7 +1574,7 @@ export function mountServiceDayUi(
       state.composeSheetOpen !== prev.composeSheetOpen ||
       state.composeDraftIngredientIds !== prev.composeDraftIngredientIds ||
       state.activeDay?.queueIndex !== prev.activeDay?.queueIndex ||
-      state.activeDay?.floor !== prev.activeDay?.floor ||
+      floorChanged ||
       state.floorPlayerGrid !== prev.floorPlayerGrid;
 
     if (domainChanged) {
@@ -1052,7 +1583,7 @@ export function mountServiceDayUi(
   });
 
   window.addEventListener('resize', positionChatBubble);
-  document.addEventListener('keydown', onComposeKeydown);
+  document.addEventListener('keydown', onBlockingScopeKeydown, true);
   const onFoodAtlas = () => sync();
   window.addEventListener('food-atlas-ready', onFoodAtlas);
   sync();
@@ -1064,9 +1595,10 @@ export function mountServiceDayUi(
     cleanupCelebrationBanner();
     cleanupFloorHud();
     window.removeEventListener('resize', positionChatBubble);
-    document.removeEventListener('keydown', onComposeKeydown);
+    document.removeEventListener('keydown', onBlockingScopeKeydown, true);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);
-    if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+    clearOrderBubble();
+    syncBackgroundIsolation(null);
     bubbleEl?.remove();
     statusMount.innerHTML = '';
     overlayMount.innerHTML = '';

@@ -3,9 +3,13 @@ import { findPath } from '../../domain/floor/pathfinding.ts';
 import {
   createStarterMap,
   doorForGrid,
+  mainGuestEntranceReservedCells,
   isPerimeterWallCell,
 } from '../../domain/floor/starter-map.ts';
-import { walkBlockedCells } from '../../canvas/world/blocked-cells.ts';
+import {
+  playerWalkBlockedCells,
+  walkBlockedCells,
+} from '../../canvas/world/blocked-cells.ts';
 
 describe('walkBlockedCells', () => {
   it('blocks west and east perimeter walls so actors cannot path onto them', () => {
@@ -51,6 +55,24 @@ describe('walkBlockedCells', () => {
     expect(enter![enter!.length - 1]).toEqual(wait);
   });
 
+  it('routes around freestanding décor while keeping rugs walkable', () => {
+    const map = createStarterMap();
+    const placements = [
+      ...map.placements,
+      { id: 'plant', itemKey: 'decor_plant', x: 1, y: 4, rotation: 0 },
+      { id: 'flowers', itemKey: 'decor_flowers', x: 2, y: 4, rotation: 0 },
+      { id: 'lamp', itemKey: 'decor_lamp', x: 4, y: 4, rotation: 0 },
+      { id: 'sign', itemKey: 'decor_sign', x: 5, y: 4, rotation: 0 },
+      { id: 'rug', itemKey: 'decor_rug', x: 6, y: 4, rotation: 0 },
+    ];
+    const blocked = walkBlockedCells(placements, map.gridSize.w, map.gridSize.h);
+
+    for (const key of ['1,4', '2,4', '4,4', '5,4']) {
+      expect(blocked.has(key)).toBe(true);
+    }
+    expect(blocked.has('6,4')).toBe(false);
+  });
+
   it('blocks chair seat cells so the player cannot walk through them', () => {
     const map = createStarterMap();
     const { w, h } = map.gridSize;
@@ -70,5 +92,75 @@ describe('walkBlockedCells', () => {
         { allowBlockedEndpoints: true },
       ),
     ).not.toBeNull();
+  });
+
+  it('reserves the main guest entrance for Val without blocking guest paths', () => {
+    const map = createStarterMap();
+    const { w, h } = map.gridSize;
+    const reserved = mainGuestEntranceReservedCells(w, h);
+    const guestBlocked = walkBlockedCells(map.placements, w, h);
+    const playerBlocked = playerWalkBlockedCells(
+      map.placements,
+      w,
+      h,
+      { room: 'main' },
+      { x: 4, y: 5 },
+    );
+
+    for (const cell of reserved) {
+      expect(playerBlocked.has(`${cell.x},${cell.y}`)).toBe(true);
+    }
+    expect(guestBlocked.has(`${reserved[1]!.x},${reserved[1]!.y}`)).toBe(false);
+    expect(guestBlocked.has(`${reserved[2]!.x},${reserved[2]!.y}`)).toBe(false);
+  });
+
+  it('carves a complete exit for Val resumed inside the reservation', () => {
+    const map = createStarterMap();
+    const { w, h } = map.gridSize;
+    const [door, lane, alcove] = mainGuestEntranceReservedCells(w, h);
+    const legacyObstacles = [
+      ...map.placements,
+      {
+        id: 'legacy_east',
+        itemKey: 'decor_plant',
+        x: lane!.x + 1,
+        y: lane!.y,
+        rotation: 0,
+      },
+      {
+        id: 'legacy_north',
+        itemKey: 'decor_plant',
+        x: lane!.x,
+        y: lane!.y - 1,
+        rotation: 0,
+      },
+    ];
+    const resumed = playerWalkBlockedCells(
+      legacyObstacles,
+      w,
+      h,
+      { room: 'main' },
+      lane,
+    );
+    for (const cell of [door, lane, alcove]) {
+      expect(resumed.has(`${cell!.x},${cell!.y}`)).toBe(false);
+    }
+    expect(findPath({ w, h, blocked: resumed }, lane!, door!)).not.toBeNull();
+  });
+
+  it('leaves the back-room walk mask unchanged', () => {
+    const map = createStarterMap();
+    const { w, h } = map.gridSize;
+    const [, lane, alcove] = mainGuestEntranceReservedCells(w, h);
+
+    const backRoom = playerWalkBlockedCells(
+      [],
+      w,
+      h,
+      { room: 'back_kitchen', kitchenAnnexOwned: true },
+      { x: 1, y: 1 },
+    );
+    expect(backRoom.has(`${lane!.x},${lane!.y}`)).toBe(false);
+    expect(backRoom.has(`${alcove!.x},${alcove!.y}`)).toBe(false);
   });
 });

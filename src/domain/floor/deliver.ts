@@ -12,6 +12,7 @@ import { beginEating } from './sim.ts';
 import { deliverTicket } from './tickets.ts';
 import type { GameState } from '../state/game-state.ts';
 import { cloneGameState } from '../state/game-state.ts';
+import { playerNearGuestSeat } from './interact.ts';
 
 export function deliverAndScore(
   state: GameState,
@@ -31,6 +32,9 @@ export function deliverAndScore(
   if (ticket.status !== 'plated') {
     throw new Error(`Ticket not plated: ${ticket.status}`);
   }
+  if (activeDay.floor.carriedTicketId !== ticketId) {
+    throw new Error(`Ticket is not the carried dish: ${ticketId}`);
+  }
 
   const guest = activeDay.floor.pool.find((g) => g.customer.id === ticket.customerId);
   if (!guest) {
@@ -41,6 +45,9 @@ export function deliverAndScore(
   }
   if (guest.stage !== 'ordered') {
     throw new Error(`Guest not ready for delivery: ${guest.stage}`);
+  }
+  if (!playerNearGuestSeat(activeDay.floor.playerPosition, guest)) {
+    throw new Error(`Player is not adjacent to guest for ticket: ${ticketId}`);
   }
 
   const recipe = findMatchingRecipe(ticket.ingredientIds, ctx.recipes);
@@ -76,6 +83,8 @@ export function deliverAndScore(
     carriedTicketId: null as string | null,
     selectedTicketId: null as string | null,
   };
+  floor.selectedTicketId =
+    floor.tickets.find((nextTicket) => nextTicket.status === 'open')?.id ?? null;
   floor = beginEating(floor, guest.customer.id, eatTicks);
 
   const next = cloneGameState(result.state);

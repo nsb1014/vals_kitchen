@@ -70,12 +70,18 @@ export async function ensureScoringContentLoaded(): Promise<void> {
     throw new Error('Boot content must load before scoring content');
   }
   if (!scoringLoad) {
-    scoringLoad = fetchJson<Record<string, Record<string, number>>>('compound-affinity.json').then(
-      (compoundAffinity) => {
+    const load = fetchJson<Record<string, Record<string, number>>>(
+      'compound-affinity.json',
+    )
+      .then((compoundAffinity) => {
         domainContext!.compoundAffinity = compoundAffinity;
         scoringReady = true;
-      },
-    );
+      })
+      .catch((error: unknown) => {
+        if (scoringLoad === load) scoringLoad = null;
+        throw error;
+      });
+    scoringLoad = load;
   }
   await scoringLoad;
 }
@@ -87,30 +93,32 @@ export async function ensureRecipesLoaded(): Promise<void> {
     throw new Error('Boot content must load before recipes');
   }
   if (!recipesLoad) {
-    recipesLoad = fetchJson<Recipe[]>('recipes.json').then((recipes) => {
-      domainContext!.recipes = recipes;
-      recipesReady = true;
-    });
+    const load = fetchJson<Recipe[]>('recipes.json')
+      .then((recipes) => {
+        domainContext!.recipes = recipes;
+        recipesReady = true;
+      })
+      .catch((error: unknown) => {
+        if (recipesLoad === load) recipesLoad = null;
+        throw error;
+      });
+    recipesLoad = load;
   }
   await recipesLoad;
 }
 
 /** Warm deferred assets after first paint without blocking interaction. */
 export function preloadDeferredContent(): void {
-  void ensureScoringContentLoaded();
-  void ensureRecipesLoaded();
+  void ensureScoringContentLoaded().catch(() => undefined);
+  void ensureRecipesLoaded().catch(() => undefined);
 }
 
-export async function ensureContentForAction(
-  actionType: string,
-): Promise<void> {
+export function ensureContentForAction(actionType: string): Promise<void> | void {
   if (actionType === 'OPEN_DAY') {
-    await ensureScoringContentLoaded();
-    return;
+    return ensureScoringContentLoaded();
   }
-  if (actionType === 'SERVE_DISH') {
-    await ensureScoringContentLoaded();
-    await ensureRecipesLoaded();
+  if (actionType === 'SERVE_DISH' || actionType === 'FLOOR_DELIVER') {
+    return ensureScoringContentLoaded().then(() => ensureRecipesLoaded());
   }
 }
 

@@ -112,18 +112,52 @@ describe('edit-mode catalog', () => {
       dispatch: vi.fn(async () => {
         calls.push('purchase');
       }),
+      setActiveFloorRoom: vi.fn(() => {
+        calls.push('room');
+      }),
       startPlacement: vi.fn(() => {
         calls.push('place');
       }),
-    } as unknown as Pick<GameStore, 'dispatch' | 'startPlacement'>;
+    } as unknown as Pick<
+      GameStore,
+      'dispatch' | 'setActiveFloorRoom' | 'startPlacement'
+    >;
 
-    await purchaseAndStartPlacement(store, { type: 'decor', itemKey: 'decor_lamp' }, 'decor_lamp');
+    await purchaseAndStartPlacement(
+      store,
+      { type: 'decor', itemKey: 'decor_lamp' },
+      'decor_lamp',
+      'main',
+    );
 
-    expect(calls).toEqual(['purchase', 'place']);
+    expect(calls).toEqual(['purchase', 'room', 'place']);
     expect(store.dispatch).toHaveBeenCalledWith({
       type: 'PURCHASE',
       purchase: { type: 'decor', itemKey: 'decor_lamp' },
     });
+    expect(store.setActiveFloorRoom).toHaveBeenCalledWith('main');
     expect(store.startPlacement).toHaveBeenCalledWith('decor_lamp');
+  });
+
+  it('keeps a failed purchase out of room and placement state', async () => {
+    const store = {
+      dispatch: vi.fn(async () => Promise.reject(new Error('unavailable'))),
+      setActiveFloorRoom: vi.fn(),
+      startPlacement: vi.fn(),
+    } as unknown as Pick<
+      GameStore,
+      'dispatch' | 'setActiveFloorRoom' | 'startPlacement'
+    >;
+
+    await expect(
+      purchaseAndStartPlacement(
+        store,
+        { type: 'table' },
+        'table_2seat',
+        'main',
+      ),
+    ).rejects.toThrow('unavailable');
+    expect(store.setActiveFloorRoom).not.toHaveBeenCalled();
+    expect(store.startPlacement).not.toHaveBeenCalled();
   });
 });

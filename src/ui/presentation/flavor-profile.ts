@@ -111,6 +111,14 @@ export function flavorBarWidthPercent(value: number, max: number): number {
   return Math.min(100, Math.max(0, (value / max) * 100));
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /** Visible nonzero on the 0–10 bars (hides values that would display as 0.0). */
 export function isVisibleFlavorAxisValue(value: number): boolean {
   return Math.abs(value) >= 0.05;
@@ -121,7 +129,11 @@ export function renderFlavorBarsHtml(
     title?: string;
     subtitle?: string;
   },
-  options: { showValues: boolean; showTemp?: boolean } = { showValues: true },
+  options: {
+    showValues: boolean;
+    showTemp?: boolean;
+    showZeroValues?: boolean;
+  } = { showValues: true },
 ): string {
   const showTemp = options.showTemp !== false;
   const groups: Array<{ id: FlavorAxisGroup; title: string }> = [
@@ -133,15 +145,19 @@ export function renderFlavorBarsHtml(
   const groupHtml = groups
     .map((group) => {
       const rows = model.axes
-        .filter((row) => row.group === group.id && isVisibleFlavorAxisValue(row.value))
+        .filter(
+          (row) =>
+            row.group === group.id &&
+            (options.showZeroValues || isVisibleFlavorAxisValue(row.value)),
+        )
         .map((row) => {
           const valueCell = options.showValues
             ? `<span class="flavor-bar-value">${row.displayValue}</span>`
             : '';
           return `
           <div class="flavor-bar-row${options.showValues ? '' : ' no-value'}" data-testid="flavor-axis-row">
-            <span class="flavor-bar-label">${row.label}</span>
-            <div class="flavor-bar-track" role="meter" aria-label="${row.label}" aria-valuemin="0" aria-valuemax="${row.max}" aria-valuenow="${row.value}">
+            <span class="flavor-bar-label">${escapeHtml(row.label)}</span>
+            <div class="flavor-bar-track" role="meter" aria-label="${escapeHtml(row.label)}" aria-valuemin="0" aria-valuemax="${row.max}" aria-valuenow="${row.value}">
               <div class="flavor-bar-fill" style="width:${flavorBarWidthPercent(row.value, row.max).toFixed(1)}%"></div>
             </div>
             ${valueCell}
@@ -156,8 +172,8 @@ export function renderFlavorBarsHtml(
   const header =
     model.title || model.subtitle || showTemp
       ? `<header class="flavor-profile-header">
-          ${model.title ? `<h2 class="flavor-profile-name">${model.title}</h2>` : ''}
-          ${model.subtitle ? `<p class="flavor-profile-meta">${model.subtitle}</p>` : ''}
+          ${model.title ? `<h2 class="flavor-profile-name">${escapeHtml(model.title)}</h2>` : ''}
+          ${model.subtitle ? `<p class="flavor-profile-meta">${escapeHtml(model.subtitle)}</p>` : ''}
           ${
             showTemp
               ? `<p class="flavor-temp-badge" aria-label="Temperature ${model.temperature.label}">Temp: ${model.temperature.label}</p>`

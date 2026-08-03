@@ -12,15 +12,59 @@ import {
 } from '../furniture-fit.ts';
 import { gridToWorld, TILE_PX } from '../coordinates.ts';
 import { seatChairWorldPosition, seatSitWorldPosition } from '../world/seat-sit.ts';
+import {
+  renderedAlphaMaskContainsWorldPoint,
+  renderedNodePaintsAbove,
+  renderedSpriteBoundsContainWorldPoint,
+  type GuestWorldBounds,
+  type RenderedNodeOrder,
+} from '../world/guest-hit.ts';
 
 const MIN_HIT_PX = 44;
 const HIT_PADDING = Math.max(0, Math.ceil((MIN_HIT_PX - TILE_PX) / 2));
+
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 interface FurnitureSprite {
   root: Container;
   body: Graphics;
   sprite: Sprite | null;
   placementId: string;
+  itemKey: string;
+  tablePlacementId: string;
+  slotIndex: number;
+}
+
+interface TextureAlphaMask {
+  width: number;
+  height: number;
+  alpha: Uint8Array;
+}
+
+export interface OpaqueTableOcclusion {
+  placementId: string;
+  zIndex: number;
+  paintOrder: number;
+  source: 'texture-alpha' | 'sprite-bounds-fallback' | 'graphics-fallback';
+}
+
+export interface SeatingDepthDebug {
+  tables: Array<{
+    placementId: string;
+    itemKey: string;
+    zIndex: number;
+    x: number;
+    y: number;
+  }>;
+  chairs: Array<{
+    tablePlacementId: string;
+    slotIndex: number;
+    zIndex: number;
+    x: number;
+    y: number;
+  }>;
 }
 
 export class FurnitureLayer {
@@ -28,6 +72,7 @@ export class FurnitureLayer {
   private sprites = new Map<string, FurnitureSprite>();
   private chairSprites = new Map<string, FurnitureSprite>();
   private pool: FurnitureSprite[] = [];
+  private readonly textureAlphaMasks = new WeakMap<Texture, TextureAlphaMask | null>();
 
   constructor(view: Container = new Container()) {
     this.view = view;
@@ -103,10 +148,168 @@ export class FurnitureLayer {
     return this.sprites.get(placementId)?.root;
   }
 
+  getSeatingDepthDebug(): SeatingDepthDebug {
+    const tables = [...this.sprites.values()]
+      .filter((entry) => entry.itemKey.startsWith('table'))
+      .map((entry) => ({
+        placementId: entry.placementId,
+        itemKey: entry.itemKey,
+        zIndex: entry.root.zIndex,
+        x: entry.root.x,
+        y: entry.root.y,
+      }))
+      .sort((a, b) => compareIds(a.placementId, b.placementId));
+    const chairs = [...this.chairSprites.values()]
+      .map((entry) => ({
+        tablePlacementId: entry.tablePlacementId,
+        slotIndex: entry.slotIndex,
+        zIndex: entry.root.zIndex,
+        x: entry.root.x,
+        y: entry.root.y,
+      }))
+      .sort(
+        (a, b) =>
+          compareIds(a.tablePlacementId, b.tablePlacementId) || a.slotIndex - b.slotIndex,
+      );
+    return { tables, chairs };
+  }
+
+  getSeatingPaintDebug(): Readonly<{
+    tables: Array<{ placementId: string; paintOrder: number; inDepthParent: boolean }>;
+    chairs: Array<{
+      tablePlacementId: string;
+      slotIndex: number;
+      paintOrder: number;
+      inDepthParent: boolean;
+    }>;
+  }> {
+    this.view.sortChildren();
+    return {
+      tables: [...this.sprites.values()]
+        .filter((entry) => entry.itemKey.startsWith('table'))
+        .map((entry) => ({
+          placementId: entry.placementId,
+          paintOrder: this.view.getChildIndex(entry.root),
+          inDepthParent: entry.root.parent === this.view,
+        })),
+      chairs: [...this.chairSprites.values()].map((entry) => ({
+        tablePlacementId: entry.tablePlacementId,
+        slotIndex: entry.slotIndex,
+        paintOrder: this.view.getChildIndex(entry.root),
+        inDepthParent: entry.root.parent === this.view,
+      })),
+    };
+  }
+
+  /** Return the highest actually painted table pixel above a candidate actor. */
+  getOpaqueTableOccluderAtWorld(
+    wx: number,
+    wy: number,
+    actorOrder: RenderedNodeOrder,
+  ): OpaqueTableOcclusion | null {
+    this.view.sortChildren();
+    let topmost: OpaqueTableOcclusion | null = null;
+    for (const entry of this.sprites.values()) {
+      if (!entry.itemKey.startsWith('table')) continue;
+      const candidate = {
+        placementId: entry.placementId,
+        zIndex: entry.root.zIndex,
+        paintOrder: this.view.getChildIndex(entry.root),
+      };
+      const source = this.tablePaintSourceAtWorldPoint(entry, wx, wy);
+      if (
+        !renderedNodePaintsAbove(
+          { sortY: candidate.zIndex, paintOrder: candidate.paintOrder },
+          actorOrder,
+        ) ||
+        !source
+      ) {
+        continue;
+      }
+      const paintedCandidate: OpaqueTableOcclusion = { ...candidate, source };
+      if (
+        !topmost ||
+        renderedNodePaintsAbove(
+          {
+            sortY: paintedCandidate.zIndex,
+            paintOrder: paintedCandidate.paintOrder,
+          },
+          { sortY: topmost.zIndex, paintOrder: topmost.paintOrder },
+        )
+      ) {
+        topmost = paintedCandidate;
+      }
+    }
+    return topmost;
+  }
+
+  /** Debug-only probe: find a real opaque overlap across the displayed table silhouette. */
+  findOpaqueTableOcclusionPoint(
+    bounds: GuestWorldBounds,
+    actorOrder: RenderedNodeOrder,
+  ): ({
+    x: number;
+    y: number;
+    usesTableOverhang: boolean;
+    source: 'texture-alpha';
+  } & Omit<OpaqueTableOcclusion, 'source'>) | null {
+    for (const entry of this.sprites.values()) {
+      if (!entry.itemKey.startsWith('table')) continue;
+      const sprite = entry.sprite;
+      const paintedLeft = sprite?.visible
+        ? entry.root.x + sprite.x
+        : entry.root.x + 2;
+      const paintedTop = sprite?.visible
+        ? entry.root.y + sprite.y
+        : entry.root.y + 2;
+      const paintedRight = sprite?.visible
+        ? paintedLeft + sprite.width
+        : entry.root.x + TILE_PX - 2;
+      const paintedBottom = sprite?.visible
+        ? paintedTop + sprite.height
+        : entry.root.y + TILE_PX - 2;
+      const left = Math.ceil(Math.max(bounds.left, paintedLeft));
+      const top = Math.ceil(Math.max(bounds.top, paintedTop));
+      const right = Math.floor(Math.min(bounds.right, paintedRight));
+      const bottom = Math.floor(Math.min(bounds.bottom, paintedBottom));
+      // Prefer a painted overhang point because it proves the seat-cell fallback
+      // follows render ownership too; fall back to any opaque overlap if needed.
+      for (const overhangOnly of [true, false]) {
+        for (let y = top; y <= bottom; y += 1) {
+          for (let x = left; x <= right; x += 1) {
+            const usesTableOverhang =
+              x < entry.root.x ||
+              x >= entry.root.x + TILE_PX ||
+              y < entry.root.y ||
+              y >= entry.root.y + TILE_PX;
+            if (overhangOnly && !usesTableOverhang) continue;
+            const occluder = this.getOpaqueTableOccluderAtWorld(x, y, actorOrder);
+            if (
+              occluder?.placementId === entry.placementId &&
+              occluder.source === 'texture-alpha'
+            ) {
+              return {
+                ...occluder,
+                source: 'texture-alpha',
+                x,
+                y,
+                usesTableOverhang,
+              };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private acquireSprite(): FurnitureSprite {
     const pooled = this.pool.pop();
     if (pooled) {
       pooled.placementId = '';
+      pooled.itemKey = '';
+      pooled.tablePlacementId = '';
+      pooled.slotIndex = -1;
       return pooled;
     }
     const root = new Container();
@@ -118,7 +321,15 @@ export class FurnitureLayer {
     sprite.roundPixels = true;
     root.addChild(sprite);
     root.addChild(body);
-    return { root, body, sprite, placementId: '' };
+    return {
+      root,
+      body,
+      sprite,
+      placementId: '',
+      itemKey: '',
+      tablePlacementId: '',
+      slotIndex: -1,
+    };
   }
 
   private releaseSprite(sprite: FurnitureSprite): void {
@@ -130,11 +341,17 @@ export class FurnitureLayer {
     sprite.root.removeAllListeners();
     sprite.root.cursor = 'grab';
     sprite.placementId = '';
+    sprite.itemKey = '';
+    sprite.tablePlacementId = '';
+    sprite.slotIndex = -1;
     this.pool.push(sprite);
   }
 
   private drawChair(sprite: FurnitureSprite, seat: SeatSlot): void {
     sprite.placementId = `chair:${seat.tablePlacementId}:${seat.slotIndex}`;
+    sprite.itemKey = 'chair';
+    sprite.tablePlacementId = seat.tablePlacementId;
+    sprite.slotIndex = seat.slotIndex;
     // Backless stool and authored seated pose share the seat-cell floor baseline.
     const chair = seatChairWorldPosition(seat);
     const sit = seatSitWorldPosition(seat);
@@ -183,9 +400,12 @@ export class FurnitureLayer {
     tableState: TableSurfaceState | null,
   ): void {
     sprite.placementId = placement.id;
+    sprite.itemKey = placement.itemKey;
+    sprite.tablePlacementId = '';
+    sprite.slotIndex = -1;
     const { x, y } = gridToWorld(placement.x, placement.y);
     sprite.root.position.set(x, y);
-    // Flat tabletops sort under actors; tall stations keep south-edge Y-sort.
+    // Tables and tall stations use south-edge sorting; rugs stay on the floor plane.
     sprite.root.zIndex = furnitureDepthY(placement.y, placement.itemKey);
 
     const spriteName = spriteNameForItemKey(placement.itemKey, tableState);
@@ -231,5 +451,93 @@ export class FurnitureLayer {
     sprite.width = w;
     sprite.height = h;
     sprite.position.set(x, y);
+  }
+
+  private tablePaintSourceAtWorldPoint(
+    entry: FurnitureSprite,
+    wx: number,
+    wy: number,
+  ): OpaqueTableOcclusion['source'] | null {
+    const sprite = entry.sprite;
+    if (sprite?.visible && sprite.texture !== Texture.EMPTY) {
+      const mask = this.alphaMaskForTexture(sprite.texture);
+      const point = { x: wx, y: wy };
+      const geometry = {
+        rootX: entry.root.x,
+        rootY: entry.root.y,
+        spriteX: sprite.x,
+        spriteY: sprite.y,
+        displayWidth: sprite.width,
+        displayHeight: sprite.height,
+      };
+      // Canvas readback can fail independently of the texture that Pixi has
+      // already painted. Keep that visible sprite conservative instead of
+      // allowing input to pass through to an actor underneath it.
+      if (!mask) {
+        return renderedSpriteBoundsContainWorldPoint(point, geometry)
+          ? 'sprite-bounds-fallback'
+          : null;
+      }
+      const alphaPaints = renderedAlphaMaskContainsWorldPoint(point, {
+        ...geometry,
+        maskWidth: mask.width,
+        maskHeight: mask.height,
+        alpha: mask.alpha,
+      });
+      return alphaPaints ? 'texture-alpha' : null;
+    }
+
+    // The no-atlas fallback paints two nested rectangles whose union is this inset box.
+    const localX = wx - entry.root.x;
+    const localY = wy - entry.root.y;
+    return (
+      localX >= 2 &&
+      localX < TILE_PX - 2 &&
+      localY >= 2 &&
+      localY < TILE_PX - 2
+    )
+      ? 'graphics-fallback'
+      : null;
+  }
+
+  private alphaMaskForTexture(texture: Texture): TextureAlphaMask | null {
+    if (this.textureAlphaMasks.has(texture)) {
+      return this.textureAlphaMasks.get(texture) ?? null;
+    }
+    if (typeof document === 'undefined' || texture.rotate !== 0) {
+      this.textureAlphaMasks.set(texture, null);
+      return null;
+    }
+    const width = Math.round(texture.frame.width);
+    const height = Math.round(texture.frame.height);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('2D context unavailable');
+      context.drawImage(
+        texture.source.resource as HTMLImageElement,
+        texture.frame.x,
+        texture.frame.y,
+        texture.frame.width,
+        texture.frame.height,
+        0,
+        0,
+        width,
+        height,
+      );
+      const rgba = context.getImageData(0, 0, width, height).data;
+      const alpha = new Uint8Array(width * height);
+      for (let pixel = 0; pixel < alpha.length; pixel += 1) {
+        alpha[pixel] = rgba[pixel * 4 + 3] ?? 0;
+      }
+      const mask = { width, height, alpha };
+      this.textureAlphaMasks.set(texture, mask);
+      return mask;
+    } catch {
+      this.textureAlphaMasks.set(texture, null);
+      return null;
+    }
   }
 }

@@ -27,6 +27,9 @@ describe('characters atlas coverage', () => {
     }
     for (const facing of FACINGS) {
       expect(keys.has(`player_carry_${facing}`)).toBe(true);
+      for (const frame of [1, 2]) {
+        expect(keys.has(`player_carry_${facing}_${frame}`)).toBe(true);
+      }
     }
     expect(keys.has('player')).toBe(true);
     expect(atlas.frames.player_down_0?.sourceSize).toEqual({ w: 128, h: 160 });

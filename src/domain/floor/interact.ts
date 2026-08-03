@@ -1,5 +1,12 @@
 import type { Placement } from '../state/game-state.ts';
+import { EQUIPMENT_IDS } from '../types.ts';
 import type { FloorDay, FloorGuest } from './types.ts';
+import {
+  doorForGrid,
+  guestWaitingAlcove,
+  isPerimeterWallCell,
+  mainGuestEntranceReservedCells,
+} from './starter-map.ts';
 
 export interface GridPoint {
   x: number;
@@ -62,7 +69,7 @@ export function adjacentDirtyTablePlacementIds(
   return adjacentTablePlacementIds(floor, player, placements, 'dirty');
 }
 
-const STATION_ITEM_KEYS = new Set(['prep_station']);
+const STATION_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
 
 export function isCookStationItemKey(itemKey: string): boolean {
   return STATION_ITEM_KEYS.has(itemKey);
@@ -104,7 +111,71 @@ export function playerNearGuestSeat(
   guest: FloorGuest,
 ): boolean {
   if (!guest.seat) return false;
-  return isAdjacent(player, guest.seat);
+  return guestServicePositions(guest.seat).some(
+    (position) => position.x === player.x && position.y === player.y,
+  );
+}
+
+/**
+ * Service positions around a seated guest, ordered left/right then vertical.
+ * Chibi actors are almost two tiles tall but less than one tile wide, so a
+ * one-cell vertical neighbor visibly stacks their bodies. Horizontal neighbors
+ * remain natural; vertical approaches keep a two-cell personal-space gap.
+ */
+export function guestServicePositions(seat: GridPoint): GridPoint[] {
+  return [
+    { x: seat.x - 1, y: seat.y },
+    { x: seat.x + 1, y: seat.y },
+    { x: seat.x, y: seat.y - 2 },
+    { x: seat.x, y: seat.y + 2 },
+  ];
+}
+
+/**
+ * Canonical places from which Val may greet the guest waiting beside the main
+ * entrance. Keep this geometry shared by the canvas affordance, selectors, and
+ * reducer so a remote UI request can never bypass the physical floor rule.
+ */
+export function waitingGuestServicePositions(
+  gridW: number,
+  gridH: number,
+): GridPoint[] {
+  const waiting = guestWaitingAlcove(doorForGrid(gridW, gridH));
+  const reserved = new Set(
+    mainGuestEntranceReservedCells(gridW, gridH).map(
+      (position) => `${position.x},${position.y}`,
+    ),
+  );
+  const candidates = [
+    { x: waiting.x - 1, y: waiting.y },
+    { x: waiting.x + 1, y: waiting.y },
+    { x: waiting.x, y: waiting.y - 1 },
+    { x: waiting.x, y: waiting.y + 1 },
+    { x: waiting.x - 1, y: waiting.y - 1 },
+    { x: waiting.x + 1, y: waiting.y - 1 },
+    { x: waiting.x - 1, y: waiting.y + 1 },
+    { x: waiting.x + 1, y: waiting.y + 1 },
+  ];
+
+  return candidates.filter(
+    (position) =>
+      position.x >= 0 &&
+      position.y >= 0 &&
+      position.x < gridW &&
+      position.y < gridH &&
+      !isPerimeterWallCell(position.x, position.y, gridW, gridH) &&
+      !reserved.has(`${position.x},${position.y}`),
+  );
+}
+
+export function playerNearWaitingGuest(
+  player: GridPoint,
+  gridW: number,
+  gridH: number,
+): boolean {
+  return waitingGuestServicePositions(gridW, gridH).some(
+    (position) => position.x === player.x && position.y === player.y,
+  );
 }
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {

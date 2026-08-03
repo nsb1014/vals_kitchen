@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { gameReducer } from '../domain/reducer.ts';
-import { createNewGameState } from '../domain/state/game-state.ts';
+import {
+  createNewGameState,
+  normalizeGameState,
+  type GameState,
+} from '../domain/state/game-state.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
+import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
+import { computeChecksum } from '../persistence/serialize.ts';
 import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
 import { testContext } from './test-helpers.ts';
 
@@ -45,7 +51,7 @@ describe('service day mid-day resume', () => {
     resetStore(9090);
   });
 
-  it('restores active customer and compose draft after reload', async () => {
+  it('restores each floor ticket draft after reload', async () => {
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
     useGameStore.getState().dismissModifier();
 
@@ -58,7 +64,24 @@ describe('service day mid-day resume', () => {
       testContext.compoundAffinity,
     );
     const draftIds = best.ingredientIds.slice(0, 3);
-    await useGameStore.getState().dispatch({ type: 'SET_COMPOSE_DRAFT', ingredientIds: draftIds });
+    const ticketId = `ticket_${customer.id}`;
+    useGameStore.setState({
+      activeDay: {
+        ...opened.activeDay!,
+        floor: {
+          ...opened.activeDay!.floor!,
+          tickets: [
+            { id: ticketId, customerId: customer.id, ingredientIds: [], status: 'open' },
+          ],
+          selectedTicketId: ticketId,
+        },
+      },
+    });
+    await useGameStore.getState().dispatch({
+      type: 'FLOOR_SET_TICKET_DRAFT',
+      ticketId,
+      ingredientIds: draftIds,
+    });
 
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
@@ -83,20 +106,20 @@ describe('service day mid-day resume', () => {
     const resumed = useGameStore.getState();
     expect(resumed.activeDay?.seed).toBe(opened.activeDay?.seed);
     expect(resumed.activeDay?.queueIndex).toBe(0);
-    expect(resumed.composeDraftIngredientIds).toEqual(draftIds);
+    expect(
+      resumed.activeDay?.floor?.tickets.find((ticket) => ticket.id === ticketId)
+        ?.ingredientIds,
+    ).toEqual(draftIds);
+    expect(resumed.composeDraftIngredientIds).toBeUndefined();
     expect(resumed.activeDay?.customers[0]?.preference.phrases).toEqual(
       customer.preference.phrases,
     );
 
-    await useGameStore.getState().dispatch({ type: 'SERVE_DISH', ingredientIds: draftIds });
-    const served = useGameStore.getState();
-    expect(served.activeDay?.customersServed).toBe(1);
-    expect(served.composeDraftIngredientIds).toBeUndefined();
-    expect(served.pendingReview).not.toBeNull();
   });
 
-  it('matches reducer-only resume path used by persistence tests', () => {
+  it('preserves reducer-only compose drafts for legacy non-floor service', () => {
     let state = gameReducer(createNewGameState(9090), { type: 'OPEN_DAY' }, testContext).state;
+    state.activeDay = { ...state.activeDay!, floor: null };
     const customer = state.activeDay!.customers[0]!;
     const best = findBestMatchCombo(
       state.unlockedIngredientIds,
@@ -110,4 +133,188 @@ describe('service day mid-day resume', () => {
     expect(resumed.activeDay?.customersServed).toBe(1);
     expect(resumed.composeDraftIngredientIds).toBeUndefined();
   });
+
+  it('migrates a legacy global draft once to the selected open floor ticket', () => {
+    let legacy = gameReducer(createNewGameState(5150), { type: 'OPEN_DAY' }, testContext).state;
+    const unlocked = legacy.unlockedIngredientIds;
+    const customerId = legacy.activeDay!.customers[0]!.id;
+    legacy.activeDay = {
+      ...legacy.activeDay!,
+      floor: {
+        ...legacy.activeDay!.floor!,
+        tickets: [
+          { id: 'a', customerId, ingredientIds: ['existing'], status: 'open' },
+          { id: 'b', customerId, ingredientIds: [], status: 'open' },
+        ],
+        selectedTicketId: 'b',
+      },
+    };
+    legacy.composeDraftIngredientIds = [
+      unlocked[0]!,
+      unlocked[1]!,
+      unlocked[0]!,
+      'unknown',
+      ...unlocked.slice(2, 8),
+    ];
+
+    const migrated = normalizeGameState(legacy);
+    expect(migrated.composeDraftIngredientIds).toBeUndefined();
+    expect(migrated.activeDay!.floor!.tickets.find((ticket) => ticket.id === 'a')?.ingredientIds)
+      .toEqual(['existing']);
+    expect(migrated.activeDay!.floor!.tickets.find((ticket) => ticket.id === 'b')?.ingredientIds)
+      .toEqual(unlocked.slice(0, 6));
+    expect(normalizeGameState(migrated).activeDay!.floor!.tickets).toEqual(
+      migrated.activeDay!.floor!.tickets,
+    );
+  });
+
+  it('falls back to the first open ticket when a legacy selection is stale', () => {
+    const legacy = gameReducer(createNewGameState(6160), { type: 'OPEN_DAY' }, testContext).state;
+    const customerId = legacy.activeDay!.customers[0]!.id;
+    legacy.activeDay = {
+      ...legacy.activeDay!,
+      floor: {
+        ...legacy.activeDay!.floor!,
+        tickets: [
+          { id: 'first', customerId, ingredientIds: [], status: 'open' },
+          { id: 'second', customerId, ingredientIds: [], status: 'open' },
+        ],
+        selectedTicketId: 'stale',
+      },
+    };
+    legacy.composeDraftIngredientIds = legacy.unlockedIngredientIds.slice(0, 3);
+
+    const migrated = normalizeGameState(legacy);
+    expect(migrated.activeDay!.floor!.selectedTicketId).toBe('first');
+    expect(migrated.activeDay!.floor!.tickets[0]!.ingredientIds).toEqual(
+      legacy.unlockedIngredientIds.slice(0, 3),
+    );
+    expect(migrated.activeDay!.floor!.tickets[1]!.ingredientIds).toEqual([]);
+
+    legacy.activeDay = {
+      ...legacy.activeDay!,
+      floor: {
+        ...legacy.activeDay!.floor!,
+        tickets: [
+          { id: 'carried', customerId, ingredientIds: [], status: 'plated' },
+          { id: 'open', customerId, ingredientIds: [], status: 'open' },
+        ],
+        carriedTicketId: 'carried',
+        selectedTicketId: 'open',
+      },
+    };
+    legacy.composeDraftIngredientIds = undefined;
+    expect(normalizeGameState(legacy).activeDay!.floor!.selectedTicketId).toBeNull();
+  });
+});
+
+describe('persisted service start', () => {
+  it('rejects starting service without an active floor day', () => {
+    expect(() =>
+      gameReducer(createNewGameState(7101), { type: 'START_SERVICE' }, testContext),
+    ).toThrow('No active floor day');
+
+    const withoutFloor = gameReducer(
+      createNewGameState(7102),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    withoutFloor.activeDay = { ...withoutFloor.activeDay!, floor: null };
+    expect(() =>
+      gameReducer(withoutFloor, { type: 'START_SERVICE' }, testContext),
+    ).toThrow('No active floor day');
+  });
+
+  it('starts service once and returns the exact state when already started', () => {
+    const opened = gameReducer(
+      createNewGameState(7103),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    expect(opened.activeDay?.serviceStarted).toBe(false);
+
+    const started = gameReducer(opened, { type: 'START_SERVICE' }, testContext);
+    expect(started.state).not.toBe(opened);
+    expect(started.state.activeDay?.serviceStarted).toBe(true);
+    expect(started.events).toEqual([]);
+
+    const repeated = gameReducer(
+      started.state,
+      { type: 'START_SERVICE' },
+      testContext,
+    );
+    expect(repeated.state).toBe(started.state);
+    expect(repeated.events).toEqual([]);
+  });
+
+  it.each([
+    { label: 'a missing flag', serviceStarted: undefined, expected: true },
+    { label: 'an explicit false flag', serviceStarted: false, expected: false },
+  ])('migrates v5 active days with $label', ({ serviceStarted, expected }) => {
+    const state = gameReducer(
+      createNewGameState(7104),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const activeDay = { ...state.activeDay } as Record<string, unknown>;
+    if (serviceStarted === undefined) {
+      delete activeDay.serviceStarted;
+    } else {
+      activeDay.serviceStarted = serviceStarted;
+    }
+    const legacyState = {
+      ...state,
+      saveVersion: 5,
+      activeDay,
+    };
+    const envelope = {
+      saveVersion: 5,
+      checksum: computeChecksum(legacyState as unknown as GameState),
+      createdAt: '2026-08-02T00:00:00.000Z',
+      gameState: legacyState,
+    };
+
+    expect(migrateSave(envelope).gameState.activeDay?.serviceStarted).toBe(expected);
+  });
+
+  it('defensively normalizes a current save while preserving explicit false', () => {
+    const opened = gameReducer(
+      createNewGameState(7105),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    expect(
+      normalizeGameState({
+        ...opened,
+        activeDay: { ...opened.activeDay!, serviceStarted: false },
+      }).activeDay?.serviceStarted,
+    ).toBe(false);
+
+    const malformed = structuredClone(opened) as unknown as {
+      activeDay: Record<string, unknown>;
+    };
+    delete malformed.activeDay.serviceStarted;
+    expect(
+      normalizeGameState(malformed as unknown as typeof opened).activeDay?.serviceStarted,
+    ).toBe(true);
+  });
+
+  it.each([false, true])(
+    'round-trips serviceStarted=%s through a Save Code',
+    (serviceStarted) => {
+      let state = gameReducer(
+        createNewGameState(serviceStarted ? 7106 : 7107),
+        { type: 'OPEN_DAY' },
+        testContext,
+      ).state;
+      if (serviceStarted) {
+        state = gameReducer(state, { type: 'START_SERVICE' }, testContext).state;
+      }
+
+      const imported = parseSaveCode(
+        exportSaveCode(state, '2026-08-02T00:00:00.000Z'),
+      );
+      expect(imported.activeDay?.serviceStarted).toBe(serviceStarted);
+    },
+  );
 });
