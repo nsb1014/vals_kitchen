@@ -157,6 +157,7 @@ export function mountServiceDayUi(
   let composeTicketId: string | null = null;
   let blockingFocusReturn: HTMLElement | null = null;
   let summaryFocusExit: 'open-day' | 'shop' | null = null;
+  let reviewFocusExit: 'open-day' | null = null;
   let composeFlavorDetailsOpen = false;
   let composeFilters = emptyComposePantryFilters();
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
@@ -258,7 +259,8 @@ export function mountServiceDayUi(
           ),
         )
       : null;
-    const target = match ?? scope.title;
+    const target =
+      match && !match.matches(':disabled, [inert]') ? match : scope.title;
     target?.focus({ preventScroll: true });
   };
 
@@ -587,7 +589,8 @@ export function mountServiceDayUi(
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
           <h2 id="ceremony-title" tabindex="-1">Prestige Achieved!</h2>
           <p>Your restaurant reached 6★. Prestige level is now <strong>P${state.ceremonyPrestige ?? state.prestige}</strong>. Rating resets to 3.0★ and all future payouts scale up permanently.</p>
-          <button type="button" class="service-btn primary" id="dismiss-ceremony">Continue</button>
+          ${state.presentationSaveError ? `<p class="save-feedback save-feedback-error" role="alert">${escapeHtml(state.presentationSaveError)} Please try again.</p>` : ''}
+          <button type="button" class="service-btn primary" id="dismiss-ceremony" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : 'Continue'}</button>
         </div>
       `;
     } else {
@@ -595,15 +598,20 @@ export function mountServiceDayUi(
         <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ceremony-title">
           <h2 id="ceremony-title" tabindex="-1">Soft Reset</h2>
           <p>Rating hit 0★. You keep prestige <strong>P${state.prestige}</strong> and your recipe book, but cash, ingredients (except starters), equipment, and layout were reset.</p>
-          <button type="button" class="service-btn primary" id="dismiss-ceremony">Rebuild</button>
+          ${state.presentationSaveError ? `<p class="save-feedback save-feedback-error" role="alert">${escapeHtml(state.presentationSaveError)} Please try again.</p>` : ''}
+          <button type="button" class="service-btn primary" id="dismiss-ceremony" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : 'Rebuild'}</button>
         </div>
       `;
     }
 
     ceremonyModal.querySelector('#dismiss-ceremony')?.addEventListener(
       'click',
-      () => {
-        useGameStore.getState().dismissCeremony();
+      async () => {
+        try {
+          await useGameStore.getState().dismissCeremony();
+        } catch {
+          // The store keeps the ceremony visible and renders retry feedback.
+        }
       },
       { once: true },
     );
@@ -651,18 +659,19 @@ export function mountServiceDayUi(
               <h2 id="day-summary-title" class="service-title" data-testid="day-summary-title" tabindex="-1">Day ${state.daySummary.completedDay} Summary</h2>
             </header>
             <div class="sheet-body-scroll">
-            <p class="review-detail" data-testid="summary-earnings">${state.daySummary.earningsLine}</p>
-            ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${state.daySummary.bonusLine}</p>` : ''}
-            ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${state.daySummary.volumeBonusLine}</p>` : ''}
-            <p class="review-detail">${state.daySummary.averageMatchText}</p>
-            <p class="review-detail" data-testid="summary-rating-change">${state.daySummary.ratingDeltaText}</p>
-            <p class="review-detail">${state.daySummary.unlockProgressText}</p>
-            <p class="review-detail" data-testid="summary-customers-served">${state.daySummary.customersServedText}</p>
-            ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${masteryLine}</p>` : ''}
+            <p class="review-detail" data-testid="summary-earnings">${escapeHtml(state.daySummary.earningsLine)}</p>
+            ${state.daySummary.bonusLine ? `<p class="review-detail review-positive">${escapeHtml(state.daySummary.bonusLine)}</p>` : ''}
+            ${'volumeBonusLine' in state.daySummary && state.daySummary.volumeBonusLine ? `<p class="review-detail review-positive" data-testid="summary-volume-bonus">${escapeHtml(state.daySummary.volumeBonusLine)}</p>` : ''}
+            <p class="review-detail">${escapeHtml(state.daySummary.averageMatchText)}</p>
+            <p class="review-detail" data-testid="summary-rating-change">${escapeHtml(state.daySummary.ratingDeltaText)}</p>
+            <p class="review-detail">${escapeHtml(state.daySummary.unlockProgressText)}</p>
+            <p class="review-detail" data-testid="summary-customers-served">${escapeHtml(state.daySummary.customersServedText)}</p>
+            ${masteryLine ? `<p class="review-detail review-positive" data-testid="summary-mastery">${escapeHtml(masteryLine)}</p>` : ''}
+            ${state.presentationSaveError ? `<p class="save-feedback save-feedback-error" role="alert">${escapeHtml(state.presentationSaveError)} Please try again.</p>` : ''}
             </div>
             <footer class="sheet-footer service-actions day-summary-actions">
-              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor">Continue to Day ${state.daySummary.nextDay}</button>
-              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant">Shop &amp; Edit</button>
+              <button type="button" class="service-btn" id="summary-back-floor" data-testid="summary-back-floor" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : `Continue to Day ${state.daySummary.nextDay}`}</button>
+              <button type="button" class="service-btn primary" id="summary-edit-restaurant" data-testid="summary-edit-restaurant" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : 'Shop &amp; Edit'}</button>
             </footer>
           </div>
         </div>
@@ -670,11 +679,15 @@ export function mountServiceDayUi(
       revealServicePanel('day-summary');
       serviceOverlay.querySelector('#summary-back-floor')?.addEventListener(
         'click',
-        () => {
+        async () => {
           summaryFocusExit = 'open-day';
           const store = useGameStore.getState();
-          store.dismissDaySummary();
-          store.navigateTo('restaurant');
+          try {
+            await store.dismissDaySummary();
+            store.navigateTo('restaurant');
+          } catch {
+            summaryFocusExit = null;
+          }
         },
         { once: true },
       );
@@ -682,13 +695,17 @@ export function mountServiceDayUi(
         .querySelector('#summary-edit-restaurant')
         ?.addEventListener(
           'click',
-          () => {
+          async () => {
             summaryFocusExit = 'shop';
             const store = useGameStore.getState();
-            store.dismissDaySummary();
-            store.navigateTo('restaurant');
-            if (!store.editLayoutMode) store.toggleEditLayout();
-            requestRestaurantShopOpen();
+            try {
+              await store.dismissDaySummary();
+              store.navigateTo('restaurant');
+              if (!store.editLayoutMode) store.toggleEditLayout();
+              requestRestaurantShopOpen();
+            } catch {
+              summaryFocusExit = null;
+            }
           },
           { once: true },
         );
@@ -728,12 +745,12 @@ export function mountServiceDayUi(
       return;
     }
 
-    if (!state.activeDay) {
+    if (!state.activeDay && !state.pendingReview) {
       hideServicePanel();
       return;
     }
 
-    if (!state.modifierDismissed) {
+    if (state.activeDay && !state.modifierDismissed) {
       const modifier = selectActiveModifier(state);
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid" data-testid="modifier-sheet">
@@ -805,6 +822,8 @@ export function mountServiceDayUi(
       const canAdvance =
         selectCanAdvanceCustomer(state) && !state.activeDay?.floor;
       const floorActive = Boolean(state.activeDay?.floor);
+      const postResetReview =
+        !state.activeDay && state.pendingReview.afterSoftReset === true;
       serviceOverlay.innerHTML = `
         <div class="service-panel sheet-tier-mid review-service-panel" data-testid="review-sheet" role="dialog" aria-modal="true" aria-labelledby="${reviewCustomer ? 'review-context-title review-guest-title' : 'review-title'}">
           <div class="service-card sheet-card-layout">
@@ -816,8 +835,9 @@ export function mountServiceDayUi(
             <p class="review-detail">Tip: ${review.tipText}</p>
             <p class="review-detail ${review.ratingDeltaPositive ? 'review-positive' : 'review-negative'}">Rating ${review.ratingDeltaText}</p>
             ${ratingModifierLine ? `<p class="review-detail review-negative">${escapeHtml(ratingModifierLine)}</p>` : ''}
-            ${review.recipeLine ? `<p class="review-detail review-positive">${review.recipeLine}</p>` : ''}
-            ${review.masteryLine ? `<p class="review-detail review-positive" data-testid="review-mastery">${review.masteryLine}</p>` : ''}
+            ${review.recipeLine ? `<p class="review-detail review-positive">${escapeHtml(review.recipeLine)}</p>` : ''}
+            ${review.masteryLine ? `<p class="review-detail review-positive" data-testid="review-mastery">${escapeHtml(review.masteryLine)}</p>` : ''}
+            ${state.presentationSaveError ? `<p class="save-feedback save-feedback-error" role="alert">${escapeHtml(state.presentationSaveError)} Please try again.</p>` : ''}
             </div>
             <footer class="sheet-footer service-actions">
               ${
@@ -826,7 +846,9 @@ export function mountServiceDayUi(
                   : canAdvance
                     ? '<button type="button" class="service-btn primary" id="next-customer-btn" data-testid="next-customer-btn">Next Customer</button>'
                     : floorActive
-                      ? '<button type="button" class="service-btn primary" id="continue-service-btn" data-testid="continue-service-btn">Continue service</button>'
+                      ? `<button type="button" class="service-btn primary" id="continue-service-btn" data-testid="continue-service-btn" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : 'Continue service'}</button>`
+                      : postResetReview
+                        ? `<button type="button" class="service-btn primary" id="continue-service-btn" data-testid="continue-service-btn" ${state.presentationSavePending ? 'disabled aria-busy="true"' : ''}>${state.presentationSavePending ? 'Saving…' : 'Continue'}</button>`
                       : ''
               }
             </footer>
@@ -850,14 +872,13 @@ export function mountServiceDayUi(
       );
       serviceOverlay.querySelector('#continue-service-btn')?.addEventListener(
         'click',
-        () => {
-          const store = useGameStore.getState() as {
-            dismissPendingReview?: () => void;
-          };
-          if (typeof store.dismissPendingReview === 'function') {
-            store.dismissPendingReview();
-          } else {
-            useGameStore.setState({ pendingReview: null });
+        async () => {
+          reviewFocusExit = postResetReview ? 'open-day' : null;
+          try {
+            await useGameStore.getState().dismissPendingReview();
+          } catch {
+            // The store keeps the review visible and renders retry feedback.
+            reviewFocusExit = null;
           }
         },
         { once: true },
@@ -1446,7 +1467,7 @@ export function mountServiceDayUi(
     if (previous && next) {
       if (!sameBlockingScope(previous, next)) {
         queueScopeFocus(next, initialScopeFocus(next));
-      } else if (retainedFocus) {
+      } else {
         queueScopeFocus(next, retainedFocus);
       }
       return;
@@ -1455,12 +1476,14 @@ export function mountServiceDayUi(
 
     const summaryExit =
       previous.kind === 'day-summary' ? summaryFocusExit : null;
+    const reviewExit = previous.kind === 'review' ? reviewFocusExit : null;
     summaryFocusExit = null;
+    reviewFocusExit = null;
     if (summaryExit === 'shop') {
       blockingFocusReturn = null;
       return;
     }
-    if (summaryExit === 'open-day') {
+    if (summaryExit === 'open-day' || reviewExit === 'open-day') {
       blockingFocusReturn = null;
       queueMicrotask(() => {
         serviceOverlay
@@ -1566,6 +1589,8 @@ export function mountServiceDayUi(
       state.pendingReview !== prev.pendingReview ||
       state.daySummary !== prev.daySummary ||
       state.ceremony !== prev.ceremony ||
+      state.presentationSavePending !== prev.presentationSavePending ||
+      state.presentationSaveError !== prev.presentationSaveError ||
       state.editLayoutMode !== prev.editLayoutMode ||
       state.cash !== prev.cash ||
       state.rating !== prev.rating ||

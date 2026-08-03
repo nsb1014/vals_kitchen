@@ -76,6 +76,8 @@ export function selectShowOpenForService(state: GameStore): boolean {
   return (
     selectShowServiceDayOverlay(state) &&
     !state.activeDay &&
+    !state.pendingReview &&
+    !state.ceremony &&
     !state.daySummary &&
     !state.editLayoutMode
   );

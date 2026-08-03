@@ -3,7 +3,30 @@ import {
   buildRatingDisplayModel,
   formatRecentReview,
   ratingBarPercent,
+  type RecentReviewEntry,
 } from '../presentation/rating-display.ts';
+
+export function escapeRatingReviewHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+export function renderRecentReviewsMarkup(
+  recentReviews: RecentReviewEntry[],
+): string {
+  return recentReviews.length > 0
+    ? recentReviews
+        .map(
+          (entry) =>
+            `<li>${escapeRatingReviewHtml(formatRecentReview(entry))}</li>`,
+        )
+        .join('')
+    : '<li class="screen-empty">No recent reviews yet — serve customers to see feedback.</li>';
+}
 
 export function mountRatingScreen(container: HTMLElement): () => void {
   const root = document.createElement('div');
@@ -31,12 +54,7 @@ export function mountRatingScreen(container: HTMLElement): () => void {
       )
       .join('');
 
-    const reviews =
-      state.recentReviews.length > 0
-        ? state.recentReviews
-            .map((entry) => `<li>${formatRecentReview(entry)}</li>`)
-            .join('')
-        : '<li class="screen-empty">No recent reviews yet — serve customers to see feedback.</li>';
+    const reviews = renderRecentReviewsMarkup(state.recentReviews);
 
     bodyEl.innerHTML = `
       <div class="rating-hero">

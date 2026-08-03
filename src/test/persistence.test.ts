@@ -1,8 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 import { canonicalize } from '../persistence/serialize.ts';
-import { SAVE_KEY, computeChecksum } from '../persistence/serialize.ts';
-import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
+import {
+  BACKUP_KEY,
+  SAVE_KEY,
+  computeChecksum,
+  computeSnapshotChecksum,
+  createEnvelope,
+} from '../persistence/serialize.ts';
+import {
+  exportSaveCode,
+  exportSaveCodeSnapshot,
+  migrateSave,
+  parseSaveCode,
+  parseSaveCodeSnapshot,
+} from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
+import {
+  createEmptyPresentationCheckpoint,
+  type PresentationCheckpoint,
+} from '../persistence/presentation-checkpoint.ts';
 import {
   createNewGameState,
   CURRENT_SAVE_VERSION,
@@ -48,6 +64,72 @@ function createMemoryStorage(): StorageAdapter {
     del: async (key: string) => {
       map.delete(key);
     },
+  };
+}
+
+function activePresentationCheckpoint(state: GameState): PresentationCheckpoint {
+  const customerId = state.activeDay?.customers[0]?.id;
+  if (!customerId) throw new Error('Expected an active customer');
+  return {
+    pendingReview: {
+      customerId,
+      matchStars: 8.25,
+      tip: 17,
+      ratingDelta: 0.14,
+      recipeName: 'Garden Plate',
+      masteryLine: 'Mastery Lv.2 (+0.10★)',
+    },
+    daySummary: null,
+    ceremony: null,
+    ceremonyPrestige: null,
+    dayStartRating: 3,
+    recentReviews: [
+      {
+        matchStars: 8.25,
+        ratingDelta: 0.14,
+        tip: 17,
+        recipeName: 'Garden Plate',
+        day: state.day,
+      },
+      {
+        matchStars: 6.5,
+        ratingDelta: -0.03,
+        tip: 9,
+        recipeName: null,
+        day: state.day,
+      },
+    ],
+  };
+}
+
+function summaryPresentationCheckpoint(state: GameState): PresentationCheckpoint {
+  if (state.activeDay !== null) throw new Error('Expected a closed day');
+  return {
+    pendingReview: null,
+    daySummary: {
+      completedDay: state.day - 1,
+      nextDay: state.day,
+      earningsLine: "Today's earnings: $123",
+      bonusLine: 'Day bonus: +$20',
+      volumeBonusLine: null,
+      averageMatchText: 'Average match: 8.1 / 10',
+      ratingDeltaText: 'Rating change: +0.12★ (3.0 → 3.1)',
+      unlockProgressText: 'Ingredients unlocked: 13 / 40',
+      customersServedText: 'Customers served: 4',
+      masteryLine: 'Recipe mastery: Garden Plate Lv.2',
+    },
+    ceremony: null,
+    ceremonyPrestige: null,
+    dayStartRating: null,
+    recentReviews: [
+      {
+        matchStars: 8.1,
+        ratingDelta: 0.12,
+        tip: 21,
+        recipeName: 'Garden Plate',
+        day: state.day - 1,
+      },
+    ],
   };
 }
 
@@ -163,6 +245,30 @@ describe('persistence', () => {
     expect(canonicalize(loaded.state)).toBe(canonicalize(original));
   });
 
+  it('round-trips active and post-day presentation checkpoints through the v7 repository', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const active = gameReducer(
+      createNewGameState(12_345),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const activePresentation = activePresentationCheckpoint(active);
+
+    await repo.save(active, activePresentation);
+    const activeLoaded = await repo.load();
+    expect(activeLoaded.source).toBe('primary');
+    expect(canonicalize(activeLoaded.state)).toBe(canonicalize(active));
+    expect(activeLoaded.presentation).toEqual(activePresentation);
+
+    const closed = { ...createNewGameState(54_321), day: 2 };
+    const summaryPresentation = summaryPresentationCheckpoint(closed);
+    await repo.save(closed, summaryPresentation);
+    const summaryLoaded = await repo.load();
+    expect(canonicalize(summaryLoaded.state)).toBe(canonicalize(closed));
+    expect(summaryLoaded.presentation).toEqual(summaryPresentation);
+  });
+
   it('round-trips Save Code export/import', () => {
     const original = createNewGameState(54321);
     original.prestige = 2;
@@ -171,6 +277,135 @@ describe('persistence', () => {
     expect(code.startsWith('RS1.')).toBe(true);
     const imported = parseSaveCode(code);
     expect(canonicalize(imported)).toBe(canonicalize(original));
+  });
+
+  it('round-trips mandatory presentation checkpoints through v7 Save Codes', () => {
+    const active = gameReducer(
+      createNewGameState(67_890),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const activeSnapshot = {
+      state: active,
+      presentation: activePresentationCheckpoint(active),
+    };
+    const activeImported = parseSaveCodeSnapshot(
+      exportSaveCodeSnapshot(activeSnapshot, '2026-08-02T00:00:00.000Z'),
+    );
+    expect(canonicalize(activeImported.state)).toBe(canonicalize(active));
+    expect(activeImported.presentation).toEqual(activeSnapshot.presentation);
+
+    const closed = { ...createNewGameState(98_765), day: 2 };
+    const summarySnapshot = {
+      state: closed,
+      presentation: summaryPresentationCheckpoint(closed),
+    };
+    const summaryImported = parseSaveCodeSnapshot(
+      exportSaveCodeSnapshot(summarySnapshot, '2026-08-02T00:00:00.000Z'),
+    );
+    expect(canonicalize(summaryImported.state)).toBe(canonicalize(closed));
+    expect(summaryImported.presentation).toEqual(summarySnapshot.presentation);
+  });
+
+  it('covers presentation data with the composite checksum and falls back from tampering', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    const active = gameReducer(
+      createNewGameState(44_001),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const originalPresentation = activePresentationCheckpoint(active);
+    await repo.save(active, originalPresentation);
+    await repo.save(active, originalPresentation);
+
+    const primary = await storage.get<ReturnType<typeof createEnvelope>>(SAVE_KEY);
+    expect(primary).toBeDefined();
+    expect(primary!.checksum).toBe(
+      computeSnapshotChecksum(primary!.gameState, primary!.presentation),
+    );
+    expect(primary!.checksum).not.toBe(computeChecksum(primary!.gameState));
+
+    await storage.set(SAVE_KEY, {
+      ...primary,
+      presentation: {
+        ...primary!.presentation,
+        pendingReview: {
+          ...primary!.presentation.pendingReview!,
+          tip: primary!.presentation.pendingReview!.tip + 1,
+        },
+      },
+    });
+
+    const loaded = await repo.load();
+    expect(loaded.source).toBe('backup');
+    expect(loaded.error).toMatch(/checksum/i);
+    expect(loaded.presentation).toEqual(originalPresentation);
+    expect(await storage.get(BACKUP_KEY)).toBeDefined();
+  });
+
+  it('migrates a v6 game-state-only checksum to an empty v7 presentation checkpoint', () => {
+    const legacy = structuredClone(createNewGameState(44_002)) as unknown as Record<
+      string,
+      unknown
+    >;
+    legacy.saveVersion = 6;
+    const migrated = migrateSave({
+      saveVersion: 6,
+      checksum: computeChecksum(legacy as unknown as GameState),
+      createdAt: '2026-08-01T00:00:00.000Z',
+      gameState: legacy,
+    });
+
+    expect(migrated.saveVersion).toBe(7);
+    expect(migrated.gameState.saveVersion).toBe(7);
+    expect(migrated.presentation).toEqual(createEmptyPresentationCheckpoint());
+    expect(migrated.checksum).toBe(
+      computeSnapshotChecksum(migrated.gameState, migrated.presentation),
+    );
+  });
+
+  it('rejects oversized and cross-state presentation checkpoints before persistence', async () => {
+    const active = gameReducer(
+      createNewGameState(44_003),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    const oversized = activePresentationCheckpoint(active);
+    oversized.pendingReview = {
+      ...oversized.pendingReview!,
+      recipeName: 'x'.repeat(201),
+    };
+    await expect(
+      createSaveRepository(createMemoryStorage()).save(active, oversized),
+    ).rejects.toThrow(/malformed pending review/i);
+
+    const mismatchedSummary = activePresentationCheckpoint(active);
+    mismatchedSummary.pendingReview = null;
+    mismatchedSummary.daySummary = summaryPresentationCheckpoint({
+      ...createNewGameState(44_004),
+      day: 2,
+    }).daySummary;
+    await expect(
+      createSaveRepository(createMemoryStorage()).save(active, mismatchedSummary),
+    ).rejects.toThrow(/day summary does not match game state/i);
+
+    const unknownCustomer = activePresentationCheckpoint(active);
+    unknownCustomer.pendingReview = {
+      ...unknownCustomer.pendingReview!,
+      customerId: 'not-an-active-customer',
+    };
+    await expect(
+      createSaveRepository(createMemoryStorage()).save(active, unknownCustomer),
+    ).rejects.toThrow(/review customer is not active/i);
+
+    const impossibleReset = activePresentationCheckpoint(active);
+    impossibleReset.pendingReview = null;
+    impossibleReset.ceremony = 'soft_reset';
+    impossibleReset.ceremonyPrestige = null;
+    await expect(
+      createSaveRepository(createMemoryStorage()).save(active, impossibleReset),
+    ).rejects.toThrow(/ceremony does not match game state/i);
   });
 
   it('rejects corrupt and truncated Save Codes', () => {

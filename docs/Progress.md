@@ -91,6 +91,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-08-03 | Gameplay continuity: save v7 now persists mandatory customer reviews, completed-day summaries, reset ceremonies, day-start rating context, and recent review history through reload and Save Codes; retryable acknowledgement writes fence later autosaves so cleared checkpoints remain cleared, with v1–v6 migration and backup recovery preserved |
 | 2026-08-02 | Mobile transition cohesion: kept the ingredient inspector visibly above compose, paused floor-scoped guidance while Settings is active without suppressing global feedback, removed the obstructive Settings lock banner, kept summary/HUD day labels consistent, and compacted short-landscape reviews without changing service simulation or outcomes |
 | 2026-08-02 | Gameplay cohesion: made each rendered opaque guest body a zoom-stable 44px service target for seating, orders, and delivery; prioritized visible pixels over neighboring touch padding, preserved seat-cell controls and table-center ownership, and verified real-pointer head/torso/lower taps at 320/1280px plus all four seat facings |
 | 2026-08-02 | Visual continuity: kept the desktop restaurant canvas and world projection fixed through modifier, review, Continue, and day-summary overlays while preserving the dedicated side workspace for active cooking |

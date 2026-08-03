@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { gotoFreshGame } from './helpers.ts';
+import { gotoFreshGame, waitForServiceStarted } from './helpers.ts';
 import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
 
 async function movePlayerToWaitingGuest(page: Page): Promise<void> {
@@ -117,6 +117,7 @@ test.describe('canonical gameplay boundaries', () => {
     expect(await floorSnapshot(page)).toEqual(before);
 
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await expect
       .poll(async () => (await floorSnapshot(page)).guestStage, {
         timeout: 10_000,
@@ -129,6 +130,7 @@ test.describe('canonical gameplay boundaries', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
 
     await page.evaluate(async () => {
       for (let guard = 0; guard < 80; guard += 1) {
@@ -163,6 +165,7 @@ test.describe('canonical gameplay boundaries', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
 
     await seatGuestThroughVisualArrival(page);
   });
@@ -172,6 +175,7 @@ test.describe('canonical gameplay boundaries', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     const guestId = await seatGuestThroughVisualArrival(page);
 
     const tableId = await page.evaluate(async (id) => {
@@ -210,7 +214,7 @@ test.describe('canonical gameplay boundaries', () => {
 
     await page.evaluate(async () => {
       const bridge = window.__E2E__!;
-      bridge.dismissPendingReview();
+      await bridge.dismissPendingReview();
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });

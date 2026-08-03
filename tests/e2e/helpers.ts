@@ -103,6 +103,18 @@ export async function waitForGameReady(page: Page): Promise<void> {
   });
 }
 
+export async function waitForServiceStarted(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const state = window.__E2E__!.getState();
+        return state.modifierDismissed && !state.serviceStartPending;
+      }),
+    )
+    .toBe(true);
+  await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+}
+
 export async function assertScreenOpen(
   page: Page,
   testId: string,
@@ -201,6 +213,7 @@ export async function completeServiceDay(
 ): Promise<void> {
   await page.locator('[data-testid="open-day-btn"]').click();
   await page.locator('[data-testid="start-service-btn"]').click();
+  await waitForServiceStarted(page);
   await expect(
     page.locator('[data-testid="floor-service-panel"]'),
   ).toBeVisible();
@@ -543,6 +556,8 @@ declare global {
         day: number;
         cash: number;
         hydrated: boolean;
+        modifierDismissed: boolean;
+        serviceStartPending: boolean;
         activeDay: { queueIndex: number; customerCount: number } | null;
         composeDraftIngredientIds: string[];
         floorTicketDrafts: Record<string, string[]>;
@@ -568,7 +583,8 @@ declare global {
         [key: string]: unknown;
       }) => Promise<void>;
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
-      dismissPendingReview: () => void;
+      failNextSaveForTest: () => void;
+      dismissPendingReview: () => Promise<void>;
       prepareCookUiFixture: () => Promise<void>;
       prepareFourFacingSeatedGuestsFixture: () => Promise<
         Array<{

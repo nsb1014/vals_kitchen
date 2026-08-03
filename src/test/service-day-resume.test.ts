@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import LZString from 'lz-string';
 import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts';
 import { gameReducer } from '../domain/reducer.ts';
 import {
@@ -7,9 +8,24 @@ import {
   type GameState,
 } from '../domain/state/game-state.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
-import { exportSaveCode, migrateSave, parseSaveCode } from '../persistence/saveCode.ts';
-import { computeChecksum } from '../persistence/serialize.ts';
-import { getGameStateSnapshot, useGameStore } from '../store/game-store.ts';
+import {
+  exportSaveCode,
+  exportSaveCodeSnapshot,
+  migrateSave,
+  parseSaveCode,
+} from '../persistence/saveCode.ts';
+import {
+  SAVE_CODE_PREFIX,
+  SAVE_KEY,
+  computeChecksum,
+} from '../persistence/serialize.ts';
+import {
+  getGameStateSnapshot,
+  setGameSaveRepositoryForTests,
+  useGameStore,
+} from '../store/game-store.ts';
+import { selectFloorRuntimeRunning } from '../store/selectors/floor-runtime.ts';
+import type { PresentationCheckpoint } from '../persistence/presentation-checkpoint.ts';
 import { testContext } from './test-helpers.ts';
 
 function createMemoryStorage(): StorageAdapter {
@@ -46,10 +62,151 @@ function resetStore(seed: number): void {
   });
 }
 
+function mandatoryReviewCheckpoint(state: GameState): PresentationCheckpoint {
+  const customerId = state.activeDay?.customers[0]?.id;
+  if (!customerId) throw new Error('Expected active customer');
+  return {
+    pendingReview: {
+      customerId,
+      matchStars: 8.4,
+      tip: 19,
+      ratingDelta: 0.16,
+      recipeName: 'Resume Plate',
+      masteryLine: 'Mastery Lv.2 (+0.10★)',
+    },
+    daySummary: null,
+    ceremony: null,
+    ceremonyPrestige: null,
+    dayStartRating: 3,
+    recentReviews: [
+      {
+        matchStars: 8.4,
+        ratingDelta: 0.16,
+        tip: 19,
+        recipeName: 'Resume Plate',
+        day: state.day,
+      },
+    ],
+  };
+}
+
+function encodeLegacyV6SaveCode(state: GameState): string {
+  const legacyState = { ...structuredClone(state), saveVersion: 6 };
+  const envelope = {
+    saveVersion: 6,
+    checksum: computeChecksum(legacyState as unknown as GameState),
+    createdAt: '2026-08-01T00:00:00.000Z',
+    gameState: legacyState,
+  };
+  const bytes = LZString.compressToUint8Array(JSON.stringify(envelope));
+  return `${SAVE_CODE_PREFIX}.${Buffer.from(bytes).toString('base64url')}`;
+}
+
 describe('service day mid-day resume', () => {
   beforeEach(() => {
+    setGameSaveRepositoryForTests(null);
     resetStore(9090);
   });
+
+  afterEach(() => {
+    setGameSaveRepositoryForTests(null);
+  });
+
+  it('hydrates a mandatory review checkpoint and keeps floor runtime blocked', async () => {
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    let state = gameReducer(
+      createNewGameState(90_901),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    state = gameReducer(state, { type: 'START_SERVICE' }, testContext).state;
+    const presentation = mandatoryReviewCheckpoint(state);
+    await repo.save(state, presentation);
+
+    resetStore(1);
+    setGameSaveRepositoryForTests(repo);
+    await useGameStore.getState().hydrate();
+
+    const resumed = useGameStore.getState();
+    expect(resumed.pendingReview).toEqual(presentation.pendingReview);
+    expect(resumed.dayStartRating).toBe(3);
+    expect(resumed.recentReviews).toEqual(presentation.recentReviews);
+    expect(resumed.modifierDismissed).toBe(true);
+    expect(selectFloorRuntimeRunning(resumed, true)).toBe(false);
+  });
+
+  it('imports a mandatory review checkpoint and keeps floor runtime blocked', async () => {
+    let state = gameReducer(
+      createNewGameState(90_902),
+      { type: 'OPEN_DAY' },
+      testContext,
+    ).state;
+    state = gameReducer(state, { type: 'START_SERVICE' }, testContext).state;
+    const presentation = mandatoryReviewCheckpoint(state);
+    const code = exportSaveCodeSnapshot({ state, presentation });
+
+    resetStore(2);
+    expect(await useGameStore.getState().importSaveCode(code)).toEqual({ ok: true });
+
+    const imported = useGameStore.getState();
+    expect(imported.pendingReview).toEqual(presentation.pendingReview);
+    expect(imported.dayStartRating).toBe(presentation.dayStartRating);
+    expect(imported.recentReviews).toEqual(presentation.recentReviews);
+    expect(imported.modifierDismissed).toBe(true);
+    expect(selectFloorRuntimeRunning(imported, true)).toBe(false);
+  });
+
+  it.each(['repository', 'save-code'] as const)(
+    'recovers the original day-start rating from a mid-day v6 %s',
+    async (source) => {
+      let legacy = gameReducer(
+        createNewGameState(90_903),
+        { type: 'OPEN_DAY' },
+        testContext,
+      ).state;
+      legacy = {
+        ...legacy,
+        rating: 3.35,
+        activeDay: {
+          ...legacy.activeDay!,
+          floor: null,
+          serviceStarted: true,
+          customersServed: legacy.activeDay!.customers.length,
+          queueIndex: legacy.activeDay!.customers.length - 1,
+          dayMatchSum: legacy.activeDay!.customers.length * 8,
+          dayRatingDelta: 0.35,
+          ratingResetOccurred: false,
+        },
+      };
+
+      resetStore(3);
+      if (source === 'repository') {
+        const storage = createMemoryStorage();
+        const legacyState = { ...structuredClone(legacy), saveVersion: 6 };
+        await storage.set(SAVE_KEY, {
+          saveVersion: 6,
+          checksum: computeChecksum(legacyState as unknown as GameState),
+          createdAt: '2026-08-01T00:00:00.000Z',
+          gameState: legacyState,
+        });
+        setGameSaveRepositoryForTests(createSaveRepository(storage));
+        await useGameStore.getState().hydrate();
+      } else {
+        expect(
+          await useGameStore
+            .getState()
+            .importSaveCode(encodeLegacyV6SaveCode(legacy)),
+        ).toEqual({ ok: true });
+      }
+
+      expect(useGameStore.getState().dayStartRating).toBeCloseTo(3, 8);
+      await useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+      expect(useGameStore.getState().daySummary?.ratingDeltaText).toContain(
+        '(3.0 → 3.4)',
+      );
+    },
+  );
 
   it('restores each floor ticket draft after reload', async () => {
     await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });

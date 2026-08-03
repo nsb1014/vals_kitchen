@@ -34,7 +34,12 @@ import {
   type GameState,
   type Placement,
 } from '../domain/state/game-state.ts';
-import { exportSaveCode, parseSaveCode } from '../persistence/index.ts';
+import {
+  exportSaveCodeSnapshot,
+  parseSaveCodeSnapshot,
+  type GameSaveSnapshot,
+  type PresentationCheckpoint,
+} from '../persistence/index.ts';
 import {
   defaultSaveRepository,
   requestPersistentStorage,
@@ -68,6 +73,8 @@ export type ScreenId =
 
 export interface ServeReview {
   customerId?: string;
+  /** The triggering review remains visible after a soft reset clears activeDay. */
+  afterSoftReset?: boolean;
   matchStars: number;
   tip: number;
   ratingDelta: number;
@@ -109,6 +116,8 @@ interface StoreMeta {
   ceremonyPrestige: number | null;
   dayStartRating: number | null;
   recentReviews: RecentReviewEntry[];
+  presentationSavePending: boolean;
+  presentationSaveError: string | null;
   flavorInspectorIngredientId: string | null;
   pendingPlacementItemKey: string | null;
   audioEnabled: boolean;
@@ -128,9 +137,9 @@ export interface GameStore extends GameState, StoreMeta {
   hydrate: () => Promise<void>;
   dispatch: (action: GameAction) => Promise<void>;
   dismissModifier: () => Promise<void>;
-  dismissPendingReview: () => void;
-  dismissDaySummary: () => void;
-  dismissCeremony: () => void;
+  dismissPendingReview: () => Promise<void>;
+  dismissDaySummary: () => Promise<void>;
+  dismissCeremony: () => Promise<void>;
   toggleEditLayout: () => void;
   navigateTo: (screen: ScreenId) => void;
   openFlavorInspector: (ingredientId: string) => void;
@@ -224,6 +233,8 @@ const META_KEYS = [
   'ceremonyPrestige',
   'dayStartRating',
   'recentReviews',
+  'presentationSavePending',
+  'presentationSaveError',
   'flavorInspectorIngredientId',
   'pendingPlacementItemKey',
   'audioEnabled',
@@ -235,6 +246,7 @@ let lastHudPacingNotice: Notice | null = null;
 let gameSaveRepository: Pick<SaveRepository, 'load' | 'save'> =
   defaultSaveRepository;
 let serviceStartFence: Promise<void> | null = null;
+let presentationSaveFence: Promise<void> | null = null;
 let serviceStartGeneration = 0;
 let gameplayInteractionGeneration = 0;
 
@@ -277,14 +289,63 @@ export function setGameSaveRepositoryForTests(
   invalidateServiceStartTransition();
 }
 
-async function persistGameSnapshot(state: GameState): Promise<void> {
+async function persistGameSnapshot(store: GameStore): Promise<void> {
   if (
     typeof indexedDB === 'undefined' &&
     gameSaveRepository === defaultSaveRepository
   ) {
     return;
   }
-  await gameSaveRepository.save(state);
+  const snapshot = pickGameSaveSnapshot(store);
+  await gameSaveRepository.save(snapshot.state, snapshot.presentation);
+}
+
+async function acknowledgePresentationCheckpoint(
+  get: () => GameStore,
+  set: (patch: Partial<GameStore>) => void,
+  clearedCheckpoint: Partial<GameStore>,
+  checkpointStillCurrent: (store: GameStore) => boolean,
+): Promise<void> {
+  if (get().presentationSavePending) {
+    if (presentationSaveFence) await presentationSaveFence;
+    return;
+  }
+  set({ presentationSavePending: true, presentationSaveError: null });
+  const save = persistGameSnapshot({ ...get(), ...clearedCheckpoint });
+  const acknowledgement = save.then(
+    () => {
+      set({
+        ...(checkpointStillCurrent(get()) ? clearedCheckpoint : {}),
+        presentationSavePending: false,
+        presentationSaveError: null,
+      });
+    },
+    (error: unknown) => {
+      set({
+        presentationSavePending: false,
+        presentationSaveError:
+          error instanceof Error ? error.message : 'Could not save progress.',
+      });
+      throw error;
+    },
+  );
+  presentationSaveFence = acknowledgement;
+  try {
+    await acknowledgement;
+  } finally {
+    if (presentationSaveFence === acknowledgement) {
+      presentationSaveFence = null;
+    }
+  }
+}
+
+function recoverDayStartRating(
+  state: GameState,
+  persistedRating: number | null,
+): number | null {
+  if (persistedRating !== null || !state.activeDay) return persistedRating;
+  if (state.activeDay.ratingResetOccurred) return state.rating;
+  return state.rating - (state.activeDay.dayRatingDelta ?? 0);
 }
 
 function sameNotice(left: Notice | null, right: Notice | null): boolean {
@@ -347,6 +408,24 @@ function pickGameState(store: GameStore): GameState {
   return copy as unknown as GameState;
 }
 
+function pickPresentationCheckpoint(store: GameStore): PresentationCheckpoint {
+  return {
+    pendingReview: store.pendingReview,
+    daySummary: store.daySummary,
+    ceremony: store.ceremony,
+    ceremonyPrestige: store.ceremonyPrestige,
+    dayStartRating: store.dayStartRating,
+    recentReviews: store.recentReviews,
+  };
+}
+
+function pickGameSaveSnapshot(store: GameStore): GameSaveSnapshot {
+  return {
+    state: pickGameState(store),
+    presentation: pickPresentationCheckpoint(store),
+  };
+}
+
 function mergeReducerState(
   current: GameStore,
   nextState: GameState,
@@ -369,6 +448,8 @@ function mergeReducerState(
     ceremonyPrestige: current.ceremonyPrestige,
     dayStartRating: current.dayStartRating,
     recentReviews,
+    presentationSavePending: current.presentationSavePending,
+    presentationSaveError: current.presentationSaveError,
     flavorInspectorIngredientId: current.flavorInspectorIngredientId,
     pendingPlacementItemKey: current.pendingPlacementItemKey,
     audioEnabled: current.audioEnabled,
@@ -405,6 +486,7 @@ function shouldAutosaveAfterDispatch(actionType: GameAction['type']): boolean {
   return (
     actionType === 'SET_COMPOSE_DRAFT' ||
     actionType === 'SERVE_DISH' ||
+    actionType === 'NEXT_CUSTOMER' ||
     actionType === 'CLOSE_DAY' ||
     actionType === 'PURCHASE' ||
     actionType === 'OPEN_DAY' ||
@@ -503,6 +585,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   ceremonyPrestige: null,
   dayStartRating: null,
   recentReviews: [],
+  presentationSavePending: false,
+  presentationSaveError: null,
   flavorInspectorIngredientId: null,
   pendingPlacementItemKey: null,
   audioEnabled: true,
@@ -531,12 +615,13 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       modifierDismissed: state.activeDay?.serviceStarted ?? false,
       serviceStartPending: false,
       serviceStartError: null,
-      pendingReview: null,
-      daySummary: null,
-      ceremony: null,
-      ceremonyPrestige: null,
-      dayStartRating: state.activeDay ? state.rating : null,
-      recentReviews: [],
+      ...loaded.presentation,
+      presentationSavePending: false,
+      presentationSaveError: null,
+      dayStartRating: recoverDayStartRating(
+        state,
+        loaded.presentation.dayStartRating,
+      ),
       flavorInspectorIngredientId: null,
       pendingPlacementItemKey: null,
       audioEnabled: true,
@@ -553,7 +638,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     syncStoreNotificationTimer();
     if (supersededServiceStart) {
       await waitForSupersededServiceStart(supersededServiceStart);
-      await persistGameSnapshot(pickGameState(get()));
+      await persistGameSnapshot(get());
     }
   },
 
@@ -676,6 +761,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       patch.tutorialDismissedStepId = null;
       patch.celebrationQueue = mappedCelebrations;
       patch.composeSheetOpen = false;
+      if (result.state.activeDay === null) {
+        patch.dayStartRating = null;
+      }
     }
 
     if (
@@ -685,6 +773,10 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       result.state.activeDay === null
     ) {
       patch.composeSheetOpen = false;
+    }
+    if (patch.pendingReview || patch.daySummary || patch.ceremony) {
+      patch.presentationSavePending = false;
+      patch.presentationSaveError = null;
     }
 
     set(patch);
@@ -698,7 +790,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       const transitionGeneration = ++serviceStartGeneration;
       const transition = (async () => {
         try {
-          await persistGameSnapshot(pickGameState(get()));
+          await persistGameSnapshot(get());
           if (serviceStartGeneration !== transitionGeneration) return;
           const succeeded = get();
           if (
@@ -731,7 +823,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
           // become the durable winner after this promise rejects.
           let reportedError = error;
           try {
-            await persistGameSnapshot(pickGameState(get()));
+            await persistGameSnapshot(get());
           } catch (compensationError) {
             const transitionMessage =
               error instanceof Error ? error.message : String(error);
@@ -775,7 +867,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         await waitForSupersededServiceStart(supersededServiceStart);
         await get().autosave();
       } else {
-        void get().autosave();
+        void get().autosave().catch(() => undefined);
       }
     }
   },
@@ -816,26 +908,27 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   async importSaveCode(code) {
     try {
-      const imported = parseSaveCode(code);
+      const imported = parseSaveCodeSnapshot(code);
       const supersededServiceStart = invalidateServiceStartTransition();
       set({
-        ...imported,
+        ...imported.state,
         screen: 'restaurant',
         editLayoutMode: false,
-        activeFloorRoom: imported.activeDay?.floor?.playerRoom ?? 'main',
+        activeFloorRoom: imported.state.activeDay?.floor?.playerRoom ?? 'main',
         hydrated: true,
-        modifierDismissed: imported.activeDay?.serviceStarted ?? false,
+        modifierDismissed: imported.state.activeDay?.serviceStarted ?? false,
         serviceStartPending: false,
         serviceStartError: null,
-        pendingReview: null,
-        daySummary: null,
-        ceremony: null,
-        ceremonyPrestige: null,
-        dayStartRating: imported.activeDay ? imported.rating : null,
-        recentReviews: [],
+        ...imported.presentation,
+        presentationSavePending: false,
+        presentationSaveError: null,
+        dayStartRating: recoverDayStartRating(
+          imported.state,
+          imported.presentation.dayStartRating,
+        ),
         flavorInspectorIngredientId: null,
         pendingPlacementItemKey: null,
-        floorPlayerGrid: imported.activeDay?.floor?.playerPosition ?? null,
+        floorPlayerGrid: imported.state.activeDay?.floor?.playerPosition ?? null,
         floorToast: null,
         noticeActive: null,
         noticeSticky: null,
@@ -856,7 +949,7 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   async exportSaveCodeToClipboard() {
     try {
-      const code = exportSaveCode(pickGameState(get()));
+      const code = exportSaveCodeSnapshot(pickGameSaveSnapshot(get()));
       try {
         if (
           typeof navigator !== 'undefined' &&
@@ -1093,16 +1186,37 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     await get().dispatch({ type: 'START_SERVICE' });
   },
 
-  dismissPendingReview() {
-    set({ pendingReview: null });
+  async dismissPendingReview() {
+    const review = get().pendingReview;
+    if (!review) return;
+    await acknowledgePresentationCheckpoint(
+      get,
+      set,
+      { pendingReview: null },
+      (state) => state.pendingReview === review,
+    );
   },
 
-  dismissDaySummary() {
-    set({ daySummary: null });
+  async dismissDaySummary() {
+    const summary = get().daySummary;
+    if (!summary) return;
+    await acknowledgePresentationCheckpoint(
+      get,
+      set,
+      { daySummary: null },
+      (state) => state.daySummary === summary,
+    );
   },
 
-  dismissCeremony() {
-    set({ ceremony: null, ceremonyPrestige: null });
+  async dismissCeremony() {
+    const ceremony = get().ceremony;
+    if (!ceremony) return;
+    await acknowledgePresentationCheckpoint(
+      get,
+      set,
+      { ceremony: null, ceremonyPrestige: null },
+      (state) => state.ceremony === ceremony,
+    );
   },
 
   toggleEditLayout() {
@@ -1244,7 +1358,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
         // The transition performs its rollback save before rejecting.
       }
     }
-    await persistGameSnapshot(pickGameState(get()));
+    while (presentationSaveFence) {
+      const acknowledgement = presentationSaveFence;
+      try {
+        await acknowledgement;
+      } catch {
+        // The acknowledgement caller receives the failure. Autosave then
+        // persists the still-visible checkpoint from current live state.
+      }
+    }
+    await persistGameSnapshot(get());
   },
 }));
 

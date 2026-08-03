@@ -3,8 +3,17 @@ import { findBestMatchCombo } from '../domain/day/customer-request-generator.ts'
 import { isDayComplete } from '../domain/day/serve.ts';
 import type { GameAction } from '../domain/reducer.ts';
 import { validatePlacement } from '../domain/economy/purchases.ts';
+import {
+  defaultSaveRepository,
+  type SaveRepository,
+} from '../persistence/SaveRepository.ts';
 import { exportSaveCode as encodeSaveCode } from '../persistence/saveCode.ts';
-import { getGameStateSnapshot, useGameStore, type Celebration } from '../store/game-store.ts';
+import {
+  getGameStateSnapshot,
+  setGameSaveRepositoryForTests,
+  useGameStore,
+  type Celebration,
+} from '../store/game-store.ts';
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
@@ -103,6 +112,8 @@ export interface E2eBridge {
     cash: number;
     rating: number;
     hydrated: boolean;
+    modifierDismissed: boolean;
+    serviceStartPending: boolean;
     activeDay: { queueIndex: number; customerCount: number } | null;
     composeDraftIngredientIds: string[];
     floorTicketDrafts: Record<string, string[]>;
@@ -130,7 +141,8 @@ export interface E2eBridge {
     destination: { x: number; y: number };
   } | null;
   setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
-  dismissPendingReview: () => void;
+  failNextSaveForTest: () => void;
+  dismissPendingReview: () => Promise<void>;
   showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
   prepareTicketPanelFixture: (ticketCount: number, carrying?: boolean) => Promise<void>;
@@ -408,6 +420,8 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         cash: s.cash,
         rating: s.rating,
         hydrated: s.hydrated,
+        modifierDismissed: s.modifierDismissed,
+        serviceStartPending: s.serviceStartPending,
         activeDay: s.activeDay
           ? {
               queueIndex: s.activeDay.queueIndex,
@@ -636,7 +650,26 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
     },
 
     dismissPendingReview() {
-      useGameStore.getState().dismissPendingReview();
+      return useGameStore.getState().dismissPendingReview();
+    },
+
+    failNextSaveForTest() {
+      const failOnceRepository: SaveRepository = {
+        load: () => defaultSaveRepository.load(),
+        async save() {
+          setGameSaveRepositoryForTests(null);
+          throw new Error('Simulated save failure');
+        },
+        clear: () => defaultSaveRepository.clear(),
+        exportSaveCode: (state, presentation) =>
+          defaultSaveRepository.exportSaveCode(state, presentation),
+        exportSaveCodeSnapshot: (snapshot) =>
+          defaultSaveRepository.exportSaveCodeSnapshot(snapshot),
+        importSaveCode: (code) => defaultSaveRepository.importSaveCode(code),
+        importSaveCodeSnapshot: (code) =>
+          defaultSaveRepository.importSaveCodeSnapshot(code),
+      };
+      setGameSaveRepositoryForTests(failOnceRepository);
     },
 
     showCeremonyOverPendingReview() {
@@ -1578,17 +1611,23 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
             ctx.ingredientsById,
             ctx.compoundAffinity,
           );
-          const station = beforeCook.placements.find((placement) =>
-            beforeCook.purchasedEquipmentIds.includes(placement.itemKey),
+          const station = beforeCook.placements.find(
+            (placement) =>
+              isCookStationItemKey(placement.itemKey) &&
+              beforeCook.purchasedEquipmentIds.includes(placement.itemKey),
           );
           if (!station) throw new Error('floor service fixture has no owned cook station');
+          const cookPosition = reachableMainFloorCellBeside(station);
           beforeCook.setActiveFloorRoom('main');
-          beforeCook.setFloorNavPosition(reachableMainFloorCellBeside(station));
+          getRestaurantApp()?.nav.snapTo(cookPosition);
+          beforeCook.setFloorNavPosition(cookPosition);
           await dispatch({
             type: 'FLOOR_SET_TICKET_DRAFT',
             ticketId: open.id,
             ingredientIds: combo.ingredientIds,
           });
+          getRestaurantApp()?.nav.snapTo(cookPosition);
+          useGameStore.getState().setFloorNavPosition(cookPosition);
           await dispatch({
             type: 'FLOOR_PLATE',
             ticketId: open.id,
@@ -1627,7 +1666,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           if (isDayComplete(state)) {
             await state.dispatch({ type: 'CLOSE_DAY' });
           } else {
-            state.dismissPendingReview();
+            await state.dismissPendingReview();
           }
           continue;
         }

@@ -100,6 +100,13 @@ export function mapReducerEventsToUi(
     }
   }
 
+  if (patch.pendingReview && patch.ceremony === 'soft_reset') {
+    patch.pendingReview = {
+      ...patch.pendingReview,
+      afterSoftReset: true,
+    };
+  }
+
   if (patch.pendingReview) {
     patch.recentReviews = appendRecentReview(
       before,

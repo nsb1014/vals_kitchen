@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { dragGridCell, gotoFreshGame, navigateToScreen } from './helpers.ts';
+import {
+  dragGridCell,
+  gotoFreshGame,
+  navigateToScreen,
+  waitForServiceStarted,
+} from './helpers.ts';
 import { waitingGuestServicePositions } from '../../src/domain/floor/interact.ts';
 
 async function waitingGuestServicePosition(
@@ -149,6 +154,7 @@ async function openRunningFloor(
   await gotoFreshGame(page);
   await page.getByTestId('open-day-btn').click();
   await page.getByTestId('start-service-btn').click();
+  await waitForServiceStarted(page);
   await expect(page.getByTestId('floor-service-panel')).toBeVisible();
 }
 
@@ -228,7 +234,7 @@ async function prepareOrderedGuest(
   ticketId: string;
 }> {
   const waitingPosition = await waitingGuestServicePosition(page);
-  return page.evaluate(async ({ shouldPlate, waitingPosition: nearWaiting }) => {
+  const seatingFixture = await page.evaluate(async (nearWaiting) => {
     const bridge = window.__E2E__!;
     const floor = () => bridge.getGameState().activeDay!.floor!;
 
@@ -249,23 +255,46 @@ async function prepareOrderedGuest(
     }
     const seating = floor().pool.find((guest) => guest.stage === 'seating');
     if (!seating?.seat) throw new Error('expected a guest assigned to a seat');
-    await bridge.dispatch({
-      type: 'FLOOR_COMPLETE_SEATING',
+
+    return {
       guestId: seating.id,
-    });
+      seat: { x: seating.seat.x, y: seating.seat.y },
+    };
+  }, waitingPosition);
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate((guestId) => {
+          const guest = window.__E2E__!
+            .getGameState()
+            .activeDay!.floor!.pool.find((candidate) => candidate.id === guestId);
+          return guest?.stage;
+        }, seatingFixture.guestId),
+      { timeout: 10_000 },
+    )
+    .toBe('seated');
+
+  return page.evaluate(async ({ guestId, seat, shouldPlate }) => {
+    const bridge = window.__E2E__!;
+    const floor = () => bridge.getGameState().activeDay!.floor!;
+    const seated = floor().pool.find((guest) => guest.id === guestId);
+    if (!seated?.seat || seated.stage !== 'seated') {
+      throw new Error('expected the guest to finish seating before ordering');
+    }
 
     const state = bridge.getGameState();
     bridge.setFloorNavPosition({
-      x: seating.seat.x,
-      y: seating.seat.y + 2,
+      x: seat.x,
+      y: seat.y + 2,
     });
     await bridge.dispatch({
       type: 'FLOOR_TAKE_ORDERS',
-      customerIds: [seating.customer.id],
+      customerIds: [seated.customer.id],
     });
 
     const ticket = floor().tickets.find(
-      (candidate) => candidate.customerId === seating.customer.id,
+      (candidate) => candidate.customerId === seated.customer.id,
     );
     const station = state.placements.find(
       (placement) => placement.itemKey === 'prep_station',
@@ -285,13 +314,17 @@ async function prepareOrderedGuest(
     const remote = { x: 4, y: 5 };
     bridge.setFloorNavPosition(remote);
     return {
-      guestId: seating.id,
-      seat: { x: seating.seat.x, y: seating.seat.y },
+      guestId,
+      seat,
       station: { x: station.x, y: station.y },
       remote,
       ticketId: ticket.id,
     };
-  }, { shouldPlate: plate, waitingPosition });
+  }, {
+    guestId: seatingFixture.guestId,
+    seat: seatingFixture.seat,
+    shouldPlate: plate,
+  });
 }
 
 test.describe('object tap controls', () => {
@@ -883,8 +916,16 @@ test.describe('object tap controls', () => {
     const seatGuest = page.getByTestId('floor-seat-next');
     await expect(seatGuest).toBeEnabled();
 
-    await seatGuest.click();
-    await seatGuest.click();
+    const intents = await seatGuest.evaluate((button) => {
+      const bridge = window.__E2E__!;
+      (button as HTMLButtonElement).click();
+      const first = bridge.getPendingSeatingIntentDebug();
+      (button as HTMLButtonElement).click();
+      const second = bridge.getPendingSeatingIntentDebug();
+      return { first, second };
+    });
+    expect(intents.first).not.toBeNull();
+    expect(intents.second).toEqual(intents.first);
     expect(
       await page.evaluate(
         (id) =>
@@ -1198,6 +1239,7 @@ test.describe('object tap controls', () => {
     await navigateToScreen(page, 'restaurant');
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await expect(page.getByTestId('floor-service-panel')).toBeVisible();
 
     const guestId = await page.evaluate(async () => {

@@ -36,8 +36,8 @@ export const MAX_DISH_INGREDIENTS = 6;
 export const TABLE_SEATS = 2;
 export const MAX_GRID_SIZE = 12;
 export const RECIPE_BONUS_STARS = 0.75;
-/** Save v6: an open day's service-start state is persisted. */
-export const CURRENT_SAVE_VERSION = 6 as const;
+/** Save v7: mandatory presentation checkpoints survive reload and Save Codes. */
+export const CURRENT_SAVE_VERSION = 7 as const;
 
 export interface Placement {
   id: string;

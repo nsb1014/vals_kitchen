@@ -4,13 +4,14 @@ import { exportSaveCode, parseSaveCode } from '../persistence/saveCode.ts';
 import { createSaveRepository, type StorageAdapter } from '../persistence/SaveRepository.ts';
 import { connectingDoorInterior } from '../domain/floor/starter-map.ts';
 import { waitingGuestServicePositions } from '../domain/floor/interact.ts';
+import { scoreDishForCustomer } from '../domain/day/serve.ts';
 import { createNewGameState } from '../domain/state/game-state.ts';
 import {
   getGameStateSnapshot,
   setGameSaveRepositoryForTests,
   useGameStore,
 } from '../store/game-store.ts';
-import './test-helpers.ts';
+import { testContext } from './test-helpers.ts';
 
 const storeAutosave = useGameStore.getState().autosave;
 
@@ -100,6 +101,8 @@ function resetStore(seed: number): void {
     ceremonyPrestige: null,
     dayStartRating: null,
     recentReviews: [],
+    presentationSavePending: false,
+    presentationSaveError: null,
     flavorInspectorIngredientId: null,
     pendingPlacementItemKey: null,
     audioEnabled: true,
@@ -127,12 +130,92 @@ function applyHydratedState(loaded: ReturnType<typeof createNewGameState>): void
     ceremonyPrestige: null,
     dayStartRating: loaded.rating,
     recentReviews: [],
+    presentationSavePending: false,
+    presentationSaveError: null,
     flavorInspectorIngredientId: null,
     pendingPlacementItemKey: null,
     audioEnabled: true,
     musicEnabled: false,
     floorPlayerGrid: loaded.activeDay?.floor?.playerPosition ?? null,
     floorToast: null,
+  });
+}
+
+function worstDishForCurrentCustomer(): string[] {
+  const state = useGameStore.getState();
+  const customer = state.activeDay!.customers[state.activeDay!.queueIndex]!;
+  const ids = state.unlockedIngredientIds;
+  let worst: { ids: string[]; matchStars: number } | null = null;
+  for (let first = 0; first < ids.length - 2; first += 1) {
+    for (let second = first + 1; second < ids.length - 1; second += 1) {
+      for (let third = second + 1; third < ids.length; third += 1) {
+        const ingredientIds = [ids[first]!, ids[second]!, ids[third]!];
+        const score = scoreDishForCustomer(
+          state,
+          customer,
+          ingredientIds,
+          testContext,
+        );
+        if (!worst || score.matchStars < worst.matchStars) {
+          worst = { ids: ingredientIds, matchStars: score.matchStars };
+        }
+      }
+    }
+  }
+  if (!worst || worst.matchStars >= 5) {
+    throw new Error('Expected a below-neutral dish for the soft-reset fixture');
+  }
+  return worst.ids;
+}
+
+async function configurePresentationCheckpoint(
+  kind: 'review' | 'ceremony' | 'summary',
+): Promise<void> {
+  if (kind === 'review') {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const customerId = useGameStore.getState().activeDay!.customers[0]!.id;
+    useGameStore.setState({
+      pendingReview: {
+        customerId,
+        matchStars: 8,
+        tip: 12,
+        ratingDelta: 0.1,
+        recipeName: 'Retry Plate',
+      },
+      dayStartRating: 3,
+    });
+    return;
+  }
+  if (kind === 'ceremony') {
+    useGameStore.setState({
+      ...createNewGameState(8_082),
+      pendingReview: null,
+      ceremony: 'soft_reset',
+      ceremonyPrestige: null,
+      dayStartRating: null,
+    });
+    return;
+  }
+  const closed = createNewGameState(8_083);
+  closed.day = 2;
+  useGameStore.setState({
+    ...closed,
+    pendingReview: null,
+    ceremony: null,
+    ceremonyPrestige: null,
+    dayStartRating: null,
+    daySummary: {
+      completedDay: 1,
+      nextDay: 2,
+      earningsLine: "Today's earnings: $50",
+      bonusLine: null,
+      volumeBonusLine: null,
+      averageMatchText: 'Average match: 7.0 / 10',
+      ratingDeltaText: 'Rating change: +0.10★ (3.0 → 3.1)',
+      unlockProgressText: 'Ingredients unlocked: 13 / 40',
+      customersServedText: 'Customers served: 4',
+      masteryLine: null,
+    },
   });
 }
 
@@ -561,9 +644,303 @@ describe('floor autosave via store dispatch', () => {
       },
     });
 
-    useGameStore.getState().dismissPendingReview();
+    await useGameStore.getState().dismissPendingReview();
 
     expect(useGameStore.getState().pendingReview).toBeNull();
     expect(useGameStore.getState().activeDay?.floor?.carriedTicketId).not.toBeNull();
   });
+
+  it('durably acknowledges review, ceremony, and day-summary checkpoints', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const customerId = useGameStore.getState().activeDay!.customers[0]!.id;
+    useGameStore.setState({
+      pendingReview: {
+        customerId,
+        matchStars: 8,
+        tip: 14,
+        ratingDelta: 0.1,
+        recipeName: 'Checkpoint Plate',
+      },
+      ceremony: null,
+      ceremonyPrestige: null,
+      dayStartRating: 3,
+      recentReviews: [
+        {
+          matchStars: 8,
+          ratingDelta: 0.1,
+          tip: 14,
+          recipeName: 'Checkpoint Plate',
+          day: 1,
+        },
+      ],
+    });
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    setGameSaveRepositoryForTests(repo);
+    await useGameStore.getState().autosave();
+
+    await useGameStore.getState().dismissPendingReview();
+    expect((await repo.load()).presentation.pendingReview).toBeNull();
+
+    const reset = createNewGameState(8_080);
+    useGameStore.setState({
+      ...reset,
+      pendingReview: null,
+      ceremony: 'soft_reset',
+      ceremonyPrestige: null,
+      dayStartRating: null,
+    });
+    await useGameStore.getState().autosave();
+    expect((await repo.load()).presentation.ceremony).toBe('soft_reset');
+
+    await useGameStore.getState().dismissCeremony();
+    const acknowledgedCeremony = (await repo.load()).presentation;
+    expect(acknowledgedCeremony.ceremony).toBeNull();
+    expect(acknowledgedCeremony.ceremonyPrestige).toBeNull();
+
+    const closed = createNewGameState(8_081);
+    closed.day = 2;
+    useGameStore.setState({
+      ...closed,
+      daySummary: {
+        completedDay: 1,
+        nextDay: 2,
+        earningsLine: "Today's earnings: $72",
+        bonusLine: null,
+        volumeBonusLine: null,
+        averageMatchText: 'Average match: 7.5 / 10',
+        ratingDeltaText: 'Rating change: +0.10★ (3.0 → 3.1)',
+        unlockProgressText: 'Ingredients unlocked: 13 / 40',
+        customersServedText: 'Customers served: 4',
+        masteryLine: null,
+      },
+      pendingReview: null,
+      ceremony: null,
+      ceremonyPrestige: null,
+      dayStartRating: null,
+    });
+    await useGameStore.getState().autosave();
+    expect((await repo.load()).presentation.daySummary).not.toBeNull();
+
+    await useGameStore.getState().dismissDaySummary();
+    expect((await repo.load()).presentation.daySummary).toBeNull();
+  });
+
+  it('persists and resumes the real soft-reset ceremony before its triggering review', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    await useGameStore.getState().dismissModifier();
+    useGameStore.setState({ rating: 0.01 });
+    const ingredientIds = worstDishForCurrentCustomer();
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    setGameSaveRepositoryForTests(repo);
+
+    await useGameStore.getState().dispatch({
+      type: 'SERVE_DISH',
+      ingredientIds,
+    });
+    await vi.waitFor(async () => {
+      expect((await repo.load()).presentation.ceremony).toBe('soft_reset');
+    });
+
+    let state = useGameStore.getState();
+    expect(state.activeDay).toBeNull();
+    expect(state.dayStartRating).toBeNull();
+    expect(state.ceremony).toBe('soft_reset');
+    expect(state.pendingReview?.afterSoftReset).toBe(true);
+    const durableReset = await repo.load();
+    expect(durableReset.state?.activeDay).toBeNull();
+    expect(durableReset.presentation.pendingReview?.afterSoftReset).toBe(true);
+    expect(durableReset.presentation.dayStartRating).toBeNull();
+    expect(durableReset.presentation.recentReviews).toHaveLength(1);
+
+    resetStore(1);
+    await useGameStore.getState().hydrate();
+    state = useGameStore.getState();
+    expect(state.ceremony).toBe('soft_reset');
+    expect(state.pendingReview?.afterSoftReset).toBe(true);
+
+    await state.dismissCeremony();
+    expect(useGameStore.getState().ceremony).toBeNull();
+    expect(useGameStore.getState().pendingReview?.afterSoftReset).toBe(true);
+    expect((await repo.load()).presentation.ceremony).toBeNull();
+    expect((await repo.load()).presentation.pendingReview).not.toBeNull();
+
+    await useGameStore.getState().dismissPendingReview();
+    expect((await repo.load()).presentation.pendingReview).toBeNull();
+  });
+
+  it.each(['review', 'ceremony', 'summary'] as const)(
+    'keeps a failed %s acknowledgement visible and allows a durable retry',
+    async (kind) => {
+      await configurePresentationCheckpoint(kind);
+
+      const controlled = createControlledStorage();
+      const repo = createSaveRepository(controlled.storage);
+      setGameSaveRepositoryForTests(repo);
+      await useGameStore.getState().autosave();
+      const failedWrite = controlled.deferNextPrimaryWrite();
+      const dismiss = () => {
+        const store = useGameStore.getState();
+        if (kind === 'review') return store.dismissPendingReview();
+        if (kind === 'ceremony') return store.dismissCeremony();
+        return store.dismissDaySummary();
+      };
+
+      const failedDismissal = dismiss();
+      await failedWrite.waitUntilStarted();
+      failedWrite.fail(new Error('storage unavailable'));
+      await expect(failedDismissal).rejects.toThrow('storage unavailable');
+      expect(useGameStore.getState().presentationSavePending).toBe(false);
+      expect(useGameStore.getState().presentationSaveError).toBe(
+        'storage unavailable',
+      );
+      expect(
+        kind === 'review'
+          ? useGameStore.getState().pendingReview
+          : kind === 'ceremony'
+            ? useGameStore.getState().ceremony
+            : useGameStore.getState().daySummary,
+      ).not.toBeNull();
+
+      await dismiss();
+      const loaded = (await repo.load()).presentation;
+      expect(
+        kind === 'review'
+          ? loaded.pendingReview
+          : kind === 'ceremony'
+            ? loaded.ceremony
+            : loaded.daySummary,
+      ).toBeNull();
+      expect(useGameStore.getState().presentationSaveError).toBeNull();
+    },
+  );
+
+  it('durably replaces a review checkpoint on NEXT_CUSTOMER and CLOSE_DAY', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const opened = useGameStore.getState();
+    const customerId = opened.activeDay!.customers[0]!.id;
+    useGameStore.setState({
+      activeDay: { ...opened.activeDay!, floor: null, serviceStarted: true },
+      modifierDismissed: true,
+      pendingReview: {
+        customerId,
+        matchStars: 7.8,
+        tip: 12,
+        ratingDelta: 0.08,
+        recipeName: null,
+      },
+      dayStartRating: 3,
+    });
+    const storage = createMemoryStorage();
+    const repo = createSaveRepository(storage);
+    setGameSaveRepositoryForTests(repo);
+    await useGameStore.getState().autosave();
+
+    await useGameStore.getState().dispatch({ type: 'NEXT_CUSTOMER' });
+    await vi.waitFor(async () => {
+      expect((await repo.load()).state!.activeDay!.queueIndex).toBe(1);
+    });
+    let loaded = await repo.load();
+    expect(loaded.state!.activeDay!.queueIndex).toBe(1);
+    expect(loaded.presentation.pendingReview).toBeNull();
+
+    const current = useGameStore.getState();
+    useGameStore.setState({
+      activeDay: {
+        ...current.activeDay!,
+        floor: null,
+        customersServed: current.activeDay!.customers.length,
+        queueIndex: current.activeDay!.customers.length - 1,
+      },
+      pendingReview: {
+        customerId: current.activeDay!.customers.at(-1)!.id,
+        matchStars: 9,
+        tip: 20,
+        ratingDelta: 0.2,
+        recipeName: 'Final Plate',
+      },
+    });
+    await useGameStore.getState().autosave();
+    await useGameStore.getState().dispatch({ type: 'CLOSE_DAY' });
+    await vi.waitFor(async () => {
+      expect((await repo.load()).presentation.daySummary).not.toBeNull();
+    });
+    loaded = await repo.load();
+    expect(loaded.state!.activeDay).toBeNull();
+    expect(loaded.state!.day).toBe(2);
+    expect(loaded.presentation.pendingReview).toBeNull();
+    expect(loaded.presentation.daySummary).toEqual(
+      useGameStore.getState().daySummary,
+    );
+    expect(loaded.presentation.daySummary).not.toBeNull();
+  });
+
+  it('lets a delayed checkpoint acknowledgement become the newer durable snapshot', async () => {
+    await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });
+    const customerId = useGameStore.getState().activeDay!.customers[0]!.id;
+    useGameStore.setState({
+      pendingReview: {
+        customerId,
+        matchStars: 8.5,
+        tip: 18,
+        ratingDelta: 0.15,
+        recipeName: 'Delayed Plate',
+      },
+      dayStartRating: 3,
+    });
+    const controlled = createControlledStorage();
+    const repo = createSaveRepository(controlled.storage);
+    setGameSaveRepositoryForTests(repo);
+    const creationWrite = controlled.deferNextPrimaryWrite();
+
+    const creationSave = useGameStore.getState().autosave();
+    await creationWrite.waitUntilStarted();
+    const acknowledgement = useGameStore.getState().dismissPendingReview();
+    expect(useGameStore.getState().pendingReview).not.toBeNull();
+    expect(useGameStore.getState().presentationSavePending).toBe(true);
+
+    creationWrite.release();
+    await Promise.all([creationSave, acknowledgement]);
+
+    const loaded = await repo.load();
+    expect(loaded.source).toBe('primary');
+    expect(loaded.presentation.pendingReview).toBeNull();
+    expect(loaded.presentation.dayStartRating).toBe(3);
+    expect(useGameStore.getState().pendingReview).toBeNull();
+    expect(useGameStore.getState().presentationSavePending).toBe(false);
+  });
+
+  it.each(['review', 'ceremony', 'summary'] as const)(
+    'keeps a late autosave behind the durable %s acknowledgement',
+    async (kind) => {
+      await configurePresentationCheckpoint(kind);
+      const controlled = createControlledStorage();
+      const repo = createSaveRepository(controlled.storage);
+      setGameSaveRepositoryForTests(repo);
+      await useGameStore.getState().autosave();
+      const acknowledgementWrite = controlled.deferNextPrimaryWrite();
+      const store = useGameStore.getState();
+      const acknowledgement =
+        kind === 'review'
+          ? store.dismissPendingReview()
+          : kind === 'ceremony'
+            ? store.dismissCeremony()
+            : store.dismissDaySummary();
+      await acknowledgementWrite.waitUntilStarted();
+
+      const lateAutosave = useGameStore.getState().autosave();
+      acknowledgementWrite.release();
+      await Promise.all([acknowledgement, lateAutosave]);
+
+      const loaded = (await repo.load()).presentation;
+      expect(
+        kind === 'review'
+          ? loaded.pendingReview
+          : kind === 'ceremony'
+            ? loaded.ceremony
+            : loaded.daySummary,
+      ).toBeNull();
+    },
+  );
 });
