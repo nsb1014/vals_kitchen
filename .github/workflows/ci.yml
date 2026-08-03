@@ -96,20 +96,20 @@ jobs:
         if: steps.scope.outputs.core == 'true'
         run: npm run lint
 
-      - name: Test
-        if: steps.scope.outputs.core == 'true'
-        run: npm run test
-
       - name: Setup Python
-        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
+        if: steps.scope.outputs.core == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install Python dependencies
-        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'
+        if: steps.scope.outputs.core == 'true'
         run: pip install -r requirements.txt
+
+      - name: Test
+        if: steps.scope.outputs.core == 'true'
+        run: npm run test
 
       - name: Test committed character assets
         if: steps.scope.outputs.core == 'true' && steps.scope.outputs.assets == 'true'

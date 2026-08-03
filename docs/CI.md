@@ -28,9 +28,10 @@ These checks always run for a non-documentation, non-draft pull request:
 2. Sync runtime data.
 3. Typecheck.
 4. Lint.
-5. Run unit and simulation tests.
-6. Make a production Vite build without repeating sync and typecheck.
-7. Enforce the bundle-size budget.
+5. Install the locked Python dependencies required by asset-backed unit tests.
+6. Run unit and simulation tests.
+7. Make a production Vite build without repeating sync and typecheck.
+8. Enforce the bundle-size budget.
 
 The `Detect change scope` step controls the checks:
 
