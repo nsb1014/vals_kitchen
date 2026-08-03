@@ -1,11 +1,17 @@
 import type { GameState } from '../domain/state/game-state.ts';
 import { CURRENT_SAVE_VERSION } from '../domain/state/game-state.ts';
+import {
+  createEmptyPresentationCheckpoint,
+  normalizePresentationCheckpoint,
+  type PresentationCheckpoint,
+} from './presentation-checkpoint.ts';
 
 export interface SaveEnvelope {
   saveVersion: typeof CURRENT_SAVE_VERSION;
   checksum: string;
   createdAt: string;
   gameState: GameState;
+  presentation: PresentationCheckpoint;
 }
 
 export const SAVE_KEY = 'restaurant-save';
@@ -41,12 +47,25 @@ export function computeChecksum(state: GameState): string {
   return fnv1aHex(canonicalize(state));
 }
 
-export function createEnvelope(state: GameState, createdAt = new Date().toISOString()): SaveEnvelope {
+export function computeSnapshotChecksum(
+  gameState: GameState,
+  presentation: PresentationCheckpoint,
+): string {
+  return fnv1aHex(canonicalize({ gameState, presentation }));
+}
+
+export function createEnvelope(
+  state: GameState,
+  createdAt = new Date().toISOString(),
+  presentation: PresentationCheckpoint = createEmptyPresentationCheckpoint(),
+): SaveEnvelope {
+  const normalizedPresentation = normalizePresentationCheckpoint(presentation, state);
   return {
     saveVersion: CURRENT_SAVE_VERSION,
-    checksum: computeChecksum(state),
+    checksum: computeSnapshotChecksum(state, normalizedPresentation),
     createdAt,
     gameState: structuredClone(state),
+    presentation: normalizedPresentation,
   };
 }
 
@@ -54,7 +73,11 @@ export function validateEnvelope(envelope: SaveEnvelope): void {
   if (envelope.saveVersion !== CURRENT_SAVE_VERSION) {
     throw new Error(`Unsupported save version: ${envelope.saveVersion}`);
   }
-  const expected = computeChecksum(envelope.gameState);
+  const presentation = normalizePresentationCheckpoint(
+    envelope.presentation,
+    envelope.gameState,
+  );
+  const expected = computeSnapshotChecksum(envelope.gameState, presentation);
   if (envelope.checksum !== expected) {
     throw new Error('Save checksum mismatch');
   }

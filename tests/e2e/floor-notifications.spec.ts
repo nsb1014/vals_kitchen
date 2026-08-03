@@ -441,7 +441,7 @@ test('final floor action remains activatable at 200% page zoom', async ({
     for (let guard = 0; guard < 500; guard += 1) {
       const step = await bridge.advanceFloorServiceOnce();
       if (step === 'pending_review') {
-        bridge.dismissPendingReview();
+        await bridge.dismissPendingReview();
       } else if (step === 'day_complete') {
         return;
       } else if (step === 'idle') {

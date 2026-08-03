@@ -721,6 +721,15 @@ test.describe('service sheet tiers', () => {
     await expect(review).toBeVisible();
     expect(await outcomeGameplaySnapshot(page)).toEqual(beforeEscape);
 
+    await page.evaluate(() => window.__E2E__!.failNextSaveForTest());
+    await continueButton.click();
+    await expect(review).toBeVisible();
+    await expect(review.getByRole('alert')).toContainText(
+      'Simulated save failure',
+    );
+    await expect(title).toBeFocused();
+    await expect(continueButton).toBeEnabled();
+
     const transition = await page.evaluate(() => {
       const snapshot = () => {
         const state = window.__E2E__!.getGameState();

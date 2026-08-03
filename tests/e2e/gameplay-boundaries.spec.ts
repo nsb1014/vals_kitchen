@@ -210,7 +210,7 @@ test.describe('canonical gameplay boundaries', () => {
 
     await page.evaluate(async () => {
       const bridge = window.__E2E__!;
-      bridge.dismissPendingReview();
+      await bridge.dismissPendingReview();
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });
       await bridge.dispatch({ type: 'FLOOR_TICK_EATING' });

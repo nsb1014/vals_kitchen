@@ -6,9 +6,16 @@ import {
   SAVE_CODE_PREFIX,
   type SaveEnvelope,
   computeChecksum,
+  computeSnapshotChecksum,
   createEnvelope,
   validateEnvelope,
 } from './serialize.ts';
+import {
+  createEmptyPresentationCheckpoint,
+  normalizePresentationCheckpoint,
+  type GameSaveSnapshot,
+  type PresentationCheckpoint,
+} from './presentation-checkpoint.ts';
 
 function uint8ToBase64Url(bytes: Uint8Array): string {
   let binary = '';
@@ -37,8 +44,7 @@ function base64UrlToUint8(payload: string): Uint8Array {
   return bytes;
 }
 
-export function exportSaveCode(state: GameState, createdAt?: string): string {
-  const envelope = createEnvelope(state, createdAt);
+function encodeEnvelope(envelope: SaveEnvelope): string {
   const compressed = LZString.compressToUint8Array(JSON.stringify(envelope));
   if (!compressed) {
     throw new Error('Failed to compress save data');
@@ -46,7 +52,26 @@ export function exportSaveCode(state: GameState, createdAt?: string): string {
   return `${SAVE_CODE_PREFIX}.${uint8ToBase64Url(compressed)}`;
 }
 
-export function parseSaveCode(code: string): GameState {
+export function exportSaveCode(
+  state: GameState,
+  createdAt?: string,
+  presentation: PresentationCheckpoint = createEmptyPresentationCheckpoint(),
+): string {
+  return encodeEnvelope(createEnvelope(state, createdAt, presentation));
+}
+
+export function exportSaveCodeSnapshot(
+  snapshot: GameSaveSnapshot,
+  createdAt?: string,
+): string {
+  return encodeEnvelope(
+    createEnvelope(snapshot.state, createdAt, snapshot.presentation),
+  );
+}
+
+export const exportSaveSnapshotCode = exportSaveCodeSnapshot;
+
+function decodeSaveCode(code: string): SaveEnvelope {
   const trimmed = code.trim();
   if (!trimmed.startsWith(`${SAVE_CODE_PREFIX}.`)) {
     throw new Error('Invalid Save Code: must start with RS1.');
@@ -77,7 +102,20 @@ export function parseSaveCode(code: string): GameState {
 
   const envelope = migrateSave(parsed) as SaveEnvelope;
   validateEnvelope(envelope);
-  return normalizeGameState(envelope.gameState);
+  return envelope;
+}
+
+export function parseSaveCodeSnapshot(code: string): GameSaveSnapshot {
+  const envelope = decodeSaveCode(code);
+  const state = normalizeGameState(envelope.gameState);
+  return {
+    state,
+    presentation: normalizePresentationCheckpoint(envelope.presentation, state),
+  };
+}
+
+export function parseSaveCode(code: string): GameState {
+  return parseSaveCodeSnapshot(code).state;
 }
 
 export function migrateSave(raw: unknown): SaveEnvelope {
@@ -96,14 +134,29 @@ export function migrateSave(raw: unknown): SaveEnvelope {
   if (version === 0) {
     throw new Error('Invalid save: missing saveVersion');
   }
+  if (!record.gameState || typeof record.gameState !== 'object') {
+    throw new Error('Invalid save: missing gameState');
+  }
   const originalChecksum =
     typeof record.checksum === 'string' ? record.checksum : '';
-  if (
-    originalChecksum &&
-    record.gameState &&
-    originalChecksum !== computeChecksum(record.gameState as GameState)
-  ) {
+  if (originalVersion === CURRENT_SAVE_VERSION && !originalChecksum) {
     throw new Error('Save checksum mismatch');
+  }
+  const originalExpectedChecksum =
+    originalVersion >= 7
+      ? computeSnapshotChecksum(
+          record.gameState as GameState,
+          record.presentation as PresentationCheckpoint,
+        )
+      : computeChecksum(record.gameState as GameState);
+  if (originalChecksum && originalChecksum !== originalExpectedChecksum) {
+    throw new Error('Save checksum mismatch');
+  }
+  if (originalVersion >= 7) {
+    normalizePresentationCheckpoint(
+      record.presentation,
+      record.gameState as GameState,
+    );
   }
 
   type MigratingEnvelope = {
@@ -111,6 +164,7 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     checksum: string;
     createdAt: string;
     gameState: Record<string, unknown> & Partial<GameState>;
+    presentation?: unknown;
   };
 
   let envelope = raw as MigratingEnvelope;
@@ -196,15 +250,32 @@ export function migrateSave(raw: unknown): SaveEnvelope {
     version = 6;
   }
 
-  const gameState = envelope.gameState as GameState;
+  if (version === 6) {
+    envelope = {
+      ...envelope,
+      saveVersion: 7,
+      gameState: {
+        ...envelope.gameState,
+        saveVersion: 7,
+      },
+      presentation: createEmptyPresentationCheckpoint(),
+    };
+  }
+
+  const gameState = {
+    ...envelope.gameState,
+    saveVersion: CURRENT_SAVE_VERSION,
+  } as GameState;
+  const presentation = normalizePresentationCheckpoint(
+    envelope.presentation,
+    gameState,
+  );
   return {
     ...envelope,
     saveVersion: CURRENT_SAVE_VERSION,
-    checksum:
-      originalVersion === version
-        ? String(envelope.checksum ?? '')
-        : computeChecksum(gameState),
+    checksum: computeSnapshotChecksum(gameState, presentation),
     createdAt: String(envelope.createdAt ?? ''),
     gameState,
+    presentation,
   };
 }

@@ -9,6 +9,16 @@ import {
   type SaveEnvelope,
 } from './serialize.ts';
 import { exportSaveCode, migrateSave, parseSaveCode } from './saveCode.ts';
+import {
+  exportSaveCodeSnapshot,
+  parseSaveCodeSnapshot,
+} from './saveCode.ts';
+import {
+  createEmptyPresentationCheckpoint,
+  normalizePresentationCheckpoint,
+  type GameSaveSnapshot,
+  type PresentationCheckpoint,
+} from './presentation-checkpoint.ts';
 
 export type StorageAdapter = {
   get: <T>(key: string) => Promise<T | undefined>;
@@ -18,16 +28,19 @@ export type StorageAdapter = {
 
 export interface LoadResult {
   state: GameState | null;
+  presentation: PresentationCheckpoint;
   source: 'primary' | 'backup' | 'none';
   error?: string;
 }
 
 export interface SaveRepository {
   load(): Promise<LoadResult>;
-  save(state: GameState): Promise<void>;
+  save(state: GameState, presentation?: PresentationCheckpoint): Promise<void>;
   clear(): Promise<void>;
-  exportSaveCode(state: GameState): string;
+  exportSaveCode(state: GameState, presentation?: PresentationCheckpoint): string;
+  exportSaveCodeSnapshot(snapshot: GameSaveSnapshot): string;
   importSaveCode(code: string): GameState;
+  importSaveCodeSnapshot(code: string): GameSaveSnapshot;
 }
 
 function rawLooksLikeEnvelope(value: unknown): value is Record<string, unknown> {
@@ -121,45 +134,75 @@ export function createSaveRepository(storage: StorageAdapter = defaultStorage): 
       try {
         const primary = await readEnvelope(SAVE_KEY);
         if (primary) {
-          return { state: normalizeGameState(primary.gameState), source: 'primary' };
+          const state = normalizeGameState(primary.gameState);
+          return {
+            state,
+            presentation: normalizePresentationCheckpoint(primary.presentation, state),
+            source: 'primary',
+          };
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         try {
           const backup = await readEnvelope(BACKUP_KEY);
           if (backup) {
-            return { state: normalizeGameState(backup.gameState), source: 'backup', error: message };
+            const state = normalizeGameState(backup.gameState);
+            return {
+              state,
+              presentation: normalizePresentationCheckpoint(backup.presentation, state),
+              source: 'backup',
+              error: message,
+            };
           }
         } catch (backupError) {
           return {
             state: null,
+            presentation: createEmptyPresentationCheckpoint(),
             source: 'none',
             error: backupError instanceof Error ? backupError.message : String(backupError),
           };
         }
-        return { state: null, source: 'none', error: message };
+        return {
+          state: null,
+          presentation: createEmptyPresentationCheckpoint(),
+          source: 'none',
+          error: message,
+        };
       }
 
       try {
         const backup = await readEnvelope(BACKUP_KEY);
         if (backup) {
-          return { state: normalizeGameState(backup.gameState), source: 'backup' };
+          const state = normalizeGameState(backup.gameState);
+          return {
+            state,
+            presentation: normalizePresentationCheckpoint(backup.presentation, state),
+            source: 'backup',
+          };
         }
       } catch (error) {
         return {
           state: null,
+          presentation: createEmptyPresentationCheckpoint(),
           source: 'none',
           error: error instanceof Error ? error.message : String(error),
         };
       }
 
-      return { state: null, source: 'none' };
+      return {
+        state: null,
+        presentation: createEmptyPresentationCheckpoint(),
+        source: 'none',
+      };
     },
 
-    async save(state: GameState): Promise<void> {
+    async save(
+      state: GameState,
+      presentation: PresentationCheckpoint = createEmptyPresentationCheckpoint(),
+    ): Promise<void> {
       // Snapshot synchronously. Callers may continue mutating their state while
       // this request waits behind an active IndexedDB write.
-      const envelope = createEnvelope(state);
+      const envelope = createEnvelope(state, undefined, presentation);
       await new Promise<void>((resolve, reject) => {
         const waiter = { resolve, reject };
         if (pendingSave) {
@@ -177,12 +220,23 @@ export function createSaveRepository(storage: StorageAdapter = defaultStorage): 
       await storage.del(BACKUP_KEY);
     },
 
-    exportSaveCode(state: GameState): string {
-      return exportSaveCode(state);
+    exportSaveCode(
+      state: GameState,
+      presentation: PresentationCheckpoint = createEmptyPresentationCheckpoint(),
+    ): string {
+      return exportSaveCode(state, undefined, presentation);
+    },
+
+    exportSaveCodeSnapshot(snapshot: GameSaveSnapshot): string {
+      return exportSaveCodeSnapshot(snapshot);
     },
 
     importSaveCode(code: string): GameState {
       return parseSaveCode(code);
+    },
+
+    importSaveCodeSnapshot(code: string): GameSaveSnapshot {
+      return parseSaveCodeSnapshot(code);
     },
   };
 }

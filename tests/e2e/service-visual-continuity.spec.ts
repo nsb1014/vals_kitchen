@@ -159,7 +159,7 @@ async function finishFloorWithoutClosing(page: Page): Promise<void> {
       }
       const step = await bridge.advanceFloorServiceOnce();
       if (step === 'pending_review') {
-        bridge.dismissPendingReview();
+        await bridge.dismissPendingReview();
       } else if (step === 'day_complete') {
         return;
       } else if (step === 'idle') {

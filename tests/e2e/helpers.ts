@@ -568,7 +568,8 @@ declare global {
         [key: string]: unknown;
       }) => Promise<void>;
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
-      dismissPendingReview: () => void;
+      failNextSaveForTest: () => void;
+      dismissPendingReview: () => Promise<void>;
       prepareCookUiFixture: () => Promise<void>;
       prepareFourFacingSeatedGuestsFixture: () => Promise<
         Array<{
