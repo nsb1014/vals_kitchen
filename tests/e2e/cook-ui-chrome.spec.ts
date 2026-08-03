@@ -4,6 +4,7 @@ import {
   gotoFreshGame,
   navigateToScreen,
   serveCurrentCustomer,
+  waitForServiceStarted,
 } from './helpers.ts';
 
 async function openCookFixture(page: Page): Promise<void> {
@@ -599,6 +600,7 @@ test.describe('cook sheet responsive chrome', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await page.evaluate(() => {
       window.__E2E__!.setFloorNavPosition({ x: 4, y: 5 });
     });
@@ -642,6 +644,7 @@ test.describe('service sheet tiers', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await serveCurrentCustomer(page);
     const reviewSheet = page.getByTestId('review-sheet');
     const sheet = await reviewSheet.boundingBox();
@@ -670,6 +673,7 @@ test.describe('service sheet tiers', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await serveCurrentCustomer(page);
 
     const sheet = await page.getByTestId('review-sheet').boundingBox();
@@ -690,6 +694,7 @@ test.describe('service sheet tiers', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await page.locator('#canvas-mount').evaluate((element) => {
       element.setAttribute('aria-hidden', 'false');
     });
@@ -907,6 +912,7 @@ test.describe('service sheet tiers', () => {
     await gotoFreshGame(page);
     await page.getByTestId('open-day-btn').click();
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await serveCurrentCustomer(page);
     await page.evaluate(() =>
       window.__E2E__!.showCeremonyOverPendingReview(),

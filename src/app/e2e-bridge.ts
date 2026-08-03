@@ -112,6 +112,8 @@ export interface E2eBridge {
     cash: number;
     rating: number;
     hydrated: boolean;
+    modifierDismissed: boolean;
+    serviceStartPending: boolean;
     activeDay: { queueIndex: number; customerCount: number } | null;
     composeDraftIngredientIds: string[];
     floorTicketDrafts: Record<string, string[]>;
@@ -418,6 +420,8 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         cash: s.cash,
         rating: s.rating,
         hydrated: s.hydrated,
+        modifierDismissed: s.modifierDismissed,
+        serviceStartPending: s.serviceStartPending,
         activeDay: s.activeDay
           ? {
               queueIndex: s.activeDay.queueIndex,
@@ -1607,17 +1611,23 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
             ctx.ingredientsById,
             ctx.compoundAffinity,
           );
-          const station = beforeCook.placements.find((placement) =>
-            beforeCook.purchasedEquipmentIds.includes(placement.itemKey),
+          const station = beforeCook.placements.find(
+            (placement) =>
+              isCookStationItemKey(placement.itemKey) &&
+              beforeCook.purchasedEquipmentIds.includes(placement.itemKey),
           );
           if (!station) throw new Error('floor service fixture has no owned cook station');
+          const cookPosition = reachableMainFloorCellBeside(station);
           beforeCook.setActiveFloorRoom('main');
-          beforeCook.setFloorNavPosition(reachableMainFloorCellBeside(station));
+          getRestaurantApp()?.nav.snapTo(cookPosition);
+          beforeCook.setFloorNavPosition(cookPosition);
           await dispatch({
             type: 'FLOOR_SET_TICKET_DRAFT',
             ticketId: open.id,
             ingredientIds: combo.ingredientIds,
           });
+          getRestaurantApp()?.nav.snapTo(cookPosition);
+          useGameStore.getState().setFloorNavPosition(cookPosition);
           await dispatch({
             type: 'FLOOR_PLATE',
             ticketId: open.id,

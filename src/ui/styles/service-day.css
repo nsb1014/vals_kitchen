@@ -1891,6 +1891,11 @@
   min-width: 0;
 }
 
+.compose-sheet-header [data-testid='compose-close'] {
+  min-width: 45px;
+  min-height: 45px;
+}
+
 .compose-sheet-header .service-title {
   font-size: clamp(1.35rem, 5vw, 1.8rem);
 }

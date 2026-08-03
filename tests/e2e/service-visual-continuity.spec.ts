@@ -4,6 +4,7 @@ import {
   gotoFreshGame,
   readSaveFromIndexedDb,
   waitForGameReady,
+  waitForServiceStarted,
 } from './helpers.ts';
 
 async function rect(locator: Locator) {
@@ -217,6 +218,7 @@ test.describe('service visual continuity', () => {
     ).toBeNull();
 
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await expect
       .poll(() =>
         page.evaluate(
@@ -263,17 +265,15 @@ test.describe('service visual continuity', () => {
     await expect(modifier).toHaveAttribute('data-panel-entering', '');
     expect(
       await modifier.evaluate((element) =>
-        element
-          .getAnimations()
-          .some(
-            (animation) =>
-              animation instanceof CSSAnimation &&
-              animation.animationName === 'service-panel-enter',
-          ),
+        getComputedStyle(element).animationName
+          .split(',')
+          .map((name) => name.trim())
+          .includes('service-panel-enter'),
       ),
     ).toBe(true);
 
     await page.getByTestId('start-service-btn').click();
+    await waitForServiceStarted(page);
     await page.evaluate(async () => {
       await window.__E2E__!.prepareCookUiFixture();
       window.__E2E__!.openComposeSheet();
@@ -294,13 +294,10 @@ test.describe('service visual continuity', () => {
     );
     expect(
       await rerenderedCompose.evaluate((element) =>
-        element
-          .getAnimations()
-          .some(
-            (animation) =>
-              animation instanceof CSSAnimation &&
-              animation.animationName === 'service-panel-enter',
-          ),
+        getComputedStyle(element).animationName
+          .split(',')
+          .map((name) => name.trim())
+          .includes('service-panel-enter'),
       ),
     ).toBe(false);
   });
@@ -317,13 +314,10 @@ test.describe('service visual continuity', () => {
     await expect(modifier).toBeVisible();
     expect(
       await modifier.evaluate((element) =>
-        element
-          .getAnimations()
-          .some(
-            (animation) =>
-              animation instanceof CSSAnimation &&
-              animation.animationName === 'service-panel-enter',
-          ),
+        getComputedStyle(element).animationName
+          .split(',')
+          .map((name) => name.trim())
+          .includes('service-panel-enter'),
       ),
     ).toBe(false);
   });
@@ -366,6 +360,7 @@ test.describe('service visual continuity', () => {
       }
 
       await page.getByTestId('start-service-btn').click();
+      await waitForServiceStarted(page);
       await expect(page.getByTestId('modifier-sheet')).toBeHidden();
       await expect(page.getByTestId('floor-service-panel')).toBeVisible();
       await expectServiceGeometryStable(page, reserve);
@@ -406,6 +401,7 @@ test.describe('service visual continuity', () => {
       await gotoFreshGame(page);
       await page.getByTestId('open-day-btn').click();
       await page.getByTestId('start-service-btn').click();
+      await waitForServiceStarted(page);
       // Start Service is a durable async boundary. The bridge intentionally
       // bypasses pointer blocking, so wait for the save curtain to finish before
       // advancing the floor simulation behind it.
@@ -485,6 +481,7 @@ test.describe('service visual continuity', () => {
       await gotoFreshGame(page);
       await page.getByTestId('open-day-btn').click();
       await page.getByTestId('start-service-btn').click();
+      await waitForServiceStarted(page);
       await finishFloorWithoutClosing(page);
 
       const before = await captureServiceGeometry(page);
