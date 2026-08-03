@@ -5,6 +5,7 @@ import {
   gotoFreshGame,
   navigateToScreen,
   serveCurrentCustomer,
+  waitForServiceStarted,
 } from "./helpers.ts";
 
 type Viewport = { width: number; height: number; label: string };
@@ -197,17 +198,65 @@ test.describe("mobile state-transition boundaries", () => {
         const diagnostics = await gotoFreshGame(page);
         await page.getByTestId("open-day-btn").click();
         await page.getByTestId("start-service-btn").click();
+        await waitForServiceStarted(page);
 
         const notice = page.getByTestId("notice-banner");
-        await expect(notice).toBeVisible();
-        await expect(notice).toHaveClass(/notice-banner-tutorial/);
-        const noticeText = await notice.innerText();
-        // Spend part of the authored dwell on the Floor so returning can prove
-        // that the timer resumes instead of restarting from a fresh duration.
-        await page.waitForTimeout(900);
-        const beforeSettings = await floorSnapshot(page);
+        const timedCheckpoint = await page.evaluate(async () => {
+          const banner = document.querySelector<HTMLElement>(
+            '[data-testid="notice-banner"]',
+          );
+          if (!banner) throw new Error("expected the floor notice");
+          const bounds = banner.getBoundingClientRect();
+          const style = getComputedStyle(banner);
+          if (
+            bounds.width === 0 ||
+            bounds.height === 0 ||
+            style.display === "none" ||
+            style.visibility === "hidden"
+          ) {
+            throw new Error("expected the floor notice to be visible");
+          }
+          const noticeClass = banner.className;
+          const noticeText = banner.innerText;
 
-        await navigateToScreen(page, "settings");
+          // Keep runner IPC outside the authored dwell: consume 900 ms, capture
+          // the pause checkpoint, and use the real Settings control in one
+          // browser task so CI load cannot exhaust the remaining notice time.
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 900));
+          const settings = document.querySelector<HTMLButtonElement>(
+            '[data-testid="hud-settings"]',
+          );
+          if (!settings) throw new Error("expected the Settings control");
+          const settingsBounds = settings.getBoundingClientRect();
+          const settingsStyle = getComputedStyle(settings);
+          const settingsHit = document.elementFromPoint(
+            settingsBounds.left + settingsBounds.width / 2,
+            settingsBounds.top + settingsBounds.height / 2,
+          );
+          if (
+            settings.disabled ||
+            settingsBounds.width === 0 ||
+            settingsBounds.height === 0 ||
+            settingsStyle.display === "none" ||
+            settingsStyle.visibility === "hidden" ||
+            settingsStyle.pointerEvents === "none" ||
+            !settingsHit ||
+            (settingsHit !== settings && !settings.contains(settingsHit))
+          ) {
+            throw new Error("expected the Settings control to be actionable");
+          }
+          const state = window.__E2E__!.getGameState();
+          const beforeSettings = {
+            day: state.day,
+            cash: state.cash,
+            rating: state.rating,
+            activeDay: state.activeDay,
+          };
+          settings.click();
+          return { beforeSettings, noticeClass, noticeText };
+        });
+
+        expect(timedCheckpoint.noticeClass).toContain("notice-banner-tutorial");
         await expect(page.getByTestId("settings-screen")).toBeVisible();
         await expect(notice).toBeHidden();
         await expect(page.locator("#nav-lock-hint")).toBeHidden();
@@ -218,11 +267,13 @@ test.describe("mobile state-transition boundaries", () => {
         // Staying away longer than the full tutorial duration must not consume
         // a floor-scoped notice or mutate the paused service simulation.
         await page.waitForTimeout(4_200);
-        expect(await floorSnapshot(page)).toEqual(beforeSettings);
+        expect(await floorSnapshot(page)).toEqual(
+          timedCheckpoint.beforeSettings,
+        );
 
         await navigateToScreen(page, "restaurant");
         await expect(notice).toBeVisible();
-        await expect(notice).toContainText(noticeText);
+        await expect(notice).toContainText(timedCheckpoint.noticeText);
         const resumedAt = Date.now();
         await expect(notice).toBeHidden({ timeout: 3_500 });
         expect(Date.now() - resumedAt).toBeLessThan(3_500);
@@ -238,6 +289,7 @@ test.describe("mobile state-transition boundaries", () => {
       const diagnostics = await gotoFreshGame(page);
       await page.getByTestId("open-day-btn").click();
       await page.getByTestId("start-service-btn").click();
+      await waitForServiceStarted(page);
 
       const notice = page.getByTestId("notice-banner");
       await expect(notice).toBeVisible();
@@ -264,6 +316,7 @@ test.describe("mobile state-transition boundaries", () => {
       const diagnostics = await gotoFreshGame(page);
       await page.getByTestId("open-day-btn").click();
       await page.getByTestId("start-service-btn").click();
+      await waitForServiceStarted(page);
 
       const notice = page.getByTestId("notice-banner");
       await expect(notice).toBeVisible();
@@ -302,6 +355,7 @@ test.describe("mobile state-transition boundaries", () => {
       const diagnostics = await gotoFreshGame(page);
       await page.getByTestId("open-day-btn").click();
       await page.getByTestId("start-service-btn").click();
+      await waitForServiceStarted(page);
 
       const settingsButton = page.getByTestId("hud-settings");
       await settingsButton.focus();
@@ -395,6 +449,7 @@ test.describe("mobile state-transition boundaries", () => {
     const diagnostics = await gotoFreshGame(page);
     await page.getByTestId("open-day-btn").click();
     await page.getByTestId("start-service-btn").click();
+    await waitForServiceStarted(page);
     await serveCurrentCustomer(page);
 
     const sheet = page.getByTestId("review-sheet");

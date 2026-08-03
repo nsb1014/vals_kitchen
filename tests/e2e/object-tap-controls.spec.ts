@@ -916,8 +916,16 @@ test.describe('object tap controls', () => {
     const seatGuest = page.getByTestId('floor-seat-next');
     await expect(seatGuest).toBeEnabled();
 
-    await seatGuest.click();
-    await seatGuest.click();
+    const intents = await seatGuest.evaluate((button) => {
+      const bridge = window.__E2E__!;
+      (button as HTMLButtonElement).click();
+      const first = bridge.getPendingSeatingIntentDebug();
+      (button as HTMLButtonElement).click();
+      const second = bridge.getPendingSeatingIntentDebug();
+      return { first, second };
+    });
+    expect(intents.first).not.toBeNull();
+    expect(intents.second).toEqual(intents.first);
     expect(
       await page.evaluate(
         (id) =>
