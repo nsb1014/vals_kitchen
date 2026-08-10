@@ -22,5 +22,6 @@
   "decor_flowers": "../../vendor/generated/chibi-ui/restaurant-props/decor_flowers.png",
   "decor_rug": "../../vendor/generated/chibi-ui/restaurant-props/decor_rug.png",
   "decor_lamp": "../../vendor/generated/chibi-ui/restaurant-props/decor_lamp.png",
-  "decor_sign": "../../vendor/generated/chibi-ui/restaurant-props/decor_sign.png"
+  "decor_sign": "../../vendor/generated/chibi-ui/restaurant-props/decor_sign.png",
+  "carry_plate": "../../vendor/generated/chibi-ui/restaurant-props/carry_plate.png"
 }

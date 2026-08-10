@@ -9,5 +9,9 @@
   "wall_s": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_s.png",
   "wall_w": "../../vendor/generated/chibi-ui/restaurant-tiles/wall_w.png",
   "door": "../../vendor/generated/chibi-ui/restaurant-tiles/door.png",
-  "door_open": "../../vendor/generated/chibi-ui/restaurant-tiles/door_open.png"
+  "door_open": "../../vendor/generated/chibi-ui/restaurant-tiles/door_open.png",
+  "fx_star": "../../vendor/generated/chibi-ui/restaurant-tiles/fx_star.png",
+  "fx_steam": "../../vendor/generated/chibi-ui/restaurant-tiles/fx_steam.png",
+  "fx_coin": "../../vendor/generated/chibi-ui/restaurant-tiles/fx_coin.png",
+  "fx_dust": "../../vendor/generated/chibi-ui/restaurant-tiles/fx_dust.png"
 }

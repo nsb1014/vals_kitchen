@@ -180,6 +180,7 @@ body {
 .celebration-banner,
 .notice-banner {
   grid-area: 1 / 1;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -215,6 +216,7 @@ body {
   background:
     linear-gradient(135deg, rgba(122, 158, 126, 0.25), transparent 55%),
     var(--vk-panel-2);
+  overflow: hidden;
 }
 
 .celebration-banner-prestige {
@@ -222,6 +224,50 @@ body {
   background:
     linear-gradient(135deg, rgba(228, 186, 112, 0.34), transparent 58%),
     var(--vk-panel-2);
+  overflow: hidden;
+}
+
+.celebration-banner-mastery::before,
+.celebration-banner-prestige::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 18%, #c4a35a 0 2px, transparent 3px),
+    radial-gradient(circle at 28% 8%, #7a9e7e 0 2px, transparent 3px),
+    radial-gradient(circle at 46% 22%, #e8d48a 0 2px, transparent 3px),
+    radial-gradient(circle at 62% 10%, #d9897a 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 26%, #c4a35a 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 12%, #7a9e7e 0 2px, transparent 3px),
+    radial-gradient(circle at 18% 40%, #e8d48a 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 54% 44%, #c4a35a 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 72% 38%, #d9897a 0 1.5px, transparent 2.5px);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.9;
+  animation: confetti-fall 900ms ease-out both;
+}
+
+.celebration-banner-icons img,
+.celebration-banner-icons .food-icon,
+.celebration-achievement-badge {
+  animation: icon-pop 220ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.celebration-banner-icons img:nth-child(2),
+.celebration-banner-icons .food-icon:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.celebration-banner-icons img:nth-child(3),
+.celebration-banner-icons .food-icon:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.celebration-banner-icons img:nth-child(4),
+.celebration-banner-icons .food-icon:nth-child(4) {
+  animation-delay: 120ms;
 }
 
 .celebration-banner-achievement {
@@ -302,9 +348,97 @@ body {
   }
 }
 
+@keyframes confetti-fall {
+  from {
+    opacity: 0;
+    transform: translateY(-0.85rem) scale(0.92);
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+    transform: translateY(0.55rem) scale(1);
+  }
+}
+
+@keyframes icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sfx-flash-serve {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(232, 212, 138, 0);
+  }
+  35% {
+    box-shadow: inset 0 0 0 999px rgba(232, 212, 138, 0.16);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(232, 212, 138, 0);
+  }
+}
+
+@keyframes sfx-flash-review {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(196, 163, 90, 0);
+  }
+  40% {
+    box-shadow: inset 0 0 0 999px rgba(196, 163, 90, 0.18);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(196, 163, 90, 0);
+  }
+}
+
+@keyframes sfx-flash-placement {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(122, 158, 126, 0);
+  }
+  40% {
+    box-shadow: inset 0 0 0 999px rgba(122, 158, 126, 0.14);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(122, 158, 126, 0);
+  }
+}
+
+.canvas-mount.vk-sfx-flash-serve {
+  animation: sfx-flash-serve 120ms ease-out;
+}
+
+.canvas-mount.vk-sfx-flash-review {
+  animation: sfx-flash-review 120ms ease-out;
+}
+
+.canvas-mount.vk-sfx-flash-placement {
+  animation: sfx-flash-placement 100ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .celebration-banner,
   .notice-banner {
+    animation: none;
+  }
+
+  .celebration-banner-mastery::before,
+  .celebration-banner-prestige::before,
+  .celebration-banner-icons img,
+  .celebration-banner-icons .food-icon,
+  .celebration-achievement-badge,
+  .canvas-mount.vk-sfx-flash-serve,
+  .canvas-mount.vk-sfx-flash-review,
+  .canvas-mount.vk-sfx-flash-placement {
     animation: none;
   }
 }
@@ -313,7 +447,8 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  image-rendering: auto;
+  image-rendering: pixelated;
+  image-rendering: -webkit-optimize-contrast;
   touch-action: none;
 }
 

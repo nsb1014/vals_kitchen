@@ -142,3 +142,29 @@ export function computeCameraCenter(
     stageOffsetY: Math.max(0, Math.floor((viewH - scaledH) / 2)),
   };
 }
+
+/** Clamp a temporary camera punch multiplier (e.g. serve micro-zoom). */
+export function clampCameraPunchScale(
+  baseScale: number,
+  punchMultiplier: number,
+  minScale = 0.5,
+  maxScale = 8,
+): number {
+  if (!Number.isFinite(baseScale) || baseScale <= 0) return 1;
+  if (!Number.isFinite(punchMultiplier) || punchMultiplier <= 0) {
+    return Math.min(maxScale, Math.max(minScale, baseScale));
+  }
+  return Math.min(maxScale, Math.max(minScale, baseScale * punchMultiplier));
+}
+
+/** Ease punch multiplier: 1 → peak → 1 over duration (cosine lobe). */
+export function cameraPunchMultiplier(
+  elapsedMs: number,
+  durationMs: number,
+  peak = 1.04,
+): number {
+  if (durationMs <= 0 || elapsedMs < 0 || elapsedMs >= durationMs) return 1;
+  const t = elapsedMs / durationMs;
+  const lobe = Math.sin(Math.PI * t);
+  return 1 + (peak - 1) * lobe;
+}

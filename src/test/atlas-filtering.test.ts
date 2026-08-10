@@ -7,7 +7,8 @@ describe('restaurant atlas filtering', () => {
     expect(restaurantAtlasScaleMode('furniture')).toBe('linear');
   });
 
-  it('keeps edge-to-edge room tiles seam-safe', () => {
+  it('keeps edge-to-edge room tiles and food icons seam-safe / crisp', () => {
     expect(restaurantAtlasScaleMode('tiles')).toBe('nearest');
+    expect(restaurantAtlasScaleMode('food')).toBe('nearest');
   });
 });

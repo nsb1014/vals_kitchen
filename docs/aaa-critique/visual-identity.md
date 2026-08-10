@@ -198,3 +198,20 @@ All paths under `/tmp/aaa-shots/visual/`:
 ## Summary verdict
 
 Val's Kitchen has **credible cozy pixel identity** and **clear floor readability**, with **non-trivial animation infrastructure** (walk cycles, doorway mask, room fade, depth sort) that benchmarks would still animate harder in play. The slice's largest deficit is **feedback density**: particles, coupled audio-visual punches, and celebratory motion trail Overcooked, Stardew's atmosphere, and brawler-style UI juice. Highest ROI inside the fence: **EffectsLayer + audio-visual bridge** (M), **carry plate atlas swap** (S), **global.css celebration/canvas pixel polish** (S).
+
+## Implemented (round 1)
+
+| Opp # | Status | Notes |
+|------:|--------|-------|
+| 1 EffectsLayer bursts | Done | `EffectsLayer` + `fx_star/steam/coin/dust` in tiles atlas; wired on serve/review/placement juice + doorway dust + eating steam |
+| 2 Audio–visual bridge | Done | `visual-juice.ts` bus; `audio-bridge` emits on serve/review/placement and wires `playDeliverSting` (SFX + juice, clears flag); canvas mount CSS flash + camera punch |
+| 3 Atlas carry plate | Done (additive) | Generated `carry_plate` furniture frame + `CarryPlateLayer` covering Graphics fallback when `plateOverlayVisible`; food atlas now loaded via `getFoodTexture`. Did not edit `world/ActorLayer` / `carry-plate.ts` (fence) |
+| 4 Ambient atmosphere | Done | `AtmosphereLayer` warm vignette + kitchen wash with slow alpha breathe |
+| 5 Celebration confetti / icon-pop | Done | `global.css` confetti-fall + icon-pop; respects `prefers-reduced-motion` |
+| 6 Walk squash | Skipped | Requires `ActorLayer` / `NavController` in `world/` (owned by concurrent agent) |
+| 7 Doorway puff + door bounce | Done | Dust via EffectsLayer on door open; `GridLayer` door height squash bounce |
+| 8 Pixelated canvas | Done | `.restaurant-canvas { image-rendering: pixelated }` |
+| 9 Table eating micro-anim | Partial | Steam puffs over eating tables via EffectsLayer + `eatingTablePlacementIds` (no FurnitureLayer overlay swap — kept additive) |
+| 10 Camera serve micro-zoom | Done | `cameraPunchMultiplier` / `clampCameraPunchScale` in `coordinates.ts`; punch on serve juice |
+
+**Assets:** regenerated chibi FX + carry plate; `npm run build:assets` refreshes atlases + CREDITS (project-generated CC0).

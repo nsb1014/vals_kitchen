@@ -33,3 +33,17 @@ export function tableServiceVisualStates(
     ]),
   );
 }
+
+/** Placement ids of tables where at least one guest is actively eating. */
+export function eatingTablePlacementIds(
+  floor: Pick<FloorDay, 'pool'> | null | undefined,
+): string[] {
+  if (!floor) return [];
+  const ids = new Set<string>();
+  for (const guest of floor.pool) {
+    if (guest.stage === 'eating' && guest.seat) {
+      ids.add(guest.seat.tablePlacementId);
+    }
+  }
+  return [...ids];
+}

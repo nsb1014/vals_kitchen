@@ -28,6 +28,9 @@ import { FurnitureLayer } from './layers/FurnitureLayer.ts';
 import { GridLayer } from './layers/GridLayer.ts';
 import { InteractHintLayer } from './layers/InteractHintLayer.ts';
 import { PreviewLayer } from './layers/PreviewLayer.ts';
+import { EffectsLayer } from './layers/EffectsLayer.ts';
+import { AtmosphereLayer } from './layers/AtmosphereLayer.ts';
+import { CarryPlateLayer } from './layers/CarryPlateLayer.ts';
 import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
 import { DragPlacement } from './systems/DragPlacement.ts';
 import { ActorLayer } from './world/ActorLayer.ts';
@@ -49,6 +52,7 @@ import {
   type FloorFeelBeat,
 } from '../store/service-events.ts';
 import { playSfx } from '../assets/audio.ts';
+import { subscribeVisualJuice } from '../assets/visual-juice.ts';
 import {
   connectingDoorInterior,
   doorForGrid,
@@ -66,6 +70,8 @@ import {
   selectFloorRuntimeRunning,
 } from '../store/selectors/floor-runtime.ts';
 import {
+  cameraPunchMultiplier,
+  clampCameraPunchScale,
   screenToGrid,
   screenToWorld,
   TILE_PX,
@@ -77,7 +83,10 @@ import {
   isServiceGuestHitEligible,
   resolveTopmostGuestHit,
 } from './world/guest-hit.ts';
-import { tableServiceVisualStates } from './table-service-visual.ts';
+import {
+  eatingTablePlacementIds,
+  tableServiceVisualStates,
+} from './table-service-visual.ts';
 function integerResolution(): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   return Math.max(1, Math.round(dpr));
@@ -92,6 +101,8 @@ const STOP_ANTICIPATION_MS = 100;
 /** Service-cell approach flash duration after a remote guest tap. */
 const APPROACH_PREVIEW_MS = 420;
 const GUEST_DOOR_EXIT_LINGER_MS = 120;
+const SERVE_CAMERA_PUNCH_MS = 150;
+const EATING_STEAM_INTERVAL_MS = 900;
 
 interface DoorwayCropDebug {
   progress: number;
@@ -125,21 +136,28 @@ export class RestaurantApp {
   readonly customerLayer: CustomerLayer;
   readonly previewLayer: PreviewLayer;
   readonly interactHintLayer: InteractHintLayer;
+  readonly effectsLayer: EffectsLayer;
+  readonly atmosphereLayer: AtmosphereLayer;
+  readonly carryPlateLayer: CarryPlateLayer;
   readonly dragPlacement: DragPlacement;
   readonly nav: NavController;
   readonly guestMotion: GuestMotion;
 
   private unsubscribe: (() => void) | null = null;
+  private unsubscribeJuice: (() => void) | null = null;
   private mounted = false;
   private lastFloorSeed: number | null = null;
   private lastRoom: FloorRoomId | null = null;
   private eatingTickAccumulatorMs = 0;
+  private eatingSteamAccumulatorMs = 0;
   private floorRuntimeWasRunning = false;
   private guestDoorExitLingerUntilMs = 0;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
   private roomTransitionInFlight = false;
   private roomTransitionAnimation: Animation | null = null;
+  private cameraPunchElapsedMs = -1;
+  private lastGuestDoorOpen: boolean | null = null;
   private pendingSeatingIntent: {
     revision: number;
     daySeed: number;
@@ -165,20 +183,26 @@ export class RestaurantApp {
     this.depthLayer.sortableChildren = true;
     this.camera = new Camera();
     this.gridLayer = new GridLayer();
+    this.atmosphereLayer = new AtmosphereLayer();
     this.furnitureLayer = new FurnitureLayer(this.depthLayer);
     this.actorLayer = new ActorLayer(this.depthLayer);
+    this.carryPlateLayer = new CarryPlateLayer();
+    this.depthLayer.addChild(this.carryPlateLayer.view);
     this.customerLayer = new CustomerLayer();
     this.previewLayer = new PreviewLayer();
     this.interactHintLayer = new InteractHintLayer();
+    this.effectsLayer = new EffectsLayer();
     this.nav = new NavController({ x: 3, y: 5 });
     this.guestMotion = new GuestMotion();
 
     this.world.addChild(this.gridLayer.view);
+    this.world.addChild(this.atmosphereLayer.view);
     this.world.addChild(this.actorLayer.view);
     this.world.addChild(this.interactHintLayer.view);
     this.world.addChild(this.depthLayer);
     this.world.addChild(this.customerLayer.view);
     this.world.addChild(this.previewLayer.view);
+    this.world.addChild(this.effectsLayer.view);
     this.app.stage.addChild(this.world);
 
     this.dragPlacement = new DragPlacement(
@@ -219,6 +243,9 @@ export class RestaurantApp {
     window.addEventListener('keydown', this.onKeyboardMove);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.app.ticker.add(this.onTick);
+    this.unsubscribeJuice = subscribeVisualJuice((kind) => {
+      this.onVisualJuice(kind);
+    });
     this.unsubscribe = useGameStore.subscribe((state, prev) => {
       if (
         state.placements !== prev.placements ||
@@ -264,8 +291,51 @@ export class RestaurantApp {
 
   private applyCamera(): void {
     const transform = worldTransformFromCamera(this.camera.state);
+    const punch =
+      this.cameraPunchElapsedMs >= 0
+        ? cameraPunchMultiplier(
+            this.cameraPunchElapsedMs,
+            SERVE_CAMERA_PUNCH_MS,
+            1.04,
+          )
+        : 1;
+    const scale = clampCameraPunchScale(transform.scale, punch);
     this.world.position.set(transform.x, transform.y);
-    this.world.scale.set(transform.scale);
+    this.world.scale.set(scale);
+  }
+
+  private onVisualJuice(kind: 'serve' | 'review' | 'placement'): void {
+    if (!this.mounted) return;
+    const feet = this.actorLayer.getPlayerFeetWorldPosition();
+    if (kind === 'serve') {
+      this.effectsLayer.burstServe(feet.x, feet.y);
+      this.cameraPunchElapsedMs = 0;
+      this.flashCanvasMount('serve');
+    } else if (kind === 'review') {
+      this.effectsLayer.burstReview(feet.x, feet.y);
+      this.flashCanvasMount('review');
+    } else {
+      this.effectsLayer.burstPlacement(feet.x, feet.y);
+      this.flashCanvasMount('placement');
+    }
+  }
+
+  private flashCanvasMount(kind: 'serve' | 'review' | 'placement'): void {
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    this.mount.classList.remove(
+      'vk-sfx-flash-serve',
+      'vk-sfx-flash-review',
+      'vk-sfx-flash-placement',
+    );
+    // Force restart if the same class is re-applied in the same frame.
+    void this.mount.offsetWidth;
+    this.mount.classList.add(`vk-sfx-flash-${kind}`);
+    window.setTimeout(() => {
+      this.mount.classList.remove(`vk-sfx-flash-${kind}`);
+    }, 140);
   }
 
   private roomPlacements(state: GameStore): Placement[] {
@@ -911,6 +981,9 @@ export class RestaurantApp {
       // The resume-safe frame advances no gameplay, but it must still repaint
       // wall art so an elapsed post-exit linger cannot leave the door stale.
       this.repaintGuestDoor(state, floor);
+      this.effectsLayer.update(0);
+      this.atmosphereLayer.update(0);
+      this.syncCarryPlateOverlay(floor);
       return;
     }
 
@@ -1072,7 +1145,77 @@ export class RestaurantApp {
               stationNeedsAttention,
             );
     this.interactHintLayer.sync(interactionHints);
+
+    this.syncCarryPlateOverlay(liveFloor);
+    this.effectsLayer.update(deltaMs);
+    this.atmosphereLayer.update(deltaMs);
+    this.gridLayer.update(deltaMs);
+    if (this.cameraPunchElapsedMs >= 0) {
+      this.cameraPunchElapsedMs += deltaMs;
+      if (this.cameraPunchElapsedMs >= SERVE_CAMERA_PUNCH_MS) {
+        this.cameraPunchElapsedMs = -1;
+      }
+      this.applyCamera();
+    }
+
+    if (guestDoorOpen !== this.lastGuestDoorOpen) {
+      if (this.lastGuestDoorOpen !== null && guestDoorOpen) {
+        const doorCell = doorForGrid(state.gridSize.w, state.gridSize.h, {
+          room: 'main',
+        });
+        this.effectsLayer.burstDoorDust(doorCell.x, doorCell.y);
+      }
+      this.lastGuestDoorOpen = guestDoorOpen;
+    }
+
+    this.tickEatingSteam(liveFloor, roomPlacements, deltaMs);
   };
+
+  private syncCarryPlateOverlay(
+    floor: FloorDay | null | undefined,
+  ): void {
+    const debug = this.actorLayer.getPlayerVisualDebug();
+    const carried =
+      floor?.tickets.find(
+        (ticket) =>
+          ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+      ) ?? null;
+    this.carryPlateLayer.sync({
+      show: debug.plateOverlayVisible,
+      feet: debug.feet,
+      facing: this.nav.facing,
+      ingredientId: carried?.ingredientIds[0] ?? null,
+    });
+  }
+
+  private tickEatingSteam(
+    floor: FloorDay,
+    placements: Placement[],
+    deltaMs: number,
+  ): void {
+    const eatingTables = eatingTablePlacementIds(floor);
+    if (eatingTables.length === 0) {
+      this.eatingSteamAccumulatorMs = 0;
+      return;
+    }
+    this.eatingSteamAccumulatorMs += deltaMs;
+    if (this.eatingSteamAccumulatorMs < EATING_STEAM_INTERVAL_MS) return;
+    this.eatingSteamAccumulatorMs = 0;
+    for (const placementId of eatingTables) {
+      const root = this.furnitureLayer.getSpriteRoot(placementId);
+      if (root) {
+        this.effectsLayer.burstSteam(root.x + TILE_PX / 2, root.y);
+        continue;
+      }
+      const placement = placements.find((p) => p.id === placementId);
+      if (placement) {
+        this.effectsLayer.burstSteam(
+          placement.x * TILE_PX + TILE_PX / 2,
+          placement.y * TILE_PX,
+        );
+      }
+    }
+  }
 
   private enterConnectingRoomNow(): boolean {
     const entered = useGameStore.getState().enterConnectingDoor();
@@ -1607,6 +1750,10 @@ export class RestaurantApp {
       room: state.activeFloorRoom,
       showGrid: state.editLayoutMode,
     });
+    this.atmosphereLayer.sync(state.gridSize.w, state.gridSize.h, {
+      room: state.activeFloorRoom,
+      kitchenAnnexOwned: state.kitchenAnnexOwned,
+    });
     const tableStates = tableServiceVisualStates(state.activeDay?.floor);
     this.furnitureLayer.sync(
       roomPlacements,
@@ -1617,6 +1764,7 @@ export class RestaurantApp {
         : [],
       state.activeFloorRoom === 'main' ? tableStates : new Map(),
     );
+    this.syncCarryPlateOverlay(floor);
 
     if (floor || state.activeFloorRoom === 'back_kitchen') {
       this.customerLayer.sync(-1, roomPlacements, false);
@@ -1737,6 +1885,14 @@ export class RestaurantApp {
     this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
     this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();
+    this.unsubscribeJuice?.();
+    this.unsubscribeJuice = null;
+    this.effectsLayer.clear();
+    this.mount.classList.remove(
+      'vk-sfx-flash-serve',
+      'vk-sfx-flash-review',
+      'vk-sfx-flash-placement',
+    );
     this.dragPlacement.detach();
     this.app.destroy(true, { children: true, texture: true });
     this.mounted = false;

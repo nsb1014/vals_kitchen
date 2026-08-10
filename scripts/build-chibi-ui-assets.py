@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import deque
 from pathlib import Path
+import os
 
 from PIL import Image
 
@@ -862,6 +863,82 @@ def build_surfaces() -> None:
         save(sprite, TILE_OUT / f"wall_{side}.png")
 
 
+def build_fx_sprites() -> None:
+    """Project-CC0 16×16 juice frames + carry plate for canvas EffectsLayer."""
+    TILE_OUT.mkdir(parents=True, exist_ok=True)
+    PROP_OUT.mkdir(parents=True, exist_ok=True)
+
+    def blank(size: int = 16) -> Image.Image:
+        return Image.new("RGBA", (size, size), (0, 0, 0, 0))
+
+    # Warm gold star burst
+    star = blank()
+    sp = star.load()
+    assert sp is not None
+    gold = (228, 186, 112, 255)
+    core = (255, 244, 210, 255)
+    for x, y in ((7, 1), (8, 1), (7, 2), (8, 2), (1, 7), (1, 8), (2, 7), (2, 8),
+                 (13, 7), (14, 7), (13, 8), (14, 8), (7, 13), (8, 13), (7, 14), (8, 14),
+                 (4, 4), (11, 4), (4, 11), (11, 11), (7, 5), (8, 5), (5, 7), (5, 8),
+                 (10, 7), (10, 8), (7, 10), (8, 10), (6, 6), (9, 6), (6, 9), (9, 9)):
+        sp[x, y] = gold
+    for x in range(6, 10):
+        for y in range(6, 10):
+            sp[x, y] = core
+    save(star, TILE_OUT / "fx_star.png")
+
+    # Soft cream steam puff
+    steam = blank()
+    st = steam.load()
+    assert st is not None
+    for cx, cy, r, a in ((5, 11, 3, 140), (9, 8, 3, 160), (7, 4, 2, 120)):
+        for y in range(16):
+            for x in range(16):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    st[x, y] = (246, 239, 228, a)
+    save(steam, TILE_OUT / "fx_steam.png")
+
+    # Tip coin spark
+    coin = blank()
+    cp = coin.load()
+    assert cp is not None
+    for y in range(4, 12):
+        for x in range(4, 12):
+            if (x - 7.5) ** 2 + (y - 7.5) ** 2 <= 16:
+                cp[x, y] = (196, 163, 90, 255)
+    for y in range(6, 10):
+        for x in range(6, 10):
+            cp[x, y] = (255, 230, 160, 255)
+    save(coin, TILE_OUT / "fx_coin.png")
+
+    # Doorway dust mote cluster
+    dust = blank()
+    dp = dust.load()
+    assert dp is not None
+    for x, y, a in ((3, 10, 180), (6, 8, 140), (9, 11, 160), (12, 7, 120), (8, 13, 100)):
+        dp[x, y] = (180, 150, 110, a)
+        if x + 1 < 16:
+            dp[x + 1, y] = (160, 130, 95, max(60, a - 40))
+    save(dust, TILE_OUT / "fx_dust.png")
+
+    # Small carried plate (covers Graphics ellipse fallback)
+    plate = Image.new("RGBA", (28, 16), (0, 0, 0, 0))
+    pp = plate.load()
+    assert pp is not None
+    for y in range(16):
+        for x in range(28):
+            nx = (x - 13.5) / 12.5
+            ny = (y - 8.5) / 5.5
+            if nx * nx + ny * ny <= 1:
+                pp[x, y] = (245, 230, 200, 255)
+            if nx * nx + ny * ny <= 0.55:
+                pp[x, y] = (255, 248, 230, 255)
+    # Rim shadow
+    for x in range(4, 24):
+        pp[x, 12] = (210, 185, 150, 220)
+    save(plate, PROP_OUT / "carry_plate.png")
+
+
 def build_props() -> None:
     sheet = Image.open(SOURCE / "furniture-sheet-keyed.png").convert("RGBA")
     seating_sheet = Image.open(
@@ -979,6 +1056,13 @@ def build_props() -> None:
 
 
 def main() -> None:
+    fx_only = os.environ.get("VK_FX_ONLY") == "1"
+    if fx_only:
+        build_fx_sprites()
+        print("Built FX-only chibi assets:")
+        print(f"  fx frames: {len(list(TILE_OUT.glob('fx_*.png')))}")
+        print(f"  carry plate: {(PROP_OUT / 'carry_plate.png').is_file()}")
+        return
     for required in (
         "chef-sheet.png",
         "surfaces-sheet-keyed.png",
@@ -1002,12 +1086,14 @@ def main() -> None:
     validate_animation_frames()
     build_surfaces()
     build_props()
+    build_fx_sprites()
     print("Built chibi UI assets:")
     print(f"  player frames: {len(list(PLAYER_OUT.glob('*.png')))}")
     print(f"  coordinated guest frames: {len(list(GUEST_OUT.glob('guest_*.png')))}")
     print(f"  guest portraits: {len(list(PORTRAIT_OUT.glob('*.png')))}")
     print(f"  surfaces: {len(list(TILE_OUT.glob('*.png')))}")
     print(f"  furniture: {len(list(PROP_OUT.glob('*.png')))}")
+    print(f"  fx frames: {len(list(TILE_OUT.glob('fx_*.png')))}")
 
 
 if __name__ == "__main__":
