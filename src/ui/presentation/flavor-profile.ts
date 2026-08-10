@@ -124,6 +124,19 @@ export function isVisibleFlavorAxisValue(value: number): boolean {
   return Math.abs(value) >= 0.05;
 }
 
+const DEFAULT_FLAVOR_GROUPS: Array<{ id: FlavorAxisGroup; title: string }> = [
+  { id: 'taste', title: 'Basic Tastes' },
+  { id: 'aroma', title: 'Aroma' },
+  { id: 'mouthfeel', title: 'Mouthfeel' },
+];
+
+/** Ideal tickets: aroma first so mobile fold shows the witness cue without scroll. */
+export const IDEAL_FLAVOR_GROUP_ORDER: FlavorAxisGroup[] = [
+  'aroma',
+  'taste',
+  'mouthfeel',
+];
+
 export function renderFlavorBarsHtml(
   model: Pick<FlavorBarsViewModel, 'axes' | 'temperature'> & {
     title?: string;
@@ -133,14 +146,18 @@ export function renderFlavorBarsHtml(
     showValues: boolean;
     showTemp?: boolean;
     showZeroValues?: boolean;
+    /** Optional group order (Ideal panel puts aroma above the fold). */
+    groupOrder?: readonly FlavorAxisGroup[];
   } = { showValues: true },
 ): string {
   const showTemp = options.showTemp !== false;
-  const groups: Array<{ id: FlavorAxisGroup; title: string }> = [
-    { id: 'taste', title: 'Basic Tastes' },
-    { id: 'aroma', title: 'Aroma' },
-    { id: 'mouthfeel', title: 'Mouthfeel' },
-  ];
+  const order = options.groupOrder;
+  const groups = order
+    ? order.flatMap((id) => {
+        const match = DEFAULT_FLAVOR_GROUPS.find((group) => group.id === id);
+        return match ? [match] : [];
+      })
+    : DEFAULT_FLAVOR_GROUPS;
 
   const groupHtml = groups
     .map((group) => {

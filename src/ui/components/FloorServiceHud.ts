@@ -22,6 +22,7 @@ import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-pan
 import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
 import {
   buildFlavorBarsViewModel,
+  IDEAL_FLAVOR_GROUP_ORDER,
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
@@ -97,6 +98,14 @@ export function mountFloorServiceHud(
   let knownCarriedTicketId: string | null =
     useGameStore.getState().activeDay?.floor?.carriedTicketId ?? null;
   let unbindFloorActionsKeyboard: (() => void) | null = null;
+  /** Presentation-only: which primary CTA was just invoked while walk/settle runs. */
+  let pendingFloorAction:
+    | 'set-table'
+    | 'seat'
+    | 'take-orders'
+    | 'clear'
+    | null = null;
+  let seatActionSawSeating = false;
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -259,6 +268,50 @@ export function mountFloorServiceHud(
     const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
     const emphasizeClearTable = emphasize('clear', canClearTable);
     const emphasizeCloseDay = emphasize('close', canCloseDay);
+    const seatingInFlight = floor.pool.some(
+      (guest) => guest.stage === 'seating',
+    );
+    if (pendingFloorAction === 'set-table' && !canSetTable) {
+      pendingFloorAction = null;
+    } else if (pendingFloorAction === 'take-orders') {
+      // Instant enqueue — shimmer for one paint cycle after click (cleared below).
+    } else if (pendingFloorAction === 'clear' && !canClearTable) {
+      pendingFloorAction = null;
+    } else if (pendingFloorAction === 'seat') {
+      if (seatingInFlight) seatActionSawSeating = true;
+      else if (seatActionSawSeating) {
+        pendingFloorAction = null;
+        seatActionSawSeating = false;
+      }
+    }
+    const inFlightSetTable = pendingFloorAction === 'set-table';
+    const inFlightSeat =
+      seatingInFlight || pendingFloorAction === 'seat';
+    const inFlightTakeOrders = pendingFloorAction === 'take-orders';
+    const inFlightClear = pendingFloorAction === 'clear';
+    const actionClass = (
+      primary: boolean,
+      inFlight: boolean,
+    ): string => {
+      const classes = ['service-btn'];
+      if (primary) classes.push('primary');
+      if (inFlight) classes.push('in-flight');
+      return classes.join(' ');
+    };
+    // Instant floor actions release shimmer after this paint.
+    if (
+      pendingFloorAction === 'take-orders' ||
+      pendingFloorAction === 'set-table' ||
+      pendingFloorAction === 'clear'
+    ) {
+      const releasing = pendingFloorAction;
+      queueMicrotask(() => {
+        if (pendingFloorAction === releasing) {
+          pendingFloorAction = null;
+          render();
+        }
+      });
+    }
     const tutorialPresentation = buildFloorTutorialNotice(
       floor,
       step,
@@ -342,11 +395,11 @@ export function mountFloorServiceHud(
       <div class="floor-service-panel" data-testid="floor-service-panel">
         <div class="floor-actions-scroll">
           <div class="floor-actions">
-            <button type="button" class="service-btn${emphasizeSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canRequestSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
-            <button type="button" class="service-btn${emphasizeTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
-            <button type="button" class="service-btn${emphasizeClearTable ? ' primary' : ''}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
-            <button type="button" class="service-btn${emphasizeCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
+            <button type="button" class="${actionClass(emphasizeSetTable, inFlightSetTable)}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'} ${inFlightSetTable ? 'aria-busy="true"' : ''}><span class="floor-action-label">Set table</span></button>
+            <button type="button" class="${actionClass(emphasizeSeatGuest, inFlightSeat)}" id="floor-seat-next" data-testid="floor-seat-next" ${canRequestSeatGuest ? '' : 'disabled'} ${inFlightSeat ? 'aria-busy="true"' : ''}><span class="floor-action-label">Seat guest</span></button>
+            <button type="button" class="${actionClass(emphasizeTakeOrders, inFlightTakeOrders)}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''} ${inFlightTakeOrders ? 'aria-busy="true"' : ''}><span class="floor-action-label">Take orders</span></button>
+            <button type="button" class="${actionClass(emphasizeClearTable, inFlightClear)}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'} ${inFlightClear ? 'aria-busy="true"' : ''}><span class="floor-action-label">Clear table</span></button>
+            <button type="button" class="${actionClass(emphasizeCloseDay, false)}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
           </div>
         </div>
         ${ticketPanel.capacityMessage ? `<p class="sr-only" id="${capacityHelpId}">${ticketPanel.capacityMessage}</p>` : ''}
@@ -403,11 +456,16 @@ export function mountFloorServiceHud(
           title: idealTicket.label.guestLabel,
           subtitle: 'Ideal flavor profile',
         }),
-        { showValues: true, showTemp: false, showZeroValues: true },
+        {
+          showValues: true,
+          showTemp: false,
+          showZeroValues: true,
+          groupOrder: IDEAL_FLAVOR_GROUP_ORDER,
+        },
       );
       idealBody = `<div class="floor-tickets-ideal-wrap" data-testid="floor-tickets-ideal-wrap">
         <div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>
-        <p class="floor-tickets-ideal-scroll-hint" data-testid="floor-tickets-ideal-scroll-hint" hidden>Scroll for aroma</p>
+        <p class="floor-tickets-ideal-scroll-hint" data-testid="floor-tickets-ideal-scroll-hint" hidden>Scroll for mouthfeel</p>
       </div>`;
     }
 
@@ -473,6 +531,7 @@ export function mountFloorServiceHud(
     chromeMount
       .querySelector('#floor-set-table')
       ?.addEventListener('click', () => {
+        pendingFloorAction = 'set-table';
         const placementIds = selectAdjacentUnsetTablePlacementIds(
           useGameStore.getState(),
         );
@@ -482,30 +541,40 @@ export function mountFloorServiceHud(
             placementId,
           });
         }
+        render();
       });
 
     chromeMount
       .querySelector('#floor-seat-next')
       ?.addEventListener('click', () => {
+        pendingFloorAction = 'seat';
+        seatActionSawSeating = false;
         getRestaurantApp()?.requestSeatNextGuest();
+        render();
       });
 
     chromeMount
       .querySelector('#floor-take-orders')
       ?.addEventListener('click', () => {
+        pendingFloorAction = 'take-orders';
         const customerIds = selectAdjacentSeatedCustomerIds(
           useGameStore.getState(),
         );
-        if (customerIds.length === 0) return;
+        if (customerIds.length === 0) {
+          pendingFloorAction = null;
+          return;
+        }
         void useGameStore.getState().dispatch({
           type: 'FLOOR_TAKE_ORDERS',
           customerIds: [customerIds[0]!],
         });
+        render();
       });
 
     chromeMount
       .querySelector('#floor-clear-table')
       ?.addEventListener('click', () => {
+        pendingFloorAction = 'clear';
         const placementIds = selectAdjacentDirtyTablePlacementIds(
           useGameStore.getState(),
         );
@@ -515,6 +584,7 @@ export function mountFloorServiceHud(
             placementId,
           });
         }
+        render();
       });
 
     chromeMount

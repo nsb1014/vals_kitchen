@@ -35,6 +35,13 @@ import {
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
 import {
+  buildOrderBubbleSpeech,
+  isOrderBubbleOwnedByFloor,
+  orderBubbleSeed,
+  renderOrderBubbleHtml,
+} from '../presentation/order-bubble.ts';
+import { FLAVOR_INSPECTOR_LONG_PRESS_HINT } from './FlavorInspectorPanel.ts';
+import {
   buildReviewDisplay,
   formatReviewModifierLine,
   renderStarGlyphs,
@@ -70,7 +77,6 @@ import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
-import { isOrderBubbleOwnedByFloor } from '../presentation/order-bubble.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -562,9 +568,27 @@ export function mountServiceDayUi(
 
     bubbleEl.classList.toggle('order-bubble', showOrderBubble);
     bubbleEl.classList.toggle('order-bubble-pulse', showOrderBubble);
-    bubbleEl.textContent = formatCustomerRequestText(
-      orderGuest?.customer.preference ?? customer!.preference,
-    );
+    const preference =
+      orderGuest?.customer.preference ?? customer!.preference;
+    const ticketId =
+      showOrderBubble && orderBubbleGuestId
+        ? floor?.tickets.find(
+            (ticket) =>
+              ticket.customerId === orderBubbleGuestId &&
+              ticket.status === 'open',
+          )?.id
+        : null;
+    const seedGuestId =
+      orderGuest?.customer.id ?? customer!.id;
+    const speech = buildOrderBubbleSpeech({
+      preference,
+      seed: orderBubbleSeed({
+        guestId: seedGuestId,
+        ticketId,
+      }),
+      archetypeId: orderGuest?.customer.archetypeId ?? customer?.archetypeId,
+    });
+    bubbleEl.innerHTML = renderOrderBubbleHtml(speech);
     bubbleEl.hidden = false;
     positionChatBubble();
   };
@@ -928,7 +952,7 @@ export function mountServiceDayUi(
             const name = escapeHtml(item.name);
             return `<div class="compose-ingredient-card">
               <button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 32)}<span>${name}</span></button>
-              <button type="button" class="compose-ingredient-inspect" id="ingredient-inspect-${item.id}" data-compose-inspect-id="${item.id}" data-testid="ingredient-inspect" aria-label="Inspect ${name}" title="Inspect ${name}"><span aria-hidden="true">i</span></button>
+              <button type="button" class="compose-ingredient-inspect" id="ingredient-inspect-${item.id}" data-compose-inspect-id="${item.id}" data-testid="ingredient-inspect" aria-label="Inspect ${name}. Long-press the ingredient chip to inspect." title="Inspect · or long-press the chip"><span aria-hidden="true">i</span></button>
             </div>`;
           })
           .join('');
@@ -1111,6 +1135,7 @@ export function mountServiceDayUi(
                 ${axisChips}
               </div>
               <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount, requestedBands))}</p>
+              <p class="compose-inspect-hint" data-testid="compose-inspect-hint">${escapeHtml(FLAVOR_INSPECTOR_LONG_PRESS_HINT)}</p>
               ${lowMatchHint ? `<p class="compose-filter-hint" data-testid="compose-filter-hint">${escapeHtml(lowMatchHint)}</p>` : ''}
             </section>
             <div class="compose-workspace">

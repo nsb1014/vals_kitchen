@@ -204,6 +204,82 @@
     order-bubble-pulse 1.6s ease-in-out 260ms 2;
 }
 
+.order-bubble-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.order-bubble-cues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.order-bubble-ticket-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 22px;
+  border: 2px solid color-mix(in srgb, var(--vk-accent) 70%, #5a4030);
+  border-radius: 3px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--vk-accent) 35%, #fff) 0 28%,
+      #fff 28%
+    );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.order-bubble-ticket-icon::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 10px;
+  height: 2px;
+  background: color-mix(in srgb, var(--vk-accent) 45%, #cbb);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--vk-accent) 30%, #cbb);
+}
+
+.order-bubble-cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 22px;
+  padding: 0 0.3rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 40%, #caa);
+  background: color-mix(in srgb, var(--vk-accent) 14%, #fff);
+  color: #3a2a20;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.order-bubble-cue-high {
+  background: color-mix(in srgb, var(--vk-accent) 28%, #fff);
+}
+
+.order-bubble-cue-low,
+.order-bubble-cue-avoid {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.order-bubble-gibberish {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  font-style: italic;
+  color: #2c2118;
+}
+
 @keyframes order-bubble-pop {
   from {
     opacity: 0;
@@ -1125,6 +1201,45 @@
   margin: 0;
   padding-block: 0.35rem;
   padding-inline: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.floor-actions .service-btn.in-flight {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vk-accent) 55%, transparent);
+}
+
+.floor-actions .service-btn.in-flight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 35%,
+    color-mix(in srgb, #fff 35%, transparent) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: floor-action-shimmer 1.1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes floor-action-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-actions .service-btn.in-flight::after {
+    animation: none;
+    background: color-mix(in srgb, var(--vk-accent) 18%, transparent);
+  }
 }
 
 .floor-actions .floor-action-label {
@@ -1432,8 +1547,44 @@
   color: var(--vk-accent);
 }
 
+.compose-ticket-rail-item.status-plated:not(.carrying) {
+  border-color: color-mix(in srgb, var(--vk-accent-2) 55%, var(--vk-border));
+}
+
+.compose-ticket-rail--multi .compose-ticket-rail-item {
+  max-width: 9.5rem;
+}
+
+.compose-ticket-rail--multi[data-rail-count='3'] .compose-ticket-rail-item,
+.compose-ticket-rail--multi[data-rail-count='4'] .compose-ticket-rail-item {
+  max-width: 8.25rem;
+  padding-inline: 0.4rem;
+}
+
+.compose-ticket-rail--multi[data-rail-count='4'] .compose-ticket-rail-guest {
+  max-width: 3.5rem;
+}
+
 .compose-ticket-rail-item:not(button) {
   cursor: default;
+}
+
+.compose-inspect-hint {
+  margin: 0.15rem 0 0;
+  color: var(--vk-text-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.inspector-long-press-hint {
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px dashed color-mix(in srgb, var(--vk-accent) 45%, var(--vk-border));
+  background: color-mix(in srgb, var(--vk-accent) 12%, transparent);
+  color: var(--vk-text);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .compose-pantry {
