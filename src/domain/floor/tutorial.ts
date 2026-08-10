@@ -77,3 +77,35 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
 export function tutorialOrder(): readonly TutorialStepId[] {
   return ORDER;
 }
+
+/** Spatial cue target for DOM/canvas overlays (TotK/Overcooked-style where). */
+export type TutorialHighlightTarget =
+  | 'unset_table'
+  | 'door'
+  | 'seated_guest'
+  | 'kitchen'
+  | 'dirty_table'
+  | 'close'
+  | null;
+
+export function tutorialHighlightTarget(
+  step: TutorialStepId | null,
+): TutorialHighlightTarget {
+  switch (step) {
+    case 'set_tables':
+      return 'unset_table';
+    case 'wait_seat':
+      return 'door';
+    case 'take_orders':
+      return 'seated_guest';
+    case 'cook':
+    case 'deliver':
+      return 'kitchen';
+    case 'clear':
+      return 'dirty_table';
+    case 'close':
+      return 'close';
+    default:
+      return null;
+  }
+}

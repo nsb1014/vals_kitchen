@@ -45,3 +45,34 @@ export const IOS_STORAGE_WARNING = `Your progress is saved in this browser. To k
 3. Playing in Private Browsing will not save progress`;
 
 export const SAVE_CODE_PLACEHOLDER = 'Paste RS1. save code here…';
+
+export interface SaveImportConfirmCopy {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  cancelLabel: string;
+}
+
+/** Warning shown before importSaveCode overwrites the live run. */
+export function buildImportConfirmCopy(day: number, prestige: number): SaveImportConfirmCopy {
+  return {
+    title: 'Replace current save?',
+    description: `This will overwrite your Day ${day} run (Prestige P${prestige}). Export a Save Code first if you want a backup.`,
+    confirmLabel: 'Restore Save',
+    cancelLabel: 'Cancel',
+  };
+}
+
+export type SaveImportGate =
+  | { status: 'empty'; message: string }
+  | { status: 'needs_confirm'; code: string };
+
+/** First Restore click only validates + opens confirm; never imports yet. */
+export function beginSaveImport(rawCode: string): SaveImportGate {
+  const code = rawCode.trim();
+  if (!code) {
+    return { status: 'empty', message: 'Paste a Save Code first.' };
+  }
+  return { status: 'needs_confirm', code };
+}
+

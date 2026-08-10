@@ -1,0 +1,9 @@
+{
+  "name": "Val's Kitchen",
+  "short_name": "Val's Kitchen",
+  "theme_color": "#17100c",
+  "background_color": "#100a07",
+  "display": "standalone",
+  "start_url": ".",
+  "scope": "."
+}

@@ -7,6 +7,8 @@ import { showScreen, subscribeScreenFromStore } from './screenRouter.ts';
 import { mountLayoutToolbar } from '../ui/components/LayoutToolbar.ts';
 import { mountServiceDayUi } from '../ui/components/ServiceDayUi.ts';
 import { mountNavigationBar } from '../ui/screens/NavigationBar.ts';
+import { mountTutorialHighlightOverlay } from '../ui/screens/TutorialHighlightOverlay.ts';
+import { mountPwaStatusNotices } from '../ui/notifications/pwa-status.ts';
 import { useGameStore } from '../store/game-store.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
 import { attachAudioBridge } from './audio-bridge.ts';
@@ -32,20 +34,27 @@ async function bootstrap(): Promise<void> {
   await useGameStore.getState().hydrate();
   mountLayoutToolbar(hud);
   mountNavigationBar(navMount);
+  const teardownPwaStatus = mountPwaStatusNotices();
 
   const [
     { mountFlavorInspectorModal },
     { mountRecipeBookScreen },
     { mountSettingsScreen },
+    { mountShopScreen },
+    { mountRatingScreen },
   ] = await Promise.all([
     import('../ui/screens/FlavorInspectorScreen.ts'),
     import('../ui/screens/RecipeBookScreen.ts'),
     import('../ui/screens/SettingsScreen.ts'),
+    import('../ui/screens/ShopScreen.ts'),
+    import('../ui/screens/RatingScreen.ts'),
   ]);
 
   const teardownScreens = [
     mountRecipeBookScreen(screensMount),
     mountSettingsScreen(screensMount),
+    mountShopScreen(screensMount),
+    mountRatingScreen(screensMount),
   ];
 
   preloadDeferredContent();
@@ -62,6 +71,10 @@ async function bootstrap(): Promise<void> {
   // Service UI initializes the shared overlay mount. Add the inspector after
   // that initialization so its modal is not discarded by the mount reset.
   const teardownFlavorModal = mountFlavorInspectorModal(overlayMount);
+  const teardownTutorialHighlight = mountTutorialHighlightOverlay(
+    canvasMount,
+    () => restaurantApp,
+  );
 
   const unsubscribeScreen = subscribeScreenFromStore(
     useGameStore.subscribe,
@@ -89,8 +102,14 @@ async function bootstrap(): Promise<void> {
     );
   };
   useGameStore.subscribe((state, prev) => {
-    const foodScreen = state.screen === 'recipes' || state.editLayoutMode;
-    const wasFoodScreen = prev.screen === 'recipes' || prev.editLayoutMode;
+    const foodScreen =
+      state.screen === 'recipes' ||
+      state.screen === 'shop' ||
+      state.editLayoutMode;
+    const wasFoodScreen =
+      prev.screen === 'recipes' ||
+      prev.screen === 'shop' ||
+      prev.editLayoutMode;
     if (foodScreen && !wasFoodScreen) loadFoodWhenNeeded();
     if (state.activeDay && !prev.activeDay) loadFoodWhenNeeded();
   });
@@ -101,6 +120,8 @@ async function bootstrap(): Promise<void> {
   window.addEventListener('beforeunload', () => {
     unsubscribeScreen();
     teardownFlavorModal();
+    teardownTutorialHighlight();
+    teardownPwaStatus();
     teardownScreens.forEach((teardown) => teardown());
     teardownServiceUi();
     teardownAudioUnlock?.();

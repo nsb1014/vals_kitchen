@@ -26,6 +26,7 @@ import {
 } from '../presentation/flavor-profile.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
+import { bindFloorActionsToolbar } from '../presentation/floor-action-keyboard.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -95,6 +96,7 @@ export function mountFloorServiceHud(
   const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
   let knownCarriedTicketId: string | null =
     useGameStore.getState().activeDay?.floor?.carriedTicketId ?? null;
+  let unbindFloorActionsKeyboard: (() => void) | null = null;
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -173,6 +175,8 @@ export function mountFloorServiceHud(
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
     const reserveChrome = () => {
+      unbindFloorActionsKeyboard?.();
+      unbindFloorActionsKeyboard = null;
       chromeMount.hidden = false;
       chromeMount.style.visibility = 'hidden';
       chromeMount.inert = true;
@@ -458,6 +462,14 @@ export function mountFloorServiceHud(
       </div>
     `;
 
+    unbindFloorActionsKeyboard?.();
+    const panel = chromeMount.querySelector<HTMLElement>(
+      '[data-testid="floor-service-panel"]',
+    );
+    unbindFloorActionsKeyboard = panel
+      ? bindFloorActionsToolbar(panel)
+      : null;
+
     chromeMount
       .querySelector('#floor-set-table')
       ?.addEventListener('click', () => {
@@ -660,6 +672,8 @@ export function mountFloorServiceHud(
 
   return () => {
     unsubscribe();
+    unbindFloorActionsKeyboard?.();
+    unbindFloorActionsKeyboard = null;
     document.removeEventListener('pointerdown', onDocumentPointer, true);
     document.removeEventListener('keydown', onDocumentKeydown);
     for (const timer of arrivalTimers) clearTimeout(timer);

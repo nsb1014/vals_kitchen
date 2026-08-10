@@ -169,3 +169,27 @@
 | Playwright harness | `/workspace/chrome-a11y-eval.mjs` (eval-only, not committed) |
 
 *Report generated read-only; no source changes in this pass.*
+
+---
+
+## Implemented (round 1)
+
+Completed top-5 chrome opportunities inside the agent fence:
+
+| Opp | What shipped |
+|-----|----------------|
+| **O1** | Floor action strip is a single `role="toolbar"` tab stop with `aria-activedescendant` + arrow/Home/End/Enter (`floor-action-keyboard.ts` wired from `FloorServiceHud.ts`). Disabled actions stay discoverable without being native tab stops. |
+| **O2 / O10** | `ShopScreen` + `RatingScreen` mounted in `main.ts`. Bottom nav gains a **More** hub (Shop / Rating / Settings) — `NAV_SCREENS` left untouched (store selector outside fence). |
+| **O3 / O9** | Dev `index.html` + `public/manifest.webmanifest`; `mountPwaStatusNotices` surfaces install / offline / update / iOS A2HS (day ≥ 3) via the existing toast stack. |
+| **O4** | Settings Restore opens a confirm dialog (`buildImportConfirmCopy` / `beginSaveImport`) before `importSaveCode`. |
+| **O5** | `tutorialHighlightTarget` metadata + DOM pulse overlay (`TutorialHighlightOverlay`) positioned over table/door/kitchen cells — no canvas layer edits. |
+
+**Skipped (with reason):**
+
+| Opp | Why |
+|-----|-----|
+| **O6** | Notice banner semantics live in `CelebrationBanner.ts` (outside fence). |
+| **O7** | Volume/motion/tutorial-replay need `game-store.ts` persistence (locked). |
+| **O8** | Settings gear target fix is in `service-day.css` (locked). |
+
+**Tests:** `src/test/chrome-*.test.ts` (+ existing notifications/pwa suites still green).
