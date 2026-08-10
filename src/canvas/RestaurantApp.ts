@@ -1555,6 +1555,14 @@ export class RestaurantApp {
       store.closeComposeSheet();
     }
 
+    // Mid-walk taps queue the cell itself — findPath from the in-progress cell
+    // can fail on transient guest blocks that will clear by arrival.
+    if (this.nav.isMoving) {
+      this.nav.bufferGoal(tapCell);
+      this.syncFloorActionInFlightDataset();
+      return;
+    }
+
     const blocked = this.playerBlockedCells(store, roomPlacements);
     const path = findPath(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
@@ -1562,7 +1570,7 @@ export class RestaurantApp {
       tapCell,
     );
     if (path) {
-      this.setNavigationPath(path, { bufferWhileMoving: true });
+      this.setNavigationPath(path);
     }
   };
 
