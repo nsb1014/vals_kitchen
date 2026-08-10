@@ -376,7 +376,7 @@ function buildCredits(shippedFiles: string[]): void {
         : ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
       approximationNote: isFx
-        ? 'Project-generated 16×16 juice burst frames (star/steam/coin/dust); dedicated to CC0.'
+        ? 'Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0.'
         : PACKS.chibiUi.note,
     });
   }

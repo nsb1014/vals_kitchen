@@ -224,80 +224,80 @@
       "frame": {
         "x": 192,
         "y": 128,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "sourceSize": {
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       }
     },
     "fx_steam": {
       "frame": {
         "x": 0,
         "y": 192,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "sourceSize": {
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       }
     },
     "fx_coin": {
       "frame": {
         "x": 64,
         "y": 192,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "sourceSize": {
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       }
     },
     "fx_dust": {
       "frame": {
         "x": 128,
         "y": 192,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       },
       "sourceSize": {
-        "w": 16,
-        "h": 16
+        "w": 24,
+        "h": 24
       }
     }
   },

@@ -61,6 +61,89 @@ const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
 
+/** Walk-step squash duration (ms). Feet stay planted via bottom anchor. */
+export const WALK_SQUASH_MS = 70;
+/** Peak ± scale amplitude for walk squash/stretch (~5%). */
+export const WALK_SQUASH_AMPLITUDE = 0.05;
+
+export function walkStepSquash(
+  t: number,
+  amplitude = WALK_SQUASH_AMPLITUDE,
+): { x: number; y: number } {
+  const u = Math.max(0, Math.min(1, t));
+  const wave = Math.sin(u * Math.PI);
+  return {
+    x: 1 + amplitude * wave,
+    y: 1 - amplitude * wave,
+  };
+}
+
+export function actorIdleBobY(nowMs: number, phase = 0): number {
+  return Math.sin(nowMs / 420 + phase) * 1.15;
+}
+
+export function actorEatingPulse(
+  nowMs: number,
+  phase = 0,
+): { scaleX: number; scaleY: number; offsetY: number } {
+  const chew = Math.sin(nowMs / 170 + phase);
+  return {
+    scaleX: 1 + chew * 0.035,
+    scaleY: 1 - chew * 0.03,
+    offsetY: Math.sin(nowMs / 260 + phase) * 1.4,
+  };
+}
+
+export function actorIdleBreathe(
+  nowMs: number,
+  phase = 0,
+): { scaleX: number; scaleY: number } {
+  const wave = Math.sin(nowMs / 520 + phase) * 0.018;
+  return { scaleX: 1 + wave, scaleY: 1 - wave };
+}
+
+function hashPhase(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return (h % 628) / 100;
+}
+
+interface WalkPulseState {
+  lastFrame: number;
+  startMs: number;
+  active: boolean;
+}
+
+function resetWalkPulse(pulse: WalkPulseState): void {
+  pulse.lastFrame = 0;
+  pulse.startMs = 0;
+  pulse.active = false;
+}
+
+function tickWalkPulse(
+  pulse: WalkPulseState,
+  walkFrame: number,
+  isMoving: boolean,
+  nowMs: number,
+): { x: number; y: number } {
+  if (!isMoving) {
+    resetWalkPulse(pulse);
+    return { x: 1, y: 1 };
+  }
+  if (walkFrame !== pulse.lastFrame) {
+    pulse.lastFrame = walkFrame;
+    pulse.startMs = nowMs;
+    pulse.active = true;
+  }
+  if (!pulse.active) return { x: 1, y: 1 };
+  const t = (nowMs - pulse.startMs) / WALK_SQUASH_MS;
+  if (t >= 1) {
+    pulse.active = false;
+    return { x: 1, y: 1 };
+  }
+  return walkStepSquash(t);
+}
+
 interface GuestSpriteEntry {
   root: Container;
   content: Container;
@@ -77,6 +160,9 @@ interface GuestSpriteEntry {
   isSeated: boolean;
   isMoving: boolean;
   facing: ActorFacingName;
+  stage: FloorGuest['stage'] | null;
+  walkPulse: WalkPulseState;
+  phase: number;
 }
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
@@ -205,6 +291,11 @@ export class ActorLayer {
   private lastPlayerBoundTextureKey = '';
   private playerUsesCarryTexture = false;
   private plateOverlayVisible = false;
+  private readonly playerWalkPulse: WalkPulseState = {
+    lastFrame: 0,
+    startMs: 0,
+    active: false,
+  };
 
   constructor(actorContainer?: Container) {
     this.actorContainer = actorContainer ?? new Container();
@@ -512,6 +603,21 @@ export class ActorLayer {
     const frameKey = pose.textureKey;
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
+    const nowMs = performance.now();
+    const squash = tickWalkPulse(
+      this.playerWalkPulse,
+      frame,
+      nav.isMoving,
+      nowMs,
+    );
+    const breathe = nav.isMoving
+      ? { scaleX: 1, scaleY: 1 }
+      : actorIdleBreathe(nowMs);
+    const bobY = nav.isMoving ? 0 : actorIdleBobY(nowMs);
+    const baseScale = scaleForContent(
+      PLAYER_DISPLAY_HEIGHT,
+      PLAYER_CONTENT_HEIGHT_PX,
+    );
 
     if (
       nextBoundFrameKey({
@@ -535,13 +641,9 @@ export class ActorLayer {
         this.lastPlayerBoundTextureKey = boundTextureKey;
         this.playerUsesCarryTexture = boundTextureKey.startsWith('player_carry_');
         this.playerSprite.texture = texture;
-        this.playerSprite.scale.set(
-          scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
-        );
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
-        // Leave lastPlayerFrameKey stale/empty so the next sync retries after atlas load.
         this.lastPlayerFrameKey = '';
         this.lastPlayerBoundTextureKey = '';
         this.playerUsesCarryTexture = false;
@@ -552,14 +654,18 @@ export class ActorLayer {
     if (this.playerSprite.visible) {
       this.playerSprite.alpha = 1;
       this.playerSprite.scale.set(
-        scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
+        baseScale * squash.x * breathe.scaleX,
+        baseScale * squash.y * breathe.scaleY,
       );
-      this.playerSprite.position.set(Math.round(nav.worldX), Math.round(feetY));
-      this.playerSprite.zIndex = this.playerSprite.y;
+      this.playerSprite.position.set(
+        Math.round(nav.worldX),
+        Math.round(feetY + bobY),
+      );
+      this.playerSprite.zIndex = feetY;
     } else {
       this.playerFallback.clear();
       this.playerFallback.y = feetY;
-      this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback.circle(Math.round(nav.worldX), -16 + bobY, 12).fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
     return carrying && this.playerUsesCarryTexture;
@@ -624,6 +730,8 @@ export class ActorLayer {
         entry.isSeated = false;
         entry.isMoving = false;
         entry.facing = 'down';
+        entry.stage = 'queued';
+        resetWalkPulse(entry.walkPulse);
         const feetY = world.y + TILE_PX / 2 - 2;
         entry.root.position.set(Math.round(world.x), Math.round(feetY));
         entry.root.zIndex = entry.root.y - 1;
@@ -665,6 +773,7 @@ export class ActorLayer {
       entry.isSeated = seated;
       entry.isMoving = pose.isMoving;
       entry.facing = facingName;
+      entry.stage = guest.stage;
       if (
         nextBoundFrameKey({
           frameKey,
@@ -737,6 +846,7 @@ export class ActorLayer {
         pose,
         guestDoor,
       );
+      this.applyGuestMotionJuice(entry, guest.stage, pose, performance.now());
     }
 
     for (const [id, entry] of this.guestSprites) {
@@ -744,6 +854,60 @@ export class ActorLayer {
       this.actorContainer.removeChild(entry.root);
       this.guestSprites.delete(id);
     }
+  }
+
+  private applyGuestMotionJuice(
+    entry: GuestSpriteEntry,
+    stage: FloorGuest['stage'],
+    pose: Pick<GuestPose, 'isMoving' | 'walkFrame'>,
+    nowMs: number,
+  ): void {
+    const contentH = entry.isSeated
+      ? GUEST_SIT_CONTENT_HEIGHT_PX
+      : GUEST_WALK_CONTENT_HEIGHT_PX;
+    const displayH = entry.isSeated
+      ? SEATED_GUEST_DISPLAY_HEIGHT
+      : GUEST_DISPLAY_HEIGHT;
+    const base = scaleForContent(displayH, contentH);
+
+    let sx = 1;
+    let sy = 1;
+    let bobY = 0;
+
+    if (pose.isMoving) {
+      const squash = tickWalkPulse(
+        entry.walkPulse,
+        pose.walkFrame,
+        true,
+        nowMs,
+      );
+      sx = squash.x;
+      sy = squash.y;
+    } else {
+      resetWalkPulse(entry.walkPulse);
+      if (stage === 'eating') {
+        const pulse = actorEatingPulse(nowMs, entry.phase);
+        sx = pulse.scaleX;
+        sy = pulse.scaleY;
+        bobY = pulse.offsetY;
+      } else if (
+        stage === 'seated' ||
+        stage === 'ordered' ||
+        stage === 'waiting'
+      ) {
+        const breathe = actorIdleBreathe(nowMs, entry.phase);
+        sx = breathe.scaleX;
+        sy = breathe.scaleY;
+        bobY = actorIdleBobY(nowMs, entry.phase);
+      }
+    }
+
+    if (entry.sprite.visible) {
+      entry.sprite.scale.set(base * sx, base * sy);
+    }
+
+    const doorY = entry.doorwayCrop?.visualOffsetY ?? 0;
+    entry.content.y = doorY + (entry.doorwayCrop ? 0 : bobY);
   }
 
   private ensureGuestEntry(guestId: string): GuestSpriteEntry {
@@ -775,6 +939,9 @@ export class ActorLayer {
       isSeated: false,
       isMoving: false,
       facing: 'down',
+      stage: null,
+      walkPulse: { lastFrame: 0, startMs: 0, active: false },
+      phase: hashPhase(guestId),
     };
     this.guestSprites.set(guestId, entry);
     return entry;

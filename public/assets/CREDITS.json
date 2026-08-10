@@ -208,7 +208,7 @@
         "canvas:EffectsLayer"
       ],
       "sourceFile": "fx_star.png",
-      "approximationNote": "Project-generated 16×16 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#fx_steam",
@@ -220,7 +220,7 @@
         "canvas:EffectsLayer"
       ],
       "sourceFile": "fx_steam.png",
-      "approximationNote": "Project-generated 16×16 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#fx_coin",
@@ -232,7 +232,7 @@
         "canvas:EffectsLayer"
       ],
       "sourceFile": "fx_coin.png",
-      "approximationNote": "Project-generated 16×16 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
     },
     {
       "path": "atlases/tiles.json#fx_dust",
@@ -244,7 +244,7 @@
         "canvas:EffectsLayer"
       ],
       "sourceFile": "fx_dust.png",
-      "approximationNote": "Project-generated 16×16 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#prep_station",

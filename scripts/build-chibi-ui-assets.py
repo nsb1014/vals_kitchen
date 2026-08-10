@@ -864,64 +864,75 @@ def build_surfaces() -> None:
 
 
 def build_fx_sprites() -> None:
-    """Project-CC0 16×16 juice frames + carry plate for canvas EffectsLayer."""
+    """Project-CC0 24×24 juice frames + carry plate for canvas EffectsLayer."""
     TILE_OUT.mkdir(parents=True, exist_ok=True)
     PROP_OUT.mkdir(parents=True, exist_ok=True)
 
-    def blank(size: int = 16) -> Image.Image:
+    def blank(size: int = 24) -> Image.Image:
         return Image.new("RGBA", (size, size), (0, 0, 0, 0))
 
-    # Warm gold star burst
     star = blank()
     sp = star.load()
     assert sp is not None
-    gold = (228, 186, 112, 255)
-    core = (255, 244, 210, 255)
-    for x, y in ((7, 1), (8, 1), (7, 2), (8, 2), (1, 7), (1, 8), (2, 7), (2, 8),
-                 (13, 7), (14, 7), (13, 8), (14, 8), (7, 13), (8, 13), (7, 14), (8, 14),
-                 (4, 4), (11, 4), (4, 11), (11, 11), (7, 5), (8, 5), (5, 7), (5, 8),
-                 (10, 7), (10, 8), (7, 10), (8, 10), (6, 6), (9, 6), (6, 9), (9, 9)):
+    gold = (236, 198, 118, 255)
+    core = (255, 248, 220, 255)
+    rim = (196, 150, 70, 230)
+    for x, y in (
+        (11, 2), (12, 2), (11, 3), (12, 3),
+        (2, 11), (2, 12), (3, 11), (3, 12),
+        (20, 11), (21, 11), (20, 12), (21, 12),
+        (11, 20), (12, 20), (11, 21), (12, 21),
+        (6, 6), (17, 6), (6, 17), (17, 17),
+        (8, 8), (15, 8), (8, 15), (15, 15),
+        (11, 7), (12, 7), (7, 11), (7, 12),
+        (16, 11), (16, 12), (11, 16), (12, 16),
+    ):
         sp[x, y] = gold
-    for x in range(6, 10):
-        for y in range(6, 10):
+    for x in range(9, 15):
+        for y in range(9, 15):
             sp[x, y] = core
+    for x, y in ((10, 8), (13, 8), (8, 10), (8, 13), (15, 10), (15, 13), (10, 15), (13, 15)):
+        sp[x, y] = rim
     save(star, TILE_OUT / "fx_star.png")
 
-    # Soft cream steam puff
     steam = blank()
     st = steam.load()
     assert st is not None
-    for cx, cy, r, a in ((5, 11, 3, 140), (9, 8, 3, 160), (7, 4, 2, 120)):
-        for y in range(16):
-            for x in range(16):
+    for cx, cy, r, a in ((8, 17, 5, 200), (14, 12, 5, 220), (11, 6, 4, 190), (16, 7, 3, 160)):
+        for y in range(24):
+            for x in range(24):
                 if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
-                    st[x, y] = (246, 239, 228, a)
+                    prev = st[x, y][3]
+                    st[x, y] = (250, 244, 232, max(prev, a))
     save(steam, TILE_OUT / "fx_steam.png")
 
-    # Tip coin spark
     coin = blank()
     cp = coin.load()
     assert cp is not None
-    for y in range(4, 12):
-        for x in range(4, 12):
-            if (x - 7.5) ** 2 + (y - 7.5) ** 2 <= 16:
-                cp[x, y] = (196, 163, 90, 255)
-    for y in range(6, 10):
-        for x in range(6, 10):
-            cp[x, y] = (255, 230, 160, 255)
+    for y in range(5, 19):
+        for x in range(5, 19):
+            if (x - 11.5) ** 2 + (y - 11.5) ** 2 <= 36:
+                cp[x, y] = (204, 168, 88, 255)
+    for y in range(8, 16):
+        for x in range(8, 16):
+            if (x - 11.5) ** 2 + (y - 11.5) ** 2 <= 14:
+                cp[x, y] = (255, 236, 170, 255)
     save(coin, TILE_OUT / "fx_coin.png")
 
-    # Doorway dust mote cluster
     dust = blank()
     dp = dust.load()
     assert dp is not None
-    for x, y, a in ((3, 10, 180), (6, 8, 140), (9, 11, 160), (12, 7, 120), (8, 13, 100)):
-        dp[x, y] = (180, 150, 110, a)
-        if x + 1 < 16:
-            dp[x + 1, y] = (160, 130, 95, max(60, a - 40))
+    for x, y, a in (
+        (4, 15, 220), (8, 12, 200), (12, 16, 210), (17, 11, 190),
+        (10, 19, 170), (15, 18, 160), (6, 18, 150), (19, 15, 140),
+    ):
+        dp[x, y] = (198, 168, 118, a)
+        if x + 1 < 24:
+            dp[x + 1, y] = (170, 140, 100, max(80, a - 35))
+        if y + 1 < 24:
+            dp[x, y + 1] = (160, 130, 95, max(60, a - 50))
     save(dust, TILE_OUT / "fx_dust.png")
 
-    # Small carried plate (covers Graphics ellipse fallback)
     plate = Image.new("RGBA", (28, 16), (0, 0, 0, 0))
     pp = plate.load()
     assert pp is not None
@@ -933,10 +944,10 @@ def build_fx_sprites() -> None:
                 pp[x, y] = (245, 230, 200, 255)
             if nx * nx + ny * ny <= 0.55:
                 pp[x, y] = (255, 248, 230, 255)
-    # Rim shadow
     for x in range(4, 24):
         pp[x, 12] = (210, 185, 150, 220)
     save(plate, PROP_OUT / "carry_plate.png")
+
 
 
 def build_props() -> None:

@@ -215,3 +215,17 @@ Val's Kitchen has **credible cozy pixel identity** and **clear floor readability
 | 10 Camera serve micro-zoom | Done | `cameraPunchMultiplier` / `clampCameraPunchScale` in `coordinates.ts`; punch on serve juice |
 
 **Assets:** regenerated chibi FX + carry plate; `npm run build:assets` refreshes atlases + CREDITS (project-generated CC0).
+
+## Implemented (round 2)
+
+| Gap / task | Status | Notes |
+|-----------:|--------|-------|
+| Walk squash & stretch | Done | `ActorLayer` ±5% / 70ms walk-frame squash; feet planted via bottom anchor; Val + guests. |
+| Eating / idle canvas loops | Done | Idle bob/breathe for waiting/seated/ordered; eating chew scale/translate; doorway suppresses bob. |
+| Particle amplitude | Done | Denser/longer bursts; larger steam/dust scales; pooled ticker (no per-frame alloc). |
+| Pixelated canvas regression | Done | Removed trailing `image-rendering: auto`; `pixelated` + `crisp-edges`. |
+| Celebration vs tutorial notice | Done | `column-reverse` stack with gap; host z=80 above tutorial pulse. |
+| Door dust / steam readability | Done | 24×24 higher-contrast FX frames + spawn scale/count lift. |
+
+**Assets:** FX-only chibi build + tiles atlas repack; CREDITS honesty for 24×24 CC0 FX.
+**Tests:** `src/test/visual-r2.test.ts`.
