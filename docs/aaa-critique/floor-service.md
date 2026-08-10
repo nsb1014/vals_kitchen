@@ -231,3 +231,95 @@ Val's Kitchen floor service has **correct domain logic and several polished edge
 - **#7 audio-bridge:** `playDeliverSting` is assigned via `mapReducerEventsToUi`, but `audio-bridge.ts` (outside fence) still only plays `serve` on `SERVE_DISH`. Canvas already calls `playSfx('serve')` on successful `FLOOR_DELIVER` so the sting is audible in-play; bridge parity is a one-line follow-up.
 - **Morning gate clash (#6 ranked gap):** guest visible while Seat disabled — needs domain/UI messaging changes outside fence.
 - **Mobile letterboxing:** camera/layout chrome outside this wave’s safe scope beyond lead-ahead.
+
+---
+
+## Re-verification (round 1)
+
+**Method:** Fresh blind re-run 2026-08-10 — `npm run sync:data`, Vite dev on `127.0.0.1:4181/?e2e=1`, Playwright Chromium driving UI clicks (set table → seat → take orders) plus one bridge cook/deliver step. Code re-read of fenced floor/canvas files. Scores judged from live evidence only; prior scorecard not used as anchor.
+
+**Evidence:** `/tmp/aaa-shots/floor-verify/` — `playwright-notes.txt` plus mobile 390×844 and desktop 1280×800 stills (`01-boot` … `11-queued-line`).
+
+**Verified improvements (live):**
+
+| Claim | Evidence |
+|-------|----------|
+| Distant intent hints | `getInteractHintCells()` returns 2 cells at service start (unset tables) and 1 at seat alcove `(3,5)` before walk; yellow far rings visible in `02-service-start`, `03-guest-waiting`, `04-tables-set` |
+| Guest head cues | Order `!` bubble above seated guest in `06-guest-seated`; deliver sparkles on player in `09-delivered-review` |
+| Queued silhouettes | Three dim door-line ghosts in `desktop-1280x800-03-guest-waiting` and `mobile-390x844-03-guest-waiting` |
+| Chevron destination + crumbs | Facing chevron stamp at path end in `05-seating-walk`, `07-order-taken` |
+| Segment easing | `NavController.easeSegmentProgress` smoothstep applied to visual lerp (tile timing unchanged) |
+| Camera lead-ahead | `cameraLeadOffset(0.75 tile)` in `RestaurantApp.onTick` |
+| Floor SFX | `RestaurantApp` plays `serve` on `FLOOR_DELIVER`, `uiClick` on seat/order/walk; `audio-bridge` emits visual juice on `playDeliverSting` |
+| Canvas presence | Playfield ~84% mobile / 80% desktop viewport height (vs ~40% in original run) |
+
+**Not verified / partial:**
+
+| Claim | Finding |
+|-------|---------|
+| `data-in-flight` CTA sync | Attribute lives on `app.canvas.dataset.inFlight`, not `#canvas-mount`; seat click often instant-dispatches when Val is already in range (`requestSeatNextGuest` L611–614), so in-flight never observed in Playwright |
+| HUD shimmer (#6) | Still absent — `FloorServiceHud.ts` unchanged |
+| Take orders via CTA alone | UI click left guest `seated` in bridge state; order stage requires adjacency walk — friction remains |
+| Morning gate clash | Guest + queued silhouettes visible while banner demands table setup (`02`, `03`) |
+
+---
+
+### Blind scorecard (re-scored)
+
+| Category | OC2 | PlateUp | Dead Cells | Diner Dash | Val's | Verdict vs benchmarks | One-line evidence |
+|----------|:---:|:-------:|:----------:|:----------:|:-----:|:---------------------:|-------------------|
+| **Input responsiveness** | 5 | 4 | 5 | 4 | 3 | **Below** | Tap still queues A* at default 2 t/s; no input buffer; adjacent seat skips walk entirely. |
+| **Pathing quality** | 5 | 4 | 4 | 3 | 3 | **Below** | Smoothstep eases visual lerp but 90° segments and constant tile timing unchanged; guests still block cells. |
+| **Camera feel** | 4 | 4 | 5 | 3 | 4 | **Below** | Lead-ahead + taller canvas mount (84%/80% viewport) lift immersion; still static scale vs Dead Cells parallax. |
+| **Interaction affordances** | 5 | 5 | 4 | 4 | 4 | **Below** | Far/near tile hints + head bubbles readable at distance (`06`); floor CTAs remain text-only labels. |
+| **Action feedback / anticipation** | 5 | 4 | 5 | 3 | 3 | **Below** | 100 ms stop-hold before auto-seat exists in code but imperceptible when seat fires in-place; doorway crop still best polish. |
+| **State readability under load** | 5 | 5 | 4 | 4 | 3 | **Below** | Head cues help, but morning gate + visible waiting guest + disabled seat logic still ambiguous (`02`–`03`). |
+| **Error / forgiveness handling** | 3 | 4 | 5 | 3 | 3 | **At** | Wrong-table toast, delivery retry guard, route-fail toast — unchanged and adequate. |
+| **Animation-transition smoothness** | 4 | 4 | 5 | 3 | 4 | **Below** | Smoothstep segments + room fade; corner pivots still snap; seat snap clean but not eased. |
+| **Audio-visual feedback coupling** | 5 | 4 | 5 | 3 | 3 | **Below** | Deliver `serve` sting + review juice land; seat/order/walk use quiet `uiClick` — thin vs OC serve ding. |
+| **Pacing legibility (no timers)** | 4 | 5 | 3 | 4 | 4 | **Below** | Order bubble + eating/leaving dots + banner copy communicate stages; eating still easy to miss at zoom. |
+| **Waiting-line behavior** | 3 | 5 | — | 5 | 4 | **Below** | Three queued silhouettes stage the door line (`03`); admit still single-slot — throughput fantasy incomplete. |
+| **Service flow clarity (seat→order→deliver)** | 5 | 5 | — | 4 | 4 | **Below** | Far hints + chevron reduce hunt-the-tile; dual canvas tap + DOM bar + exact service cells still split attention. |
+
+**Roll-up:** Val's remains **at** error/forgiveness only. Round-1 polish closes the largest readability gaps (distant hints, head cues, queue silhouettes, destination stamp, taller canvas) but **does not reach AAA parity** on responsiveness, feedback punch, or service-state clarity under the morning gate.
+
+---
+
+### Overall verdict
+
+**Does the slice now meet or exceed the AAA benchmark in a blind side-by-side?** **No.** Against Overcooked! 2 / PlateUp! the floor slice reads as a **clearly improved functional service loop** — players can see where to go and what guests need without standing on the tile first — but locomotion still feels leisurely, action moments lack benchmark punch, and the setup gate still fights the visible guest at the door. Standout win: **distance-readable intent** (tile hints + head cues + queue silhouettes) is now above the original Diner Dash baseline. Standout remaining drag: **speed/input buffer** and **text-only floor chrome**.
+
+---
+
+### Remaining gaps (ranked by player impact)
+
+| Rank | Gap | Where | Complexity |
+|:----:|-----|-------|:----------:|
+| 1 | Locomotion still 2 t/s with no input buffer — feels sluggish vs OC snap | `NavController.ts` constructor default; `RestaurantApp` nav init | M |
+| 2 | Floor action bar text-only — no icons or in-flight shimmer on matching CTA | `FloorServiceHud.ts` (read `canvas.dataset.inFlight`) | M |
+| 3 | Morning setup banner vs visible waiting guest cognitive clash | `domain/floor/tutorial.ts`, `FloorServiceHud.ts` banner copy | M |
+| 4 | Take-order / deliver still require exact service-cell adjacency; CTA tap alone insufficient | `guestServicePositions` in `interact.ts`; `RestaurantApp.pathToGuestServiceCell` | M |
+| 5 | Seat dispatches instantly when already in range — skips walk, crumbs, `data-in-flight` | `RestaurantApp.requestSeatNextGuest` L611–614 | S |
+| 6 | Head cues are procedural Graphics, not authored icons — readable but not PlateUp-grade | `ActorLayer.drawGuestStageCue` | M |
+| 7 | Seat/order SFX use generic `uiClick` — weak emotional closure vs deliver `serve` | `service-events.sfxForFloorFeelBeat`, `RestaurantApp` play sites | S |
+| 8 | Single-slot admit — silhouettes promise a line throughput the domain still blocks | `domain/floor/entry.ts` `admitNextGuest` | L |
+
+---
+
+## Implemented (round 2)
+
+### Shipped
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **1** | Mid-walk destination buffer: taps queue a goal cell; on path end, repath seamlessly from arrival. Corner/turn forgiveness: mid segments use linear lerp (no smoothstep full-stop); first/last still ease. Walk tiles/sec unchanged. | `NavController.ts` (`bufferGoal`, `easeSegmentProgress` roles), `RestaurantApp.setNavigationPath` / `flushBufferedNavigationGoal` | `src/test/floor/nav-controller.test.ts`, `src/test/floor-feel-round2.test.ts` |
+| **2** | In-range seat anticipation: when already adjacent, arm pending seating intent with 200 ms presentation hold instead of instant `FLOOR_SEAT_NEXT` snap | `RestaurantApp.requestSeatNextGuest`, `IN_PLACE_SEAT_ANTICIPATION_MS` | covered by seating intent path; hold is presentation-only |
+| **3** | Speech bubble mouth anchor: screen-space head/mouth from content bounds (fallback feet + draw-scale top), correct under camera follow/zoom | `actor-mouth-anchor.ts`, `RestaurantApp.getGuestScreenAnchor` / `getCustomerScreenAnchor` | `src/test/floor-feel-round2.test.ts` |
+| **4** | Canvas keyboard movement: playfield `tabIndex=0` + aria-label, focus ring, pointer focus handoff; WASD moves even when floor toolbar steals arrow `preventDefault` | `RestaurantApp.create` / `onKeyboardMove` / `onCanvasFocusChange` | manual/a11y; toolbar file untouched |
+| **5** | Morning-gate copy names the visible door guest and the set-tables → seat order | `tutorial.ts` `tutorialPrompt('set_tables')` | `tutorial.test.ts`, `floor-feel-round2.test.ts` |
+
+### Still out of fence / deferred
+
+- Floor HUD shimmer from `data-in-flight` (`FloorServiceHud.ts`)
+- Exact service-cell adjacency rules (`guestServicePositions`)
+- Audio-bridge `SERVE_DISH`-only parity

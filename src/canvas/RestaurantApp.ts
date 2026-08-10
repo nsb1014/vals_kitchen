@@ -45,6 +45,10 @@ import {
   type FloorInteractHint,
 } from './world/floor-feel-hints.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
+import {
+  actorMouthWorldFromFeet,
+  mouthAnchorFromContentBounds,
+} from './world/actor-mouth-anchor.ts';
 import { NavController } from './world/NavController.ts';
 import { PerKeyAsyncGuard } from './world/per-key-async-guard.ts';
 import {
@@ -98,6 +102,8 @@ const DELIVERY_RETRY_TOAST =
   'Could not deliver that dish — tap the guest to retry';
 /** Brief stop hold before auto-seat fires (visual anticipation only). */
 const STOP_ANTICIPATION_MS = 100;
+/** Longer wind-up when already in range so seat doesn't feel like an instant snap. */
+const IN_PLACE_SEAT_ANTICIPATION_MS = 200;
 /** Service-cell approach flash duration after a remote guest tap. */
 const APPROACH_PREVIEW_MS = 420;
 const GUEST_DOOR_EXIT_LINGER_MS = 120;
@@ -169,6 +175,8 @@ export class RestaurantApp {
   private readonly deliveryAttempts = new PerKeyAsyncGuard();
   /** Accumulates while arrived at seating destination before dispatch. */
   private seatingArrivalHoldMs = 0;
+  /** Presentation-only hold target; longer when seating in-place. */
+  private seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
   private approachPreview: { cell: GridPoint; untilMs: number } | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
@@ -229,8 +237,16 @@ export class RestaurantApp {
     mount.appendChild(app.canvas);
     app.canvas.classList.add('restaurant-canvas');
     app.canvas.dataset.testid = 'restaurant-canvas';
-    app.canvas.tabIndex = -1;
+    // Focusable playfield so keyboard users can move with WASD/arrows (toolbar
+    // arrow keys remain on the floor action strip when that strip is focused).
+    app.canvas.tabIndex = 0;
+    app.canvas.setAttribute(
+      'aria-label',
+      "Restaurant floor. Use WASD or arrow keys to move Val.",
+    );
+    app.canvas.setAttribute('role', 'application');
     app.canvas.style.touchAction = 'none';
+    app.canvas.style.outline = 'none';
 
     const instance = new RestaurantApp(app, mount);
     instance.mounted = true;
@@ -240,6 +256,8 @@ export class RestaurantApp {
   start(): void {
     this.dragPlacement.attach();
     this.app.canvas.addEventListener('pointerdown', this.onTapMove);
+    this.app.canvas.addEventListener('focus', this.onCanvasFocusChange);
+    this.app.canvas.addEventListener('blur', this.onCanvasFocusChange);
     window.addEventListener('keydown', this.onKeyboardMove);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.app.ticker.add(this.onTick);
@@ -454,9 +472,21 @@ export class RestaurantApp {
 
   private setNavigationPath(
     path: GridPoint[],
-    opts: { preserveSeatingIntent?: boolean; feelBeat?: FloorFeelBeat } = {},
+    opts: {
+      preserveSeatingIntent?: boolean;
+      feelBeat?: FloorFeelBeat;
+      /** Mid-walk taps queue the goal and start after the current path ends. */
+      bufferWhileMoving?: boolean;
+    } = {},
   ): void {
     if (!opts.preserveSeatingIntent) this.cancelPendingSeatingIntent();
+    const goal = path[path.length - 1];
+    if (opts.bufferWhileMoving && this.nav.isMoving && goal) {
+      this.nav.bufferGoal(goal);
+      this.syncFloorActionInFlightDataset();
+      return;
+    }
+    this.nav.clearBufferedGoal();
     const wasMoving = this.nav.isMoving;
     this.nav.setPath(path);
     if (
@@ -465,6 +495,31 @@ export class RestaurantApp {
       (opts.feelBeat === 'walk' || opts.feelBeat === undefined)
     ) {
       playSfx(sfxForFloorFeelBeat('walk'), 0.45);
+    }
+  }
+
+  /** After a walk ends, start any mid-walk buffered destination from here. */
+  private flushBufferedNavigationGoal(store: GameStore): void {
+    if (this.nav.isMoving) return;
+    const goal = this.nav.consumeBufferedGoal();
+    if (!goal) return;
+    if (
+      goal.x === this.nav.position.x &&
+      goal.y === this.nav.position.y
+    ) {
+      return;
+    }
+    const roomPlacements = this.roomPlacements(store);
+    const blocked = this.playerBlockedCells(store, roomPlacements);
+    const path = findPath(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      goal,
+    );
+    if (path) {
+      this.setNavigationPath(path);
+    } else {
+      store.setFloorToast('No clear route');
     }
   }
 
@@ -487,7 +542,7 @@ export class RestaurantApp {
   private syncFloorActionInFlightDataset(): void {
     let beat: FloorFeelBeat | null = null;
     if (this.pendingSeatingIntent) beat = 'seat';
-    else if (this.nav.isMoving) beat = 'walk';
+    else if (this.nav.isMoving || this.nav.bufferedDestination) beat = 'walk';
     if (beat) {
       this.app.canvas.dataset.inFlight = beat;
     } else {
@@ -503,6 +558,7 @@ export class RestaurantApp {
   private cancelPendingSeatingIntent(): void {
     this.pendingSeatingIntent = null;
     this.seatingArrivalHoldMs = 0;
+    this.seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
   }
 
   private pendingSeatingIntentIsValid(store: GameStore): boolean {
@@ -570,7 +626,7 @@ export class RestaurantApp {
       return;
     }
     this.seatingArrivalHoldMs += deltaMs;
-    if (this.seatingArrivalHoldMs < STOP_ANTICIPATION_MS) return;
+    if (this.seatingArrivalHoldMs < this.seatingArrivalHoldTargetMs) return;
     this.completePendingSeatingIntent();
   }
 
@@ -609,8 +665,18 @@ export class RestaurantApp {
     this.cancelPendingSeatingIntent();
 
     if (!this.nav.isMoving && selectCanSeatFloorGuest(store)) {
-      playSfx(sfxForFloorFeelBeat('seat'), 0.75);
-      void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      // Already in range: brief anticipation beat before the seat dispatch so
+      // the action reads intentional (presentation only — domain timing unchanged).
+      this.pendingSeatingIntent = {
+        revision: this.nextPendingSeatingIntentRevision++,
+        daySeed: store.activeDay!.seed,
+        guestId: waiting.id,
+        interactionGeneration: getGameplayInteractionGeneration(),
+        destination: { ...this.nav.position },
+      };
+      this.seatingArrivalHoldMs = 0;
+      this.seatingArrivalHoldTargetMs = IN_PLACE_SEAT_ANTICIPATION_MS;
+      this.syncFloorActionInFlightDataset();
       return true;
     }
 
@@ -626,6 +692,7 @@ export class RestaurantApp {
       interactionGeneration: getGameplayInteractionGeneration(),
       destination,
     };
+    this.seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
     return true;
   }
 
@@ -989,6 +1056,7 @@ export class RestaurantApp {
 
     this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
+    this.flushBufferedNavigationGoal(useGameStore.getState());
     this.tickPendingSeatingIntent(deltaMs);
     this.syncFloorActionInFlightDataset();
 
@@ -1308,6 +1376,11 @@ export class RestaurantApp {
       this.cancelPendingSeatingIntent();
       return;
     }
+    // Hand focus to the playfield so subsequent WASD/arrows move Val even when
+    // the floor action toolbar previously owned keyboard focus.
+    if (this.app.canvas.tabIndex >= 0) {
+      this.app.canvas.focus({ preventScroll: true });
+    }
     const floor = store.activeDay?.floor;
     if (!floor) {
       this.cancelPendingSeatingIntent();
@@ -1489,12 +1562,23 @@ export class RestaurantApp {
       tapCell,
     );
     if (path) {
-      this.setNavigationPath(path);
+      this.setNavigationPath(path, { bufferWhileMoving: true });
+    }
+  };
+
+  private onCanvasFocusChange = (): void => {
+    const canvas = this.app.canvas;
+    if (document.activeElement === canvas) {
+      canvas.style.outline = '3px solid #e0b44f';
+      canvas.style.outlineOffset = '2px';
+    } else {
+      canvas.style.outline = 'none';
+      canvas.style.outlineOffset = '';
     }
   };
 
   private onKeyboardMove = (event: KeyboardEvent): void => {
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target;
     if (
       target instanceof HTMLInputElement ||
@@ -1522,6 +1606,13 @@ export class RestaurantApp {
     const delta = deltaByKey[event.key];
     if (!delta) return;
 
+    const canvas = this.app.canvas;
+    const canvasFocused = document.activeElement === canvas;
+    const isWasd = event.key.length === 1 && 'wasdWASD'.includes(event.key);
+    // Floor action toolbar preventDefaults arrow keys for its own roving tab.
+    // WASD still moves Val; arrows move Val when the canvas owns focus.
+    if (event.defaultPrevented && !canvasFocused && !isWasd) return;
+
     const store = useGameStore.getState();
     if (
       !selectFloorRuntimeRunning(
@@ -1536,6 +1627,7 @@ export class RestaurantApp {
 
     event.preventDefault();
     this.cancelPendingSeatingIntent();
+    this.nav.clearBufferedGoal();
     const targetCell = {
       x: this.nav.position.x + delta.x,
       y: this.nav.position.y + delta.y,
@@ -1789,38 +1881,46 @@ export class RestaurantApp {
   getCustomerScreenAnchor(): { x: number; y: number } | null {
     const world = this.customerLayer.getAnchorWorldPosition();
     if (!world) return null;
-    const rect = this.app.canvas.getBoundingClientRect();
-    const screen = worldToScreen(world.x, world.y, this.camera.state);
-    return {
-      x: rect.left + screen.x,
-      y: rect.top + screen.y,
+    // Legacy customer sprite is already top-anchored; nudge to mouth level.
+    const mouth = {
+      x: world.x,
+      y: world.y + 32 * 0.14,
     };
+    return this.worldPointToScreen(mouth);
   }
 
   getPlayerScreenFeetAnchor(): { x: number; y: number } {
     const world = this.actorLayer.getPlayerFeetWorldPosition();
-    const rect = this.app.canvas.getBoundingClientRect();
-    const screen = worldToScreen(world.x, world.y, this.camera.state);
-    return {
-      x: rect.left + screen.x,
-      y: rect.top + screen.y,
-    };
+    return this.worldPointToScreen(world);
   }
 
   getGuestScreenFeetAnchor(guestId: string): { x: number; y: number } | null {
     const world = this.actorLayer.getGuestFeetWorldPosition(guestId);
     if (!world) return null;
-    const rect = this.app.canvas.getBoundingClientRect();
-    const screen = worldToScreen(world.x, world.y, this.camera.state);
-    return {
-      x: rect.left + screen.x,
-      y: rect.top + screen.y,
-    };
+    return this.worldPointToScreen(world);
   }
 
   getGuestScreenAnchor(guestId: string): { x: number; y: number } | null {
-    const world = this.actorLayer.getGuestWorldPosition(guestId);
-    if (!world) return null;
+    // Prefer content bounds so transparent frame padding above the head does
+    // not park the bubble tail in empty air; fall back to feet + draw scale.
+    const target = this.actorLayer
+      .getGuestWorldHitTargets()
+      .find((candidate) => candidate.guestId === guestId);
+    if (target) {
+      const mouth = mouthAnchorFromContentBounds(target.bounds);
+      return this.worldPointToScreen(mouth);
+    }
+    const feet = this.actorLayer.getGuestFeetWorldPosition(guestId);
+    if (!feet) return null;
+    const visual = this.actorLayer.getGuestVisualDebug(guestId);
+    const pose = visual?.isSeated ? 'seated' : 'standing';
+    return this.worldPointToScreen(actorMouthWorldFromFeet(feet, pose));
+  }
+
+  private worldPointToScreen(world: { x: number; y: number }): {
+    x: number;
+    y: number;
+  } {
     const rect = this.app.canvas.getBoundingClientRect();
     const screen = worldToScreen(world.x, world.y, this.camera.state);
     return {
@@ -1883,6 +1983,8 @@ export class RestaurantApp {
     window.removeEventListener('keydown', this.onKeyboardMove);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
+    this.app.canvas.removeEventListener('focus', this.onCanvasFocusChange);
+    this.app.canvas.removeEventListener('blur', this.onCanvasFocusChange);
     this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();
     this.unsubscribeJuice?.();

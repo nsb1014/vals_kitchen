@@ -3,10 +3,39 @@ import { TILE_PX } from '../coordinates.ts';
 
 const WALK_FRAME_SEQUENCE = [0, 1, 0, 2] as const;
 
-/** Smoothstep ease for segment visual lerp — does not change tile timing. */
-export function easeSegmentProgress(t: number): number {
+export type SegmentEaseRole = 'only' | 'first' | 'mid' | 'last';
+
+/**
+ * Segment visual easing. Mid-path segments stay linear so 90° turns keep
+ * momentum (no smoothstep full-stop at every corner). Single-segment and
+ * terminal segments still ease. Does not change tile timing.
+ */
+export function easeSegmentProgress(
+  t: number,
+  role: SegmentEaseRole = 'only',
+): number {
   const x = Math.min(1, Math.max(0, t));
-  return x * x * (3 - 2 * x);
+  switch (role) {
+    case 'mid':
+      return x;
+    case 'first':
+      // Ease-in from rest; ends at full speed into the next segment.
+      return x * x;
+    case 'last':
+      // Ease-out into a stop; starts at full speed from the prior segment.
+      return 1 - (1 - x) * (1 - x);
+    case 'only':
+    default:
+      return x * x * (3 - 2 * x);
+  }
+}
+
+function segmentEaseRole(index: number, pathLength: number): SegmentEaseRole {
+  const lastIndex = pathLength - 2;
+  if (lastIndex <= 0) return 'only';
+  if (index <= 0) return 'first';
+  if (index >= lastIndex) return 'last';
+  return 'mid';
 }
 
 /** Pure path follower — interpolates world position between grid cells. */
@@ -23,6 +52,11 @@ export class NavController {
    */
   private segmentOriginX: number | null = null;
   private segmentOriginY: number | null = null;
+  /**
+   * Goal cell queued while walking. Callers repath from the arrival cell when
+   * the active path ends (a mid-walk path snapshot would start from the wrong cell).
+   */
+  private bufferedGoal: GridPoint | null = null;
   /** Discrete cell used for pathfinding / adjacency. */
   position: GridPoint;
   /** Smooth world feet position (pixels). */
@@ -50,6 +84,11 @@ export class NavController {
     return end ? { ...end } : null;
   }
 
+  /** Queued mid-walk destination, if any. */
+  get bufferedDestination(): GridPoint | null {
+    return this.bufferedGoal ? { ...this.bufferedGoal } : null;
+  }
+
   /** Remaining path cells from the current index through the destination. */
   get remainingPath(): GridPoint[] {
     if (!this.isMoving) return [];
@@ -62,10 +101,30 @@ export class NavController {
     this.progress = 0;
     this.segmentOriginX = null;
     this.segmentOriginY = null;
+    this.bufferedGoal = null;
     this.position = { ...cell };
     const world = cellCenter(cell);
     this.worldX = world.x;
     this.worldY = world.y;
+  }
+
+  clearBufferedGoal(): void {
+    this.bufferedGoal = null;
+  }
+
+  /**
+   * Queue a destination while walking. Replaces any previously buffered goal.
+   * No-op storage when idle — callers should `setPath` directly when not moving.
+   */
+  bufferGoal(goal: GridPoint): void {
+    this.bufferedGoal = { ...goal };
+  }
+
+  /** Take the buffered goal (clears). Null when none armed. */
+  consumeBufferedGoal(): GridPoint | null {
+    const goal = this.bufferedGoal;
+    this.bufferedGoal = null;
+    return goal ? { ...goal } : null;
   }
 
   setPath(path: GridPoint[]): void {
@@ -106,7 +165,6 @@ export class NavController {
   }
 
   update(dtMs: number): void {
-    if (!this.isMoving) return;
     // Cap catch-up when the tab was backgrounded, but still consume the
     // full allowed delta in substeps so callers can pass larger ticks.
     let remaining = Math.min(dtMs, 100);
@@ -144,7 +202,8 @@ export class NavController {
         ? { x: this.segmentOriginX, y: this.segmentOriginY }
         : cellCenter(from);
     const b = cellCenter(to);
-    const t = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)));
+    const role = segmentEaseRole(this.index, this.path.length);
+    const t = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)), role);
     this.worldX = a.x + (b.x - a.x) * t;
     this.worldY = a.y + (b.y - a.y) * t;
   }
@@ -164,7 +223,11 @@ export class NavController {
           ? { x: this.segmentOriginX, y: this.segmentOriginY }
           : cellCenter(from);
       const b = cellCenter(to);
-      const eased = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)));
+      const role = segmentEaseRole(this.index, this.path.length);
+      const eased = easeSegmentProgress(
+        Math.min(1, Math.max(0, this.progress)),
+        role,
+      );
       for (let i = 1; i <= count; i += 1) {
         const u = Math.min(1, eased + (1 - eased) * (i / (count + 1)));
         crumbs.push({

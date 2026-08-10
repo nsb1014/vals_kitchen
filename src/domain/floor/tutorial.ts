@@ -25,7 +25,10 @@ const ORDER: TutorialStepId[] = [
 export function tutorialPrompt(step: TutorialStepId | null): string | null {
   switch (step) {
     case 'set_tables':
-      return 'Set every table before guests can sit.';
+      // Guests/queue silhouettes are often already visible during morning setup.
+      // Name the gate and the next seat action so the door guest does not read
+      // as “ready to seat” while Seat stays disabled.
+      return 'Guest at the door — set every table first, then you can seat them.';
     case 'wait_seat':
       return 'Seat the next guest from the door line.';
     case 'take_orders':
