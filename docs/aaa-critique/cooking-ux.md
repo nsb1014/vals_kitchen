@@ -189,3 +189,28 @@ All paths under `/tmp/aaa-shots/cooking/`:
 ## Summary verdict
 
 Val's Kitchen cooking UX **excels at its unique flavor-gap loop** (compose order panel, live in-range chips, inspector depth) but **trails AAA service-game benchmarks on ticket scannability, ingredient discovery at scale, and multi-order peripheral awareness**. The highest-ROI fixes are **search + filter recovery** (already styled, not wired), **ticket rail during compose**, and **carry/deliver HUD emphasis** — all achievable within the presentation fence without touching locked gameplay numbers.
+
+---
+
+## Implemented (round 1)
+
+### Shipped
+
+| # | Opportunity | What / where | Tests |
+|---|-------------|--------------|-------|
+| 1 | Pantry text search | `compose-pantry.ts` `searchQuery` + `setComposeSearchQuery`; wired in `ServiceDayUi.ts` compose filters (input + Clear); reuse `.compose-search-*` (44px targets) | `src/test/cooking-pantry-search.test.ts` |
+| 2 | Filter recovery | Always-on `data-compose-all` “All ingredients” chip; mobile match summary restored; `<5` match hint via `composePantryLowMatchHint`; CSS no longer hides `.compose-filter-summary` on narrow/short viewports | same |
+| 3 | Compose mini ticket rail | New `compose-ticket-rail.ts`; portrait+status strip under compose header; tap switches `setFloorSelectedTicket` when selectable | `src/test/cooking-ticket-rail.test.ts` |
+| 4 | Ticket copy hierarchy | `splitCustomerRequestPhrases` + `preferencePhrases` on floor ticket labels; Order tab shows phrase chips + expandable “Full request”; new tickets default Ideal tab | cooking-pantry-search (phrases) |
+| 5 | Flavor-gap meters | New `compose-request.ts` band shade + delta; compose request bars shade accepted band and append `+N.N` when outside range; status kept visible on mobile | cooking-pantry-search |
+| 6 | Carry / deliver HUD | Toggle gets `.carrying` accent + appended `→ deliver` in `FloorServiceHud.ts` (VM `toggleText` unchanged); auto-open Order menu on first carry; carrying row highlight CSS | cooking-ticket-rail |
+| 7 | Ideal scroll affordance | Fade sticky “Scroll for aroma” hint when Ideal panel overflows; compact `.floor-tickets-ideal .flavor-group` spacing | visual / HUD render path |
+| 8 | Order bubble life | Timer 2.4s → 5s; pulse class; still dismissed when compose/service overlay opens (existing ownership) | — |
+| 10 | Regression tests | New `cooking-*.test.ts` files as above | vitest |
+
+### Remaining gaps / skipped
+
+| # | Status | Why |
+|---|--------|-----|
+| 9 | Skipped | Inspector coach mark / long-press discoverability needs first-visit persistence outside the presentation fence (`localStorage` UX flag + `FlavorInspectorScreen` copy alone is incomplete without store/tutorial wiring). Safer as a follow-up. |
+| Floor chrome under modal | Not addressed | Ghost CTAs are already `inert`; visual dimming would need chrome/isolation changes bordering other agents’ slices. |

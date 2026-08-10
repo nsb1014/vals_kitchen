@@ -93,6 +93,8 @@ export function mountFloorServiceHud(
   );
   const arrivingTicketIds = new Set<string>();
   const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
+  let knownCarriedTicketId: string | null =
+    useGameStore.getState().activeDay?.floor?.carriedTicketId ?? null;
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -354,8 +356,18 @@ export function mountFloorServiceHud(
             .map((row) => {
               const meta = ticketMetaById.get(row.ticketId)!;
               const { ticket: t, label, guestId } = meta;
-              const wants = label.preferenceFull
-                ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
+              const phrases = label.preferencePhrases
+                .slice(0, 4)
+                .map(
+                  (phrase) =>
+                    `<span class="floor-tickets-phrase-chip">${escapeHtml(phrase)}</span>`,
+                )
+                .join('');
+              const phraseRow = phrases
+                ? `<div class="floor-tickets-item-phrases" aria-label="Request highlights">${phrases}</div>`
+                : '';
+              const detail = label.preferenceFull
+                ? `<details class="floor-tickets-item-detail"><summary>Full request</summary><p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p></details>`
                 : '';
               const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
               const rowBody = `
@@ -363,12 +375,13 @@ export function mountFloorServiceHud(
                     <span class="floor-tickets-item-identity">${portrait}<span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span></span>
                     <span class="floor-tickets-item-status">${escapeHtml(row.statusLabel)}</span>
                   </span>
-                  ${wants}`;
+                  ${phraseRow}`;
               const rowControl = row.selectable
                 ? `<button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" aria-label="${escapeHtml(`${label.guestLabel}, ${row.statusLabel}`)}" aria-pressed="${row.selected}">${rowBody}</button>`
                 : `<div class="floor-tickets-item-btn" data-static-ticket-id="${t.id}">${rowBody}</div>`;
               return `<li class="floor-tickets-item${row.selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${row.carrying ? ' carrying' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-tickets-item">
                 ${rowControl}
+                ${detail}
               </li>`;
             })
             .join('');
@@ -388,20 +401,38 @@ export function mountFloorServiceHud(
         }),
         { showValues: true, showTemp: false, showZeroValues: true },
       );
-      idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
+      idealBody = `<div class="floor-tickets-ideal-wrap" data-testid="floor-tickets-ideal-wrap">
+        <div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>
+        <p class="floor-tickets-ideal-scroll-hint" data-testid="floor-tickets-ideal-scroll-hint" hidden>Scroll for aroma</p>
+      </div>`;
     }
+
+    const carrying = Boolean(ticketPanel.carriedTicketId);
+    if (carrying && ticketPanel.carriedTicketId !== knownCarriedTicketId) {
+      ticketsMenuOpen = true;
+      ticketsPanelView = 'order';
+    }
+    knownCarriedTicketId = ticketPanel.carriedTicketId;
+
+    const toggleDisplay = carrying
+      ? `${ticketPanel.toggleText} → deliver`
+      : ticketPanel.toggleText;
 
     dock.innerHTML = `
       <button
         type="button"
-        class="floor-tickets-toggle"
+        class="floor-tickets-toggle${carrying ? ' carrying' : ''}"
         id="floor-tickets-toggle"
         data-testid="floor-tickets-toggle"
         aria-expanded="${ticketsMenuOpen ? 'true' : 'false'}"
         aria-controls="floor-tickets-menu"
         aria-haspopup="true"
-        aria-label="${escapeHtml(ticketPanel.toggleAriaLabel)}"
-      >${escapeHtml(ticketPanel.toggleText)}</button>
+        aria-label="${escapeHtml(
+          carrying
+            ? `${ticketPanel.toggleAriaLabel}. Open tickets to deliver`
+            : ticketPanel.toggleAriaLabel,
+        )}"
+      >${escapeHtml(toggleDisplay)}</button>
       <div
         class="floor-tickets-menu"
         id="floor-tickets-menu"
@@ -555,6 +586,33 @@ export function mountFloorServiceHud(
         });
       });
 
+    const idealScrollHost = dock.querySelector<HTMLElement>(
+      '#floor-tickets-panel-ideal:not([hidden])',
+    );
+    const idealHint = dock.querySelector<HTMLElement>(
+      '[data-testid="floor-tickets-ideal-scroll-hint"]',
+    );
+    if (idealScrollHost && idealHint) {
+      const updateIdealScrollHint = () => {
+        const overflows =
+          idealScrollHost.scrollHeight > idealScrollHost.clientHeight + 8;
+        const atBottom =
+          idealScrollHost.scrollTop + idealScrollHost.clientHeight >=
+          idealScrollHost.scrollHeight - 8;
+        idealHint.hidden = !overflows || atBottom;
+      };
+      updateIdealScrollHint();
+      idealScrollHost.addEventListener('scroll', updateIdealScrollHint, {
+        passive: true,
+      });
+    }
+
+    if (carrying && ticketsMenuOpen) {
+      dock
+        .querySelector('.floor-tickets-item.carrying')
+        ?.scrollIntoView({ block: 'nearest' });
+    }
+
     restoreDockFocus(focusIdentity);
     notifyNotificationBlockingSurfaceChanged();
   };
@@ -565,6 +623,7 @@ export function mountFloorServiceHud(
     );
     for (const ticketId of nextTicketIds) {
       if (knownTicketIds.has(ticketId)) continue;
+      ticketsPanelView = 'ideal';
       arrivingTicketIds.add(ticketId);
       const timer = setTimeout(() => {
         arrivingTicketIds.delete(ticketId);
@@ -589,7 +648,9 @@ export function mountFloorServiceHud(
       state.ceremony !== prev.ceremony ||
       state.activeDay?.floor?.selectedTicketId !==
         prev.activeDay?.floor?.selectedTicketId ||
-      state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets
+      state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets ||
+      state.activeDay?.floor?.carriedTicketId !==
+        prev.activeDay?.floor?.carriedTicketId
     ) {
       render();
     }

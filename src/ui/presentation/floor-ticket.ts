@@ -1,6 +1,9 @@
 import type { Customer } from '../../domain/day/types.ts';
 import type { FloorTicket } from '../../domain/floor/types.ts';
-import { formatCustomerRequestText } from './customer-request.ts';
+import {
+  formatCustomerRequestText,
+  splitCustomerRequestPhrases,
+} from './customer-request.ts';
 
 export function formatTicketStatusLabel(
   status: FloorTicket['status'],
@@ -29,6 +32,8 @@ export function formatFloorTicketLabel(input: {
   preferenceFull: string;
   /** @deprecated Prefer preferenceFull — same full text (no truncation). */
   preferenceSummary: string;
+  /** Short scan chips for the Order tab (max one line of phrases). */
+  preferencePhrases: string[];
   buttonText: string;
 } {
   const archetypeName = input.archetypeName?.trim();
@@ -38,6 +43,9 @@ export function formatFloorTicketLabel(input: {
     ? formatCustomerRequestText(input.customer.preference)
     : '';
   const preferenceFull = preferenceBody ? `Wants: ${preferenceBody}` : '';
+  const preferencePhrases = input.customer
+    ? splitCustomerRequestPhrases(input.customer.preference)
+    : [];
   const buttonText = preferenceFull
     ? `${guestLabel} · ${statusLabel} — ${preferenceFull}`
     : `${guestLabel} · ${statusLabel}`;
@@ -46,6 +54,7 @@ export function formatFloorTicketLabel(input: {
     statusLabel,
     preferenceFull,
     preferenceSummary: preferenceFull,
+    preferencePhrases,
     buttonText,
   };
 }
