@@ -121,6 +121,10 @@ export function playerNearGuestSeat(
  * Chibi actors are almost two tiles tall but less than one tile wide, so a
  * one-cell vertical neighbor visibly stacks their bodies. Horizontal neighbors
  * remain natural; vertical approaches keep a two-cell personal-space gap.
+ *
+ * Domain proximity is locked to these cells. Canvas approach-and-complete
+ * routes a far tap to the nearest reachable cell among them, then auto-fires
+ * the pending interaction on arrival (see `canvas/world/approach-intent.ts`).
  */
 export function guestServicePositions(seat: GridPoint): GridPoint[] {
   return [

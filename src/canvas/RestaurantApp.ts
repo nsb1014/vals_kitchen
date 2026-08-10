@@ -44,6 +44,14 @@ import {
   computeStationInteractHints,
   type FloorInteractHint,
 } from './world/floor-feel-hints.ts';
+import {
+  approachActionsMatch,
+  approachInFlightLabel,
+  approachIntentReadyToComplete,
+  approachIntentStillArmed,
+  type ApproachAction,
+  type PendingApproachIntent,
+} from './world/approach-intent.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import {
   actorMouthWorldFromFeet,
@@ -164,19 +172,14 @@ export class RestaurantApp {
   private roomTransitionAnimation: Animation | null = null;
   private cameraPunchElapsedMs = -1;
   private lastGuestDoorOpen: boolean | null = null;
-  private pendingSeatingIntent: {
-    revision: number;
-    daySeed: number;
-    guestId: string;
-    interactionGeneration: number;
-    destination: GridPoint;
-  } | null = null;
-  private nextPendingSeatingIntentRevision = 1;
+  /** Unified one-tap→walk→auto-complete intent (seat/order/deliver/set/clear/compose). */
+  private pendingApproachIntent: PendingApproachIntent | null = null;
+  private nextPendingApproachRevision = 1;
   private readonly deliveryAttempts = new PerKeyAsyncGuard();
-  /** Accumulates while arrived at seating destination before dispatch. */
-  private seatingArrivalHoldMs = 0;
-  /** Presentation-only hold target; longer when seating in-place. */
-  private seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
+  /** Accumulates while arrived at approach destination before dispatch. */
+  private approachArrivalHoldMs = 0;
+  /** Presentation-only hold target; longer when acting in-place. */
+  private approachArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
   private approachPreview: { cell: GridPoint; untilMs: number } | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
@@ -394,37 +397,12 @@ export class RestaurantApp {
     return blocked;
   }
 
-  private pathToAdjacentCell(
-    store: GameStore,
-    placements: Placement[],
-    target: GridPoint,
-  ): boolean {
-    const blocked = this.playerBlockedCells(store, placements);
-    const destinations: GridPoint[] = [];
-    for (let dy = -1; dy <= 1; dy += 1) {
-      for (let dx = -1; dx <= 1; dx += 1) {
-        if (dx === 0 && dy === 0) continue;
-        destinations.push({ x: target.x + dx, y: target.y + dy });
-      }
-    }
-    const path = findShortestPathToAny(
-      { w: store.gridSize.w, h: store.gridSize.h, blocked },
-      this.nav.position,
-      destinations,
-    );
-    if (!path) {
-      store.setFloorToast('No clear route');
-      return false;
-    }
-    this.setNavigationPath(path);
-    return true;
-  }
-
   private pathToGuestServiceCell(
     store: GameStore,
     placements: Placement[],
     seat: GridPoint,
-  ): boolean {
+    opts: { preserveApproachIntent?: boolean } = {},
+  ): GridPoint | null {
     const blocked = this.playerBlockedCells(store, placements);
     const path = findShortestPathToAny(
       { w: store.gridSize.w, h: store.gridSize.h, blocked },
@@ -433,12 +411,18 @@ export class RestaurantApp {
     );
     if (!path) {
       store.setFloorToast('No clear route');
-      return false;
+      return null;
     }
     const destination = path[path.length - 1];
-    if (destination) this.armApproachPreview(destination);
-    this.setNavigationPath(path);
-    return true;
+    if (!destination) {
+      store.setFloorToast('No clear route');
+      return null;
+    }
+    this.armApproachPreview(destination);
+    this.setNavigationPath(path, {
+      preserveApproachIntent: opts.preserveApproachIntent,
+    });
+    return { ...destination };
   }
 
   private pathToWaitingGuestServiceCell(
@@ -466,20 +450,55 @@ export class RestaurantApp {
       return null;
     }
     this.armApproachPreview(destination);
-    this.setNavigationPath(path, { preserveSeatingIntent: true });
+    this.setNavigationPath(path, { preserveApproachIntent: true });
+    return { ...destination };
+  }
+
+  private pathToAdjacentCell(
+    store: GameStore,
+    placements: Placement[],
+    target: GridPoint,
+    opts: { preserveApproachIntent?: boolean } = {},
+  ): GridPoint | null {
+    const blocked = this.playerBlockedCells(store, placements);
+    const destinations: GridPoint[] = [];
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        if (dx === 0 && dy === 0) continue;
+        destinations.push({ x: target.x + dx, y: target.y + dy });
+      }
+    }
+    const path = findShortestPathToAny(
+      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+      this.nav.position,
+      destinations,
+    );
+    if (!path) {
+      store.setFloorToast('No clear route');
+      return null;
+    }
+    const destination = path[path.length - 1];
+    if (!destination) {
+      store.setFloorToast('No clear route');
+      return null;
+    }
+    this.armApproachPreview(destination);
+    this.setNavigationPath(path, {
+      preserveApproachIntent: opts.preserveApproachIntent,
+    });
     return { ...destination };
   }
 
   private setNavigationPath(
     path: GridPoint[],
     opts: {
-      preserveSeatingIntent?: boolean;
+      preserveApproachIntent?: boolean;
       feelBeat?: FloorFeelBeat;
       /** Mid-walk taps queue the goal and start after the current path ends. */
       bufferWhileMoving?: boolean;
     } = {},
   ): void {
-    if (!opts.preserveSeatingIntent) this.cancelPendingSeatingIntent();
+    if (!opts.preserveApproachIntent) this.cancelPendingApproachIntent();
     const goal = path[path.length - 1];
     if (opts.bufferWhileMoving && this.nav.isMoving && goal) {
       this.nav.bufferGoal(goal);
@@ -540,47 +559,76 @@ export class RestaurantApp {
   }
 
   private syncFloorActionInFlightDataset(): void {
-    let beat: FloorFeelBeat | null = null;
-    if (this.pendingSeatingIntent) beat = 'seat';
-    else if (this.nav.isMoving || this.nav.bufferedDestination) beat = 'walk';
-    if (beat) {
-      this.app.canvas.dataset.inFlight = beat;
+    let label: string | null = null;
+    if (this.pendingApproachIntent) {
+      label = approachInFlightLabel(this.pendingApproachIntent.action);
+    } else if (this.nav.isMoving || this.nav.bufferedDestination) {
+      label = 'walk';
+    }
+    if (label) {
+      this.app.canvas.dataset.inFlight = label;
     } else {
       delete this.app.canvas.dataset.inFlight;
     }
   }
 
   private snapNavigationTo(cell: GridPoint): void {
-    this.cancelPendingSeatingIntent();
+    this.cancelPendingApproachIntent();
     this.nav.snapTo(cell);
   }
 
+  private cancelPendingApproachIntent(): void {
+    this.pendingApproachIntent = null;
+    this.approachArrivalHoldMs = 0;
+    this.approachArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
+  }
+
+  /** @deprecated Prefer cancelPendingApproachIntent — kept as seating alias. */
   private cancelPendingSeatingIntent(): void {
-    this.pendingSeatingIntent = null;
-    this.seatingArrivalHoldMs = 0;
-    this.seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
+    this.cancelPendingApproachIntent();
   }
 
-  private pendingSeatingIntentIsValid(store: GameStore): boolean {
-    const intent = this.pendingSeatingIntent;
+  private approachValidityContext(store: GameStore): {
+    daySeed: number;
+    interactionGeneration: number;
+    floor: FloorDay;
+    player: GridPoint;
+    placements: Placement[];
+    canSeatNow: boolean;
+    canRequestSeat: boolean;
+    canOpenCompose: boolean;
+    isMoving: boolean;
+    navDestination: GridPoint | null;
+    arrivedAtDestination: boolean;
+  } | null {
     const floor = store.activeDay?.floor;
-    return Boolean(
-      intent &&
-        store.activeDay?.seed === intent.daySeed &&
-        getGameplayInteractionGeneration() === intent.interactionGeneration &&
-        floor?.pool.some(
-          (guest) => guest.id === intent.guestId && guest.stage === 'waiting',
-        ) &&
-        this.navMatchesSeatingDestination(intent.destination) &&
-        selectCanRequestSeatFloorGuest(store) &&
-        selectFloorRuntimeRunning(
-          store,
-          document.visibilityState === 'visible',
-        ),
-    );
+    const intent = this.pendingApproachIntent;
+    if (!floor || !intent || store.activeDay?.seed == null) return null;
+    return {
+      daySeed: store.activeDay.seed,
+      interactionGeneration: getGameplayInteractionGeneration(),
+      floor,
+      player: this.nav.position,
+      placements: this.roomPlacements(store),
+      canSeatNow: selectCanSeatFloorGuest(store),
+      canRequestSeat: selectCanRequestSeatFloorGuest(store),
+      canOpenCompose: selectCanOpenFloorCompose(store),
+      isMoving: this.nav.isMoving,
+      navDestination: this.nav.destination,
+      arrivedAtDestination: this.navMatchesApproachDestination(
+        intent.destination,
+      ),
+    };
   }
 
-  private navMatchesSeatingDestination(destination: GridPoint): boolean {
+  private pendingApproachIntentIsValid(store: GameStore): boolean {
+    const intent = this.pendingApproachIntent;
+    const ctx = this.approachValidityContext(store);
+    if (!intent || !ctx) return false;
+    return approachIntentStillArmed(intent, ctx);
+  }
+
+  private navMatchesApproachDestination(destination: GridPoint): boolean {
     if (this.nav.isMoving) {
       const activeDestination = this.nav.destination;
       return Boolean(
@@ -599,35 +647,124 @@ export class RestaurantApp {
     );
   }
 
-  private completePendingSeatingIntent(): void {
-    if (!this.pendingSeatingIntent || this.nav.isMoving) return;
+  private armApproachIntent(
+    store: GameStore,
+    action: ApproachAction,
+    destination: GridPoint,
+    holdMs: number,
+  ): void {
+    this.pendingApproachIntent = {
+      revision: this.nextPendingApproachRevision++,
+      daySeed: store.activeDay!.seed,
+      interactionGeneration: getGameplayInteractionGeneration(),
+      destination: { ...destination },
+      action,
+    };
+    this.approachArrivalHoldMs = 0;
+    this.approachArrivalHoldTargetMs = holdMs;
+    this.syncFloorActionInFlightDataset();
+  }
+
+  private tryRetainMatchingApproach(action: ApproachAction): boolean {
     const store = useGameStore.getState();
-    if (!this.pendingSeatingIntentIsValid(store)) {
-      this.cancelPendingSeatingIntent();
-      return;
+    const active = this.pendingApproachIntent;
+    if (
+      active &&
+      approachActionsMatch(active.action, action) &&
+      this.pendingApproachIntentIsValid(store)
+    ) {
+      return true;
     }
-    if (!selectCanSeatFloorGuest(store)) {
+    return false;
+  }
+
+  private completePendingApproachIntent(): void {
+    if (!this.pendingApproachIntent || this.nav.isMoving) return;
+    const store = useGameStore.getState();
+    const intent = this.pendingApproachIntent;
+    const ctx = this.approachValidityContext(store);
+    if (!ctx || !approachIntentReadyToComplete(intent, ctx)) {
       // A completed route that did not reach a canonical service position must
       // not leave a latent action that could fire after unrelated movement.
-      this.cancelPendingSeatingIntent();
+      this.cancelPendingApproachIntent();
       return;
     }
 
     // Clear before dispatch: synchronous subscribers and repeated ticks can
     // never apply this request twice.
-    this.cancelPendingSeatingIntent();
-    playSfx(sfxForFloorFeelBeat('seat'), 0.75);
-    void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+    const action = intent.action;
+    this.cancelPendingApproachIntent();
+
+    switch (action.kind) {
+      case 'seat':
+        playSfx(sfxForFloorFeelBeat('seat'), 0.75);
+        void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+        break;
+      case 'order':
+        playSfx(sfxForFloorFeelBeat('order'), 0.75);
+        void store.dispatch({
+          type: 'FLOOR_TAKE_ORDERS',
+          customerIds: [action.customerId],
+        });
+        break;
+      case 'deliver': {
+        const deliveryGeneration = getGameplayInteractionGeneration();
+        this.deliveryAttempts.start(
+          action.ticketId,
+          async () => {
+            await store.dispatch({
+              type: 'FLOOR_DELIVER',
+              ticketId: action.ticketId,
+            });
+            playSfx(sfxForFloorFeelBeat('deliver'));
+            const current = useGameStore.getState();
+            if (
+              this.mounted &&
+              getGameplayInteractionGeneration() === deliveryGeneration &&
+              current.floorToast === DELIVERY_RETRY_TOAST
+            ) {
+              current.setFloorToast(null);
+            }
+          },
+          () => {
+            const current = useGameStore.getState();
+            if (
+              this.mounted &&
+              getGameplayInteractionGeneration() === deliveryGeneration &&
+              current.screen === 'restaurant'
+            ) {
+              current.setFloorToast(DELIVERY_RETRY_TOAST);
+            }
+          },
+        );
+        break;
+      }
+      case 'set':
+        void store.dispatch({
+          type: 'FLOOR_SET_TABLE',
+          placementId: action.placementId,
+        });
+        break;
+      case 'clear':
+        void store.dispatch({
+          type: 'FLOOR_CLEAR_TABLE',
+          placementId: action.placementId,
+        });
+        break;
+      case 'compose':
+        store.openComposeSheet();
+        break;
+    }
   }
 
-  private tickPendingSeatingIntent(deltaMs: number): void {
-    if (!this.pendingSeatingIntent || this.nav.isMoving) {
-      this.seatingArrivalHoldMs = 0;
+  private tickPendingApproachIntent(deltaMs: number): void {
+    if (!this.pendingApproachIntent || this.nav.isMoving) {
+      this.approachArrivalHoldMs = 0;
       return;
     }
-    this.seatingArrivalHoldMs += deltaMs;
-    if (this.seatingArrivalHoldMs < this.seatingArrivalHoldTargetMs) return;
-    this.completePendingSeatingIntent();
+    this.approachArrivalHoldMs += deltaMs;
+    if (this.approachArrivalHoldMs < this.approachArrivalHoldTargetMs) return;
+    this.completePendingApproachIntent();
   }
 
   /**
@@ -650,33 +787,22 @@ export class RestaurantApp {
       return false;
     }
 
-    const activeIntent = this.pendingSeatingIntent;
-    if (
-      activeIntent &&
-      activeIntent.daySeed === store.activeDay!.seed &&
-      activeIntent.guestId === waiting.id &&
-      activeIntent.interactionGeneration === getGameplayInteractionGeneration() &&
-      this.pendingSeatingIntentIsValid(store)
-    ) {
+    const action: ApproachAction = { kind: 'seat', guestId: waiting.id };
+    if (this.tryRetainMatchingApproach(action)) {
       // Repeated taps on the same waiting guest/CTA retain the in-flight route.
-      // They neither restart movement nor enqueue a second reducer action.
       return true;
     }
-    this.cancelPendingSeatingIntent();
+    this.cancelPendingApproachIntent();
 
     if (!this.nav.isMoving && selectCanSeatFloorGuest(store)) {
       // Already in range: brief anticipation beat before the seat dispatch so
       // the action reads intentional (presentation only — domain timing unchanged).
-      this.pendingSeatingIntent = {
-        revision: this.nextPendingSeatingIntentRevision++,
-        daySeed: store.activeDay!.seed,
-        guestId: waiting.id,
-        interactionGeneration: getGameplayInteractionGeneration(),
-        destination: { ...this.nav.position },
-      };
-      this.seatingArrivalHoldMs = 0;
-      this.seatingArrivalHoldTargetMs = IN_PLACE_SEAT_ANTICIPATION_MS;
-      this.syncFloorActionInFlightDataset();
+      this.armApproachIntent(
+        store,
+        action,
+        { ...this.nav.position },
+        IN_PLACE_SEAT_ANTICIPATION_MS,
+      );
       return true;
     }
 
@@ -685,14 +811,33 @@ export class RestaurantApp {
       this.roomPlacements(store),
     );
     if (!destination) return false;
-    this.pendingSeatingIntent = {
-      revision: this.nextPendingSeatingIntentRevision++,
-      daySeed: store.activeDay!.seed,
-      guestId: waiting.id,
-      interactionGeneration: getGameplayInteractionGeneration(),
-      destination,
-    };
-    this.seatingArrivalHoldTargetMs = STOP_ANTICIPATION_MS;
+    this.armApproachIntent(store, action, destination, STOP_ANTICIPATION_MS);
+    return true;
+  }
+
+  /**
+   * Arm walk-to-service + auto-complete for order/deliver/set/clear/compose.
+   * Returns true when the action completed in-place, an approach was armed, or
+   * an identical in-flight approach was retained.
+   */
+  private beginApproachOrAct(
+    store: GameStore,
+    action: ApproachAction,
+    pathToDestination: () => GridPoint | null,
+    canActNow: () => boolean,
+    actNow: () => void,
+  ): boolean {
+    if (this.tryRetainMatchingApproach(action)) return true;
+    this.cancelPendingApproachIntent();
+
+    if (!this.nav.isMoving && canActNow()) {
+      actNow();
+      return true;
+    }
+
+    const destination = pathToDestination();
+    if (!destination) return false;
+    this.armApproachIntent(store, action, destination, STOP_ANTICIPATION_MS);
     return true;
   }
 
@@ -701,10 +846,25 @@ export class RestaurantApp {
     revision: number;
     destination: Readonly<GridPoint>;
   }> | null {
-    const intent = this.pendingSeatingIntent;
+    const intent = this.pendingApproachIntent;
+    if (!intent || intent.action.kind !== 'seat') return null;
+    return {
+      revision: intent.revision,
+      destination: { ...intent.destination },
+    };
+  }
+
+  /** Read-only view of any armed approach-and-complete intent. */
+  getPendingApproachIntentDebug(): Readonly<{
+    revision: number;
+    kind: ApproachAction['kind'];
+    destination: Readonly<GridPoint>;
+  }> | null {
+    const intent = this.pendingApproachIntent;
     if (!intent) return null;
     return {
       revision: intent.revision,
+      kind: intent.action.kind,
       destination: { ...intent.destination },
     };
   }
@@ -1057,7 +1217,7 @@ export class RestaurantApp {
     this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
     this.flushBufferedNavigationGoal(useGameStore.getState());
-    this.tickPendingSeatingIntent(deltaMs);
+    this.tickPendingApproachIntent(deltaMs);
     this.syncFloorActionInFlightDataset();
 
     // Room transition when the cook steps onto the connecting door.
@@ -1204,6 +1364,7 @@ export class RestaurantApp {
               grid: hintGrid,
               stationNeedsAttention,
               approachPreview: this.activeApproachPreview(),
+              pendingApproach: this.pendingApproachIntent?.destination ?? null,
               canRequestSeat: selectCanRequestSeatFloorGuest(liveState),
             })
           : computeStationInteractHints(
@@ -1394,6 +1555,7 @@ export class RestaurantApp {
     const { gx, gy } = screenToGrid(sx, sy, this.camera.state);
     const tapCell = { x: gx, y: gy };
     const roomPlacements = this.roomPlacements(store);
+    // Waiting guest owns seat approach (retain/cancel handled inside).
     if (
       store.activeFloorRoom === 'main' &&
       this.waitingGuestHitAtWorldPoint(floor, world)
@@ -1402,11 +1564,9 @@ export class RestaurantApp {
       return;
     }
 
-    // Any other direct world command replaces a queued seating request. Check
-    // the waiting actor first so repeated taps preserve the active request.
-    this.cancelPendingSeatingIntent();
-
     if (isConnectingDoorCell(store, store.activeFloorRoom, gx, gy)) {
+      // Door travel replaces any pending approach.
+      this.cancelPendingApproachIntent();
       const blocked = this.playerBlockedCells(store, roomPlacements);
       const path = findPath(
         { w: store.gridSize.w, h: store.gridSize.h, blocked },
@@ -1435,62 +1595,90 @@ export class RestaurantApp {
         if (
           ticket &&
           tappedGuest.customer.id === ticket.customerId &&
-          tappedGuest.stage === 'ordered'
+          tappedGuest.stage === 'ordered' &&
+          tappedGuest.seat
         ) {
-          if (!playerNearGuestSeat(player, tappedGuest)) {
-            this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
-            return;
-          }
-          const deliveryGeneration = getGameplayInteractionGeneration();
-          this.deliveryAttempts.start(
-            ticket.id,
-            async () => {
-              await store.dispatch({
-                type: 'FLOOR_DELIVER',
-                ticketId: ticket.id,
-              });
-              playSfx(sfxForFloorFeelBeat('deliver'));
-              const current = useGameStore.getState();
-              if (
-                this.mounted &&
-                getGameplayInteractionGeneration() === deliveryGeneration &&
-                current.floorToast === DELIVERY_RETRY_TOAST
-              ) {
-                current.setFloorToast(null);
-              }
+          const seat = tappedGuest.seat;
+          this.beginApproachOrAct(
+            store,
+            {
+              kind: 'deliver',
+              guestId: tappedGuest.id,
+              customerId: tappedGuest.customer.id,
+              ticketId: ticket.id,
             },
+            () =>
+              this.pathToGuestServiceCell(store, roomPlacements, seat, {
+                preserveApproachIntent: true,
+              }),
+            () => playerNearGuestSeat(player, tappedGuest),
             () => {
-              const current = useGameStore.getState();
-              if (
-                this.mounted &&
-                getGameplayInteractionGeneration() === deliveryGeneration &&
-                current.screen === 'restaurant'
-              ) {
-                current.setFloorToast(DELIVERY_RETRY_TOAST);
-              }
+              const deliveryGeneration = getGameplayInteractionGeneration();
+              this.deliveryAttempts.start(
+                ticket.id,
+                async () => {
+                  await store.dispatch({
+                    type: 'FLOOR_DELIVER',
+                    ticketId: ticket.id,
+                  });
+                  playSfx(sfxForFloorFeelBeat('deliver'));
+                  const current = useGameStore.getState();
+                  if (
+                    this.mounted &&
+                    getGameplayInteractionGeneration() === deliveryGeneration &&
+                    current.floorToast === DELIVERY_RETRY_TOAST
+                  ) {
+                    current.setFloorToast(null);
+                  }
+                },
+                () => {
+                  const current = useGameStore.getState();
+                  if (
+                    this.mounted &&
+                    getGameplayInteractionGeneration() === deliveryGeneration &&
+                    current.screen === 'restaurant'
+                  ) {
+                    current.setFloorToast(DELIVERY_RETRY_TOAST);
+                  }
+                },
+              );
             },
           );
           return;
         }
 
+        this.cancelPendingApproachIntent();
         store.setFloorToast('Wrong table — deliver to the matching guest');
         return;
       }
 
-      if (!floor.carriedTicketId && tappedGuest?.stage === 'seated') {
+      if (!floor.carriedTicketId && tappedGuest?.stage === 'seated' && tappedGuest.seat) {
         if (!canEnqueue(floor.tickets, 1)) {
+          this.cancelPendingApproachIntent();
           store.setFloorToast(formatTicketCapacityFullMessage(floor.tickets));
           return;
         }
-        if (!playerNearGuestSeat(player, tappedGuest)) {
-          this.pathToGuestServiceCell(store, roomPlacements, tappedGuest.seat!);
-          return;
-        }
-        void store.dispatch({
-          type: 'FLOOR_TAKE_ORDERS',
-          customerIds: [tappedGuest.customer.id],
-        });
-        playSfx(sfxForFloorFeelBeat('order'), 0.75);
+        const seat = tappedGuest.seat;
+        this.beginApproachOrAct(
+          store,
+          {
+            kind: 'order',
+            guestId: tappedGuest.id,
+            customerId: tappedGuest.customer.id,
+          },
+          () =>
+            this.pathToGuestServiceCell(store, roomPlacements, seat, {
+              preserveApproachIntent: true,
+            }),
+          () => playerNearGuestSeat(player, tappedGuest),
+          () => {
+            void store.dispatch({
+              type: 'FLOOR_TAKE_ORDERS',
+              customerIds: [tappedGuest.customer.id],
+            });
+            playSfx(sfxForFloorFeelBeat('order'), 0.75);
+          },
+        );
         return;
       }
     }
@@ -1502,23 +1690,34 @@ export class RestaurantApp {
           ticket.id === floor.carriedTicketId && ticket.status === 'plated',
       );
       if (validCarriedTicket) {
+        this.cancelPendingApproachIntent();
         store.setFloorToast('Deliver the carried dish first');
         return;
       }
       if (!floor.tickets.some((ticket) => ticket.status === 'open')) {
+        this.cancelPendingApproachIntent();
         store.setFloorToast('No open ticket to cook');
         return;
       }
       const player = store.floorPlayerGrid ?? floor.playerPosition;
-      if (!playerNearPlacement(player, station)) {
-        this.pathToAdjacentCell(store, roomPlacements, tapCell);
-        return;
-      }
-      if (selectCanOpenFloorCompose(store)) {
-        store.openComposeSheet();
-        return;
-      }
-      store.setFloorToast('No open ticket to cook');
+      this.beginApproachOrAct(
+        store,
+        { kind: 'compose', placementId: station.id },
+        () =>
+          this.pathToAdjacentCell(store, roomPlacements, tapCell, {
+            preserveApproachIntent: true,
+          }),
+        () =>
+          playerNearPlacement(player, station) &&
+          selectCanOpenFloorCompose(store),
+        () => {
+          if (selectCanOpenFloorCompose(store)) {
+            store.openComposeSheet();
+            return;
+          }
+          store.setFloorToast('No open ticket to cook');
+        },
+      );
       return;
     }
 
@@ -1534,22 +1733,33 @@ export class RestaurantApp {
       if (tappedPlacement && table) {
         const player = store.floorPlayerGrid ?? this.nav.position;
         if (table.state === 'unset' || table.state === 'dirty') {
-          if (!playerNearPlacement(player, tappedPlacement)) {
-            this.pathToAdjacentCell(store, roomPlacements, tapCell);
-            return;
-          }
-          void store.dispatch({
-            type:
-              table.state === 'unset'
-                ? 'FLOOR_SET_TABLE'
-                : 'FLOOR_CLEAR_TABLE',
-            placementId: table.placementId,
-          });
+          const kind = table.state === 'unset' ? 'set' : 'clear';
+          this.beginApproachOrAct(
+            store,
+            { kind, placementId: table.placementId },
+            () =>
+              this.pathToAdjacentCell(store, roomPlacements, tapCell, {
+                preserveApproachIntent: true,
+              }),
+            () => playerNearPlacement(player, tappedPlacement),
+            () => {
+              void store.dispatch({
+                type:
+                  table.state === 'unset'
+                    ? 'FLOOR_SET_TABLE'
+                    : 'FLOOR_CLEAR_TABLE',
+                placementId: table.placementId,
+              });
+            },
+          );
           return;
         }
         return;
       }
     }
+
+    // Any other direct world command replaces a queued approach.
+    this.cancelPendingApproachIntent();
 
     if (store.composeSheetOpen) {
       store.closeComposeSheet();
@@ -1594,6 +1804,18 @@ export class RestaurantApp {
       target instanceof HTMLSelectElement ||
       (target instanceof HTMLElement && target.isContentEditable)
     ) {
+      return;
+    }
+
+    // Escape cancels an armed approach-and-complete (and aborts its walk).
+    if (event.key === 'Escape') {
+      if (!this.pendingApproachIntent) return;
+      event.preventDefault();
+      const stopAt = { ...this.nav.position };
+      this.cancelPendingApproachIntent();
+      this.nav.clearBufferedGoal();
+      if (this.nav.isMoving) this.nav.snapTo(stopAt);
+      this.syncFloorActionInFlightDataset();
       return;
     }
 
@@ -1746,10 +1968,10 @@ export class RestaurantApp {
 
   syncFromStore(state: GameStore): void {
     if (
-      this.pendingSeatingIntent &&
-      !this.pendingSeatingIntentIsValid(state)
+      this.pendingApproachIntent &&
+      !this.pendingApproachIntentIsValid(state)
     ) {
-      this.cancelPendingSeatingIntent();
+      this.cancelPendingApproachIntent();
     }
     const width = this.app.screen.width;
     const height = this.app.screen.height;

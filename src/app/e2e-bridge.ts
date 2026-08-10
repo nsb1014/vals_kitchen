@@ -140,6 +140,11 @@ export interface E2eBridge {
     revision: number;
     destination: { x: number; y: number };
   } | null;
+  getPendingApproachIntentDebug: () => {
+    revision: number;
+    kind: 'seat' | 'order' | 'deliver' | 'set' | 'clear' | 'compose';
+    destination: { x: number; y: number };
+  } | null;
   setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
   failNextSaveForTest: () => void;
   dismissPendingReview: () => Promise<void>;
@@ -479,6 +484,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPendingSeatingIntentDebug() {
       return getRestaurantApp()?.getPendingSeatingIntentDebug() ?? null;
+    },
+
+    getPendingApproachIntentDebug() {
+      return getRestaurantApp()?.getPendingApproachIntentDebug() ?? null;
     },
 
     setWaitingGuestServiceBlockedForTest(blocked) {

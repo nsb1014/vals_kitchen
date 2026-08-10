@@ -323,3 +323,96 @@ Val's Kitchen floor service has **correct domain logic and several polished edge
 - Floor HUD shimmer from `data-in-flight` (`FloorServiceHud.ts`)
 - Exact service-cell adjacency rules (`guestServicePositions`)
 - Audio-bridge `SERVE_DISH`-only parity
+
+---
+
+## Final verification (round 2)
+
+**Method:** Fresh blind re-run 2026-08-10 — `npm run sync:data`, Vite dev on `127.0.0.1:4181/?e2e=1`, Playwright Chromium (UI taps + `window.__E2E__` bridge). Code cross-check of round-2 fence files. Scores from live evidence only; prior scorecards not used as anchors.
+
+**Evidence:** `/tmp/aaa-shots/floor-final/` — `playwright-notes.txt`, `results.json`, mobile 390×844 and desktop 1280×800 stills (`01-boot` … `08-order-bubble`).
+
+**Locked-rule audit:** Player `NavController` default **2 tiles/s** (`NavController.ts` L70); guests **2.4 tiles/s** (`GuestMotion.ts` L215). No PRD gameplay-number changes detected.
+
+### Verified improvements (live)
+
+| Claim | Evidence |
+|-------|----------|
+| Mid-walk destination buffer | Tap `(3,4)` while moving from `(7,5)`; mid-walk retap to `(5,6)`; player arrives `(5,6)` without dead input (`03-midwalk-buffer`, `results.json` `midWalkBuffer`) |
+| Corner forgiveness | Code: `easeSegmentProgress` `mid` role returns linear `x` (`NavController.ts`); path completes cleanly after buffer repath |
+| In-place seat anticipation | Adjacent **Seat guest**: guest stays `waiting` + `pendingSeatingIntent` + `data-in-flight="seat"` for ≥150 ms before `seating` (`05-inplace-seat`, `inPlaceSamples`) |
+| Mouth/head bubble anchors | Standing + seated: `mouthInHeadBand`, `anchorAboveTorso`, `anchorNotAtFeet` on both viewports (`04-standing-guest`, `06-seated-bubble`); ordered bubble tail X within 0.01 px of `getGuestScreenAnchor` (`08-order-bubble`) |
+| Canvas keyboard | `tabIndex=0`, aria-label, gold `3px` focus ring; Tab-to-canvas + `d` moves `(4,5)→(5,5)` (`07-keyboard`, extra Tab pass) |
+| Morning-gate copy | Banner: *"Guest at the door — set every table first, then you can seat them."*; **Seat guest** disabled (`02-service-start`) |
+
+**Partial / not verified in natural flow:**
+
+| Claim | Finding |
+|-------|---------|
+| Order bubble in seat→order CTA path | Main run: bubble `visible:false` after take-orders click without guaranteed service-cell adjacency; fixture path confirms tail math (`08-order-bubble`) |
+| Keyboard without Tab | `canvas.focus()` alone lost focus before keypress in mobile run; Tab roving through floor chrome required on desktop |
+| HUD shimmer | Still absent — `FloorServiceHud.ts` unchanged |
+
+---
+
+### Blind scorecard (re-scored)
+
+| Category | OC2 | PlateUp | Dead Cells | Diner Dash | Val's | Verdict vs benchmarks | One-line evidence |
+|----------|:---:|:-------:|:----------:|:----------:|:-----:|:---------------------:|-------------------|
+| **Input responsiveness** | 5 | 4 | 5 | 4 | **4** | **Below** | Mid-walk tap buffers to `(5,6)` without dropped input; 2 t/s walk still leisurely vs OC snap. |
+| **Pathing quality** | 5 | 4 | 4 | 3 | **3** | **Below** | Buffer repath works; mid-segment linear corners reduce pivot stall but 90° grid + guest blocking unchanged. |
+| **Camera feel** | 4 | 4 | 5 | 3 | **4** | **Below** | Lead-ahead + ~84% mobile / ~80% desktop canvas fill; static scale vs Dead Cells parallax. |
+| **Interaction affordances** | 5 | 5 | 4 | 4 | **4** | **Below** | Far hints at service start (`(3,3)`, `(4,3)`); floor CTAs still text-only labels. |
+| **Action feedback / anticipation** | 5 | 4 | 5 | 3 | **4** | **Below** | 200 ms in-place seat hold + `data-in-flight` readable; deliver/serve punch still thin vs OC. |
+| **State readability under load** | 5 | 5 | 4 | 4 | **4** | **Below** | Morning banner names door guest; silhouettes + disabled seat still coexist at open. |
+| **Error / forgiveness handling** | 3 | 4 | 5 | 3 | **3** | **At** | Wrong-table toast, delivery retry guard, route-fail toast — unchanged. |
+| **Animation-transition smoothness** | 4 | 4 | 5 | 3 | **4** | **Below** | Smoothstep ends + linear mid-segments; seat snap after hold still not eased. |
+| **Audio-visual feedback coupling** | 5 | 4 | 5 | 3 | **3** | **Below** | Deliver `serve` + review juice; seat/order/walk still quiet `uiClick`. |
+| **Pacing legibility (no timers)** | 4 | 5 | 3 | 4 | **4** | **Below** | Order bubble + head cues + clarified banner; eating dots easy to miss at mobile zoom. |
+| **Waiting-line behavior** | 3 | 5 | — | 5 | **4** | **Below** | Door silhouettes stage queue (`02`); admit remains single-slot. |
+| **Service flow clarity (seat→order→deliver)** | 5 | 5 | — | 4 | **4** | **Below** | Buffer + hints reduce hunt; dual canvas/HUD + exact service cells still split attention. |
+
+**Roll-up:** Val's remains **at** error/forgiveness only. Round 2 closes responsiveness gaps (input buffer, in-place anticipation, mouth anchors, keyboard path, morning copy) but **does not reach AAA parity** on locomotion speed, feedback punch, or HUD chrome.
+
+---
+
+### Overall verdict
+
+**Does the slice now meet or exceed the AAA benchmark in a blind side-by-side?** **No.** Against Overcooked! 2 / PlateUp! the floor reads as a **materially tighter service loop** — buffered taps, readable mouth-anchored bubbles, and a less ambiguous morning gate — but 2 t/s grid walk, text-only floor bar, and weak action SFX keep it below benchmark snap and punch. Standout win: **mid-walk input buffer + mouth-anchored speech bubbles**. Standout remaining drag: **locomotion pace (locked)** and **floor HUD iconography/shimmer**.
+
+---
+
+### Remaining gaps (ranked by player impact)
+
+| Rank | Gap | Where | Complexity |
+|:----:|-----|-------|:----------:|
+| 1 | Floor action bar text-only — no icons or `data-in-flight` CTA shimmer | `FloorServiceHud.ts` | M |
+| 2 | Locomotion still 2 t/s — feels sluggish vs OC (PRD-locked) | `NavController.ts` default | — |
+| 3 | Take-order / deliver require exact service-cell adjacency; CTA alone insufficient | `guestServicePositions` in `interact.ts` | M |
+| 4 | Keyboard play requires Tab through chrome before WASD on desktop | `RestaurantApp` focus + `FloorServiceHud` roving tabindex | S |
+| 5 | Seat/order SFX use generic `uiClick` — weak vs deliver `serve` | `service-events.sfxForFloorFeelBeat` | S |
+| 6 | Single-slot admit — silhouettes promise throughput domain blocks | `domain/floor/entry.ts` `admitNextGuest` | L |
+| 7 | Order bubble tail only verified via fixture; natural CTA path needs adjacency walk | `ServiceDayUi.ts` + `guestServicePositions` | S |
+
+---
+
+## Implemented (round 3)
+
+### Shipped (single focus: adjacency friction → approach-and-complete)
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **1** | Unified presentation-layer approach intent for **seat / order / deliver / set / clear / compose**: far tap paths Val to the nearest legal service/adjacent cell, keeps distant preview + `data-in-flight` armed en route, then auto-dispatches on arrival after the existing stop-anticipation hold. Domain proximity enforcement unchanged. | `src/canvas/world/approach-intent.ts` (new), `RestaurantApp.ts` (`beginApproachOrAct`, `tickPendingApproachIntent`, `completePendingApproachIntent`) | `src/test/floor-feel-round3.test.ts` |
+| **2** | Sustained pending-approach preview (not only the brief flash) so the chosen service cell stays explicit for the whole walk | `floor-feel-hints.ts` `pendingApproach`, `RestaurantApp` hint sync | round3 preview case + existing hint tests |
+| **3** | Clear cancel: tap elsewhere still replaces the armed approach; **Escape** cancels the pending approach and aborts its walk; keyboard move / door / wrong-target keep prior cancel semantics | `RestaurantApp.onTapMove`, `onKeyboardMove` | covered by retain/cancel logic in approach-intent + existing seating cancel paths |
+| **4** | Guidance comment on locked `guestServicePositions` pointing at canvas approach-and-complete (no enforcement change) | `interact.ts` | — |
+
+### Out of scope (per round-3 brief)
+
+- Walk speed 2 t/s (PRD-locked)
+- Floor HUD CTA presentation / shimmer (`FloorServiceHud.ts` — concurrent agent)
+
+### Verify
+
+- `npx vitest run src/test/floor src/test/canvas src/test/floor-feel-*` — green (254 tests)
+- Visual: `/tmp/aaa-shots/floor-r3/` — far seat-cell tap from `(7,5)` armed `order` approach to `(1,4)`, `data-in-flight="order"` en route, auto-`FLOOR_TAKE_ORDERS` on arrival (`05-auto-complete`); Escape and tap-elsewhere cleared the armed intent (`06`/`07`, `results.json`)

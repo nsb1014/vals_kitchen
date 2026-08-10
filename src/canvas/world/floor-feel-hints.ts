@@ -31,6 +31,11 @@ export interface FloorFeelHintContext {
   stationNeedsAttention: boolean;
   /** Brief flash after choosing a remote service cell (opp #9). */
   approachPreview?: GridPoint | null;
+  /**
+   * Sustained preview while an approach-and-complete intent is armed — keeps
+   * the pending service cell readable for the whole walk, not just the flash.
+   */
+  pendingApproach?: GridPoint | null;
   /** True when Val may request seat of the waiting guest. */
   canRequestSeat?: boolean;
 }
@@ -49,6 +54,7 @@ export function computeFloorInteractHints(
     grid,
     stationNeedsAttention,
     approachPreview,
+    pendingApproach,
     canRequestSeat,
   } = ctx;
   const hints: FloorInteractHint[] = [];
@@ -62,7 +68,10 @@ export function computeFloorInteractHints(
     hints.push({ x: cell.x, y: cell.y, strength });
   };
 
-  if (approachPreview) {
+  // Pending approach wins over the short flash so one-tap→done stays explicit.
+  if (pendingApproach) {
+    add(pendingApproach, 'preview');
+  } else if (approachPreview) {
     add(approachPreview, 'preview');
   }
 
