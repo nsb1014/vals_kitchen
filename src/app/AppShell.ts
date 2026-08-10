@@ -1,3 +1,5 @@
+export { applyAppShellMotionPreference } from '../ui/presentation/motion-preference.ts';
+
 export interface AppShellElements {
   shell: HTMLElement;
   surface: HTMLElement;

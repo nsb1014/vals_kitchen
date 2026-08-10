@@ -172,6 +172,20 @@
 
 ---
 
+## Implemented (round 2)
+
+| Item | What shipped |
+|------|----------------|
+| **Settings close** | Prominent `settings-close` control (44px) + Escape (when import confirm / other modal traps are idle) restores prior screen via `screenRouter` return tracking (default restaurant). Works mid-service and pre-day. |
+| **Notice `role="status"`** | `CelebrationBanner` notice aside gets `role="status"`, `aria-live="polite"`, and Tutorial/Notice label via `noticeBannerAria`. |
+| **Flavors in More hub** | `MORE_HUB_SCREENS` = Shop / Flavors / Rating / Settings; `inspector` added to `MOUNTED_META_SCREENS`; lazy-mounted into `#screens-mount` from `ensureMountedMetaScreens` (main.ts untouched). |
+| **Settings depth** | Master volume (store `audioVolume` → audio-bridge scale), Reduce motion (`reducedMotion` + `data-vk-reduced-motion` / CSS override), Replay tutorial (`replayTutorial` clears dismiss + pacing gate, uses `tutorial.ts` prompt/step API). Additive session meta only. |
+| **Gear ≥44px** | `.hud-settings-button` min 44×44 override in `screens.css` (service-day.css locked). |
+
+**Tests:** `chrome-settings-close`, `chrome-notice-semantics`, `chrome-settings-depth`, updated `chrome-nav-more`.
+
+---
+
 ## Implemented (round 1)
 
 Completed top-5 chrome opportunities inside the agent fence:

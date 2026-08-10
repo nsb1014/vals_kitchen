@@ -30,6 +30,11 @@ import {
   resolveFloorComposeTicket,
 } from '../domain/floor/index.ts';
 import {
+  nextTutorialStep,
+  tutorialPrompt,
+} from '../domain/floor/tutorial.ts';
+import { applyAppShellMotionPreference } from '../ui/presentation/motion-preference.ts';
+import {
   createNewGameState,
   type GameState,
   type Placement,
@@ -122,6 +127,10 @@ interface StoreMeta {
   pendingPlacementItemKey: string | null;
   audioEnabled: boolean;
   musicEnabled: boolean;
+  /** Master volume 0–1 (session meta; default 1). */
+  audioVolume: number;
+  /** Manual reduced-motion override (session meta; default false). */
+  reducedMotion: boolean;
   floorPlayerGrid: { x: number; y: number } | null;
   floorToast: string | null;
   noticeActive: Notice | null;
@@ -154,6 +163,10 @@ export interface GameStore extends GameState, StoreMeta {
   >;
   setAudioEnabled: (enabled: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
+  setAudioVolume: (volume: number) => void;
+  setReducedMotion: (enabled: boolean) => void;
+  /** Re-arm day-1 tutorial tips (clears dismiss + pacing gate). */
+  replayTutorial: () => void;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
   openComposeSheet: () => void;
@@ -199,6 +212,9 @@ const META_KEYS = [
   'exportSaveCodeToClipboard',
   'setAudioEnabled',
   'setMusicEnabled',
+  'setAudioVolume',
+  'setReducedMotion',
+  'replayTutorial',
   'setFloorNavPosition',
   'setFloorSelectedTicket',
   'openComposeSheet',
@@ -239,6 +255,8 @@ const META_KEYS = [
   'pendingPlacementItemKey',
   'audioEnabled',
   'musicEnabled',
+  'audioVolume',
+  'reducedMotion',
 ] as const;
 
 let toastNoticeSequence = 0;
@@ -454,6 +472,8 @@ function mergeReducerState(
     pendingPlacementItemKey: current.pendingPlacementItemKey,
     audioEnabled: current.audioEnabled,
     musicEnabled: current.musicEnabled,
+    audioVolume: current.audioVolume,
+    reducedMotion: current.reducedMotion,
     floorPlayerGrid: current.floorPlayerGrid,
     floorToast: current.floorToast,
     noticeActive: current.noticeActive,
@@ -591,6 +611,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   pendingPlacementItemKey: null,
   audioEnabled: true,
   musicEnabled: false,
+  audioVolume: 1,
+  reducedMotion: false,
   floorPlayerGrid: null,
   floorToast: null,
   noticeActive: null,
@@ -626,6 +648,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       pendingPlacementItemKey: null,
       audioEnabled: true,
       musicEnabled: false,
+      audioVolume: 1,
+      reducedMotion: false,
       floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
       noticeActive: null,
@@ -973,6 +997,42 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   setMusicEnabled(enabled) {
     set({ musicEnabled: enabled });
+  },
+
+  setAudioVolume(volume) {
+    const next = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 1));
+    set({ audioVolume: next });
+  },
+
+  setReducedMotion(enabled) {
+    set({ reducedMotion: enabled });
+    applyAppShellMotionPreference(enabled);
+  },
+
+  replayTutorial() {
+    lastHudPacingNotice = null;
+    const state = get();
+    const floor = state.activeDay?.floor;
+    const step = floor ? nextTutorialStep(floor, state.day === 1) : null;
+    const prompt = tutorialPrompt(step);
+    if (prompt && step) {
+      const notice = {
+        id: `tutorial:replay:${step}:${Date.now()}`,
+        source: 'tutorial' as const,
+        scope: 'floor' as const,
+        body: prompt,
+        stepId: step,
+      };
+      set({
+        tutorialDismissedStepId: null,
+        noticeActive: notice,
+        floorToast: prompt,
+      });
+      restartNoticeTimer(notice);
+    } else {
+      set({ tutorialDismissedStepId: null });
+    }
+    syncStoreNotificationTimer();
   },
 
   setFloorNavPosition(pos) {

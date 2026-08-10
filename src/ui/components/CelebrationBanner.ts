@@ -27,6 +27,17 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/** ARIA for the notice live region (tutorial / toast / pacing). */
+export function noticeBannerAria(
+  source: Notice['source'],
+): { role: 'status'; 'aria-live': 'polite'; 'aria-label': string } {
+  return {
+    role: 'status',
+    'aria-live': 'polite',
+    'aria-label': source === 'tutorial' ? 'Tutorial' : 'Notice',
+  };
+}
+
 /**
  * Full service sheets own the user's attention and cover the banner position.
  * Ceremonies remain blocking even if a future flow displays one off the floor.
@@ -136,15 +147,18 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
         })()
       : '';
     const noticeHtml = notice
-      ? `
-          <aside class="notice-banner notice-banner-${notice.source}" data-testid="notice-banner">
+      ? (() => {
+          const aria = noticeBannerAria(notice.source);
+          return `
+          <aside class="notice-banner notice-banner-${notice.source}" data-testid="notice-banner" role="${aria.role}" aria-live="${aria['aria-live']}" aria-label="${aria['aria-label']}">
             <div class="notice-banner-copy">
               ${notice.title ? `<strong class="notice-banner-title">${escapeHtml(notice.title)}</strong>` : ''}
               <span class="notice-banner-body">${escapeHtml(notice.body)}</span>
             </div>
             <button class="notice-banner-dismiss" type="button" aria-label="Dismiss notice">×</button>
           </aside>
-        `
+        `;
+        })()
       : '';
 
     host.innerHTML = `

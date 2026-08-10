@@ -17,19 +17,33 @@ describe('chrome more navigation hub', () => {
     });
   });
 
-  it('lists Shop, Rating, and Settings in the More hub', () => {
-    expect(MORE_HUB_SCREENS).toEqual(['shop', 'rating', 'settings']);
+  it('lists Shop, Flavors, Rating, and Settings in the More hub', () => {
+    expect(MORE_HUB_SCREENS).toEqual([
+      'shop',
+      'inspector',
+      'rating',
+      'settings',
+    ]);
     expect(MOUNTED_META_SCREENS).toEqual(
-      expect.arrayContaining(['shop', 'rating', 'settings', 'recipes']),
+      expect.arrayContaining([
+        'shop',
+        'rating',
+        'settings',
+        'recipes',
+        'inspector',
+      ]),
     );
   });
 
-  it('allows Shop and Rating navigation outside an active service day', () => {
+  it('allows Shop, Flavors, and Rating navigation outside an active service day', () => {
     const state = useGameStore.getState();
     expect(selectCanNavigateTo(state, 'shop')).toBe(true);
+    expect(selectCanNavigateTo(state, 'inspector')).toBe(true);
     expect(selectCanNavigateTo(state, 'rating')).toBe(true);
     state.navigateTo('shop');
     expect(useGameStore.getState().screen).toBe('shop');
+    useGameStore.getState().navigateTo('inspector');
+    expect(useGameStore.getState().screen).toBe('inspector');
     useGameStore.getState().navigateTo('rating');
     expect(useGameStore.getState().screen).toBe('rating');
   });

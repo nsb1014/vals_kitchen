@@ -1,5 +1,10 @@
 import { useGameStore } from '../store/game-store.ts';
-import { playSfx, setAudioFlagBridge, syncMusicEnabled } from '../assets/audio.ts';
+import {
+  playSfx,
+  setAudioFlagBridge,
+  syncMusicEnabled,
+  startMusicLoop,
+} from '../assets/audio.ts';
 import {
   emitVisualJuice,
   type VisualJuiceKind,
@@ -7,12 +12,26 @@ import {
 
 let attached = false;
 
+function masterVolume(): number {
+  const volume = useGameStore.getState().audioVolume;
+  return typeof volume === 'number' && Number.isFinite(volume)
+    ? Math.min(1, Math.max(0, volume))
+    : 1;
+}
+
 function playJuiceSfx(
   id: 'serve' | 'review' | 'placement',
   volume?: number,
 ): void {
-  playSfx(id, volume);
+  playSfx(id, (volume ?? 0.85) * masterVolume());
   emitVisualJuice(id satisfies VisualJuiceKind);
+}
+
+function playScaledSfx(
+  id: Parameters<typeof playSfx>[0],
+  volume = 0.85,
+): void {
+  playSfx(id, volume * masterVolume());
 }
 
 export function attachAudioBridge(): () => void {
@@ -26,6 +45,9 @@ export function attachAudioBridge(): () => void {
       musicEnabled: state.musicEnabled,
     });
     syncMusicEnabled(state.musicEnabled);
+    if (state.musicEnabled) {
+      startMusicLoop(0.35 * masterVolume());
+    }
   };
 
   syncFlags();
@@ -43,7 +65,11 @@ export function attachAudioBridge(): () => void {
   );
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
-    if (state.audioEnabled !== prev.audioEnabled || state.musicEnabled !== prev.musicEnabled) {
+    if (
+      state.audioEnabled !== prev.audioEnabled ||
+      state.musicEnabled !== prev.musicEnabled ||
+      state.audioVolume !== prev.audioVolume
+    ) {
       syncFlags();
     }
 
@@ -53,15 +79,15 @@ export function attachAudioBridge(): () => void {
     prevPendingReview = state.pendingReview;
 
     if (state.activeDay && !prevActiveDay) {
-      playSfx('dayOpen');
+      playScaledSfx('dayOpen');
     }
     if (!state.activeDay && prevActiveDay && state.daySummary) {
-      playSfx('dayClose');
+      playScaledSfx('dayClose');
     }
     prevActiveDay = state.activeDay;
 
     if (state.cash < prevCash && state.screen === 'shop') {
-      playSfx('purchase');
+      playScaledSfx('purchase');
     }
     prevCash = state.cash;
 
@@ -74,19 +100,14 @@ export function attachAudioBridge(): () => void {
       state.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
     );
     if ([...nextTicketIds].some((ticketId) => !knownTicketIds.has(ticketId))) {
-      playSfx('uiClick', 0.7);
+      playScaledSfx('uiClick', 0.7);
     }
     knownTicketIds = nextTicketIds;
 
-    // Floor deliver sets this ephemeral UI flag (CUSTOMER_SERVED). Canvas may
-    // also play `serve` on FLOOR_DELIVER — emit juice here; play SFX only when
-    // the canvas path did not already arm the sting this tick.
     const deliverSting = Boolean(
       (state as { playDeliverSting?: boolean }).playDeliverSting,
     );
     if (deliverSting && !prevDeliverSting) {
-      // Canvas already plays the serve sting on successful FLOOR_DELIVER;
-      // this flag couples the matching visual juice and clears the ephemeral bit.
       emitVisualJuice('serve');
       queueMicrotask(() => {
         const current = useGameStore.getState() as {

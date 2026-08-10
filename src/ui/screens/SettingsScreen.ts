@@ -1,5 +1,11 @@
 import { useGameStore } from '../../store/game-store.ts';
 import {
+  getSettingsReturnScreen,
+  showScreen,
+  trackScreenChange,
+} from '../../app/screenRouter.ts';
+import { applyAppShellMotionPreference } from '../presentation/motion-preference.ts';
+import {
   loadCreditsManifest,
   renderCreditsHtml,
 } from '../../assets/credits.ts';
@@ -21,8 +27,9 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   container.appendChild(root);
   root.innerHTML = `
     <section class="screen-panel sheet-tier-meta-full meta-screen" id="settings-screen" data-testid="settings-screen" hidden>
-      <header class="screen-header">
+      <header class="screen-header settings-header">
         <h1 class="screen-title" data-testid="settings-title" tabindex="-1">Settings</h1>
+        <button type="button" class="settings-close" data-testid="settings-close" aria-label="Close settings">Close</button>
       </header>
       <div class="settings-body" id="settings-body">
         <section class="settings-section">
@@ -48,6 +55,20 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
             <span>Music</span>
             <input type="checkbox" id="music-toggle" />
           </label>
+          <label class="screen-field settings-volume-field">
+            <span>Master volume</span>
+            <input type="range" id="volume-slider" data-testid="settings-volume" min="0" max="100" step="1" />
+          </label>
+        </section>
+        <section class="settings-section">
+          <h2>Accessibility</h2>
+          <label class="toggle-row">
+            <span>Reduce motion</span>
+            <input type="checkbox" id="reduced-motion-toggle" data-testid="settings-reduced-motion" />
+          </label>
+          <div class="settings-actions">
+            <button type="button" class="service-btn" id="replay-tutorial-btn" data-testid="replay-tutorial-btn">Replay tutorial</button>
+          </div>
         </section>
         <section class="settings-section" id="credits-section">
           <h2>Credits & Attribution</h2>
@@ -80,12 +101,21 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   const title = root.querySelector(
     '[data-testid="settings-title"]',
   ) as HTMLElement;
+  const closeBtn = root.querySelector(
+    '[data-testid="settings-close"]',
+  ) as HTMLButtonElement;
   const feedbackEl = root.querySelector('#save-feedback') as HTMLElement;
   const importInput = root.querySelector(
     '#import-save-input',
   ) as HTMLTextAreaElement;
   const audioToggle = root.querySelector('#audio-toggle') as HTMLInputElement;
   const musicToggle = root.querySelector('#music-toggle') as HTMLInputElement;
+  const volumeSlider = root.querySelector(
+    '#volume-slider',
+  ) as HTMLInputElement;
+  const reducedMotionToggle = root.querySelector(
+    '#reduced-motion-toggle',
+  ) as HTMLInputElement;
   const creditsEl = root.querySelector('#credits-content') as HTMLElement;
   const confirmHost = root.querySelector(
     '#settings-import-confirm',
@@ -104,6 +134,9 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   ) as HTMLButtonElement;
 
   let pendingImportCode: string | null = null;
+  let visible = false;
+  let focusReturnTestId: string | null = null;
+  let focusReturnElement: HTMLElement | null = null;
 
   void loadCreditsManifest()
     .then((manifest) => {
@@ -135,14 +168,30 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     queueMicrotask(() => confirmTitle.focus({ preventScroll: true }));
   };
 
+  const syncControls = (state: ReturnType<typeof useGameStore.getState>) => {
+    audioToggle.checked = state.audioEnabled;
+    musicToggle.checked = state.musicEnabled;
+    volumeSlider.value = String(Math.round((state.audioVolume ?? 1) * 100));
+    reducedMotionToggle.checked = Boolean(state.reducedMotion);
+    applyAppShellMotionPreference(Boolean(state.reducedMotion));
+  };
+
+  const closeSettings = () => {
+    if (!visible) return;
+    closeConfirm();
+    const target = getSettingsReturnScreen();
+    useGameStore.getState().navigateTo(target);
+    trackScreenChange(target);
+    showScreen(target);
+  };
+
   const runImport = async (code: string) => {
     const result = await useGameStore.getState().importSaveCode(code);
     if (result.ok) {
       const state = useGameStore.getState();
       showFeedback(buildImportSuccessFeedback(state.day, state.prestige));
       importInput.value = '';
-      audioToggle.checked = state.audioEnabled;
-      musicToggle.checked = state.musicEnabled;
+      syncControls(state);
     } else {
       showFeedback(buildImportErrorFeedback(new Error(result.error)));
     }
@@ -159,16 +208,14 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
       }
     });
 
-  root
-    .querySelector('#import-save-btn')
-    ?.addEventListener('click', () => {
-      const gate = beginSaveImport(importInput.value);
-      if (gate.status === 'empty') {
-        showFeedback(buildImportErrorFeedback(new Error(gate.message)));
-        return;
-      }
-      openConfirm(gate.code);
-    });
+  root.querySelector('#import-save-btn')?.addEventListener('click', () => {
+    const gate = beginSaveImport(importInput.value);
+    if (gate.status === 'empty') {
+      showFeedback(buildImportErrorFeedback(new Error(gate.message)));
+      return;
+    }
+    openConfirm(gate.code);
+  });
 
   cancelBtn.addEventListener('click', () => {
     closeConfirm();
@@ -188,9 +235,12 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   confirmHost.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !confirmHost.hidden) {
       event.preventDefault();
+      event.stopPropagation();
       closeConfirm();
     }
   });
+
+  closeBtn.addEventListener('click', () => closeSettings());
 
   audioToggle.addEventListener('change', () => {
     useGameStore.getState().setAudioEnabled(audioToggle.checked);
@@ -198,10 +248,19 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   musicToggle.addEventListener('change', () => {
     useGameStore.getState().setMusicEnabled(musicToggle.checked);
   });
-
-  let visible = false;
-  let focusReturnTestId: string | null = null;
-  let focusReturnElement: HTMLElement | null = null;
+  volumeSlider.addEventListener('input', () => {
+    useGameStore.getState().setAudioVolume(Number(volumeSlider.value) / 100);
+  });
+  reducedMotionToggle.addEventListener('change', () => {
+    useGameStore.getState().setReducedMotion(reducedMotionToggle.checked);
+  });
+  root.querySelector('#replay-tutorial-btn')?.addEventListener('click', () => {
+    useGameStore.getState().replayTutorial();
+    showFeedback({
+      status: 'idle',
+      message: 'Tutorial tips re-armed for Day 1 service.',
+    });
+  });
 
   const isUsableFocusTarget = (
     target: HTMLElement | null,
@@ -267,15 +326,28 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     }
     panel.hidden = !nextVisible;
     visible = nextVisible;
-    audioToggle.checked = state.audioEnabled;
-    musicToggle.checked = state.musicEnabled;
+    syncControls(state);
   };
+
+  const onDocumentKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !visible) return;
+    if (!confirmHost.hidden) return;
+    const modalTrap = document.querySelector(
+      '[role="dialog"][aria-modal="true"]:not([hidden])',
+    );
+    if (modalTrap && !panel.contains(modalTrap)) return;
+    event.preventDefault();
+    closeSettings();
+  };
+  document.addEventListener('keydown', onDocumentKeyDown);
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
     if (
       state.screen !== prev.screen ||
       state.audioEnabled !== prev.audioEnabled ||
-      state.musicEnabled !== prev.musicEnabled
+      state.musicEnabled !== prev.musicEnabled ||
+      state.audioVolume !== prev.audioVolume ||
+      state.reducedMotion !== prev.reducedMotion
     ) {
       syncVisibility();
     }
@@ -285,6 +357,7 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
 
   return () => {
     unsubscribe();
+    document.removeEventListener('keydown', onDocumentKeyDown);
     root.remove();
   };
 }

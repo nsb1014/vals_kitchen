@@ -41,6 +41,26 @@
   border-bottom: 1px solid var(--vk-border);
 }
 
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-close {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.35rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 181, 106, 0.35);
+  background: rgba(40, 26, 16, 0.9);
+  color: #ffe3a9;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .screen-title {
   margin: 0;
   font-size: 1.25rem;
@@ -1200,6 +1220,16 @@
   font-size: 16px;
 }
 
+.settings-volume-field {
+  margin-top: 0.5rem;
+}
+
+.settings-volume-field input[type='range'] {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--vk-accent, #c4a35a);
+}
+
 .save-feedback {
   margin-top: 0.5rem;
   font-size: 14px;
@@ -1600,4 +1630,26 @@
     transition: none;
     animation: none;
   }
+}
+
+/* Manual Settings override — mirrors prefers-reduced-motion for chrome screens. */
+html[data-vk-reduced-motion='true'] .flavor-bar-fill,
+html[data-vk-reduced-motion='true'] .rating-bar-fill,
+html[data-vk-reduced-motion='true'] .achievement-progress-fill,
+html[data-vk-reduced-motion='true'] .recipe-mastery-bar-fill,
+html[data-vk-reduced-motion='true'] .layout-catalog-row-flash,
+[data-vk-reduced-motion='true'] .flavor-bar-fill,
+[data-vk-reduced-motion='true'] .rating-bar-fill,
+[data-vk-reduced-motion='true'] .achievement-progress-fill,
+[data-vk-reduced-motion='true'] .recipe-mastery-bar-fill,
+[data-vk-reduced-motion='true'] .layout-catalog-row-flash {
+  transition: none;
+  animation: none;
+}
+
+/* WCAG 2.5.8: settings gear was 42×44 on desktop (service-day flex-basis 2.65rem). */
+.hud-settings-button {
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
 }

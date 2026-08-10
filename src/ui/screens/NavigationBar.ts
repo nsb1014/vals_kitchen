@@ -1,4 +1,7 @@
-import { showScreen } from '../../app/screenRouter.ts';
+import {
+  ensureMountedMetaScreens,
+  showScreen,
+} from '../../app/screenRouter.ts';
 import { useGameStore, type ScreenId } from '../../store/game-store.ts';
 import {
   NAV_SCREENS,
@@ -29,7 +32,12 @@ const MORE_ICON =
   '<path d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>';
 
 /** Hub destinations beyond the primary Floor / Recipe Book tabs (PRD meta screens). */
-export const MORE_HUB_SCREENS: ScreenId[] = ['shop', 'rating', 'settings'];
+export const MORE_HUB_SCREENS: ScreenId[] = [
+  'shop',
+  'inspector',
+  'rating',
+  'settings',
+];
 
 const MORE_ACTIVE_SCREENS = new Set<ScreenId>(MORE_HUB_SCREENS);
 
@@ -45,6 +53,7 @@ function navigateIfAllowed(target: ScreenId): void {
 }
 
 export function mountNavigationBar(container: HTMLElement): () => void {
+  ensureMountedMetaScreens();
   container.innerHTML = `
     <nav class="bottom-nav bottom-nav--with-more" id="bottom-nav" aria-label="Main navigation">
       ${NAV_SCREENS.map(
