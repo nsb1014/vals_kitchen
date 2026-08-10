@@ -207,3 +207,72 @@ Completed top-5 chrome opportunities inside the agent fence:
 | **O8** | Settings gear target fix is in `service-day.css` (locked). |
 
 **Tests:** `src/test/chrome-*.test.ts` (+ existing notifications/pwa suites still green).
+
+---
+
+## Final verification (round 2)
+
+**Method:** `npm run sync:data` → Vite dev `127.0.0.1:4185/?e2e=1` → Playwright headless session (`/tmp/chrome-final-eval.mjs`, pattern `tests/e2e/helpers.ts`). Screenshots at `/tmp/aaa-shots/chrome-final/` (320×568, 390×844, 1280×800). Machine report: `/tmp/aaa-shots/chrome-final/eval-report.json`. No test-suite runs; read-only doc append.
+
+### Round-2 claim verification (live)
+
+| Claim | Result | Evidence |
+|-------|--------|----------|
+| Settings Close + Escape (pre-day & mid-service) | **PASS** | Recipes→More→Settings→Close restores `data-screen=recipes`; Escape same. Mid-service: gear→Settings→Escape/Close→`restaurant`, floor panel still visible, no reload. |
+| Notice `role=status` | **PASS** | Tutorial notice: `role=status`, `aria-live=polite`, `aria-label=Tutorial`. Toast notice: `role=status`, `aria-label=Notice`. |
+| Flavors in More hub | **PASS** | Hub lists Shop / Flavors / Rating / Settings; each `nav-more-*` navigates and mounts (`shop-screen`, `inspector-screen`, `rating-screen`, `settings-screen`). |
+| Volume / reduced-motion / replay tutorial | **PASS** | Slider `25` → store `audioVolume=0.25`. Reduce motion sets `html[data-vk-reduced-motion=true]` + `#game-root` attr; CSS kills transitions on probe. Replay clears `tutorialDismissedStepId`, feedback “Tutorial tips re-armed…”. |
+| Gear ≥44px desktop | **PASS** | `hud-settings` bounding box **44×44** at 1280×800. Close button **65×44**. |
+| Celebration `role=status` | **FAIL** | Celebration `<aside>` has no `role`; host has `aria-live=polite` only. |
+| Keyboard full loop | **PARTIAL** | Tab reaches dismiss → tickets → HUD stats → canvas (`role=application`, WASD label, `tabindex=0`) → floor toolbar (`role=toolbar`, `aria-activedescendant`). Dismiss still precedes gameplay toolbar during active tutorial. |
+
+### Scorecard (fresh, evidence-only)
+
+| # | Category | Score | Verdict |
+|---|----------|:-----:|---------|
+| 1 | First-60-seconds clarity | **4** | Cold boot: HUD + “Open for service?” + Floor/Recipes/More nav (`390x844-01-cold-boot.png`). Still no explicit Day-1 framing or skip. |
+| 2 | Tutorial teach-by-doing | **4** | Contextual `role=status` copy; live `tutorial-highlight-pulse` aria-label “Unset table” during `set_tables` (`390x844-05-tutorial.png`). Not TotK-grade in-world pointer, but DOM pulse ships. |
+| 3 | Navigation legibility | **4** | More hub exposes Shop/Flavors/Rating/Settings; all mount and navigate. Primary nav still Floor + Recipe Book only. |
+| 4 | Notification manners | **4** | Notice semantics mature; celebration relies on host `aria-live`, banner aside lacks `role=status`. Dismiss still first in Tab cycle during tutorial. |
+| 5 | Settings completeness | **4** | Close/Escape return tracking verified pre-day + mid-service; volume slider, reduced-motion override, replay tutorial wired end-to-end; import confirm DOM present (not live-gated this pass). |
+| 6 | Keyboard / focus coverage | **4** | Floor toolbar + canvas both reachable via Tab; WASD label on canvas. Tab order still favors dismiss before toolbar mid-tutorial. |
+| 7 | ARIA / screen-reader semantics | **4** | Notice live regions solid; celebration gap; HUD detail `<aside>` popovers still lack `role=dialog`. |
+| 8 | Touch targets & zoom | **4** | Gear 44×44, settings Close 65×44, global CTA 52px; viewport allows pinch-zoom. |
+| 9 | Offline / PWA communication | **3** | Dev `manifest` link present; install/offline/update/iOS A2HS toasts from round 1 not re-exercised live. |
+| 10 | Error recovery guidance | **3** | Import confirm element exists (`settings-import-confirm`, hidden); boot-error / save feedback unchanged; no new recovery paths tested. |
+| 11 | Responsive behavior | **4** | No horizontal overflow at 320×568, 390×844, 1280×800; desktop meta rail holds (`*-06-floor-chrome.png`). |
+
+**Overall: ~3.8 / 5** (prior original 3.5, round-1 re-score 4.0). **MEET OR EXCEED blind 4.0 bar: NO** — round-2 fixes land (settings return, More+Flavors, notice semantics, settings depth, gear target) but celebration `role=status` claim fails and PWA/error categories unchanged.
+
+### Ranked remaining gaps
+
+| Rank | Gap | Where | Complexity |
+|------|-----|-------|:----------:|
+| 1 | Celebration `<aside>` lacks `role=status` (host `aria-live` only) | `CelebrationBanner.ts` ~L137 | S |
+| 2 | Tab order: notice dismiss precedes floor toolbar during active tutorial | `CelebrationBanner.ts` dismiss button | S |
+| 3 | PWA install / offline / update / iOS A2HS toasts not verified end-to-end this pass | `pwa-status.ts` | S |
+| 4 | Master volume store-wired; audible SFX delta not instrumented in headless | `audio-bridge.ts` → `playSfx` | S |
+| 5 | HUD cash/rating/prestige/day detail panels lack `role=dialog` + labelled heading | `ServiceDayUi.ts` ~L422 | S |
+| 6 | Spatial tutorial highlight is DOM pulse only (no canvas object link) | `TutorialHighlightOverlay.ts` | L (polish) |
+
+### Artifact index (this pass)
+
+| Artifact | Path |
+|----------|------|
+| Screenshots | `/tmp/aaa-shots/chrome-final/*.png` |
+| Machine eval JSON | `/tmp/aaa-shots/chrome-final/eval-report.json` |
+| Playwright harness | `/tmp/chrome-final-eval.mjs` (eval-only) |
+
+*Final verification appended read-only; no source changes.*
+
+---
+
+## Implemented (round 3)
+
+| Item | What shipped |
+|------|----------------|
+| **Celebration `role="status"`** | Celebration `<aside>` gets `role="status"`, `aria-live="polite"`, `aria-atomic="true"`, and kind-labeled name via `celebrationBannerAria`. Dedicated `.banner-live-text` uses clear-then-set (`replaceLiveRegionText`) so each new FIFO celebration re-announces; visual copy stays `aria-hidden` (no visual change). |
+| **Dismiss tab order** | Notice + celebration dismiss controls use `tabindex="-1"` (`BANNER_DISMISS_TABINDEX`) so floor toolbar / primary chrome precede them. Status/toast pattern (not alertdialog): no auto-focus; Escape dismisses front banner when no blocking sheet owns attention (`resolveBannerEscapeAction` + host keydown). |
+| **Environment-limited (no code)** | Round-2 gaps **#3** (PWA toast e2e) and **#4** (audible SFX delta in headless) remain verification limits only. HUD dialog labels (#5) owned by concurrent floor agent. |
+
+**Tests:** extended `chrome-notice-semantics` (celebration live region + retrigger + dismiss tabindex/Escape).

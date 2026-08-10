@@ -1058,6 +1058,20 @@
   line-height: 1;
 }
 
+/* Polite live-region payload for banner re-announcements (visual copy is aria-hidden). */
+.celebration-banner .banner-live-text,
+.notice-banner .banner-live-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .recipe-pager {
   flex: 0 0 auto;
   display: flex;
