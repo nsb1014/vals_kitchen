@@ -68,6 +68,10 @@ import {
   renderComposeTicketRailHtml,
 } from '../presentation/compose-ticket-rail.ts';
 import { formatRequestBandStatus, requestBandShadePercents } from '../presentation/compose-request.ts';
+import {
+  buildComposeProgress,
+  composeProgressMeterHtml,
+} from '../presentation/compose-progress.ts';
 import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { requestRestaurantShopOpen } from '../events/restaurant-shop.ts';
@@ -377,13 +381,23 @@ export function mountServiceDayUi(
     const customersServed = activeDay?.customersServed ?? 0;
     const customersLeft = Math.max(0, customersTotal - customersServed);
     const dayRatingDelta = activeDay?.dayRatingDelta ?? 0;
+    const detailTitle =
+      hudDetail === 'cash'
+        ? 'Cash'
+        : hudDetail === 'rating'
+          ? 'Rating'
+          : hudDetail === 'prestige'
+            ? `Prestige P${state.prestige}`
+            : hudDetail === 'day'
+              ? `Day ${displayDay}`
+              : '';
     const detailContent =
       hudDetail === 'cash'
-        ? `<h2>Cash</h2>
+        ? `<h2 id="hud-detail-title">Cash</h2>
            <p class="hud-detail-value">$${state.cash.toLocaleString('en-US')}</p>
            <p>Total cash gained since day 1: <strong>$${state.stats.totalEarnings.toLocaleString('en-US')}</strong></p>`
         : hudDetail === 'rating'
-          ? `<h2>Rating</h2>
+          ? `<h2 id="hud-detail-title">Rating</h2>
              <p class="hud-detail-value">${ratingModel.ratingText}</p>
              <p>${ratingModel.prestigeDistanceText}</p>
              <p>${ratingModel.softResetDistanceText}</p>
@@ -401,45 +415,46 @@ export function mountServiceDayUi(
                  : '<li>No reviews yet.</li>'
              }</ul>`
           : hudDetail === 'prestige'
-            ? `<h2>Prestige P${state.prestige}</h2>
+            ? `<h2 id="hud-detail-title">Prestige P${state.prestige}</h2>
                <p>Current permanent payout multiplier: <strong>${prestigeMultiplier(state.prestige).toFixed(2)}×</strong></p>
                <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
                <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
             : hudDetail === 'day'
               ? state.daySummary
-                ? `<h2>Day ${displayDay}</h2>
+                ? `<h2 id="hud-detail-title">Day ${displayDay}</h2>
                    <p data-testid="hud-day-earnings">${escapeHtml(state.daySummary.earningsLine)}</p>
                    <p data-testid="hud-day-rating-change">${escapeHtml(state.daySummary.ratingDeltaText)}</p>
                    <p data-testid="hud-day-customers-served">${escapeHtml(state.daySummary.customersServedText)}</p>
                    <p>${escapeHtml(state.daySummary.averageMatchText)}</p>`
-                : `<h2>Day ${displayDay}</h2>
+                : `<h2 id="hud-detail-title">Day ${displayDay}</h2>
                    <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
                    <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
                    <p>Customers served: <strong>${customersServed}</strong></p>
                    <p>Customers left: <strong>${customersLeft}</strong></p>`
               : '';
+    const detailMenuId = 'hud-detail-menu';
     hud.innerHTML = `
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-label="Cash details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Cash details">
         <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
         <strong>$${state.cash.toLocaleString('en-US')}</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="rating" aria-expanded="${hudDetail === 'rating'}" aria-label="Restaurant rating details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="rating" aria-expanded="${hudDetail === 'rating'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Restaurant rating details">
         <span class="hud-stat-label"><i aria-hidden="true">★</i> Rating</span>
         <strong>${state.rating.toFixed(1)}★</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="prestige" aria-expanded="${hudDetail === 'prestige'}" aria-label="Prestige details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="prestige" aria-expanded="${hudDetail === 'prestige'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Prestige details">
         <span class="hud-stat-label"><i aria-hidden="true">◆</i> Prestige</span>
         <strong>P${state.prestige}</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-label="Day details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Day details">
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
         <strong>${displayDay}</strong>
       </button>
       <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${
         hudDetail
-          ? `<aside class="hud-detail-menu" data-testid="hud-detail-menu" aria-live="polite">
-               <button type="button" class="hud-detail-close" aria-label="Close details">×</button>
+          ? `<aside id="${detailMenuId}" class="hud-detail-menu" data-testid="hud-detail-menu" role="dialog" aria-modal="true" aria-label="${escapeHtml(detailTitle)} details" aria-labelledby="hud-detail-title">
+               <button type="button" class="hud-detail-close" aria-label="Close ${escapeHtml(detailTitle)} details">×</button>
                ${detailContent}
              </aside>`
           : ''
@@ -933,6 +948,14 @@ export function mountServiceDayUi(
       const requestedAxes = AXIS_KEYS.filter(
         (axis) => requestedBands[axis] !== undefined,
       );
+      const composeProgress = buildComposeProgress({
+        ingredientCount: preview.ingredientCount,
+        requestedBands,
+        profile: preview.profile,
+        minIngredients: MIN_DISH_INGREDIENTS,
+        maxIngredients: MAX_DISH_INGREDIENTS,
+      });
+      const progressHtml = composeProgressMeterHtml(composeProgress, escapeHtml);
 
       const renderIngredientButtons = (): string => {
         const currentDraft = selectComposeDraftIds(useGameStore.getState());
@@ -1106,7 +1129,8 @@ export function mountServiceDayUi(
       }
 
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+        <button type="button" class="compose-dismiss-scrim" data-testid="compose-dismiss-scrim" aria-label="Close cooking sheet and return to floor"></button>
+        <div class="service-panel sheet-tier-near-full compose-sheet-panel" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
           <div class="service-card sheet-card-layout compose-sheet-card">
             <header class="sheet-header compose-sheet-header">
               <div>
@@ -1119,8 +1143,8 @@ export function mountServiceDayUi(
             <section class="compose-selection" aria-label="Selected ingredients">
               <div class="compose-section-heading">
                 <strong>Selected</strong>
-                <span>${preview.ingredientCount} / ${MAX_DISH_INGREDIENTS}</span>
               </div>
+              ${progressHtml}
               <div class="compose-selected-strip">${selectedStrip}</div>
             </section>
             <section class="compose-filters" aria-label="Pantry filters">
@@ -1147,7 +1171,7 @@ export function mountServiceDayUi(
             <footer class="sheet-footer compose-sheet-footer">
               <div class="compose-footer-copy">
                 <span>Dish flavor</span>
-                <span>${preview.profile ? 'Tune each requested flavor into range' : `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients`}</span>
+                <span>${preview.profile ? escapeHtml(composeProgress.coherenceLabel) : escapeHtml(composeProgress.statusHint)}</span>
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
               <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
@@ -1335,6 +1359,13 @@ export function mountServiceDayUi(
 
       serviceOverlay
         .querySelector('[data-testid="compose-close"]')
+        ?.addEventListener(
+          'click',
+          () => useGameStore.getState().closeComposeSheet(),
+          { once: true },
+        );
+      serviceOverlay
+        .querySelector('[data-testid="compose-dismiss-scrim"]')
         ?.addEventListener(
           'click',
           () => useGameStore.getState().closeComposeSheet(),

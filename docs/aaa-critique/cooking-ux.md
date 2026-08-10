@@ -290,3 +290,111 @@ All paths under `/tmp/aaa-shots/cooking-verify/`:
 | 6 | Floor action chrome visible under compose modal | `ServiceDayUi.ts` overlay isolation / dimming | S |
 | 7 | Mobile compose vertical stack (search + chips + meters + grid) | `service-day.css` compose layout | M |
 
+---
+
+## Final verification (round 2)
+
+**Method:** Fresh blind re-score from live Playwright session (2026-08-10) against CSD3 / Overcooked! 2. `npm run sync:data`; dev server `http://127.0.0.1:4182/?e2e=1` via `window.__E2E__` bridge (`tests/e2e/helpers.ts` pattern). Screenshots: `/tmp/aaa-shots/cooking-final/` (390×844 + 1280×800). Server killed after capture.
+
+### Claim verification (round 2 changelog)
+
+| # | Claim | Verified? | Evidence |
+|---|-------|:---------:|----------|
+| 1 | Sims-style gibberish order bubble (not literal taste prose in visual layer) | **Yes** | Mobile `02`: visual `"Sul sul! Doooh flib dag ah dowoobosh paxkepba v-igber!"`; `hasLiteralTasteProfile: false`. Real preference only in `.sr-only` (`Order: High Umami, low Salty…`). |
+| 2 | Bubble ticket / axis cue iconography | **Yes** | `02`: `order-bubble-ticket-icon` + three `order-bubble-cue` chips (`Sa`/`Um`/`Pu`) with `data-axis` keys; desktop mirrors (`Um`/`Pu`/`Ri`). |
+| 3 | Bubble SR summary in a11y tree | **Yes** | Bubble `role="status"`; `.sr-only` full request text present; visual layer `aria-hidden="true"`. |
+| 4 | Hardened multi-ticket compose rail (2+ active) | **Yes** | `05`/`13`: `compose-ticket-rail--multi`, `data-rail-count="2"`, two portraits (`Balanced… SELECTED`, `Rich Indust… OPEN`) on mobile and desktop. |
+| 5 | Pantry search + filter recovery | **Yes** | `06b`: `compose-search-input` + `3 matching · "chicken"` on **mobile** (search now wired at 390px); `06`: axis filter + `data-compose-all` chip; low-match hint in `09`. |
+| 6 | Flavor-gap signed deltas | **Yes** | `09`: `Below request · +6.0`, `Above request · +0.8`; band shade via `.compose-request-band` in DOM. |
+| 7 | Carry → deliver emphasis | **Yes** | `10`/`11`: toggle `Carrying … · 2/4 → deliver` + `.carrying`; tickets menu auto-open with `CARRYING` row highlight. |
+| 8 | Inspector long-press discoverability hint | **Yes** | `05`/`09`: `compose-inspect-hint` under filter summary; `08`: `inspector-long-press-hint` inside flavor inspector modal. |
+| 9 | Ideal aroma above fold | **Yes** | `04`: **Aroma** group first (before Basic Tastes); `aromaAboveFold: true`; hint now reads “Scroll for mouthfeel”. |
+| 10 | Floor CTA in-flight shimmer | **Partial** | `FloorServiceHud.ts` applies `.in-flight` + `aria-busy` during **seat** walk (`seating` stage: confirmed in supplemental run). Instant actions (`set-table`, `take-orders`) clear shimmer in one microtask — not visible in `12` carry-state capture. |
+
+**Gameplay-rule audit:** No violations observed. Plated dish used **3** ingredients (within 3–6); fixture held **2/4** tickets; Ideal panel shows **15** `[role="meter"]` axes.
+
+### Evidence (screenshots)
+
+All paths under `/tmp/aaa-shots/cooking-final/`:
+
+| Step | Mobile (390×844) | Desktop (1280×800) |
+|------|------------------|---------------------|
+| Floor service start | `mobile-390x844-01-floor-service.png` | `desktop-1280x800-01-floor-service.png` |
+| Order bubble (gibberish + cues) | `mobile-390x844-02-order-bubble.png` | `desktop-1280x800-02-order-bubble.png` |
+| Tickets — default (Ideal) | `mobile-390x844-03-tickets-default.png` | `desktop-1280x800-03-tickets-default.png` |
+| Tickets — Ideal (aroma first) | `mobile-390x844-04-tickets-ideal.png` | `desktop-1280x800-04-tickets-ideal.png` |
+| Compose + 2-ticket rail | `mobile-390x844-05-compose-initial.png` | `desktop-1280x800-05-compose-initial.png` |
+| Axis filter applied | `mobile-390x844-06-compose-filtered.png` | `desktop-1280x800-06-compose-filtered.png` |
+| Pantry search | `mobile-390x844-06b-compose-search.png` | `desktop-1280x800-06b-compose-search.png` |
+| Partial selection (3/6) | `mobile-390x844-07-compose-partial.png` | `desktop-1280x800-07-compose-partial.png` |
+| Flavor inspector modal | `mobile-390x844-08-flavor-inspector.png` | `desktop-1280x800-08-flavor-inspector.png` |
+| Flavor-gap deltas | `mobile-390x844-09-compose-flavor-details.png` | `desktop-1280x800-09-compose-flavor-details.png` |
+| Post-plate carry state | `mobile-390x844-10-post-plate-carry.png` | `desktop-1280x800-10-post-plate-carry.png` |
+| Carrying in tickets menu | `mobile-390x844-11-carrying-ticket.png` | `desktop-1280x800-11-carrying-ticket.png` |
+| CTA in-flight (carry context) | `mobile-390x844-12-cta-in-flight.png` | `desktop-1280x800-12-cta-in-flight.png` |
+| Multi-ticket compose rail | `mobile-390x844-13-multi-ticket-rail.png` | `desktop-1280x800-13-multi-ticket-rail.png` |
+
+Machine-readable capture log: `/tmp/aaa-shots/cooking-final/evidence.json`.
+
+### Blind scorecard (re-score)
+
+| Category | CSD3 | OC2 | Val's (r1) | Val's (r2) | Verdict vs benchmarks | One-line evidence |
+|----------|:----:|:---:|:----------:|:----------:|:---------------------:|-------------------|
+| **Ticket scannability** | 5 | 5 | 3 | **4** | **At** | Gibberish bubble + ticket icon + axis cue chips (`02`); Order tab still phrase chips, not food glyphs. |
+| **Flavor-gap communication** | 2 | 1 | 5 | **5** | **Above** | Signed deltas + band shade on compose meters (`09`); benchmarks lack this loop. |
+| **Ingredient findability** | 4 | 3 | 4 | **4** | **At** | Search + All-ingredients + low-match hint at 390px (`06b`, `09`); 100-item grid still scroll-heavy. |
+| **Compose flow friction** | 4 | 4 | 3 | **3** | **Below** | Full blocking sheet unchanged; walk-to-station gate intact. |
+| **Error prevention & recovery** | 4 | 3 | 4 | **4** | **At** | 3–6 cap enforced; filter/search escape + “Few matches” hint (`09`). |
+| **Progress feedback while cooking** | 5 | 4 | 3 | **3** | **Below** | Live delta chips on bar movement (`09`); no prep beats / station cadence. |
+| **Information hierarchy @ 390px** | 4 | 5 | 3 | **4** | **At** | Aroma group above fold in Ideal (`04`); compose stack (search + chips + meters + grid) still dense (`05`). |
+| **One-handed mobile usability** | 3 | 4 | 3 | **3** | **At** | Plate CTA bottom-right (`09`); top filter/search row competes for thumb reach. |
+| **Carry / plating state visibility** | 4 | 5 | 4 | **4** | **At** | `→ deliver` toggle + auto-open CARRYING row (`10`/`11`); deliver toast on banner. |
+| **Cognitive load (multi-ticket)** | 4 | 5 | 2 | **4** | **At** | Two-portrait compose rail with status (`05`/`13`); full queue still in dock when closed. |
+
+**Roll-up (r2):** Val's is **above** on flavor-gap communication, **at** on scannability, findability, error prevention, hierarchy, carry visibility, one-handed basics, and multi-ticket awareness, **below** on compose friction and prep feedback.
+
+### Verdict
+
+**Does the slice meet or exceed the benchmark blind after round 2?** **No.** Round 2 closes the largest r1 regressions (multi-ticket rail, bubble iconography, aroma fold, inspector hints) and lifts scannability and multi-ticket load from below → at. The slice still trails CSD3/OC2 on tactile prep feedback and blocking compose friction; flavor-gap remains the only category clearly **above** both peers.
+
+### Remaining gaps (ranked)
+
+| Rank | Gap | Where | Complexity |
+|:----:|-----|-------|:----------:|
+| 1 | No station prep cadence / tactile cook loop | domain + canvas (outside presentation fence) | L |
+| 2 | Compose blocking sheet + walk-to-station gate | `ServiceDayUi.ts` compose lifecycle | M |
+| 3 | Instant floor CTA shimmer imperceptible (one microtask) | `FloorServiceHud.ts` `pendingFloorAction` release | S |
+| 4 | Order tab / tickets still phrase chips vs OC food icons | `floor-ticket.ts`, `customer-request.ts` | M |
+| 5 | Mobile compose vertical density (search + chips + meters + 5-col grid) | `service-day.css` compose layout | M |
+| 6 | Floor action chrome visible under compose modal | `ServiceDayUi.ts` overlay dimming | S |
+| 7 | Gibberish bubble hides literal prefs — cues help but require axis literacy | `order-bubble.ts`, `guest-gibberish.ts` | S |
+
+---
+
+## Implemented (round 3)
+
+### Shipped
+
+| # | Task | What / where | Tests |
+|---|------|--------------|-------|
+| 1 | Compose friction (keep lifecycle) | Dismiss scrim + Escape (existing) close sheet without clearing ticket drafts; mobile sheet ~78% so floor peeks; lighter scrim; dim inert floor chrome under compose (`ServiceDayUi.ts`, `service-day.css`) | visual `/tmp/aaa-shots/cooking-r3/` |
+| 2 | CTA icons + persistent in-flight | Icon+label CTAs; ≥520ms hold (not microtask flash); seat holds through canvas `data-in-flight` + seating; deliver toggle gets icon + in-flight while carrying; reduced-motion override (`floor-action-feedback.ts`, `FloorServiceHud.ts`, CSS) | `cooking-r3-polish.test.ts` |
+| 3 | Progress while cooking | Live 3–6 window meter + “flavors in range” coherence under Selected; footer mirrors coherence (`compose-progress.ts`) | same |
+| 4 | Order tab icon-first | Axis cue chips (band glyph + short code) replace phrase chips; Ideal tab unchanged 15 axes (`floor-ticket.ts`, `FloorServiceHud.ts`) | same + `floor-ticket-label.test.ts` |
+| 5 | HUD detail a11y | Detail popover `role="dialog"` + `aria-labelledby` / `aria-label`; trigger buttons `aria-haspopup` + `aria-controls` (`ServiceDayUi.ts`) | — |
+
+### Skipped
+
+| Gap | Why |
+|-----|-----|
+| Prep cadence / tactile cook loop | Locked pacing / outside presentation fence (domain + canvas). |
+| Compose lifecycle / walk-to-station gate | Shipped design decision — only friction reduced, rules unchanged. |
+| Ticket capacity 4 / 3–6 ingredients / 15 Ideal axes | Locked structural rules — untouched. |
+
+### Verify
+
+- `npx vitest run src/test/cooking-* src/test/ui` — pass
+- `npm run typecheck` — clean for fenced files
+- `npx eslint` on touched TS — clean
+- Screenshots: `/tmp/aaa-shots/cooking-r3/` (`*-01-cta-in-flight`, `*-02-order-tab`, `*-03-compose-sheet` @ 390×844 + 1280×800)
+
