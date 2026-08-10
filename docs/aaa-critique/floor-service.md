@@ -205,3 +205,29 @@ Playwright session notes: `/tmp/aaa-shots/floor/playwright-notes.txt`
 ## Summary verdict
 
 Val's Kitchen floor service has **correct domain logic and several polished edge cases** (door traffic, pending seating intent, delivery retry guard, doorway crop). Against AAA service benchmarks it still reads as **functional prototype** rather than **juicy floor play**: locomotion is linear and slow, affordances are adjacency-locked, waiting is invisible, and action moments lack audio/visual punch. The highest-leverage improvements stay inside the fenced canvas/domain layer: **distant hints, motion easing, guest head cues, and queue staging** — without touching PRD pacing numbers or structural rules.
+
+---
+
+## Implemented (round 1)
+
+### Shipped (mapped to opportunity #s)
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **1** | Distant intent hints: far/near/preview strengths on nearest reachable service cells (tables, guests, stations, waiting seat) | `src/canvas/world/floor-feel-hints.ts`, `InteractHintLayer.ts`, `RestaurantApp.onTick` | `src/test/floor-feel-hints.test.ts` |
+| **2** | Segment smoothstep easing (tile timing unchanged) + 100 ms stop anticipation before auto-seat | `NavController.ts` (`easeSegmentProgress`), `RestaurantApp.tickPendingSeatingIntent` | `src/test/floor/nav-controller.test.ts` |
+| **3** | Guest head cues: order bubble / deliver plate (+ eating/leaving pacing from #10) | `guest-interaction-hint.ts`, `ActorLayer.drawGuestStageCue` | `src/test/canvas/guest-interaction-hint.test.ts` |
+| **4** | Queued guests render as dim door-line silhouettes at `waitingGuestWorldPosition` | `ActorLayer.syncGuests` | `floor-feel-hints` waiting-line geometry + existing waiting-guest-anchor |
+| **5** | Chevron destination stamp + 3 fading path-tail crumbs | `ActorLayer.drawDestination`, `NavController.pathTailCrumbs` | `src/test/floor-feel-destination.test.ts` |
+| **6** | `data-in-flight` on canvas while seating path / walk armed | `RestaurantApp.syncFloorActionInFlightDataset` | manual/dataset; HUD shimmer still pending outside fence |
+| **7** | `playDeliverSting` on `CUSTOMER_SERVED` + `sfxForFloorFeelBeat`; canvas plays serve/uiClick on deliver/seat/order/walk | `service-events.ts`, `RestaurantApp` | `floor-feel-hints` service-events cases |
+| **8** | Camera lead-ahead 0.75 tile while moving | `cameraLeadOffset` + `RestaurantApp.onTick` | `floor-feel-hints` camera lead |
+| **9** | Approach-preview flash on chosen service cell when pathing to guest/wait | `RestaurantApp.armApproachPreview` + hint `preview` strength | covered via hint preview path in helpers |
+| **10** | Eating “…” / leaving empty-plate cues | `guestStageFloorCue` + ActorLayer | guest-interaction-hint tests |
+
+### Remaining gaps
+
+- **#6 HUD shimmer:** `FloorServiceHud` is outside this fence; only canvas `data-in-flight` ships. A follow-up can style CTAs from that dataset.
+- **#7 audio-bridge:** `playDeliverSting` is assigned via `mapReducerEventsToUi`, but `audio-bridge.ts` (outside fence) still only plays `serve` on `SERVE_DISH`. Canvas already calls `playSfx('serve')` on successful `FLOOR_DELIVER` so the sting is audible in-play; bridge parity is a one-line follow-up.
+- **Morning gate clash (#6 ranked gap):** guest visible while Seat disabled — needs domain/UI messaging changes outside fence.
+- **Mobile letterboxing:** camera/layout chrome outside this wave’s safe scope beyond lead-ahead.

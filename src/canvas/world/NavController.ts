@@ -3,6 +3,12 @@ import { TILE_PX } from '../coordinates.ts';
 
 const WALK_FRAME_SEQUENCE = [0, 1, 0, 2] as const;
 
+/** Smoothstep ease for segment visual lerp — does not change tile timing. */
+export function easeSegmentProgress(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return x * x * (3 - 2 * x);
+}
+
 /** Pure path follower — interpolates world position between grid cells. */
 export class NavController {
   private path: GridPoint[] = [];
@@ -42,6 +48,12 @@ export class NavController {
     if (!this.isMoving) return null;
     const end = this.path[this.path.length - 1];
     return end ? { ...end } : null;
+  }
+
+  /** Remaining path cells from the current index through the destination. */
+  get remainingPath(): GridPoint[] {
+    if (!this.isMoving) return [];
+    return this.path.slice(this.index).map((cell) => ({ ...cell }));
   }
 
   snapTo(cell: GridPoint): void {
@@ -132,9 +144,37 @@ export class NavController {
         ? { x: this.segmentOriginX, y: this.segmentOriginY }
         : cellCenter(from);
     const b = cellCenter(to);
-    const t = Math.min(1, Math.max(0, this.progress));
+    const t = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)));
     this.worldX = a.x + (b.x - a.x) * t;
     this.worldY = a.y + (b.y - a.y) * t;
+  }
+
+  /**
+   * 2–3 fading crumb stamps along the active route (world feet positions).
+   * Timing-invariant — samples geometry only.
+   */
+  pathTailCrumbs(count = 3): { x: number; y: number }[] {
+    if (!this.isMoving || count <= 0) return [];
+    const crumbs: { x: number; y: number }[] = [];
+    const from = this.path[this.index];
+    const to = this.path[this.index + 1];
+    if (from && to) {
+      const a =
+        this.segmentOriginX != null && this.segmentOriginY != null
+          ? { x: this.segmentOriginX, y: this.segmentOriginY }
+          : cellCenter(from);
+      const b = cellCenter(to);
+      const eased = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)));
+      for (let i = 1; i <= count; i += 1) {
+        const u = Math.min(1, eased + (1 - eased) * (i / (count + 1)));
+        crumbs.push({
+          x: a.x + (b.x - a.x) * u,
+          y: a.y + (b.y - a.y) * u,
+        });
+      }
+      return crumbs;
+    }
+    return crumbs;
   }
 
   /** Neutral → left stride → neutral → right stride, phased by distance. */

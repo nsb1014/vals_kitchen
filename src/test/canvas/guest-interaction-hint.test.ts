@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { GuestStage } from '../../domain/floor/types.ts';
 import {
+  guestCanvasCueAction,
   guestHintAction,
+  guestStageFloorCue,
   type CarriedDishRelation,
 } from '../../canvas/world/guest-interaction-hint.ts';
 
@@ -41,5 +43,17 @@ describe('guest interaction hint', () => {
         ).toBeNull();
       }
     }
+  });
+
+  it('shows canvas head cues at distance without adjacency', () => {
+    expect(guestCanvasCueAction('seated', 'none', true)).toBe('order');
+    expect(guestCanvasCueAction('ordered', 'matching', false)).toBe('deliver');
+    expect(guestCanvasCueAction('seated', 'none', false)).toBeNull();
+  });
+
+  it('exposes soft eating and leaving pacing cues', () => {
+    expect(guestStageFloorCue('eating')).toBe('eating');
+    expect(guestStageFloorCue('leaving')).toBe('leaving');
+    expect(guestStageFloorCue('seated')).toBeNull();
   });
 });

@@ -32,6 +32,12 @@ import {
 import { waitingGuestWorldPosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
+import {
+  guestCanvasCueAction,
+  guestStageFloorCue,
+  type CarriedDishRelation,
+} from './guest-interaction-hint.ts';
+import { canEnqueue } from '../../domain/floor/tickets.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 export {
@@ -45,7 +51,13 @@ export {
 
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
-const DEST_MARKER_COLOR = 0xf0e6a8;
+const DEST_MARKER_COLOR = 0xfff1a8;
+const DEST_MARKER_STROKE = 0xc4a35a;
+const CUE_ORDER_COLOR = 0xf4d35e;
+const CUE_DELIVER_COLOR = 0xe07a5f;
+const CUE_EATING_COLOR = 0x9ad0c2;
+const CUE_LEAVING_COLOR = 0xcfcfcf;
+const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
 
@@ -218,6 +230,7 @@ export class ActorLayer {
       isMoving: boolean;
       walkFrame: () => number;
       destination: GridPoint | null;
+      pathTailCrumbs?: () => { x: number; y: number }[];
     },
     guestMotion?: GuestMotion | null,
     opts: {
@@ -231,7 +244,7 @@ export class ActorLayer {
     if (!floor) {
       this.clearGuests();
       if (opts.showPlayerWithoutFloor) {
-        this.drawDestination(nav.destination);
+        this.drawDestination(nav.destination, nav.facing, nav.pathTailCrumbs?.() ?? []);
         const carrying = opts.playerCarrying === true;
         const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
         this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
@@ -243,7 +256,11 @@ export class ActorLayer {
       return;
     }
 
-    this.drawDestination(nav.destination);
+    this.drawDestination(
+      nav.destination,
+      nav.facing,
+      nav.pathTailCrumbs?.() ?? [],
+    );
     if (opts.showGuests === false) {
       this.clearGuests();
     } else {
@@ -423,13 +440,59 @@ export class ActorLayer {
     };
   }
 
-  private drawDestination(dest: GridPoint | null): void {
+  private drawDestination(
+    dest: GridPoint | null,
+    facing: 0 | 1 | 2 | 3 = 1,
+    crumbs: { x: number; y: number }[] = [],
+  ): void {
+    for (let i = 0; i < crumbs.length; i += 1) {
+      const crumb = crumbs[i]!;
+      const alpha = 0.55 - i * 0.14;
+      this.markerLayer
+        .circle(crumb.x, crumb.y, 3.5 - i * 0.4)
+        .fill({ color: DEST_MARKER_COLOR, alpha: Math.max(0.18, alpha) });
+    }
     if (!dest) return;
     const { x, y } = gridToWorld(dest.x, dest.y);
     const cx = x + TILE_PX / 2;
     const cy = y + TILE_PX / 2;
-    this.markerLayer.circle(cx, cy, 5).stroke({ width: 2, color: DEST_MARKER_COLOR, alpha: 0.85 });
-    this.markerLayer.circle(cx, cy, 2).fill({ color: DEST_MARKER_COLOR, alpha: 0.9 });
+    const size = 8;
+    // Chevron / footprint stamp oriented by travel facing.
+    const tips: [number, number][] =
+      facing === 0
+        ? [
+            [cx + size, cy],
+            [cx - size * 0.55, cy - size * 0.7],
+            [cx - size * 0.2, cy],
+            [cx - size * 0.55, cy + size * 0.7],
+          ]
+        : facing === 3
+          ? [
+              [cx - size, cy],
+              [cx + size * 0.55, cy - size * 0.7],
+              [cx + size * 0.2, cy],
+              [cx + size * 0.55, cy + size * 0.7],
+            ]
+          : facing === 2
+            ? [
+                [cx, cy - size],
+                [cx - size * 0.7, cy + size * 0.55],
+                [cx, cy + size * 0.2],
+                [cx + size * 0.7, cy + size * 0.55],
+              ]
+            : [
+                [cx, cy + size],
+                [cx - size * 0.7, cy - size * 0.55],
+                [cx, cy - size * 0.2],
+                [cx + size * 0.7, cy - size * 0.55],
+              ];
+    this.markerLayer
+      .poly(tips.flat())
+      .fill({ color: DEST_MARKER_COLOR, alpha: 0.92 })
+      .stroke({ width: 2, color: DEST_MARKER_STROKE, alpha: 0.95 });
+    this.markerLayer
+      .circle(cx, cy, 2)
+      .fill({ color: DEST_MARKER_STROKE, alpha: 0.85 });
   }
 
   private syncPlayer(
@@ -534,44 +597,59 @@ export class ActorLayer {
   ): void {
     const seen = new Set<string>();
     let waitingIndex = 0;
+    const orderAvailable = canEnqueue(floor.tickets, 1);
+    const carriedTicket = floor.tickets.find(
+      (ticket) =>
+        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+    );
+
     for (const guest of floor.pool) {
-      if (guest.stage === 'done' || guest.stage === 'queued') continue;
+      if (guest.stage === 'done') continue;
+
+      if (guest.stage === 'queued') {
+        const lineIndex =
+          floor.pool.filter(
+            (g) => g.stage === 'waiting' || g.stage === 'entering',
+          ).length +
+          floor.pool
+            .filter((g) => g.stage === 'queued')
+            .findIndex((g) => g.id === guest.id);
+        const world = waitingGuestWorldPosition(guestDoor, Math.max(0, lineIndex));
+        seen.add(guest.id);
+        const entry = this.ensureGuestEntry(guest.id);
+        entry.sprite.visible = false;
+        entry.lastFrameKey = '';
+        entry.actualBoundFrameKey = '';
+        entry.requestedFrameKey = '';
+        entry.isSeated = false;
+        entry.isMoving = false;
+        entry.facing = 'down';
+        const feetY = world.y + TILE_PX / 2 - 2;
+        entry.root.position.set(Math.round(world.x), Math.round(feetY));
+        entry.root.zIndex = entry.root.y - 1;
+        entry.cue.clear();
+        // Dim silhouette so the door queue reads before admit.
+        entry.cue
+          .ellipse(0, -6, 10, 4)
+          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.28 });
+        entry.cue
+          .circle(0, -18, 9)
+          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.38 });
+        entry.content.mask = null;
+        entry.content.y = 0;
+        entry.content.renderable = true;
+        entry.doorwayCrop = null;
+        continue;
+      }
+
       const waitIdx =
-        guest.stage === 'waiting' || guest.stage === 'entering' ? waitingIndex++ : undefined;
+        guest.stage === 'waiting' || guest.stage === 'entering'
+          ? waitingIndex++
+          : undefined;
       const pose = resolveGuestPose(guest, waitIdx, guestMotion);
       if (!pose) continue;
       seen.add(guest.id);
-      let entry = this.guestSprites.get(guest.id);
-      if (!entry) {
-        const root = new Container();
-        const content = new Container();
-        const sprite = new Sprite();
-        sprite.roundPixels = true;
-        sprite.anchor.set(0.5, 1);
-        sprite.alpha = 1;
-        const cue = new Graphics();
-        const cropMask = new Graphics();
-        content.addChild(sprite);
-        content.addChild(cue);
-        root.addChild(content);
-        root.addChild(cropMask);
-        this.actorContainer.addChild(root);
-        entry = {
-          root,
-          content,
-          sprite,
-          cue,
-          cropMask,
-          doorwayCrop: null,
-          lastFrameKey: '',
-          requestedFrameKey: '',
-          actualBoundFrameKey: '',
-          isSeated: false,
-          isMoving: false,
-          facing: 'down',
-        };
-        this.guestSprites.set(guest.id, entry);
-      }
+      const entry = this.ensureGuestEntry(guest.id);
 
       const variant = guestVariant(guest.id);
       const facingName = FACING_NAMES[pose.facing];
@@ -643,6 +721,16 @@ export class ActorLayer {
       if (!entry.sprite.visible) {
         entry.cue.circle(0, -8, 8).fill(FALLBACK_GUEST_COLOR);
       }
+      const carriedRelation: CarriedDishRelation = !carriedTicket
+        ? 'none'
+        : carriedTicket.customerId === guest.customer.id
+          ? 'matching'
+          : 'other';
+      this.drawGuestStageCue(
+        entry,
+        guestCanvasCueAction(guest.stage, carriedRelation, orderAvailable) ??
+          guestStageFloorCue(guest.stage),
+      );
       this.syncGuestDoorwayCrop(
         entry,
         guest.stage,
@@ -656,6 +744,93 @@ export class ActorLayer {
       this.actorContainer.removeChild(entry.root);
       this.guestSprites.delete(id);
     }
+  }
+
+  private ensureGuestEntry(guestId: string): GuestSpriteEntry {
+    let entry = this.guestSprites.get(guestId);
+    if (entry) return entry;
+    const root = new Container();
+    const content = new Container();
+    const sprite = new Sprite();
+    sprite.roundPixels = true;
+    sprite.anchor.set(0.5, 1);
+    sprite.alpha = 1;
+    const cue = new Graphics();
+    const cropMask = new Graphics();
+    content.addChild(sprite);
+    content.addChild(cue);
+    root.addChild(content);
+    root.addChild(cropMask);
+    this.actorContainer.addChild(root);
+    entry = {
+      root,
+      content,
+      sprite,
+      cue,
+      cropMask,
+      doorwayCrop: null,
+      lastFrameKey: '',
+      requestedFrameKey: '',
+      actualBoundFrameKey: '',
+      isSeated: false,
+      isMoving: false,
+      facing: 'down',
+    };
+    this.guestSprites.set(guestId, entry);
+    return entry;
+  }
+
+  private drawGuestStageCue(
+    entry: GuestSpriteEntry,
+    cue:
+      | 'order'
+      | 'deliver'
+      | 'eating'
+      | 'leaving'
+      | null,
+  ): void {
+    if (!cue) return;
+    const headY = entry.sprite.visible ? -SEATED_GUEST_DISPLAY_HEIGHT - 4 : -28;
+    const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 220);
+    if (cue === 'order') {
+      // Speech-bubble “!” — order available.
+      entry.cue
+        .roundRect(-7, headY - 16, 14, 14, 3)
+        .fill({ color: CUE_ORDER_COLOR, alpha: 0.55 + pulse * 0.35 });
+      entry.cue
+        .circle(0, headY - 11, 1.6)
+        .fill({ color: 0x3d2c1e, alpha: 0.95 });
+      entry.cue
+        .rect(-1, headY - 8, 2, 5)
+        .fill({ color: 0x3d2c1e, alpha: 0.95 });
+      return;
+    }
+    if (cue === 'deliver') {
+      // Plate disc — matching dish ready to serve.
+      entry.cue
+        .circle(0, headY - 8, 7 + pulse)
+        .fill({ color: CUE_DELIVER_COLOR, alpha: 0.7 + pulse * 0.25 });
+      entry.cue
+        .circle(0, headY - 8, 3.5)
+        .fill({ color: 0xfff6e0, alpha: 0.95 });
+      return;
+    }
+    if (cue === 'eating') {
+      entry.cue
+        .circle(0, headY - 6, 3)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.55 });
+      entry.cue
+        .circle(-5, headY - 6, 2)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
+      entry.cue
+        .circle(5, headY - 6, 2)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
+      return;
+    }
+    // leaving — empty-plate hint
+    entry.cue
+      .ellipse(0, headY - 6, 7, 3)
+      .stroke({ width: 1.5, color: CUE_LEAVING_COLOR, alpha: 0.7 });
   }
 
   private clearGuests(): void {

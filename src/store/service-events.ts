@@ -6,8 +6,11 @@ import type {
   CeremonyKind,
   ServeReview,
 } from './game-store.ts';
+import type { SfxId } from '../assets/manifest.ts';
 
 const MAX_RECENT_REVIEWS = 12;
+
+export type FloorFeelBeat = 'deliver' | 'seat' | 'order' | 'walk';
 
 export interface ServiceUiPatch {
   pendingReview?: ServeReview | null;
@@ -15,6 +18,26 @@ export interface ServiceUiPatch {
   ceremonyPrestige?: number | null;
   recentReviews?: RecentReviewEntry[];
   celebrationQueue?: Celebration[];
+  /**
+   * Presentation signal: play the existing `serve` sting when a floor deliver
+   * completes (CUSTOMER_SERVED). Audio bridge / canvas consumers may observe.
+   */
+  playDeliverSting?: boolean;
+  /** Armed auto-walk / CTA sync (canvas sets `data-in-flight` from this). */
+  floorActionInFlight?: FloorFeelBeat | null;
+}
+
+/** Map floor-feel beats onto shipped SFX ids (no new audio files). */
+export function sfxForFloorFeelBeat(beat: FloorFeelBeat): SfxId {
+  switch (beat) {
+    case 'deliver':
+      return 'serve';
+    case 'seat':
+    case 'order':
+      return 'uiClick';
+    case 'walk':
+      return 'uiClick';
+  }
 }
 
 export function formatMasteryLine(input: {
@@ -53,6 +76,7 @@ export function mapReducerEventsToUi(
         });
         break;
       case 'CUSTOMER_SERVED':
+        patch.playDeliverSting = true;
         patch.pendingReview = {
           customerId: event.customerId,
           matchStars: event.matchStars,

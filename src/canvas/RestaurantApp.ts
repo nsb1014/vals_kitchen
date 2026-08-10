@@ -12,8 +12,6 @@ import {
 import {
   findCookStationPlacementAtCell,
   guestServicePositions,
-  isAdjacent,
-  isCookStationItemKey,
   playerNearGuestSeat,
   playerNearPlacement,
   waitingGuestServicePositions,
@@ -37,10 +35,20 @@ import {
   playerWalkBlockedCells,
   walkBlockedCells,
 } from './world/blocked-cells.ts';
-import { guestHintAction } from './world/guest-interaction-hint.ts';
+import {
+  cameraLeadOffset,
+  computeFloorInteractHints,
+  computeStationInteractHints,
+  type FloorInteractHint,
+} from './world/floor-feel-hints.ts';
 import { GuestMotion } from './world/GuestMotion.ts';
 import { NavController } from './world/NavController.ts';
 import { PerKeyAsyncGuard } from './world/per-key-async-guard.ts';
+import {
+  sfxForFloorFeelBeat,
+  type FloorFeelBeat,
+} from '../store/service-events.ts';
+import { playSfx } from '../assets/audio.ts';
 import {
   connectingDoorInterior,
   doorForGrid,
@@ -79,6 +87,10 @@ const ROOM_FADE_OUT_MS = 100;
 const ROOM_FADE_IN_MS = 140;
 const DELIVERY_RETRY_TOAST =
   'Could not deliver that dish — tap the guest to retry';
+/** Brief stop hold before auto-seat fires (visual anticipation only). */
+const STOP_ANTICIPATION_MS = 100;
+/** Service-cell approach flash duration after a remote guest tap. */
+const APPROACH_PREVIEW_MS = 420;
 const GUEST_DOOR_EXIT_LINGER_MS = 120;
 
 interface DoorwayCropDebug {
@@ -137,6 +149,9 @@ export class RestaurantApp {
   } | null = null;
   private nextPendingSeatingIntentRevision = 1;
   private readonly deliveryAttempts = new PerKeyAsyncGuard();
+  /** Accumulates while arrived at seating destination before dispatch. */
+  private seatingArrivalHoldMs = 0;
+  private approachPreview: { cell: GridPoint; untilMs: number } | null = null;
 
   private static readonly EATING_TICK_INTERVAL_MS = 1000;
 
@@ -332,6 +347,8 @@ export class RestaurantApp {
       store.setFloorToast('No clear route');
       return false;
     }
+    const destination = path[path.length - 1];
+    if (destination) this.armApproachPreview(destination);
     this.setNavigationPath(path);
     return true;
   }
@@ -360,16 +377,52 @@ export class RestaurantApp {
       store.setFloorToast('No clear route');
       return null;
     }
+    this.armApproachPreview(destination);
     this.setNavigationPath(path, { preserveSeatingIntent: true });
     return { ...destination };
   }
 
   private setNavigationPath(
     path: GridPoint[],
-    opts: { preserveSeatingIntent?: boolean } = {},
+    opts: { preserveSeatingIntent?: boolean; feelBeat?: FloorFeelBeat } = {},
   ): void {
     if (!opts.preserveSeatingIntent) this.cancelPendingSeatingIntent();
+    const wasMoving = this.nav.isMoving;
     this.nav.setPath(path);
+    if (
+      path.length > 1 &&
+      !wasMoving &&
+      (opts.feelBeat === 'walk' || opts.feelBeat === undefined)
+    ) {
+      playSfx(sfxForFloorFeelBeat('walk'), 0.45);
+    }
+  }
+
+  private armApproachPreview(cell: GridPoint): void {
+    this.approachPreview = {
+      cell: { ...cell },
+      untilMs: performance.now() + APPROACH_PREVIEW_MS,
+    };
+  }
+
+  private activeApproachPreview(): GridPoint | null {
+    if (!this.approachPreview) return null;
+    if (performance.now() > this.approachPreview.untilMs) {
+      this.approachPreview = null;
+      return null;
+    }
+    return this.approachPreview.cell;
+  }
+
+  private syncFloorActionInFlightDataset(): void {
+    let beat: FloorFeelBeat | null = null;
+    if (this.pendingSeatingIntent) beat = 'seat';
+    else if (this.nav.isMoving) beat = 'walk';
+    if (beat) {
+      this.app.canvas.dataset.inFlight = beat;
+    } else {
+      delete this.app.canvas.dataset.inFlight;
+    }
   }
 
   private snapNavigationTo(cell: GridPoint): void {
@@ -379,6 +432,7 @@ export class RestaurantApp {
 
   private cancelPendingSeatingIntent(): void {
     this.pendingSeatingIntent = null;
+    this.seatingArrivalHoldMs = 0;
   }
 
   private pendingSeatingIntentIsValid(store: GameStore): boolean {
@@ -436,7 +490,18 @@ export class RestaurantApp {
     // Clear before dispatch: synchronous subscribers and repeated ticks can
     // never apply this request twice.
     this.cancelPendingSeatingIntent();
+    playSfx(sfxForFloorFeelBeat('seat'), 0.75);
     void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+  }
+
+  private tickPendingSeatingIntent(deltaMs: number): void {
+    if (!this.pendingSeatingIntent || this.nav.isMoving) {
+      this.seatingArrivalHoldMs = 0;
+      return;
+    }
+    this.seatingArrivalHoldMs += deltaMs;
+    if (this.seatingArrivalHoldMs < STOP_ANTICIPATION_MS) return;
+    this.completePendingSeatingIntent();
   }
 
   /**
@@ -474,6 +539,7 @@ export class RestaurantApp {
     this.cancelPendingSeatingIntent();
 
     if (!this.nav.isMoving && selectCanSeatFloorGuest(store)) {
+      playSfx(sfxForFloorFeelBeat('seat'), 0.75);
       void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
       return true;
     }
@@ -850,7 +916,8 @@ export class RestaurantApp {
 
     this.nav.update(deltaMs);
     useGameStore.getState().setFloorNavPosition(this.nav.position);
-    this.completePendingSeatingIntent();
+    this.tickPendingSeatingIntent(deltaMs);
+    this.syncFloorActionInFlightDataset();
 
     // Room transition when the cook steps onto the connecting door.
     if (
@@ -949,9 +1016,15 @@ export class RestaurantApp {
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
     const player = this.actorLayer.getPlayerWorldPosition();
+    const lead = cameraLeadOffset(
+      this.nav.facing,
+      this.nav.isMoving,
+      0.75,
+      TILE_PX,
+    );
     this.camera.followWorldPointSmooth(
-      player.x,
-      player.y,
+      player.x + lead.x,
+      player.y + lead.y,
       width,
       height,
       mapWpx,
@@ -973,16 +1046,31 @@ export class RestaurantApp {
     const stationNeedsAttention =
       liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
       !hasValidCarriedTicket;
-    const interactionHints = !selectShowFloorInteractionCues(state)
-      ? []
-      : state.activeFloorRoom === 'main'
-        ? this.computeInteractHints(
-            liveFloor,
-            roomPlacements,
-            this.nav.position,
-            stationNeedsAttention,
-          )
-        : this.computeStationHints(roomPlacements, stationNeedsAttention);
+    const blocked = this.playerBlockedCells(liveState, roomPlacements);
+    const hintGrid = {
+      w: state.gridSize.w,
+      h: state.gridSize.h,
+      blocked,
+    };
+    const interactionHints: FloorInteractHint[] =
+      !selectShowFloorInteractionCues(state)
+        ? []
+        : state.activeFloorRoom === 'main'
+          ? computeFloorInteractHints({
+              floor: liveFloor,
+              placements: roomPlacements,
+              player: this.nav.position,
+              grid: hintGrid,
+              stationNeedsAttention,
+              approachPreview: this.activeApproachPreview(),
+              canRequestSeat: selectCanRequestSeatFloorGuest(liveState),
+            })
+          : computeStationInteractHints(
+              roomPlacements,
+              this.nav.position,
+              hintGrid,
+              stationNeedsAttention,
+            );
     this.interactHintLayer.sync(interactionHints);
   };
 
@@ -1145,6 +1233,7 @@ export class RestaurantApp {
                 type: 'FLOOR_DELIVER',
                 ticketId: ticket.id,
               });
+              playSfx(sfxForFloorFeelBeat('deliver'));
               const current = useGameStore.getState();
               if (
                 this.mounted &&
@@ -1185,6 +1274,7 @@ export class RestaurantApp {
           type: 'FLOOR_TAKE_ORDERS',
           customerIds: [tappedGuest.customer.id],
         });
+        playSfx(sfxForFloorFeelBeat('order'), 0.75);
         return;
       }
     }
@@ -1546,98 +1636,6 @@ export class RestaurantApp {
     if (!selectShowFloorInteractionCues(state)) {
       this.interactHintLayer.clear();
     }
-  }
-
-  private computeStationHints(
-    placements: Placement[],
-    stationNeedsAttention: boolean,
-  ): { x: number; y: number }[] {
-    if (!stationNeedsAttention) return [];
-    const hints: { x: number; y: number }[] = [];
-    for (const placement of placements) {
-      if (!isCookStationItemKey(placement.itemKey)) continue;
-      hints.push({ x: placement.x, y: placement.y });
-    }
-    return hints;
-  }
-
-  private computeInteractHints(
-    floor: FloorDay,
-    placements: Placement[],
-    player: { x: number; y: number },
-    stationNeedsAttention: boolean,
-  ): { x: number; y: number }[] {
-    const hints: { x: number; y: number }[] = [];
-    const seen = new Set<string>();
-    const orderAvailable = canEnqueue(floor.tickets, 1);
-    const add = (x: number, y: number): void => {
-      const key = `${x},${y}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      hints.push({ x, y });
-    };
-
-    const placementById = new Map(placements.map((p) => [p.id, p]));
-
-    for (const table of floor.tables) {
-      if (table.state !== 'unset' && table.state !== 'dirty') continue;
-      const placement = placementById.get(table.placementId);
-      if (!placement) continue;
-
-      const tableAdjacent =
-        playerNearPlacement(player, placement) ||
-        floor.seats
-          .filter((seat) => seat.tablePlacementId === table.placementId)
-          .some((seat) => isAdjacent(player, seat));
-
-      if (tableAdjacent) {
-        add(placement.x, placement.y);
-      }
-    }
-
-    const carriedTicket = floor.tickets.find(
-      (ticket) =>
-        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
-    );
-    if (carriedTicket) {
-      const guest = floor.pool.find(
-        (candidate) => candidate.customer.id === carriedTicket.customerId,
-      );
-      if (
-        guest?.seat &&
-        guestHintAction(
-          guest.stage,
-          playerNearGuestSeat(player, guest),
-          'matching',
-          orderAvailable,
-        ) === 'deliver'
-      ) {
-        add(guest.seat.x, guest.seat.y);
-      }
-    } else {
-      if (stationNeedsAttention) {
-        for (const placement of placements) {
-          if (!isCookStationItemKey(placement.itemKey)) continue;
-          add(placement.x, placement.y);
-        }
-      }
-
-      for (const guest of floor.pool) {
-        if (
-          guest.seat &&
-          guestHintAction(
-            guest.stage,
-            playerNearGuestSeat(player, guest),
-            'none',
-            orderAvailable,
-          ) === 'order'
-        ) {
-          add(guest.seat.x, guest.seat.y);
-        }
-      }
-    }
-
-    return hints;
   }
 
   getCustomerScreenAnchor(): { x: number; y: number } | null {
