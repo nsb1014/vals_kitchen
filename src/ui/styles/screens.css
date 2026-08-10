@@ -811,6 +811,142 @@
   color: var(--vk-accent-2);
 }
 
+.achievement-progress {
+  margin-top: 0.35rem;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vk-border) 70%, transparent);
+  overflow: hidden;
+}
+
+.achievement-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--vk-accent) 75%, var(--vk-accent-2));
+  transition: width 180ms ease-out;
+}
+
+.achievement-near-complete {
+  opacity: 1;
+  border-color: color-mix(in srgb, #d4a017 70%, var(--vk-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d4a017 35%, transparent);
+}
+
+.achievement-near-complete .achievement-progress-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #d4a017 80%, var(--vk-accent)),
+    #f0c040
+  );
+}
+
+.achievement-near-complete .achievement-status {
+  color: #d4a017;
+  font-weight: 800;
+}
+
+.achievement-unlocked .achievement-progress-fill {
+  background: var(--vk-accent-2);
+}
+
+.recipe-mastery-bar {
+  margin: 0.2rem 0 0.15rem;
+  height: 4px;
+  max-width: 9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vk-border) 65%, transparent);
+  overflow: hidden;
+}
+
+.recipe-mastery-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--vk-accent) 70%, #fff);
+}
+
+.shop-milestone-strip,
+.layout-catalog-milestone {
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent) 80%, var(--vk-text));
+  line-height: 1.35;
+}
+
+.layout-catalog-purchase-toast {
+  margin: 0.4rem 0 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vk-text);
+  background: color-mix(in srgb, var(--vk-accent-2) 28%, var(--vk-panel));
+  border: 1px solid color-mix(in srgb, var(--vk-accent-2) 45%, var(--vk-border));
+}
+
+.layout-catalog-row-flash {
+  animation: layout-catalog-purchase-pulse 0.7s ease-out;
+}
+
+@keyframes layout-catalog-purchase-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vk-accent-2) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.guest-voice-line {
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--vk-text) 88%, var(--vk-accent));
+}
+
+.tomorrow-panel {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 35%, var(--vk-border));
+  background: color-mix(in srgb, var(--vk-panel) 88%, var(--vk-accent));
+}
+
+.tomorrow-panel-title {
+  margin: 0 0 0.4rem;
+  font-size: 15px;
+}
+
+.tomorrow-panel-line {
+  margin: 0.2rem 0;
+  font-size: 13px;
+  color: var(--vk-text);
+}
+
+.tomorrow-panel-goal {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+}
+
+.rating-nearest-achievement {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent) 75%, var(--vk-text));
+}
+
+.celebration-banner-dismiss,
+.notice-banner-dismiss {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .recipe-pager {
   flex: 0 0 auto;
   display: flex;
@@ -1315,7 +1451,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .flavor-bar-fill,
-  .rating-bar-fill {
+  .rating-bar-fill,
+  .achievement-progress-fill,
+  .recipe-mastery-bar-fill,
+  .layout-catalog-row-flash {
     transition: none;
+    animation: none;
   }
 }

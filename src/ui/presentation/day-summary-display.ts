@@ -34,6 +34,24 @@ export interface DaySummaryDisplay {
   masteryLine: string | null;
 }
 
+export interface TomorrowPreviewInput {
+  nextDay: number;
+  expectedCustomers: number;
+  seatingCapacity: number;
+  modifierName: string;
+  modifierDescription?: string | null;
+  prestigeDistanceText: string;
+  nearestAchievementLine?: string | null;
+}
+
+export interface TomorrowPreviewDisplay {
+  title: string;
+  customersLine: string;
+  modifierLine: string;
+  prestigeLine: string;
+  achievementLine: string | null;
+}
+
 export function formatMasterySummaryLine(masteryLines: string[] | undefined): string | null {
   if (!masteryLines || masteryLines.length === 0) return null;
   return `Recipe mastery: ${masteryLines.join(', ')}`;
@@ -62,5 +80,23 @@ export function buildDaySummaryDisplay(input: DaySummaryDisplayInput): DaySummar
     unlockProgressText: `Ingredients unlocked: ${input.unlockCount} / ${input.totalIngredients}`,
     customersServedText: `Customers served: ${input.customersServed}`,
     masteryLine: formatMasterySummaryLine(input.masteryLines),
+  };
+}
+
+/** Forward-looking end-of-day ritual panel (Stardew-style tomorrow hook). */
+export function buildTomorrowPreview(
+  input: TomorrowPreviewInput,
+): TomorrowPreviewDisplay {
+  const seats = Math.max(1, input.seatingCapacity);
+  const expected = Math.max(0, Math.min(input.expectedCustomers, seats));
+  const modifierDetail = input.modifierDescription?.trim();
+  return {
+    title: `Tomorrow — Day ${input.nextDay}`,
+    customersLine: `Expected guests: ${expected} (seats ${seats})`,
+    modifierLine: modifierDetail
+      ? `Modifier: ${input.modifierName} — ${modifierDetail}`
+      : `Modifier: ${input.modifierName}`,
+    prestigeLine: input.prestigeDistanceText,
+    achievementLine: input.nearestAchievementLine ?? null,
   };
 }

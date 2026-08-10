@@ -176,3 +176,36 @@ Highest leverage fixes stay inside the fence: **restore or reconcile orphaned sc
 - Dev server: `node node_modules/vite/bin/vite.js dev --host 127.0.0.1 --port 4184 --strictPort` (stopped after capture).
 - Capture harness: `/tmp/capture-meta-shots.mjs` (Playwright chromium from workspace).
 - No source files modified for this critique.
+
+---
+
+## Implemented (round 1)
+
+### Shipped (mapped to opportunity #s)
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **1** | **Skipped** — mount Shop/Rating into nav shell owned by another slice next wave | — | — |
+| **2** | Purchase SFX + toast/inline confirm + row flash on layout-catalog buys | `LayoutToolbar.ts`, `shop-items.ts` (`purchaseFeedbackMessage`), `screens.css` | `meta-shop-milestone.test.ts` |
+| **3** | "Next milestone" strip (next equipment unlock count / prestige distance) on catalog + ShopScreen | `shop-items.ts` (`buildShopMilestoneStrip`), `LayoutToolbar.ts`, `ShopScreen.ts`, `screens.css` | `meta-shop-milestone.test.ts` |
+| **4** | Guest voice line keyed by archetype + match tier; live inject into review sheet | `guest-voice.ts`, `review-display.ts`, `MetaSheetEnhancer.ts` (via `CelebrationBanner`), `guest-portrait.ts`, `screens.css` | `meta-guest-voice.test.ts` |
+| **5** | Day-summary "Tomorrow" panel (expected guests, modifier, prestige distance, nearest achievement) | `day-summary-display.ts`, `achievements/nearest.ts`, `MetaSheetEnhancer.ts`, `screens.css` | `meta-tomorrow-achievements.test.ts` |
+| **6** | Achievement progress bars + ≥80% near-complete gold styling | `RecipeBookScreen.ts`, `achievements/nearest.ts`, `screens.css` | `meta-tomorrow-achievements.test.ts` |
+| **7** | Shared shop row description/action labels; removed ingredient `slice(0, 80)` | `ShopScreen.ts`, `shop-items.ts` (`shopRowDescription` / `shopRowActionLabel`) | covered by shop milestone tests + existing shop-items suite |
+| **8** | Recipe mastery micro-bar beside discovered rows | `recipe-book.ts` (`masteryProgressRatio`), `RecipeBookScreen.ts`, `screens.css` | `meta-tomorrow-achievements.test.ts` |
+| **9** | Celebration dismiss hit target ≥44px (CSS override) | `CelebrationBanner.ts`, `screens.css` | visual |
+| **8 (rating polish)** | RatingScreen run-goal subtitle + nearest achievement line (screen excellence while orphaned) | `RatingScreen.ts` | — |
+
+### Remaining gaps
+
+- **#1** still blocked on nav/shell mount (`main.ts` / `NAV_SCREENS` / `NavigationBar`) — out of fence.
+- Review/day-summary injection depends on `MetaSheetEnhancer` MutationObserver until ServiceDayUi adopts `guestVoiceLine` / tomorrow fields natively.
+- **#10** full markup unification (single HTML row renderer) partially done via shared helpers; catalog vs ShopScreen still use different wrappers (`button` vs `article`).
+- audio-bridge still gates purchase SFX to `screen === 'shop'`; catalog path now calls `playSfx('purchase')` directly.
+
+### Verification (round 1)
+
+- `npx vitest run` meta + achievements + purchase-costs + decor-purchases + phase6-screens: **pass**
+- `npm run typecheck`: fence clean; out-of-fence noise in `src/test/floor-feel-hints.test.ts` (other agent)
+- `npm run lint`: fence clean
+- Visual: `/tmp/aaa-shots/meta-impl/` (390×844 + 1280×800) shop catalog / review / day-summary / achievements

@@ -1,5 +1,7 @@
 import { reviewDelta } from '../../domain/rating/update.ts';
 import type { DailyModifier } from '../../domain/day/modifiers.ts';
+import type { Archetype } from '../../domain/types.ts';
+import { buildGuestVoiceLine } from './guest-voice.ts';
 
 export interface ReviewDisplay {
   starsText: string;
@@ -9,7 +11,15 @@ export interface ReviewDisplay {
   ratingDeltaPositive: boolean;
   recipeLine: string | null;
   masteryLine: string | null;
+  /** Archetype-authored quip keyed by match tier; null when no archetype given. */
+  guestVoiceLine: string | null;
 }
+
+export {
+  buildGuestVoiceLine,
+  matchTierFromStars,
+  type MatchTier,
+} from './guest-voice.ts';
 
 export function formatStars(matchStars: number): string {
   return `${matchStars.toFixed(1)} / 10`;
@@ -57,6 +67,7 @@ export function buildReviewDisplay(input: {
   ratingDelta: number;
   recipeName: string | null;
   masteryLine?: string | null;
+  archetype?: Pick<Archetype, 'id' | 'name' | 'primaryAxisWeights'> | null;
 }): ReviewDisplay {
   const starsFilled = Math.round(input.matchStars);
   return {
@@ -67,6 +78,9 @@ export function buildReviewDisplay(input: {
     ratingDeltaPositive: input.ratingDelta >= 0,
     recipeLine: input.recipeName ? `Named dish: ${input.recipeName}` : null,
     masteryLine: input.masteryLine ?? null,
+    guestVoiceLine: input.archetype
+      ? buildGuestVoiceLine(input.archetype, input.matchStars)
+      : null,
   };
 }
 

@@ -17,6 +17,7 @@ import {
   NOTIFICATION_BLOCKING_SURFACE_CHANGE,
 } from '../notifications/blocking-surface.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
+import { mountMetaSheetEnhancer } from './MetaSheetEnhancer.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -129,7 +130,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
                 <strong class="celebration-banner-title">${escapeHtml(celebration.title)}</strong>
                 <span class="celebration-banner-body">${escapeHtml(celebration.body)}</span>
               </div>
-              <button class="celebration-banner-dismiss" type="button" aria-label="Dismiss celebration">×</button>
+              <button class="celebration-banner-dismiss" type="button" aria-label="Dismiss celebration" data-testid="celebration-dismiss">×</button>
             </aside>
           `;
         })()
@@ -213,8 +214,10 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   });
   window.addEventListener('food-atlas-ready', render);
   render();
+  const unmountMetaSheets = mountMetaSheetEnhancer();
 
   return () => {
+    unmountMetaSheets();
     unsubscribe();
     unbindSurfaceLifecycle();
     pageLifecycleActive = false;
