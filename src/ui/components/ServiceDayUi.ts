@@ -1135,7 +1135,12 @@ export function mountServiceDayUi(
             }),
             {
               escapeHtml,
-              renderPortrait: renderGuestPortraitHtml,
+              // Rail portraits share the compose sheet with the header portrait;
+              // a rail-scoped testid keeps e2e locators strict-mode unique.
+              renderPortrait: (guestId) =>
+                renderGuestPortraitHtml(guestId, {
+                  testId: 'rail-guest-portrait',
+                }),
             },
           );
         }

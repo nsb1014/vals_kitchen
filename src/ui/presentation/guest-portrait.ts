@@ -10,10 +10,11 @@ function escapeAttr(text: string): string {
 /** Uses a dedicated head crop from the same source frame as the floor actor. */
 export function renderGuestPortraitHtml(
   guestId: string,
-  options?: { voiceLine?: string | null },
+  options?: { voiceLine?: string | null; testId?: string },
 ): string {
   const variant = guestVariant(guestId);
   const voice = options?.voiceLine?.trim();
   const alt = voice ? escapeAttr(voice) : '';
-  return `<img class="guest-portrait" src="/assets/portraits/guest_${variant}.png" alt="${alt}" data-testid="guest-portrait"${voice ? '' : ' aria-hidden="true"'}>`;
+  const testId = options?.testId ?? 'guest-portrait';
+  return `<img class="guest-portrait" src="/assets/portraits/guest_${variant}.png" alt="${alt}" data-testid="${escapeAttr(testId)}"${voice ? '' : ' aria-hidden="true"'}>`;
 }
