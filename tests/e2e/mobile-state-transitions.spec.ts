@@ -193,7 +193,11 @@ test.describe("mobile state-transition boundaries", () => {
       test(`pauses floor guidance without covering Settings at ${viewport.label}`, async ({
         page,
       }) => {
-        test.setTimeout(30_000);
+        // Deliberate waits in this flow: 1.2s mid-dwell + 4.2s Settings stay +
+        // up to ~3s remaining dwell after return, plus boot/transitions and
+        // three unobscured checks. The suite default (60s) covers CI pacing;
+        // a 30s override raced the return expects after the tip had already
+        // remounted and burned (~2.7s) unseen (CI 31476780162 / 390 portrait).
         await page.setViewportSize(viewport);
         const diagnostics = await gotoFreshGame(page);
         await page.getByTestId("open-day-btn").click();
@@ -274,18 +278,41 @@ test.describe("mobile state-transition boundaries", () => {
           timedCheckpoint.beforeSettings,
         );
 
+        // Freeze dwell across Settings→Floor settle so CI pacing cannot burn
+        // the remounted tip before we assert survival (same hold as notice-resume-debug).
+        await page.evaluate(() => {
+          window.__E2E__!.setNotificationBannerPresentationHold(true);
+        });
         await navigateToScreen(page, "restaurant");
         const resumeSnap = await page.evaluate(() =>
           window.__E2E__!.getNoticeDebugSnapshot(),
         );
+        expect(
+          resumeSnap.noticeActive,
+          `notice lost during return: ${JSON.stringify(resumeSnap)}`,
+        ).not.toBeNull();
+        expect(
+          resumeSnap.remainingMs,
+          `dwell exhausted during return: ${JSON.stringify(resumeSnap)}`,
+        ).toBeGreaterThan(0);
+        const remainingBudgetMs = resumeSnap.remainingMs!;
+
+        await page.evaluate(() => {
+          window.__E2E__!.releaseNotificationBannerPresentationHold();
+        });
         await expect(
           notice,
           `notice missing after return: ${JSON.stringify(resumeSnap)}`,
         ).toBeVisible();
         await expect(notice).toContainText(timedCheckpoint.noticeText);
         const resumedAt = Date.now();
-        await expect(notice).toBeHidden({ timeout: 3_500 });
-        expect(Date.now() - resumedAt).toBeLessThan(3_500);
+        // remaining + slack for paint/timer arm; not a weakened duration assert.
+        await expect(notice).toBeHidden({
+          timeout: Math.ceil(remainingBudgetMs) + 1_000,
+        });
+        expect(Date.now() - resumedAt).toBeLessThan(
+          Math.ceil(remainingBudgetMs) + 1_000,
+        );
 
         assertNoDiagnostics(diagnostics);
       });

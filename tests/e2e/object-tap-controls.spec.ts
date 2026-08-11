@@ -820,21 +820,30 @@ test.describe('object tap controls', () => {
     ]);
 
     await tapGridCell(page, fixture.station.x, fixture.station.y);
+    // Hitch-capped floor delta (33ms) + remote fixture path: arrival can exceed
+    // the default 15s poll under CI. Approach-and-complete opens compose on
+    // arrival, so settle when Val is at the station OR the sheet is already open.
     await expect
-      .poll(() =>
-        page.evaluate(({ x, y }) => {
-          const player = window.__E2E__!.getState().floorPlayerGrid;
-          return Boolean(
-            player &&
-              Math.max(Math.abs(player.x - x), Math.abs(player.y - y)) <= 1,
-          );
-        }, fixture.station),
+      .poll(
+        () =>
+          page.evaluate(({ x, y }) => {
+            const bridge = window.__E2E__!;
+            if (bridge.getState().composeSheetOpen) return true;
+            const player = bridge.getState().floorPlayerGrid;
+            return Boolean(
+              player &&
+                Math.max(Math.abs(player.x - x), Math.abs(player.y - y)) <= 1,
+            );
+          }, fixture.station),
+        { timeout: 30_000 },
       )
       .toBe(true);
     // Round-3 compose approach opens the sheet on arrival (stale carry ignored).
     await expect
-      .poll(() =>
-        page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
+      .poll(
+        () =>
+          page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
+        { timeout: 10_000 },
       )
       .toBe(true);
     await expect(page.getByTestId('compose-sheet')).toBeVisible();
