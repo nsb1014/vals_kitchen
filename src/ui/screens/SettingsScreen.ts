@@ -20,11 +20,16 @@ import {
   saveCodeFeedbackClass,
   type SaveCodeFeedback,
 } from '../presentation/save-code-ui.ts';
+import {
+  isUsableFocusTarget,
+  scheduleOpenerFocusRestore,
+} from '../presentation/focus-restore.ts';
 
 export function mountSettingsScreen(container: HTMLElement): () => void {
   const root = document.createElement('div');
   root.className = 'screen-root';
   container.appendChild(root);
+  let cancelFocusRestore: (() => void) | null = null;
   root.innerHTML = `
     <section class="screen-panel sheet-tier-meta-full meta-screen" id="settings-screen" data-testid="settings-screen" hidden>
       <header class="screen-header settings-header">
@@ -266,25 +271,12 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     });
   });
 
-  const isUsableFocusTarget = (
-    target: HTMLElement | null,
-  ): target is HTMLElement => {
-    if (
-      !target?.isConnected ||
-      target === document.body ||
-      target === document.documentElement ||
-      target.closest('[hidden], [inert], [aria-hidden="true"]')
-    ) {
-      return false;
-    }
-    const style = getComputedStyle(target);
-    return style.display !== 'none' && style.visibility !== 'hidden';
-  };
-
   const syncVisibility = () => {
     const state = useGameStore.getState();
     const nextVisible = state.screen === 'settings';
     if (nextVisible && !visible) {
+      cancelFocusRestore?.();
+      cancelFocusRestore = null;
       const active =
         document.activeElement instanceof HTMLElement
           ? document.activeElement
@@ -298,35 +290,30 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
       });
     } else if (!nextVisible && visible) {
       closeConfirm();
-      // Capture before clearing so a double-rAF restore can re-query by testid
-      // after NavigationBar hides mid-service Floor chrome and HUD re-renders
-      // replace the opener node.
+      // Capture before clearing so restore can re-query by testid after HUD
+      // chrome remounts / innerHTML swaps replace the opener node.
       const savedTestId = focusReturnTestId;
       const savedElement = focusReturnElement;
       focusReturnTestId = null;
       focusReturnElement = null;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const active =
-            document.activeElement instanceof HTMLElement
-              ? document.activeElement
-              : null;
-          // Destination control still interactive on the new screen (e.g. Recipes
-          // from pre-day Settings) — keep that focus.
-          if (isUsableFocusTarget(active)) return;
+      const destination = state.screen;
+      cancelFocusRestore?.();
+      cancelFocusRestore = scheduleOpenerFocusRestore({
+        // Recipes/shop/etc.: keep the destination control that closed Settings.
+        // Restaurant: always restore the opener (Floor nav must not win).
+        shouldDeferToActive: () => destination !== 'restaurant',
+        resolveTarget: () => {
           const byTestId = savedTestId
             ? document.querySelector<HTMLElement>(
                 `[data-testid="${CSS.escape(savedTestId)}"]`,
               )
             : null;
-          const target =
-            (isUsableFocusTarget(byTestId) ? byTestId : null) ??
-            (isUsableFocusTarget(savedElement) ? savedElement : null) ??
-            document.querySelector<HTMLElement>(
-              '[data-testid="restaurant-canvas"]',
-            );
-          target?.focus({ preventScroll: true });
-        });
+          if (isUsableFocusTarget(byTestId)) return byTestId;
+          if (isUsableFocusTarget(savedElement)) return savedElement;
+          return document.querySelector<HTMLElement>(
+            '[data-testid="restaurant-canvas"]',
+          );
+        },
       });
     }
     panel.hidden = !nextVisible;
@@ -361,6 +348,8 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
   syncVisibility();
 
   return () => {
+    cancelFocusRestore?.();
+    cancelFocusRestore = null;
     unsubscribe();
     document.removeEventListener('keydown', onDocumentKeyDown);
     root.remove();

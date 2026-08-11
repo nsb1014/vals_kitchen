@@ -126,6 +126,15 @@ export function mountServiceDayUi(
   `;
 
   const hud = statusMount.querySelector('#game-hud') as HTMLElement;
+  // Stable gear node — reparented across renderHud innerHTML swaps so focus
+  // restore is not destroyed by unrelated HUD updates.
+  const hudSettingsButton = document.createElement('button');
+  hudSettingsButton.type = 'button';
+  hudSettingsButton.className = 'hud-settings-button';
+  hudSettingsButton.dataset.testid = 'hud-settings';
+  hudSettingsButton.setAttribute('aria-label', 'Open settings');
+  hudSettingsButton.textContent = '⚙';
+
   const serviceOverlay = overlayMount.querySelector(
     '#service-overlay',
   ) as HTMLElement;
@@ -222,6 +231,11 @@ export function mountServiceDayUi(
   let hudDetail: 'cash' | 'rating' | 'prestige' | 'day' | null = null;
   let servicePanelKind: ServicePanelKind | null = null;
   let servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
+
+  hudSettingsButton.addEventListener('click', () => {
+    hudDetail = null;
+    useGameStore.getState().navigateTo('settings');
+  });
 
   const revealServicePanel = (kind: ServicePanelKind) => {
     const now = performance.now();
@@ -502,6 +516,9 @@ export function mountServiceDayUi(
               : '';
     const detailMenuId = 'hud-detail-menu';
     const detailDialogAria = hudDetailDialogAriaAttrString('hud-detail-title');
+    // Keep the gear node identity across HUD rebuilds so Settings focus restore
+    // is not wiped by unrelated store-driven innerHTML swaps.
+    hudSettingsButton.remove();
     hud.innerHTML = `
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Cash details">
         <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
@@ -519,7 +536,6 @@ export function mountServiceDayUi(
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
         <strong>${displayDay}</strong>
       </button>
-      <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${
         hudDetail
           ? `<aside id="${detailMenuId}" class="hud-detail-menu" data-testid="hud-detail-menu" ${detailDialogAria} aria-label="${escapeHtml(detailTitle)} details">
@@ -529,6 +545,12 @@ export function mountServiceDayUi(
           : ''
       }
     `;
+    const detailMenu = hud.querySelector(`#${detailMenuId}`);
+    if (detailMenu) {
+      hud.insertBefore(hudSettingsButton, detailMenu);
+    } else {
+      hud.appendChild(hudSettingsButton);
+    }
     hud
       .querySelectorAll<HTMLButtonElement>('[data-hud-detail]')
       .forEach((button) => {
@@ -537,12 +559,6 @@ export function mountServiceDayUi(
           hudDetail = hudDetail === detail ? null : detail;
           renderHud();
         });
-      });
-    hud
-      .querySelector('[data-testid="hud-settings"]')
-      ?.addEventListener('click', () => {
-        hudDetail = null;
-        useGameStore.getState().navigateTo('settings');
       });
     hud.querySelector('.hud-detail-close')?.addEventListener('click', () => {
       hudDetail = null;
