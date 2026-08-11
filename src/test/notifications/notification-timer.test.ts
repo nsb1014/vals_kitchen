@@ -23,6 +23,7 @@ describe('notification timer', () => {
       noticeSticky: null,
       tutorialDismissedStepId: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       celebrationQueue: [],
       floorToast: null,
     });
@@ -46,6 +47,7 @@ describe('notification timer', () => {
       noticeActive: tip,
       noticeSticky: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       celebrationQueue: [],
       floorToast: tip.body,
     });
@@ -66,9 +68,57 @@ describe('notification timer', () => {
     expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
 
     useGameStore.getState().navigateTo('restaurant');
-    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    // Slow remount: screen is restaurant + surface still active, but banner
+    // host is not yet presented — dwell must stay frozen.
+    useGameStore.getState().setNotificationBannerPresented(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(23_900);
+    vi.advanceTimersByTime(3_900);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+    expect(peekNoticeRemainingMs()).toBe(TUTORIAL_NOTICE_DURATION_MS - 1_200);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(23_900);
     vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS - 1_200 - 1);
     expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('does not tick dwell while host is hidden even when screen is restaurant', () => {
+    const tip = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+    useGameStore.setState({
+      screen: 'restaurant',
+      noticeActive: tip,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      notificationBannerPresented: true,
+      celebrationQueue: [],
+      floorToast: tip.body,
+    });
+    useGameStore.getState().syncNotificationTimer();
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(800);
+    vi.advanceTimersByTime(800);
+    const remainingAfterTick = peekNoticeRemainingMs();
+    expect(remainingAfterTick).toBe(TUTORIAL_NOTICE_DURATION_MS - 800);
+
+    // CI remount window: screen already restaurant, surface active, host hidden.
+    useGameStore.getState().setNotificationBannerPresented(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(20_000);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+    expect(peekNoticeRemainingMs()).toBe(remainingAfterTick);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(remainingAfterTick! - 1);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
     vi.advanceTimersByTime(1);
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
@@ -86,6 +136,7 @@ describe('notification timer', () => {
       noticeActive: tip,
       noticeSticky: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       celebrationQueue: [],
       floorToast: tip.body,
     });
@@ -96,6 +147,7 @@ describe('notification timer', () => {
 
     // Banner host parks the tip (not visible on Settings) and clears the surface.
     useGameStore.getState().navigateTo('settings');
+    useGameStore.getState().setNotificationBannerPresented(false);
     useGameStore.getState().setNotificationSurfaceActive(
       notificationSurfaceShouldRun(
         true,
@@ -118,6 +170,7 @@ describe('notification timer', () => {
 
     useGameStore.getState().navigateTo('restaurant');
     expect(noticeIsVisibleOnScreen(tip, 'restaurant')).toBe(true);
+    // Remount lag: restaurant screen + surface arm before host paints.
     useGameStore.getState().setNotificationSurfaceActive(
       notificationSurfaceShouldRun(
         true,
@@ -126,9 +179,16 @@ describe('notification timer', () => {
       ),
     );
     expect(useGameStore.getState().notificationSurfaceActive).toBe(true);
+    expect(useGameStore.getState().notificationBannerPresented).toBe(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(33_900);
+    vi.advanceTimersByTime(3_900);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+    expect(peekNoticeRemainingMs()).toBe(TUTORIAL_NOTICE_DURATION_MS - 1_200);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
     expect(useGameStore.getState().noticeActive?.body).toBe(tip.body);
 
-    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(30_000);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(33_900);
     const remaining = TUTORIAL_NOTICE_DURATION_MS - 1_200;
     vi.advanceTimersByTime(remaining - 1);
     expect(useGameStore.getState().noticeActive?.body).toBe(tip.body);

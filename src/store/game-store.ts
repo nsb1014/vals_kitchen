@@ -137,6 +137,17 @@ interface StoreMeta {
   noticeSticky: Notice | null;
   tutorialDismissedStepId: NonNullable<Notice['stepId']> | null;
   notificationSurfaceActive: boolean;
+  /**
+   * True when the celebration/notice banner host is connected and not `hidden`.
+   * Notice dwell must not tick until the tip is actually on screen — screen id
+   * alone is not enough under slow Settings→Floor remounts.
+   */
+  notificationBannerPresented: boolean;
+  /**
+   * E2E/CI remount-lag hold: while true, presented stays false and banner
+   * host updates cannot resume dwell (simulates hostHidden during remount).
+   */
+  notificationBannerPresentationHold: boolean;
   celebrationQueue: Celebration[];
   /** Ephemeral UI state. Never included in GameState persistence. */
   composeSheetOpen: boolean;
@@ -178,6 +189,9 @@ export interface GameStore extends GameState, StoreMeta {
   dismissCelebration: () => void;
   clearCelebrations: () => void;
   setNotificationSurfaceActive: (active: boolean) => void;
+  setNotificationBannerPresented: (presented: boolean) => void;
+  /** Test/e2e: freeze presented=false through a simulated remount window. */
+  setNotificationBannerPresentationHold: (hold: boolean) => void;
   syncNotificationTimer: () => void;
   setActiveFloorRoom: (room: FloorRoomId) => void;
   enterConnectingDoor: () => boolean;
@@ -226,6 +240,8 @@ const META_KEYS = [
   'dismissCelebration',
   'clearCelebrations',
   'setNotificationSurfaceActive',
+  'setNotificationBannerPresented',
+  'setNotificationBannerPresentationHold',
   'syncNotificationTimer',
   'floorPlayerGrid',
   'floorToast',
@@ -233,6 +249,8 @@ const META_KEYS = [
   'noticeSticky',
   'tutorialDismissedStepId',
   'notificationSurfaceActive',
+  'notificationBannerPresented',
+  'notificationBannerPresentationHold',
   'celebrationQueue',
   'composeSheetOpen',
   'screen',
@@ -393,6 +411,7 @@ function syncStoreNotificationTimer(): void {
       noticeActive: state.noticeActive,
       noticeSticky: state.noticeSticky,
       notificationSurfaceActive: state.notificationSurfaceActive,
+      notificationBannerPresented: state.notificationBannerPresented,
       screen: state.screen,
       celebrationHead: state.celebrationQueue[0] ?? null,
     },
@@ -400,11 +419,12 @@ function syncStoreNotificationTimer(): void {
       dismissNotice(notice) {
         const current = useGameStore.getState();
         if (current.noticeActive !== notice) return;
-        // Stale timeouts must not burn a parked floor tip while Settings /
-        // Recipes / etc. own the shell — keep remainingMs and re-pause.
+        // Stale timeouts must not burn a parked / not-yet-painted floor tip —
+        // keep remainingMs and re-pause until the banner is actually presented.
         if (
           resolveNoticeScope(notice) === 'floor' &&
-          current.screen !== 'restaurant'
+          (current.screen !== 'restaurant' ||
+            !current.notificationBannerPresented)
         ) {
           syncStoreNotificationTimer();
           return;
@@ -629,6 +649,8 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   noticeSticky: null,
   tutorialDismissedStepId: null,
   notificationSurfaceActive: false,
+  notificationBannerPresented: false,
+  notificationBannerPresentationHold: false,
   celebrationQueue: [],
   composeSheetOpen: false,
 
@@ -665,6 +687,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       noticeActive: null,
       noticeSticky: null,
       tutorialDismissedStepId: null,
+      notificationSurfaceActive: false,
+      notificationBannerPresented: false,
+      notificationBannerPresentationHold: false,
       celebrationQueue: [],
       composeSheetOpen: false,
     });
@@ -1248,6 +1273,32 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   setNotificationSurfaceActive(active) {
     if (get().notificationSurfaceActive === active) return;
     set({ notificationSurfaceActive: active });
+    syncStoreNotificationTimer();
+  },
+
+  setNotificationBannerPresented(presented) {
+    if (get().notificationBannerPresentationHold && presented) return;
+    if (get().notificationBannerPresented === presented) return;
+    set({ notificationBannerPresented: presented });
+    syncStoreNotificationTimer();
+  },
+
+  setNotificationBannerPresentationHold(hold) {
+    if (get().notificationBannerPresentationHold === hold) {
+      if (hold && get().notificationBannerPresented) {
+        set({ notificationBannerPresented: false });
+        syncStoreNotificationTimer();
+      }
+      return;
+    }
+    if (hold) {
+      set({
+        notificationBannerPresentationHold: true,
+        notificationBannerPresented: false,
+      });
+    } else {
+      set({ notificationBannerPresentationHold: false });
+    }
     syncStoreNotificationTimer();
   },
 

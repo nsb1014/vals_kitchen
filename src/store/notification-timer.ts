@@ -47,6 +47,11 @@ interface NotificationTimerState<Celebration extends object> {
   noticeActive: Notice | null;
   noticeSticky: Notice | null;
   notificationSurfaceActive: boolean;
+  /**
+   * True only while the banner host is connected and not `hidden` (actually
+   * presented). Screen id alone must not burn dwell during slow remounts.
+   */
+  notificationBannerPresented: boolean;
   /** Current app screen — gates floor-scoped notice dwell independently of the UI surface flag. */
   screen: string;
   celebrationHead: Celebration | null;
@@ -187,7 +192,12 @@ export function syncNotificationTimer<Celebration extends object>(
   }
 
   let desiredTarget: RunningTarget | null = null;
-  if (state.notificationSurfaceActive) {
+  // Dwell ticks only while the surface is active AND the banner is actually
+  // presented (host mounted + visible). Returning to screen==='restaurant'
+  // alone must not burn remainingMs during a slow remount window.
+  const presented =
+    state.notificationSurfaceActive && state.notificationBannerPresented;
+  if (presented) {
     if (transientNotice) {
       // Keep celebrations covered while a floor notice is parked off-screen;
       // only run the notice timer when that notice is actually presentable.

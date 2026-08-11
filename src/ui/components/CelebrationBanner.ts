@@ -161,6 +161,14 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       : true;
   };
 
+  const syncBannerPresented = () => {
+    // Exact presented signal for dwell: connected + not hidden. Screen id
+    // alone must not resume the timer before the host is paint-ready.
+    useGameStore
+      .getState()
+      .setNotificationBannerPresented(host.isConnected && !host.hidden);
+  };
+
   const syncNotificationSurface = () => {
     useGameStore
       .getState()
@@ -171,6 +179,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
           isFrontContentVisible(),
         ),
       );
+    syncBannerPresented();
   };
 
   const syncHostVisibility = () => {
@@ -179,6 +188,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       uiBlocked ||
       !isFrontContentVisible() ||
       (!state.noticeActive && !state.celebrationQueue[0]);
+    syncBannerPresented();
   };
 
   const wireDismiss = (
@@ -242,6 +252,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       uiBlocked ||
       (notice ? !noticeVisible : false) ||
       (!notice && !celebration);
+    syncBannerPresented();
     if ((!notice || !noticeVisible) && !celebration) {
       host.innerHTML = '';
       lastCelebrationAnnounceKey = null;
@@ -387,5 +398,6 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       syncLocalBlockingSurface,
     );
     host.remove();
+    useGameStore.getState().setNotificationBannerPresented(false);
   };
 }

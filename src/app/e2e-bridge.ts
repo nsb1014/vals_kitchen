@@ -158,6 +158,7 @@ export interface E2eBridge {
     screen: string;
     rootScreen: string | null;
     notificationSurfaceActive: boolean;
+    notificationBannerPresented: boolean;
     noticeActive: {
       id: string;
       source: string;
@@ -172,6 +173,14 @@ export interface E2eBridge {
     bannerPresent: boolean;
     bannerText: string | null;
   };
+  /**
+   * Hold/release banner presentation for e2e remount-delay simulation.
+   * While held, dwell stays frozen even if screen==='restaurant' and the
+   * banner host would otherwise mark itself presented.
+   */
+  setNotificationBannerPresentationHold: (hold: boolean) => void;
+  /** Release hold and sync presented from the live banner host. */
+  releaseNotificationBannerPresentationHold: () => void;
   dismissPendingReview: () => Promise<void>;
   showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
@@ -724,6 +733,7 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
           document.querySelector<HTMLElement>('#game-root')?.dataset.screen ??
           null,
         notificationSurfaceActive: state.notificationSurfaceActive,
+        notificationBannerPresented: state.notificationBannerPresented,
         noticeActive: notice
           ? {
               id: notice.id,
@@ -742,6 +752,22 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         bannerPresent: Boolean(banner),
         bannerText: banner?.innerText?.trim() ?? null,
       };
+    },
+
+    setNotificationBannerPresentationHold(hold) {
+      useGameStore.getState().setNotificationBannerPresentationHold(hold);
+    },
+
+    releaseNotificationBannerPresentationHold() {
+      useGameStore.getState().setNotificationBannerPresentationHold(false);
+      const host = document.querySelector<HTMLElement>(
+        '[data-testid="celebration-banner-host"]',
+      );
+      useGameStore
+        .getState()
+        .setNotificationBannerPresented(
+          Boolean(host?.isConnected && host && !host.hidden),
+        );
     },
 
     failNextSaveForTest() {

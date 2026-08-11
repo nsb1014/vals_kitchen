@@ -8,6 +8,7 @@ describe('floor toast', () => {
       noticeActive: null,
       noticeSticky: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       floorToast: null,
     });
   });

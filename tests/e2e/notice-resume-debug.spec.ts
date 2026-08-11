@@ -7,10 +7,9 @@ import {
 } from "./helpers.ts";
 
 /**
- * CI evidence helper for the Settings pause/resume notice path.
- * Logs getNoticeDebugSnapshot() at each step so failed CI jobs show whether
- * the tip was dismissed, parked, or failed to remount — without weakening
- * the production assertions in mobile-state-transitions.
+ * Regression for Settings→Floor notice resume under slow remounts.
+ * CI burned remainingMs while screen==='restaurant' before the banner host
+ * was visible; dwell must stay frozen until presented, then dismiss on schedule.
  */
 async function logNotice(page: Page, label: string): Promise<void> {
   const snap = await page.evaluate(
@@ -29,8 +28,10 @@ const VIEWPORTS = [
 ] as const;
 
 for (const viewport of VIEWPORTS) {
-  test(`notice resume debug dump at ${viewport.label}`, async ({ page }) => {
-    test.setTimeout(30_000);
+  test(`notice resume keeps remaining budget at ${viewport.label}`, async ({
+    page,
+  }) => {
+    test.setTimeout(45_000);
     await page.setViewportSize(viewport);
     const diagnostics = await gotoFreshGame(page);
     await page.getByTestId("open-day-btn").click();
@@ -55,25 +56,62 @@ for (const viewport of VIEWPORTS) {
       JSON.stringify(timed),
     );
     expect(timed.restarted).toBe(true);
+    expect(timed.mid.remainingMs).toBeGreaterThan(0);
 
     await expect(page.getByTestId("settings-screen")).toBeVisible();
     await expect(notice).toBeHidden();
     await logNotice(page, "on-settings");
 
     await page.waitForTimeout(4_200);
-    await logNotice(page, "settings-after-4200ms");
-
-    await navigateToScreen(page, "restaurant");
-    await logNotice(page, "after-return-restaurant");
-
-    // Soft evidence for CI logs; the hard contract remains in mobile-state-transitions.
-    const after = await page.evaluate(() =>
+    const parked = await page.evaluate(() =>
       window.__E2E__!.getNoticeDebugSnapshot(),
     );
-    expect(after.screen).toBe("restaurant");
-    // Prefer remount; if CI still loses the tip, the logged snapshots above
-    // are the evidence trail — keep this assert as the local green path.
-    expect(after.bannerPresent || after.noticeActive !== null).toBe(true);
+    await logNotice(page, "settings-after-4200ms");
+    expect(parked.noticeActive).not.toBeNull();
+    expect(parked.remainingMs).toBeGreaterThan(0);
+    const parkedRemaining = parked.remainingMs!;
+
+    // Simulate CI remount lag: screen returns to restaurant while host stays
+    // unpresented (~3.9s window that previously burned the tip unseen).
+    await page.evaluate(() => {
+      window.__E2E__!.setNotificationBannerPresentationHold(true);
+    });
+    await navigateToScreen(page, "restaurant");
+    await logNotice(page, "after-return-unpresented");
+
+    await page.waitForTimeout(3_500);
+    const held = await page.evaluate(() =>
+      window.__E2E__!.getNoticeDebugSnapshot(),
+    );
+    await logNotice(page, "held-unpresented-3500ms");
+    expect(held.screen).toBe("restaurant");
+    expect(held.noticeActive).not.toBeNull();
+    expect(held.notificationBannerPresented).toBe(false);
+    expect(held.remainingMs).toBeGreaterThan(0);
+    expect(held.remainingMs!).toBeLessThanOrEqual(parkedRemaining + 50);
+    expect(held.remainingMs!).toBeGreaterThanOrEqual(parkedRemaining - 50);
+
+    await page.evaluate(() => {
+      window.__E2E__!.releaseNotificationBannerPresentationHold();
+    });
+    await logNotice(page, "after-present");
+
+    await expect(notice).toBeVisible({ timeout: 5_000 });
+    const afterPresent = await page.evaluate(() =>
+      window.__E2E__!.getNoticeDebugSnapshot(),
+    );
+    expect(afterPresent.bannerPresent).toBe(true);
+    expect(afterPresent.remainingMs).toBeGreaterThan(0);
+    expect(afterPresent.noticeActive).not.toBeNull();
+
+    // Dismiss on the remaining schedule (tutorial ~4s; mid-dwell left ~2.8s).
+    await expect(notice).toBeHidden({ timeout: 5_000 });
+    const afterDismiss = await page.evaluate(() =>
+      window.__E2E__!.getNoticeDebugSnapshot(),
+    );
+    await logNotice(page, "after-scheduled-dismiss");
+    expect(afterDismiss.noticeActive).toBeNull();
+    expect(afterDismiss.bannerPresent).toBe(false);
 
     assertNoDiagnostics(diagnostics);
   });

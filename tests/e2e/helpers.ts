@@ -72,6 +72,11 @@ export async function clearBrowserStorage(page: Page): Promise<void> {
 
 export async function gotoFreshGame(page: Page): Promise<PageDiagnostics> {
   const diagnostics = attachDiagnostics(page);
+  const throttleRate = Number(process.env.E2E_CPU_THROTTLE ?? '');
+  if (Number.isFinite(throttleRate) && throttleRate > 1) {
+    const client = await page.context().newCDPSession(page);
+    await client.send('Emulation.setCPUThrottlingRate', { rate: throttleRate });
+  }
   // Establish the app origin without starting bootstrap, then clear storage.
   // Clearing IndexedDB during bootstrap races hydrate(), especially in Firefox.
   await page.goto('/data/ingredients.json');
@@ -589,6 +594,7 @@ declare global {
         screen: string;
         rootScreen: string | null;
         notificationSurfaceActive: boolean;
+        notificationBannerPresented: boolean;
         noticeActive: {
           id: string;
           source: string;
@@ -603,6 +609,8 @@ declare global {
         bannerPresent: boolean;
         bannerText: string | null;
       };
+      setNotificationBannerPresentationHold: (hold: boolean) => void;
+      releaseNotificationBannerPresentationHold: () => void;
       dismissPendingReview: () => Promise<void>;
       prepareCookUiFixture: () => Promise<void>;
       prepareFourFacingSeatedGuestsFixture: () => Promise<
