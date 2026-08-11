@@ -20,10 +20,11 @@ jobs:
     # PR ready triggers the complete job. Manual runs always execute every scope.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    # The e2e suite grew from 55 to 136 specs; at CI pacing the suite alone runs
-    # ~19-20 minutes. 20 minutes timed the whole job out mid-suite (cancelled
-    # with zero test failures). 45 covers the suite plus setup with headroom.
-    timeout-minutes: 45
+    # Fast gates only (no Playwright). 15 minutes covers setup, unit tests,
+    # conditional asset work, production build, and the size gate.
+    timeout-minutes: 15
+    outputs:
+      e2e: ${{ steps.scope.outputs.e2e }}
 
     steps:
       - name: Checkout
@@ -146,21 +147,49 @@ jobs:
         if: steps.scope.outputs.core == 'true'
         run: npm run size:check
 
+  e2e:
+    # Same draft guard as verify, plus the scope gate: docs/content-only PRs
+    # skip browser tests entirely (no shards booted).
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.verify.outputs.e2e == 'true' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync runtime content to public/data
+        run: npm run sync:data
+
       - name: Install Playwright Chromium
-        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Headless browser tests
-        if: steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
-        run: npm run test:e2e
+      - name: Headless browser tests (shard ${{ matrix.shard }}/3)
+        run: npx playwright test --shard=${{ matrix.shard }}/3
         env:
           CI: true
 
       - name: Upload Playwright failure artifacts
-        if: failure() && steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-failures
+          name: playwright-failures-shard-${{ matrix.shard }}
           path: |
             test-results/
             playwright-report/
