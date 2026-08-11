@@ -3,13 +3,38 @@ import { TILE_PX } from '../coordinates.ts';
 
 const WALK_FRAME_SEQUENCE = [0, 1, 0, 2] as const;
 
-export type SegmentEaseRole = 'only' | 'first' | 'mid' | 'last';
+/**
+ * Path-global visual easing distance.
+ *
+ * Linear tile timing (`index` / `progress`) is unchanged. Visual world
+ * position samples this remapped distance along the polyline so speed stays
+ * continuous across tile boundaries: ease-in at the true path start, linear
+ * mid-path, ease-out at the true path end. Short paths share the two ramps.
+ */
+export function easePathDistance(linearDist: number, totalDist: number): number {
+  if (totalDist <= 1e-6) return 0;
+  const x = Math.min(totalDist, Math.max(0, linearDist));
+  const span = Math.min(0.55, totalDist / 2);
+  if (x < span) {
+    const t = x / span;
+    // Hermite ease-in: f(0)=0, f(1)=1, f'(0)=0, f'(1)=1 (unit slope into mid).
+    return (-t * t * t + 2 * t * t) * span;
+  }
+  if (x > totalDist - span) {
+    const t = (x - (totalDist - span)) / span;
+    // Hermite ease-out: f(0)=0, f(1)=1, f'(0)=1, f'(1)=0.
+    return totalDist - span + (-t * t * t + t * t + t) * span;
+  }
+  return x;
+}
 
 /**
- * Segment visual easing. Mid-path segments stay linear so 90° turns keep
- * momentum (no smoothstep full-stop at every corner). Single-segment and
- * terminal segments still ease. Does not change tile timing.
+ * @deprecated Prefer {@link easePathDistance}. Kept as a thin wrapper so older
+ * role-based call sites / tests can migrate; mid is linear, first/last approximate
+ * the path-end hermites on a unit segment, only is a soft in-out.
  */
+export type SegmentEaseRole = 'only' | 'first' | 'mid' | 'last';
+
 export function easeSegmentProgress(
   t: number,
   role: SegmentEaseRole = 'only',
@@ -19,23 +44,14 @@ export function easeSegmentProgress(
     case 'mid':
       return x;
     case 'first':
-      // Ease-in from rest; ends at full speed into the next segment.
-      return x * x;
+      return -x * x * x + 2 * x * x;
     case 'last':
-      // Ease-out into a stop; starts at full speed from the prior segment.
-      return 1 - (1 - x) * (1 - x);
+      return -x * x * x + x * x + x;
     case 'only':
     default:
-      return x * x * (3 - 2 * x);
+      // Two half-path hermites on a unit segment (span = 0.5).
+      return easePathDistance(x, 1);
   }
-}
-
-function segmentEaseRole(index: number, pathLength: number): SegmentEaseRole {
-  const lastIndex = pathLength - 2;
-  if (lastIndex <= 0) return 'only';
-  if (index <= 0) return 'first';
-  if (index >= lastIndex) return 'last';
-  return 'mid';
 }
 
 /** Pure path follower — interpolates world position between grid cells. */
@@ -57,6 +73,8 @@ export class NavController {
    * the active path ends (a mid-walk path snapshot would start from the wrong cell).
    */
   private bufferedGoal: GridPoint | null = null;
+  /** Last eased path distance used to advance walk-cycle phasing. */
+  private lastVisualAlong = 0;
   /** Discrete cell used for pathfinding / adjacency. */
   position: GridPoint;
   /** Smooth world feet position (pixels). */
@@ -64,7 +82,10 @@ export class NavController {
   worldY = 0;
   /** Facing for animation: 0=right 1=down 2=up 3=left */
   facing: 0 | 1 | 2 | 3 = 1;
-  /** Distance walked in tiles (for walk-cycle phasing). */
+  /**
+   * Distance walked in tiles for walk-cycle phasing. Advances by eased visual
+   * path distance so feet track actual on-screen speed.
+   */
   distanceWalked = 0;
 
   constructor(start: GridPoint, speedTilesPerSecond = 2) {
@@ -102,6 +123,7 @@ export class NavController {
     this.segmentOriginX = null;
     this.segmentOriginY = null;
     this.bufferedGoal = null;
+    this.lastVisualAlong = 0;
     this.position = { ...cell };
     const world = cellCenter(cell);
     this.worldX = world.x;
@@ -134,6 +156,7 @@ export class NavController {
       this.progress = 0;
       this.segmentOriginX = null;
       this.segmentOriginY = null;
+      this.lastVisualAlong = 0;
       return;
     }
     const start = path[0]!;
@@ -146,6 +169,7 @@ export class NavController {
     this.index = 0;
     this.progress = 0;
     this.position = { ...start };
+    this.lastVisualAlong = 0;
     // Keep mid-tile world position when repathing from the same cell so the
     // sprite does not snap back to the cell center like a placed object.
     if (!sameCell) {
@@ -172,7 +196,6 @@ export class NavController {
       const step = Math.min(remaining, 32);
       remaining -= step;
       this.progress += this.speedTilesPerMs * step;
-      this.distanceWalked += this.speedTilesPerMs * step;
 
       while (this.progress >= 1 && this.isMoving) {
         this.progress -= 1;
@@ -186,26 +209,7 @@ export class NavController {
       }
     }
 
-    const from = this.path[this.index];
-    const to = this.path[this.index + 1];
-    if (!from) return;
-    if (!to) {
-      const world = cellCenter(from);
-      this.worldX = world.x;
-      this.worldY = world.y;
-      this.segmentOriginX = null;
-      this.segmentOriginY = null;
-      return;
-    }
-    const a =
-      this.segmentOriginX != null && this.segmentOriginY != null
-        ? { x: this.segmentOriginX, y: this.segmentOriginY }
-        : cellCenter(from);
-    const b = cellCenter(to);
-    const role = segmentEaseRole(this.index, this.path.length);
-    const t = easeSegmentProgress(Math.min(1, Math.max(0, this.progress)), role);
-    this.worldX = a.x + (b.x - a.x) * t;
-    this.worldY = a.y + (b.y - a.y) * t;
+    this.applyVisualWorld();
   }
 
   /**
@@ -214,37 +218,71 @@ export class NavController {
    */
   pathTailCrumbs(count = 3): { x: number; y: number }[] {
     if (!this.isMoving || count <= 0) return [];
+    const total = this.path.length - 1;
+    const linearAlong = this.index + Math.min(1, Math.max(0, this.progress));
+    const visualAlong = easePathDistance(linearAlong, total);
     const crumbs: { x: number; y: number }[] = [];
-    const from = this.path[this.index];
-    const to = this.path[this.index + 1];
-    if (from && to) {
-      const a =
-        this.segmentOriginX != null && this.segmentOriginY != null
-          ? { x: this.segmentOriginX, y: this.segmentOriginY }
-          : cellCenter(from);
-      const b = cellCenter(to);
-      const role = segmentEaseRole(this.index, this.path.length);
-      const eased = easeSegmentProgress(
-        Math.min(1, Math.max(0, this.progress)),
-        role,
-      );
-      for (let i = 1; i <= count; i += 1) {
-        const u = Math.min(1, eased + (1 - eased) * (i / (count + 1)));
-        crumbs.push({
-          x: a.x + (b.x - a.x) * u,
-          y: a.y + (b.y - a.y) * u,
-        });
-      }
-      return crumbs;
+    for (let i = 1; i <= count; i += 1) {
+      const u = Math.min(total, visualAlong + (total - visualAlong) * (i / (count + 1)));
+      const point = this.worldAtPathDistance(u);
+      if (point) crumbs.push(point);
     }
     return crumbs;
   }
 
-  /** Neutral → left stride → neutral → right stride, phased by distance. */
+  /** Neutral → left stride → neutral → right stride, phased by visual distance. */
   walkFrame(): number {
     if (!this.isMoving) return 0;
     const phase = Math.floor(this.distanceWalked * 4) % WALK_FRAME_SEQUENCE.length;
     return WALK_FRAME_SEQUENCE[phase]!;
+  }
+
+  private applyVisualWorld(): void {
+    const from = this.path[this.index];
+    if (!from) return;
+    const total = this.path.length - 1;
+    if (total <= 0 || !this.path[this.index + 1]) {
+      const world = cellCenter(from);
+      this.worldX = world.x;
+      this.worldY = world.y;
+      this.segmentOriginX = null;
+      this.segmentOriginY = null;
+      this.lastVisualAlong = total > 0 ? total : 0;
+      return;
+    }
+
+    const linearAlong = this.index + Math.min(1, Math.max(0, this.progress));
+    const visualAlong = easePathDistance(linearAlong, total);
+    const delta = visualAlong - this.lastVisualAlong;
+    if (delta > 0) this.distanceWalked += delta;
+    this.lastVisualAlong = visualAlong;
+
+    const point = this.worldAtPathDistance(visualAlong);
+    if (point) {
+      this.worldX = point.x;
+      this.worldY = point.y;
+    }
+  }
+
+  /** World feet position for an eased distance along the active polyline. */
+  private worldAtPathDistance(dist: number): { x: number; y: number } | null {
+    const total = this.path.length - 1;
+    if (total <= 0) return null;
+    const d = Math.min(total, Math.max(0, dist));
+    const segIndex = Math.min(total - 1, Math.floor(d));
+    const localT = d - segIndex;
+    const from = this.path[segIndex];
+    const to = this.path[segIndex + 1];
+    if (!from || !to) return null;
+    const a =
+      segIndex === 0 && this.segmentOriginX != null && this.segmentOriginY != null
+        ? { x: this.segmentOriginX, y: this.segmentOriginY }
+        : cellCenter(from);
+    const b = cellCenter(to);
+    return {
+      x: a.x + (b.x - a.x) * localT,
+      y: a.y + (b.y - a.y) * localT,
+    };
   }
 
   private updateFacingFromSegment(): void {

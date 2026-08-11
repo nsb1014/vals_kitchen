@@ -42,9 +42,9 @@ describe('furniture seating depth debug', () => {
         { placementId: 'table_b', itemKey: 'table_4seat', zIndex: 96, x: 128, y: 64 },
       ],
       chairs: [
-        { tablePlacementId: 'table_a', slotIndex: 0, zIndex: 69, x: 64, y: 30 },
+        { tablePlacementId: 'table_a', slotIndex: 0, zIndex: 65, x: 64, y: 30 },
         { tablePlacementId: 'table_a', slotIndex: 1, zIndex: 93, x: 64, y: 62 },
-        { tablePlacementId: 'table_b', slotIndex: 1, zIndex: 117, x: 128, y: 94 },
+        { tablePlacementId: 'table_b', slotIndex: 1, zIndex: 121, x: 128, y: 94 },
       ],
     });
   });

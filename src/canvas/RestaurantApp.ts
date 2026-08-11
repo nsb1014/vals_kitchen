@@ -92,6 +92,7 @@ import {
 import {
   cameraPunchMultiplier,
   clampCameraPunchScale,
+  gridToWorld,
   screenToGrid,
   screenToWorld,
   TILE_PX,
@@ -101,6 +102,7 @@ import {
   expandGuestHitBounds,
   guestHitBoundsContainPoint,
   isServiceGuestHitEligible,
+  resolveNearestGuestHit,
   resolveTopmostGuestHit,
 } from './world/guest-hit.ts';
 import {
@@ -123,7 +125,8 @@ const IN_PLACE_SEAT_ANTICIPATION_MS = 200;
 /** Service-cell approach flash duration after a remote guest tap. */
 const APPROACH_PREVIEW_MS = 420;
 const GUEST_DOOR_EXIT_LINGER_MS = 280;
-const SERVE_CAMERA_PUNCH_MS = 150;
+const SERVE_CAMERA_PUNCH_MS = 120;
+const SERVE_CAMERA_PUNCH_PEAK = 1.015;
 const EATING_STEAM_INTERVAL_MS = 900;
 
 interface DoorwayCropDebug {
@@ -327,7 +330,7 @@ export class RestaurantApp {
         ? cameraPunchMultiplier(
             this.cameraPunchElapsedMs,
             SERVE_CAMERA_PUNCH_MS,
-            1.04,
+            SERVE_CAMERA_PUNCH_PEAK,
           )
         : 1;
     const scale = clampCameraPunchScale(transform.scale, punch);
@@ -339,7 +342,9 @@ export class RestaurantApp {
     if (!this.mounted) return;
     const feet = this.actorLayer.getPlayerFeetWorldPosition();
     if (kind === 'serve') {
-      this.effectsLayer.burstServe(feet.x, feet.y);
+      const placeAt = this.serveJuiceWorldPosition() ?? feet;
+      this.effectsLayer.burstServePlace(placeAt.x, placeAt.y);
+      // Tiny settle punch — avoid the old zoom that read as an impact burst.
       this.cameraPunchElapsedMs = 0;
       this.flashCanvasMount('serve');
     } else if (kind === 'review') {
@@ -349,6 +354,31 @@ export class RestaurantApp {
       this.effectsLayer.burstPlacement(feet.x, feet.y);
       this.flashCanvasMount('placement');
     }
+  }
+
+  /** Prefer the guest/table plate spot for serve juice over Val's feet. */
+  private serveJuiceWorldPosition(): { x: number; y: number } | null {
+    const floor = useGameStore.getState().activeDay?.floor;
+    if (!floor) return null;
+    const carried = floor.carriedTicketId
+      ? floor.tickets.find((ticket) => ticket.id === floor.carriedTicketId)
+      : null;
+    const delivered = floor.pool.find((guest) => {
+      if (!guest.seat) return false;
+      if (carried && guest.customer.id === carried.customerId) return true;
+      return guest.stage === 'eating';
+    });
+    if (delivered) {
+      const guestFeet = this.actorLayer.getGuestFeetWorldPosition(delivered.id);
+      if (guestFeet) {
+        return { x: guestFeet.x, y: guestFeet.y - TILE_PX * 0.35 };
+      }
+      if (delivered.seat) {
+        const { x, y } = gridToWorld(delivered.seat.x, delivered.seat.y);
+        return { x: x + TILE_PX / 2, y: y + TILE_PX / 2 - 8 };
+      }
+    }
+    return null;
   }
 
   private flashCanvasMount(kind: 'serve' | 'review' | 'placement'): void {
@@ -1163,11 +1193,22 @@ export class RestaurantApp {
       ),
       this.camera.state.scale,
     );
-    if (bodyHit) {
+    const hit =
+      bodyHit ??
+      resolveNearestGuestHit(
+        world,
+        renderedTargets.filter(
+          (candidate) =>
+            eligibleById.has(candidate.guestId) &&
+            !tableOccludesTarget(candidate),
+        ),
+        this.camera.state.scale,
+      );
+    if (hit) {
       // Actor rendering trails state updates by at most one frame. Re-read the
       // live floor snapshot before turning a painted body into a command.
       const liveGuest = floor.pool.find(
-        (guest) => guest.id === bodyHit.guestId,
+        (guest) => guest.id === hit.guestId,
       );
       if (
         liveGuest?.seat &&

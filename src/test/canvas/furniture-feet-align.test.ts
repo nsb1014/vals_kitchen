@@ -52,17 +52,18 @@ describe('furniture feet align', () => {
 
   it('sorts row-two seating around the table south edge without equal-depth ties', () => {
     const tableDepth = furnitureDepthY(2, 'table_2seat');
-    const northGuestDepth = seatedActorDepthY(70);
+    // Feet Y for seats around a row-2 table with current hip offsets (NS=4, side=0 Y).
+    const northGuestDepth = seatedActorDepthY(66);
     const sideGuestDepth = seatedActorDepthY(94);
-    const southGuestDepth = seatedActorDepthY(118);
+    const southGuestDepth = seatedActorDepthY(122);
 
-    expect(chairDepthY(northGuestDepth)).toBe(69);
-    expect(northGuestDepth).toBe(70);
+    expect(chairDepthY(northGuestDepth)).toBe(65);
+    expect(northGuestDepth).toBe(66);
     expect(chairDepthY(sideGuestDepth)).toBe(93);
     expect(sideGuestDepth).toBe(94);
     expect(tableDepth).toBe(96);
-    expect(chairDepthY(southGuestDepth)).toBe(117);
-    expect(southGuestDepth).toBe(118);
+    expect(chairDepthY(southGuestDepth)).toBe(121);
+    expect(southGuestDepth).toBe(122);
 
     expect(chairDepthY(northGuestDepth)).toBeLessThan(northGuestDepth);
     expect(northGuestDepth).toBeLessThan(chairDepthY(sideGuestDepth));

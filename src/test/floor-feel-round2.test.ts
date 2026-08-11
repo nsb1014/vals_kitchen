@@ -10,7 +10,7 @@ import {
   PLAYER_DISPLAY_HEIGHT,
   SEATED_GUEST_DISPLAY_HEIGHT,
 } from '../canvas/world/actor-metrics.ts';
-import { easeSegmentProgress } from '../canvas/world/NavController.ts';
+import { easePathDistance, easeSegmentProgress } from '../canvas/world/NavController.ts';
 import { tutorialPrompt } from '../domain/floor/tutorial.ts';
 import { worldToScreen, type CameraState } from '../canvas/coordinates.ts';
 
@@ -82,12 +82,15 @@ describe('floor-feel round 2 — mouth anchors', () => {
 });
 
 describe('floor-feel round 2 — corner forgiveness', () => {
-  it('does not ease mid segments to a stop', () => {
+  it('does not ease mid path distance to a stop', () => {
     expect(easeSegmentProgress(0, 'mid')).toBe(0);
     expect(easeSegmentProgress(0.5, 'mid')).toBe(0.5);
     expect(easeSegmentProgress(1, 'mid')).toBe(1);
     expect(easeSegmentProgress(0.25, 'first')).toBeLessThan(0.25);
     expect(easeSegmentProgress(0.75, 'last')).toBeGreaterThan(0.75);
+    // Path-global easing keeps unit slope into/out of the linear mid band.
+    expect(easePathDistance(1.2, 3)).toBeCloseTo(1.2);
+    expect(easePathDistance(0.2, 3)).toBeLessThan(0.2);
   });
 });
 

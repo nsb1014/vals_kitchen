@@ -45,15 +45,17 @@ export class EffectsLayer {
     kind: EffectBurstKind,
     worldX: number,
     worldY: number,
-    opts: { count?: number; spread?: number } = {},
+    opts: { count?: number; spread?: number; profile?: 'default' | 'gentle' } = {},
   ): void {
     const count = opts.count ?? (kind === 'dust' ? 6 : 4);
     const spread = opts.spread ?? 12;
+    const profile = opts.profile ?? 'default';
     for (let i = 0; i < count; i += 1) {
       this.spawnOne(
         kind,
         worldX + (Math.random() - 0.5) * spread * 2,
         worldY + (Math.random() - 0.5) * spread,
+        profile,
       );
     }
   }
@@ -62,16 +64,32 @@ export class EffectsLayer {
     kind: EffectBurstKind,
     gx: number,
     gy: number,
-    opts?: { count?: number; spread?: number },
+    opts?: { count?: number; spread?: number; profile?: 'default' | 'gentle' },
   ): void {
     const { x, y } = gridToWorld(gx, gy);
     this.spawnAtWorld(kind, x + TILE_PX / 2, y + TILE_PX / 2, opts);
   }
 
-  /** Serve / review star shower above the player feet. */
+  /**
+   * Gentle plate place-down: a soft steam puff plus a couple of tiny sparkles.
+   * Intentionally not a coin/star shower — that read as an explosion on deliver.
+   */
   burstServe(worldX: number, worldY: number): void {
-    this.spawnAtWorld('star', worldX, worldY - 18, { count: 8, spread: 18 });
-    this.spawnAtWorld('coin', worldX, worldY - 10, { count: 3, spread: 10 });
+    this.spawnAtWorld('steam', worldX, worldY - 6, {
+      count: 2,
+      spread: 4,
+      profile: 'gentle',
+    });
+    this.spawnAtWorld('star', worldX, worldY - 10, {
+      count: 2,
+      spread: 5,
+      profile: 'gentle',
+    });
+  }
+
+  /** Soft settle sparkle used when a plate lands on the tabletop. */
+  burstServePlace(worldX: number, worldY: number): void {
+    this.burstServe(worldX, worldY);
   }
 
   burstReview(worldX: number, worldY: number): void {
@@ -126,7 +144,12 @@ export class EffectsLayer {
     return this.active.length;
   }
 
-  private spawnOne(kind: EffectBurstKind, x: number, y: number): void {
+  private spawnOne(
+    kind: EffectBurstKind,
+    x: number,
+    y: number,
+    profile: 'default' | 'gentle' = 'default',
+  ): void {
     if (this.active.length >= POOL_CAP) return;
     const texture = getTileTexture(TEXTURE_NAME[kind]);
     const sprite = this.acquire();
@@ -142,8 +165,18 @@ export class EffectsLayer {
     sprite.position.set(Math.round(x), Math.round(y));
     sprite.alpha = 1;
     sprite.rotation = 0;
-    const startScale =
-      kind === 'steam' ? 1.35 : kind === 'dust' ? 1.25 : kind === 'star' ? 0.95 : 0.85;
+    const gentle = profile === 'gentle';
+    const startScale = gentle
+      ? kind === 'steam'
+        ? 0.85
+        : 0.5
+      : kind === 'steam'
+        ? 1.35
+        : kind === 'dust'
+          ? 1.25
+          : kind === 'star'
+            ? 0.95
+            : 0.85;
     sprite.scale.set(startScale);
     this.view.addChild(sprite);
 
@@ -151,14 +184,38 @@ export class EffectsLayer {
     const burst = this.acquireBurst();
     burst.sprite = sprite;
     burst.ageMs = 0;
-    burst.lifeMs =
-      kind === 'steam' ? 980 : kind === 'dust' ? 520 : kind === 'star' ? 700 : 620;
-    burst.vx = (Math.random() - 0.5) * (kind === 'dust' ? 36 : 48);
-    burst.vy = upward ? -22 - Math.random() * 34 : -8 - Math.random() * 14;
-    burst.spin = (Math.random() - 0.5) * 4.5;
+    burst.lifeMs = gentle
+      ? kind === 'steam'
+        ? 720
+        : 460
+      : kind === 'steam'
+        ? 980
+        : kind === 'dust'
+          ? 520
+          : kind === 'star'
+            ? 700
+            : 620;
+    burst.vx = (Math.random() - 0.5) * (gentle ? 12 : kind === 'dust' ? 36 : 48);
+    burst.vy = gentle
+      ? upward
+        ? -8 - Math.random() * 10
+        : -4 - Math.random() * 6
+      : upward
+        ? -22 - Math.random() * 34
+        : -8 - Math.random() * 14;
+    burst.spin = (Math.random() - 0.5) * (gentle ? 1.1 : 4.5);
     burst.startScale = startScale;
-    burst.endScale =
-      kind === 'steam' ? 2.05 : kind === 'dust' ? 1.75 : kind === 'star' ? 1.45 : 1.3;
+    burst.endScale = gentle
+      ? kind === 'steam'
+        ? 1.2
+        : 0.75
+      : kind === 'steam'
+        ? 2.05
+        : kind === 'dust'
+          ? 1.75
+          : kind === 'star'
+            ? 1.45
+            : 1.3;
     this.active.push(burst);
   }
 

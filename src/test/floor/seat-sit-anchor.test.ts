@@ -5,6 +5,7 @@ import {
   SEAT_SIDE_HIP_OFFSET_PX,
   SEAT_SIT_OFFSET_Y,
   seatChairWorldPosition,
+  seatSitStaysOnChair,
   seatSitWorldPosition,
 } from '../../canvas/world/seat-sit.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
@@ -56,13 +57,22 @@ describe('seat sit anchors', () => {
       y: 2 * TILE_PX + TILE_PX / 2,
     });
     expect(SEAT_SIT_OFFSET_Y).toBe(0);
-    expect(west).toEqual({ x: chairW.x + SEAT_SIDE_HIP_OFFSET_PX, y: chairW.y });
-    expect(east).toEqual({ x: chairE.x - SEAT_SIDE_HIP_OFFSET_PX, y: chairE.y });
+    expect(SEAT_SIDE_HIP_OFFSET_PX).toBeLessThanOrEqual(8);
+    expect(west).toEqual({
+      x: chairW.x + SEAT_SIDE_HIP_OFFSET_PX,
+      y: chairW.y + SEAT_SIT_OFFSET_Y,
+    });
+    expect(east).toEqual({
+      x: chairE.x - SEAT_SIDE_HIP_OFFSET_PX,
+      y: chairE.y + SEAT_SIT_OFFSET_Y,
+    });
     expect(west.x).toBeGreaterThan(chairW.x);
     expect(east.x).toBeLessThan(chairE.x);
+    expect(seatSitStaysOnChair(seatW)).toBe(true);
+    expect(seatSitStaysOnChair(seatE)).toBe(true);
   });
 
-  it('shifts north+south seated hips toward the table', () => {
+  it('shifts north+south seated hips toward the table without leaving the stool', () => {
     const northSeat = {
       tablePlacementId: 't',
       slotIndex: 0,
@@ -74,13 +84,30 @@ describe('seat sit anchors', () => {
     const northStool = seatChairWorldPosition(northSeat);
     const southStool = seatChairWorldPosition(southSeat);
 
+    expect(SEAT_NS_HIP_OFFSET_PX).toBeLessThanOrEqual(6);
     expect(seatSitWorldPosition(northSeat)).toEqual({
       x: northStool.x,
-      y: northStool.y + SEAT_NS_HIP_OFFSET_PX,
+      y: northStool.y + SEAT_SIT_OFFSET_Y + SEAT_NS_HIP_OFFSET_PX,
     });
     expect(seatSitWorldPosition(southSeat)).toEqual({
       x: southStool.x,
-      y: southStool.y - SEAT_NS_HIP_OFFSET_PX,
+      y: southStool.y + SEAT_SIT_OFFSET_Y - SEAT_NS_HIP_OFFSET_PX,
     });
+    expect(seatSitStaysOnChair(northSeat)).toBe(true);
+    expect(seatSitStaysOnChair(southSeat)).toBe(true);
+  });
+
+  it('keeps all four seat facings on their stools', () => {
+    const facings = [0, 90, 180, 270] as const;
+    for (const facing of facings) {
+      const seat = {
+        tablePlacementId: 't',
+        slotIndex: 0,
+        x: 2,
+        y: 2,
+        facing,
+      };
+      expect(seatSitStaysOnChair(seat), `facing ${facing}`).toBe(true);
+    }
   });
 });

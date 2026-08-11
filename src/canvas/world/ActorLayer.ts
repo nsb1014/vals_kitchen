@@ -944,12 +944,15 @@ export class ActorLayer {
           const pulse = actorEatingPulse(nowMs, entry.phase);
           sx = pulse.scaleX;
           sy = pulse.scaleY;
-          bobY = pulse.offsetY;
-        } else if (
-          stage === 'seated' ||
-          stage === 'ordered' ||
-          stage === 'waiting'
-        ) {
+          // Keep chew scale only — vertical bob lifts diners off the cushion.
+          bobY = 0;
+        } else if (stage === 'seated' || stage === 'ordered') {
+          // Seated: breathe in place. No vertical bob — it reads as floating.
+          const breathe = actorIdleBreathe(nowMs, entry.phase);
+          sx = breathe.scaleX;
+          sy = breathe.scaleY;
+          bobY = 0;
+        } else if (stage === 'waiting') {
           const breathe = actorIdleBreathe(nowMs, entry.phase);
           sx = breathe.scaleX;
           sy = breathe.scaleY;
