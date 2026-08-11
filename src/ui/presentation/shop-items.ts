@@ -11,6 +11,7 @@ import type { DomainContext } from '../../domain/context.ts';
 import type { GameState } from '../../domain/state/game-state.ts';
 import { MAX_GRID_SIZE } from '../../domain/state/game-state.ts';
 import type { Ingredient } from '../../domain/types.ts';
+import { buildRatingDisplayModel } from './rating-display.ts';
 import { formatCurrency } from './review-display.ts';
 
 export type ShopItemAvailability =
@@ -48,6 +49,11 @@ export interface ShopUtilityRow {
 }
 
 export type ShopRow = ShopEquipmentRow | ShopIngredientRow | ShopUtilityRow;
+
+export interface ShopMilestoneStrip {
+  kind: 'equipment' | 'prestige' | 'complete';
+  text: string;
+}
 
 const DECOR_NAMES: Readonly<Record<DecorItemKey, string>> = {
   decor_plant: 'Plant',
@@ -257,4 +263,71 @@ export function formatShopCost(cost: number, availability: ShopItemAvailability)
   if (availability === 'owned') return 'Owned';
   if (availability === 'gate_locked') return 'Locked';
   return formatCurrency(cost);
+}
+
+export function shopRowDescription(row: ShopRow): string {
+  if (row.kind === 'ingredient') {
+    return row.availability === 'gate_locked'
+      ? `Requires ${row.equipmentGateName}`
+      : row.category;
+  }
+  if (row.kind === 'equipment') {
+    return `Unlocks ${row.groupName} ingredients`;
+  }
+  return row.description;
+}
+
+export function purchaseFeedbackMessage(row: ShopRow): string {
+  if (row.kind === 'ingredient') {
+    return `Purchased ${row.name}`;
+  }
+  if (row.kind === 'equipment') {
+    return `Purchased ${row.name} — place on the floor`;
+  }
+  if (row.kind === 'table' || row.kind === 'decor') {
+    return `Purchased ${row.name} — place from palette`;
+  }
+  return `Purchased ${row.name}`;
+}
+
+/**
+ * One-line "what to buy / chase next" for shop catalog headers.
+ * Prefers the next unowned equipment gate; falls back to prestige distance.
+ */
+export function buildShopMilestoneStrip(
+  state: Pick<GameState, 'rating' | 'prestige' | 'unlockedIngredientIds'>,
+  equipmentRows: readonly ShopEquipmentRow[],
+  ingredients: readonly Pick<Ingredient, 'id' | 'equipmentId'>[],
+): ShopMilestoneStrip {
+  const nextEquipment = equipmentRows.find(
+    (row) => row.availability === 'available' || row.availability === 'unaffordable',
+  );
+  if (nextEquipment) {
+    const unlockCount = ingredients.filter(
+      (item) =>
+        item.equipmentId === nextEquipment.id &&
+        !state.unlockedIngredientIds.includes(item.id),
+    ).length;
+    const affordHint =
+      nextEquipment.availability === 'unaffordable'
+        ? ` · need ${formatCurrency(nextEquipment.cost)}`
+        : ` (${formatCurrency(nextEquipment.cost)})`;
+    return {
+      kind: 'equipment',
+      text: `Next: ${nextEquipment.name}${affordHint} → unlocks ${unlockCount} ingredient${unlockCount === 1 ? '' : 's'}`,
+    };
+  }
+
+  const rating = buildRatingDisplayModel(state.rating, state.prestige);
+  if (rating.starsToPrestige > 0.049) {
+    return {
+      kind: 'prestige',
+      text: `Next: ${rating.prestigeDistanceText}`,
+    };
+  }
+
+  return {
+    kind: 'complete',
+    text: 'Kitchen fully gated — chase recipes, mastery, and layout polish',
+  };
 }

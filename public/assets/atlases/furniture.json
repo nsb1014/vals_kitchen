@@ -479,6 +479,26 @@
         "w": 80,
         "h": 104
       }
+    },
+    "carry_plate": {
+      "frame": {
+        "x": 448,
+        "y": 448,
+        "w": 28,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 16
+      }
     }
   },
   "meta": {

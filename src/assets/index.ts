@@ -16,4 +16,9 @@ export {
   preloadAudio,
   setAudioFlagBridge,
 } from './audio.ts';
+export {
+  subscribeVisualJuice,
+  emitVisualJuice,
+  type VisualJuiceKind,
+} from './visual-juice.ts';
 export { renderFoodIconHtml, preloadFoodIconManifest, isFoodIconManifestReady } from './food-icon.ts';

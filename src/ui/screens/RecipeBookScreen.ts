@@ -17,7 +17,7 @@ import {
   ACHIEVEMENT_CATALOG,
   achievementBadgeUrl,
 } from '../../domain/achievements/catalog.ts';
-import { achievementProgress } from '../../domain/achievements/evaluate.ts';
+import { achievementProgressView } from '../../domain/achievements/nearest.ts';
 import type { AxisKey } from '../../domain/types.ts';
 import {
   buildInspectorIngredientList,
@@ -25,7 +25,7 @@ import {
   renderFlavorInspectorContent,
 } from '../components/FlavorInspectorPanel.ts';
 
-const ROW_HEIGHT = 88;
+const ROW_HEIGHT = 96;
 type RecipeBookTab = 'flavors' | 'recipes' | 'achievements';
 
 export function mountRecipeBookScreen(container: HTMLElement): () => void {
@@ -134,14 +134,18 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     innerEl.innerHTML = `
       <div class="recipe-window" style="transform: translateY(${offsetY}px)">
         ${slice
-          .map(
-            (entry) => `
+          .map((entry) => {
+            const ratio = Math.round((entry.masteryRatio ?? 0) * 100);
+            return `
           <article class="recipe-row" style="height:${ROW_HEIGHT}px">
             <h3>${entry.name} <span class="recipe-mastery">${entry.masteryProgressLabel}</span></h3>
+            <div class="recipe-mastery-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${ratio}" aria-label="Mastery progress">
+              <span class="recipe-mastery-bar-fill" style="width:${ratio}%"></span>
+            </div>
             <p class="recipe-meta">${entry.cuisineTag}</p>
             <p class="recipe-ingredients">${entry.ingredientIds.map((id, i) => `${renderFoodIconHtml(id, 20)}<span>${entry.ingredientNames[i] ?? id}</span>`).join(' ')}</p>
-          </article>`,
-          )
+          </article>`;
+          })
           .join('')}
       </div>`;
 
@@ -155,18 +159,19 @@ export function mountRecipeBookScreen(container: HTMLElement): () => void {
     innerEl.className = 'recipe-virtual-inner achievement-list';
     innerEl.style.height = 'auto';
     innerEl.innerHTML = ACHIEVEMENT_CATALOG.map((achievement) => {
-      const isUnlocked = unlocked.has(achievement.id);
-      const progress = Math.min(
-        achievementProgress(state, achievement),
-        achievement.threshold,
-      );
+      const view = achievementProgressView(state, achievement, unlocked);
+      const percent = Math.round(view.ratio * 100);
+      const nearClass = view.nearComplete ? ' achievement-near-complete' : '';
       return `
-        <article class="achievement-row ${isUnlocked ? 'achievement-unlocked' : 'achievement-locked'}" data-achievement-id="${achievement.id}">
+        <article class="achievement-row ${view.unlocked ? 'achievement-unlocked' : 'achievement-locked'}${nearClass}" data-achievement-id="${achievement.id}" data-achievement-family="${achievement.family}">
           <img class="achievement-badge" src="${achievementBadgeUrl(achievement.id)}" alt="" width="48" height="48" />
           <div class="achievement-copy">
-            <h3><span aria-hidden="true">${isUnlocked ? '✓' : '🔒'}</span> ${achievement.title}</h3>
+            <h3><span aria-hidden="true">${view.unlocked ? '✓' : '🔒'}</span> ${achievement.title}</h3>
             <p>${achievement.description}</p>
-            <span class="achievement-status">${isUnlocked ? 'Unlocked' : `${progress} / ${achievement.threshold}`}</span>
+            <div class="achievement-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${view.unlocked ? 100 : percent}" aria-label="${achievement.title} progress">
+              <span class="achievement-progress-fill" style="width:${view.unlocked ? 100 : percent}%"></span>
+            </div>
+            <span class="achievement-status">${view.unlocked ? 'Unlocked' : `${view.progress} / ${view.threshold}`}</span>
           </div>
         </article>`;
     }).join('');

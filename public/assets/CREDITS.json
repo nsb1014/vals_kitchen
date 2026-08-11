@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "scripts/build-assets.ts",
-  "generatedAt": "2026-08-02T09:17:57.813Z",
+  "generatedAt": "2026-08-10T22:46:35.912Z",
   "policy": "CC0-only",
   "vendorNote": "Kenney CC0 audio sources in vendor/kenney/sources/; original chibi UI and ingredient icons are project-generated CC0 assets.",
   "packs": [
@@ -197,6 +197,54 @@
       ],
       "sourceFile": "door_open.png",
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#fx_star",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:EffectsLayer"
+      ],
+      "sourceFile": "fx_star.png",
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#fx_steam",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:EffectsLayer"
+      ],
+      "sourceFile": "fx_steam.png",
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#fx_coin",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:EffectsLayer"
+      ],
+      "sourceFile": "fx_coin.png",
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
+    },
+    {
+      "path": "atlases/tiles.json#fx_dust",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:EffectsLayer"
+      ],
+      "sourceFile": "fx_dust.png",
+      "approximationNote": "Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0."
     },
     {
       "path": "atlases/furniture.json#prep_station",
@@ -485,6 +533,18 @@
       ],
       "sourceFile": "decor_sign.png",
       "approximationNote": "Original chef, guest, restaurant-surface, and furniture art generated for this project and dedicated to CC0."
+    },
+    {
+      "path": "atlases/furniture.json#carry_plate",
+      "pack": "Val's Kitchen Chibi UI Art",
+      "author": "Val's Kitchen project",
+      "sourceUrl": "vendor/generated/chibi-ui/",
+      "license": "CC0",
+      "usedIn": [
+        "canvas:CarryPlateLayer"
+      ],
+      "sourceFile": "carry_plate.png",
+      "approximationNote": "Project-generated carry plate sprite for atlas-based held-dish fallback; dedicated to CC0."
     },
     {
       "path": "achievements/recipe-unlocks-1.png",
@@ -2178,7 +2238,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "almond.png"
     },
@@ -2192,7 +2254,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "avocado.png"
     },
@@ -2206,7 +2270,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "bacon.png"
     },
@@ -2220,7 +2286,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "bay_leaf.png"
     },
@@ -2234,7 +2302,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "beef_broth.png"
     },
@@ -2248,7 +2318,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "beef_steak.png"
     },
@@ -2262,7 +2334,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "bell_pepper.png"
     },
@@ -2276,7 +2350,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "black_pepper.png"
     },
@@ -2290,7 +2366,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "black_tea.png"
     },
@@ -2304,7 +2382,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "bok_choy.png"
     },
@@ -2318,7 +2398,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "bread.png"
     },
@@ -2332,7 +2414,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "brisket.png"
     },
@@ -2346,7 +2430,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "broccoli.png"
     },
@@ -2360,7 +2446,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "butter.png"
     },
@@ -2374,7 +2462,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "calamari.png"
     },
@@ -2388,7 +2478,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cardamom.png"
     },
@@ -2402,7 +2494,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "carrot.png"
     },
@@ -2416,7 +2510,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "celery.png"
     },
@@ -2430,7 +2526,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cheddar.png"
     },
@@ -2444,7 +2542,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "chicken.png"
     },
@@ -2458,7 +2558,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "chicken_thigh.png"
     },
@@ -2472,7 +2574,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "chicken_wing.png"
     },
@@ -2486,7 +2590,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "chickpeas.png"
     },
@@ -2500,7 +2606,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "chili_flake.png"
     },
@@ -2514,7 +2622,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cinnamon.png"
     },
@@ -2528,7 +2638,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cocoa.png"
     },
@@ -2542,7 +2654,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "coconut_milk.png"
     },
@@ -2556,7 +2670,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "coffee.png"
     },
@@ -2570,7 +2686,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "coriander.png"
     },
@@ -2584,7 +2702,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "corn.png"
     },
@@ -2598,7 +2718,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cream.png"
     },
@@ -2612,7 +2734,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cream_cheese.png"
     },
@@ -2626,7 +2750,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cucumber.png"
     },
@@ -2640,7 +2766,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "cumin.png"
     },
@@ -2654,7 +2782,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "dill_pickle.png"
     },
@@ -2668,7 +2798,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "egg.png"
     },
@@ -2682,7 +2814,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "eggplant.png"
     },
@@ -2696,7 +2830,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "falafel.png"
     },
@@ -2710,7 +2846,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "feta.png"
     },
@@ -2724,7 +2862,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "fish_sauce.png"
     },
@@ -2738,7 +2878,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "flour.png"
     },
@@ -2752,7 +2894,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "garlic.png"
     },
@@ -2766,7 +2910,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "ginger.png"
     },
@@ -2780,7 +2926,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "honey.png"
     },
@@ -2794,7 +2942,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "jackfruit.png"
     },
@@ -2808,7 +2958,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "kimchi.png"
     },
@@ -2822,7 +2974,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "kombucha.png"
     },
@@ -2836,7 +2990,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "lamb_chop.png"
     },
@@ -2850,7 +3006,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "lemon.png"
     },
@@ -2864,7 +3022,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "lentils.png"
     },
@@ -2878,7 +3038,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "lettuce.png"
     },
@@ -2892,7 +3054,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "maple_syrup.png"
     },
@@ -2906,7 +3070,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "miso.png"
     },
@@ -2920,7 +3086,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "mozzarella.png"
     },
@@ -2934,7 +3102,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "oat_milk.png"
     },
@@ -2948,7 +3118,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "olive_oil.png"
     },
@@ -2962,7 +3134,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "onion.png"
     },
@@ -2976,7 +3150,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "oregano.png"
     },
@@ -2990,7 +3166,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "paprika.png"
     },
@@ -3004,7 +3182,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "pasta.png"
     },
@@ -3018,7 +3198,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "phyllo.png"
     },
@@ -3032,7 +3214,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "plantain.png"
     },
@@ -3046,7 +3230,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "pork_chop.png"
     },
@@ -3060,7 +3246,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "pork_ribs.png"
     },
@@ -3074,7 +3262,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "portobello_mushroom.png"
     },
@@ -3088,7 +3278,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "potato.png"
     },
@@ -3102,7 +3294,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "potato_fries.png"
     },
@@ -3116,7 +3310,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "rice.png"
     },
@@ -3130,7 +3326,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "rice_noodle.png"
     },
@@ -3144,7 +3342,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "rosemary.png"
     },
@@ -3158,7 +3358,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "salmon_fillet.png"
     },
@@ -3172,7 +3374,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "salt.png"
     },
@@ -3186,7 +3390,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sauerkraut.png"
     },
@@ -3200,7 +3406,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sausage.png"
     },
@@ -3214,7 +3422,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sesame_oil.png"
     },
@@ -3228,7 +3438,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "shrimp.png"
     },
@@ -3242,7 +3454,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "shrimp_paste.png"
     },
@@ -3256,7 +3470,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "smoked_paprika.png"
     },
@@ -3270,7 +3486,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "smoked_salmon.png"
     },
@@ -3284,7 +3502,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "smoked_tofu.png"
     },
@@ -3298,7 +3518,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sour_cream.png"
     },
@@ -3312,7 +3534,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "soy_sauce.png"
     },
@@ -3326,7 +3550,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sugar.png"
     },
@@ -3340,7 +3566,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "sweet_potato.png"
     },
@@ -3354,7 +3582,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "tempeh.png"
     },
@@ -3368,7 +3598,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "tempura_shrimp.png"
     },
@@ -3382,7 +3614,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "thai_basil.png"
     },
@@ -3396,7 +3630,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "thyme.png"
     },
@@ -3410,7 +3646,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "tofu.png"
     },
@@ -3424,7 +3662,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "tomato.png"
     },
@@ -3438,7 +3678,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "tomato_paste.png"
     },
@@ -3452,7 +3694,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "turkey.png"
     },
@@ -3466,7 +3710,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "turmeric.png"
     },
@@ -3480,7 +3726,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "vanilla.png"
     },
@@ -3494,7 +3742,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "vegetable_broth.png"
     },
@@ -3508,7 +3758,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "white_beans.png"
     },
@@ -3522,7 +3774,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "yeast.png"
     },
@@ -3536,7 +3790,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "yeast_doughnut.png"
     },
@@ -3550,7 +3806,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "yogurt.png"
     },
@@ -3564,7 +3822,9 @@
         "ui:shop",
         "ui:compose",
         "ui:flavor-inspector",
-        "ui:recipe-book"
+        "ui:recipe-book",
+        "canvas:CarryPlateLayer",
+        "canvas:EffectsLayer"
       ],
       "sourceFile": "zucchini.png"
     },

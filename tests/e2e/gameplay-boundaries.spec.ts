@@ -153,9 +153,11 @@ test.describe('canonical gameplay boundaries', () => {
 
     await page.getByTestId('continue-service-btn').click();
     await expect(page.getByTestId('review-sheet')).toHaveCount(0);
+    // Resume-safe first frame + 33ms hitch cap: one eat tick is 1000ms of
+    // clamped sim time (~1–3s wall under load/CPU throttle).
     await expect
       .poll(async () => (await floorSnapshot(page)).eatTicksRemaining, {
-        timeout: 2_500,
+        timeout: 8_000,
       })
       .toBeLessThan(3);
   });

@@ -12,6 +12,7 @@ import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
 const GRID_LINE_COLOR = 0x2a2a40;
+const DOOR_BOUNCE_MS = 90;
 
 interface DoorSpriteState {
   cell: { x: number; y: number };
@@ -19,6 +20,7 @@ interface DoorSpriteState {
   requestedOpen: boolean;
   paintedOpen: boolean;
   boundTextureKey: 'door' | 'door_open' | 'other';
+  bounceMs: number;
 }
 
 export class GridLayer {
@@ -128,6 +130,7 @@ export class GridLayer {
               requestedOpen: false,
               paintedOpen: false,
               boundTextureKey: 'door',
+              bounceMs: 0,
             });
           }
           return;
@@ -157,13 +160,19 @@ export class GridLayer {
         door.sprite.texture = texture;
       }
       door.requestedOpen = requestedOpen;
-      door.boundTextureKey =
+      const nextBound =
         doorOpen != null && door.sprite.texture === doorOpen
           ? 'door_open'
           : doorClosed != null && door.sprite.texture === doorClosed
             ? 'door'
             : 'other';
-      door.paintedOpen = door.boundTextureKey === 'door_open';
+      const nextPaintedOpen = nextBound === 'door_open';
+      if (nextPaintedOpen !== door.paintedOpen) {
+        door.bounceMs = DOOR_BOUNCE_MS;
+      }
+      door.boundTextureKey = nextBound;
+      door.paintedOpen = nextPaintedOpen;
+      this.applyDoorBounceVisual(door);
     }
 
     this.gridLines.clear();
@@ -178,6 +187,27 @@ export class GridLayer {
       this.gridLines.moveTo(0, y).lineTo(gridW * TILE_PX, y);
     }
     this.gridLines.stroke();
+  }
+
+  update(dtMs: number): void {
+    for (const door of this.doorSprites.values()) {
+      if (door.bounceMs <= 0) continue;
+      door.bounceMs = Math.max(0, door.bounceMs - dtMs);
+      this.applyDoorBounceVisual(door);
+    }
+  }
+
+  private applyDoorBounceVisual(door: DoorSpriteState): void {
+    if (door.bounceMs <= 0) {
+      door.sprite.height = TILE_PX;
+      door.sprite.y = door.cell.y * TILE_PX;
+      return;
+    }
+    const t = door.bounceMs / DOOR_BOUNCE_MS;
+    const squash = 0.88 + 0.12 * (1 - t);
+    door.sprite.height = TILE_PX * squash;
+    // Anchor squash to the floor edge of the door cell.
+    door.sprite.y = door.cell.y * TILE_PX + TILE_PX * (1 - squash);
   }
 
   /** Narrow runtime probe for the canonical south guest door. */

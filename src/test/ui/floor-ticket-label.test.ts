@@ -95,4 +95,15 @@ describe('floor ticket labels', () => {
     }
     expect(label.preferenceFull).not.toMatch(/…|\.\.\.$/);
   });
+
+  it('builds icon-first preference cues from primary/avoid bands', () => {
+    const label = formatFloorTicketLabel({
+      ticket: ticket('open'),
+      customer,
+      archetypeName: 'Comfort Seeker',
+      selected: false,
+    });
+    expect(label.preferenceCues.map((cue) => cue.axis)).toEqual(['UM', 'RI']);
+    expect(label.preferencePhrases.length).toBeGreaterThan(0);
+  });
 });

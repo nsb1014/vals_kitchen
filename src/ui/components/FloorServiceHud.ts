@@ -17,15 +17,28 @@ import {
   selectCanTakeFloorOrders,
 } from '../../store/selectors/service-day.ts';
 import type { RestaurantApp } from '../../canvas/RestaurantApp.ts';
-import { formatFloorTicketLabel } from '../presentation/floor-ticket.ts';
+import {
+  formatFloorTicketLabel,
+  renderFloorTicketOrderCuesHtml,
+} from '../presentation/floor-ticket.ts';
 import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { renderGuestPortraitHtml } from '../presentation/guest-portrait.ts';
 import {
   buildFlavorBarsViewModel,
+  IDEAL_FLAVOR_GROUP_ORDER,
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
+import { bindFloorActionsToolbar } from '../presentation/floor-action-keyboard.ts';
+import {
+  FLOOR_CTA_MIN_IN_FLIGHT_MS,
+  floorActionIconHtml,
+  readFloorCanvasInFlight,
+  renderFloorActionLabelHtml,
+  resolveFloorCtaInFlight,
+  type FloorCtaAction,
+} from '../presentation/floor-action-feedback.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -93,6 +106,39 @@ export function mountFloorServiceHud(
   );
   const arrivingTicketIds = new Set<string>();
   const arrivalTimers = new Set<ReturnType<typeof setTimeout>>();
+  let knownCarriedTicketId: string | null =
+    useGameStore.getState().activeDay?.floor?.carriedTicketId ?? null;
+  let unbindFloorActionsKeyboard: (() => void) | null = null;
+  /** Presentation-only: which primary CTA was just invoked while walk/settle runs. */
+  let pendingFloorAction:
+    | 'set-table'
+    | 'seat'
+    | 'take-orders'
+    | 'clear'
+    | null = null;
+  let pendingFloorActionStartedAt = 0;
+  let pendingFloorActionTimer: ReturnType<typeof setTimeout> | null = null;
+  let seatActionSawSeating = false;
+
+  const clearPendingFloorActionTimer = () => {
+    if (pendingFloorActionTimer) {
+      clearTimeout(pendingFloorActionTimer);
+      pendingFloorActionTimer = null;
+    }
+  };
+
+  const beginPendingFloorAction = (
+    action: Exclude<FloorCtaAction, 'close-day' | 'deliver'>,
+  ) => {
+    pendingFloorAction = action;
+    pendingFloorActionStartedAt = performance.now();
+    seatActionSawSeating = action === 'seat' ? false : seatActionSawSeating;
+    clearPendingFloorActionTimer();
+    pendingFloorActionTimer = setTimeout(() => {
+      pendingFloorActionTimer = null;
+      render();
+    }, FLOOR_CTA_MIN_IN_FLIGHT_MS + 16);
+  };
 
   const dock = document.createElement('div');
   dock.className = 'floor-tickets-dock';
@@ -171,6 +217,8 @@ export function mountFloorServiceHud(
     const state = useGameStore.getState();
     const floor = state.activeDay?.floor;
     const reserveChrome = () => {
+      unbindFloorActionsKeyboard?.();
+      unbindFloorActionsKeyboard = null;
       chromeMount.hidden = false;
       chromeMount.style.visibility = 'hidden';
       chromeMount.inert = true;
@@ -253,6 +301,77 @@ export function mountFloorServiceHud(
     const emphasizeTakeOrders = emphasize('take_orders', canTakeOrders);
     const emphasizeClearTable = emphasize('clear', canClearTable);
     const emphasizeCloseDay = emphasize('close', canCloseDay);
+    const seatingInFlight = floor.pool.some(
+      (guest) => guest.stage === 'seating',
+    );
+    const canvasBeat = readFloorCanvasInFlight(document);
+    const minHoldElapsed =
+      pendingFloorAction !== null &&
+      performance.now() - pendingFloorActionStartedAt >=
+        FLOOR_CTA_MIN_IN_FLIGHT_MS;
+
+    const setTableFlight = resolveFloorCtaInFlight({
+      action: 'set-table',
+      pendingAction: pendingFloorAction,
+      seatingInFlight,
+      seatActionSawSeating,
+      canvasBeat,
+      actionCompleted: !canSetTable,
+      minHoldElapsed,
+    });
+    const seatFlight = resolveFloorCtaInFlight({
+      action: 'seat',
+      pendingAction: pendingFloorAction,
+      seatingInFlight,
+      seatActionSawSeating,
+      canvasBeat,
+      actionCompleted: false,
+      minHoldElapsed,
+    });
+    seatActionSawSeating = seatFlight.sawSeating;
+    const takeOrdersFlight = resolveFloorCtaInFlight({
+      action: 'take-orders',
+      pendingAction: pendingFloorAction,
+      seatingInFlight,
+      seatActionSawSeating,
+      canvasBeat,
+      actionCompleted: !canTakeOrders,
+      minHoldElapsed,
+    });
+    const clearFlight = resolveFloorCtaInFlight({
+      action: 'clear',
+      pendingAction: pendingFloorAction,
+      seatingInFlight,
+      seatActionSawSeating,
+      canvasBeat,
+      actionCompleted: !canClearTable,
+      minHoldElapsed,
+    });
+
+    if (
+      (pendingFloorAction === 'set-table' && setTableFlight.clearPending) ||
+      (pendingFloorAction === 'take-orders' && takeOrdersFlight.clearPending) ||
+      (pendingFloorAction === 'clear' && clearFlight.clearPending) ||
+      (pendingFloorAction === 'seat' && seatFlight.clearPending)
+    ) {
+      pendingFloorAction = null;
+      seatActionSawSeating = false;
+      clearPendingFloorActionTimer();
+    }
+
+    const inFlightSetTable = setTableFlight.inFlight;
+    const inFlightSeat = seatFlight.inFlight;
+    const inFlightTakeOrders = takeOrdersFlight.inFlight;
+    const inFlightClear = clearFlight.inFlight;
+    const actionClass = (
+      primary: boolean,
+      inFlight: boolean,
+    ): string => {
+      const classes = ['service-btn'];
+      if (primary) classes.push('primary');
+      if (inFlight) classes.push('in-flight');
+      return classes.join(' ');
+    };
     const tutorialPresentation = buildFloorTutorialNotice(
       floor,
       step,
@@ -336,11 +455,11 @@ export function mountFloorServiceHud(
       <div class="floor-service-panel" data-testid="floor-service-panel">
         <div class="floor-actions-scroll">
           <div class="floor-actions">
-            <button type="button" class="service-btn${emphasizeSetTable ? ' primary' : ''}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'}><span class="floor-action-label">Set table</span></button>
-            <button type="button" class="service-btn${emphasizeSeatGuest ? ' primary' : ''}" id="floor-seat-next" data-testid="floor-seat-next" ${canRequestSeatGuest ? '' : 'disabled'}><span class="floor-action-label">Seat guest</span></button>
-            <button type="button" class="service-btn${emphasizeTakeOrders ? ' primary' : ''}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''}><span class="floor-action-label">Take orders</span></button>
-            <button type="button" class="service-btn${emphasizeClearTable ? ' primary' : ''}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'}><span class="floor-action-label">Clear table</span></button>
-            <button type="button" class="service-btn${emphasizeCloseDay ? ' primary' : ''}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}><span class="floor-action-label">Close Day</span></button>
+            <button type="button" class="${actionClass(emphasizeSetTable, inFlightSetTable)}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'} ${inFlightSetTable ? 'aria-busy="true"' : ''}>${renderFloorActionLabelHtml('set-table', 'Set table')}</button>
+            <button type="button" class="${actionClass(emphasizeSeatGuest, inFlightSeat)}" id="floor-seat-next" data-testid="floor-seat-next" ${canRequestSeatGuest ? '' : 'disabled'} ${inFlightSeat ? 'aria-busy="true"' : ''}>${renderFloorActionLabelHtml('seat', 'Seat guest')}</button>
+            <button type="button" class="${actionClass(emphasizeTakeOrders, inFlightTakeOrders)}" id="floor-take-orders" data-testid="floor-take-orders" ${canTakeOrders ? '' : 'disabled'} ${ticketPanel.capacityFull ? `aria-describedby="${capacityHelpId}"` : ''} ${inFlightTakeOrders ? 'aria-busy="true"' : ''}>${renderFloorActionLabelHtml('take-orders', 'Take orders')}</button>
+            <button type="button" class="${actionClass(emphasizeClearTable, inFlightClear)}" id="floor-clear-table" data-testid="floor-clear-table" ${canClearTable ? '' : 'disabled'} ${inFlightClear ? 'aria-busy="true"' : ''}>${renderFloorActionLabelHtml('clear', 'Clear table')}</button>
+            <button type="button" class="${actionClass(emphasizeCloseDay, false)}" id="floor-close-day" data-testid="close-day-btn" ${canCloseDay ? '' : 'disabled aria-hidden="true" hidden'}>${renderFloorActionLabelHtml('close-day', 'Close Day')}</button>
           </div>
         </div>
         ${ticketPanel.capacityMessage ? `<p class="sr-only" id="${capacityHelpId}">${ticketPanel.capacityMessage}</p>` : ''}
@@ -354,8 +473,12 @@ export function mountFloorServiceHud(
             .map((row) => {
               const meta = ticketMetaById.get(row.ticketId)!;
               const { ticket: t, label, guestId } = meta;
-              const wants = label.preferenceFull
-                ? `<p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p>`
+              const cueRow = renderFloorTicketOrderCuesHtml(
+                label.preferenceCues,
+                escapeHtml,
+              );
+              const detail = label.preferenceFull
+                ? `<details class="floor-tickets-item-detail"><summary>Full request</summary><p class="floor-tickets-item-wants">${escapeHtml(label.preferenceFull)}</p></details>`
                 : '';
               const portrait = guestId ? renderGuestPortraitHtml(guestId) : '';
               const rowBody = `
@@ -363,12 +486,13 @@ export function mountFloorServiceHud(
                     <span class="floor-tickets-item-identity">${portrait}<span class="floor-tickets-item-guest">${escapeHtml(label.guestLabel)}</span></span>
                     <span class="floor-tickets-item-status">${escapeHtml(row.statusLabel)}</span>
                   </span>
-                  ${wants}`;
+                  ${cueRow}`;
               const rowControl = row.selectable
                 ? `<button type="button" class="floor-tickets-item-btn" data-menu-ticket-id="${t.id}" aria-label="${escapeHtml(`${label.guestLabel}, ${row.statusLabel}`)}" aria-pressed="${row.selected}">${rowBody}</button>`
                 : `<div class="floor-tickets-item-btn" data-static-ticket-id="${t.id}">${rowBody}</div>`;
               return `<li class="floor-tickets-item${row.selected ? ' selected' : ''}${t.status === 'plated' ? ' ready' : ''}${row.carrying ? ' carrying' : ''}${arrivingTicketIds.has(t.id) ? ' arriving' : ''}" data-testid="floor-tickets-item">
                 ${rowControl}
+                ${detail}
               </li>`;
             })
             .join('');
@@ -386,22 +510,49 @@ export function mountFloorServiceHud(
           title: idealTicket.label.guestLabel,
           subtitle: 'Ideal flavor profile',
         }),
-        { showValues: true, showTemp: false, showZeroValues: true },
+        {
+          showValues: true,
+          showTemp: false,
+          showZeroValues: true,
+          groupOrder: IDEAL_FLAVOR_GROUP_ORDER,
+        },
       );
-      idealBody = `<div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>`;
+      idealBody = `<div class="floor-tickets-ideal-wrap" data-testid="floor-tickets-ideal-wrap">
+        <div class="floor-tickets-ideal" data-testid="floor-tickets-ideal">${bars}</div>
+        <p class="floor-tickets-ideal-scroll-hint" data-testid="floor-tickets-ideal-scroll-hint" hidden>Scroll for mouthfeel</p>
+      </div>`;
     }
+
+    const carrying = Boolean(ticketPanel.carriedTicketId);
+    if (carrying && ticketPanel.carriedTicketId !== knownCarriedTicketId) {
+      ticketsMenuOpen = true;
+      ticketsPanelView = 'order';
+    }
+    knownCarriedTicketId = ticketPanel.carriedTicketId;
+
+    const toggleDisplay = carrying
+      ? `${ticketPanel.toggleText} → deliver`
+      : ticketPanel.toggleText;
+    const toggleInner = carrying
+      ? `${floorActionIconHtml('deliver')}<span class="floor-action-label">${escapeHtml(toggleDisplay)}</span>`
+      : escapeHtml(toggleDisplay);
 
     dock.innerHTML = `
       <button
         type="button"
-        class="floor-tickets-toggle"
+        class="floor-tickets-toggle${carrying ? ' carrying in-flight' : ''}"
         id="floor-tickets-toggle"
         data-testid="floor-tickets-toggle"
         aria-expanded="${ticketsMenuOpen ? 'true' : 'false'}"
         aria-controls="floor-tickets-menu"
         aria-haspopup="true"
-        aria-label="${escapeHtml(ticketPanel.toggleAriaLabel)}"
-      >${escapeHtml(ticketPanel.toggleText)}</button>
+        ${carrying ? 'aria-busy="true"' : ''}
+        aria-label="${escapeHtml(
+          carrying
+            ? `${ticketPanel.toggleAriaLabel}. Open tickets to deliver`
+            : ticketPanel.toggleAriaLabel,
+        )}"
+      >${toggleInner}</button>
       <div
         class="floor-tickets-menu"
         id="floor-tickets-menu"
@@ -427,9 +578,18 @@ export function mountFloorServiceHud(
       </div>
     `;
 
+    unbindFloorActionsKeyboard?.();
+    const panel = chromeMount.querySelector<HTMLElement>(
+      '[data-testid="floor-service-panel"]',
+    );
+    unbindFloorActionsKeyboard = panel
+      ? bindFloorActionsToolbar(panel)
+      : null;
+
     chromeMount
       .querySelector('#floor-set-table')
       ?.addEventListener('click', () => {
+        beginPendingFloorAction('set-table');
         const placementIds = selectAdjacentUnsetTablePlacementIds(
           useGameStore.getState(),
         );
@@ -439,30 +599,39 @@ export function mountFloorServiceHud(
             placementId,
           });
         }
+        render();
       });
 
     chromeMount
       .querySelector('#floor-seat-next')
       ?.addEventListener('click', () => {
+        beginPendingFloorAction('seat');
         getRestaurantApp()?.requestSeatNextGuest();
+        render();
       });
 
     chromeMount
       .querySelector('#floor-take-orders')
       ?.addEventListener('click', () => {
+        beginPendingFloorAction('take-orders');
         const customerIds = selectAdjacentSeatedCustomerIds(
           useGameStore.getState(),
         );
-        if (customerIds.length === 0) return;
+        if (customerIds.length === 0) {
+          render();
+          return;
+        }
         void useGameStore.getState().dispatch({
           type: 'FLOOR_TAKE_ORDERS',
           customerIds: [customerIds[0]!],
         });
+        render();
       });
 
     chromeMount
       .querySelector('#floor-clear-table')
       ?.addEventListener('click', () => {
+        beginPendingFloorAction('clear');
         const placementIds = selectAdjacentDirtyTablePlacementIds(
           useGameStore.getState(),
         );
@@ -472,6 +641,7 @@ export function mountFloorServiceHud(
             placementId,
           });
         }
+        render();
       });
 
     chromeMount
@@ -505,7 +675,11 @@ export function mountFloorServiceHud(
       .querySelector('#floor-tickets-toggle')
       ?.addEventListener('click', (event) => {
         event.stopPropagation();
-        ticketsMenuOpen = !ticketsMenuOpen;
+        const opening = !ticketsMenuOpen;
+        ticketsMenuOpen = opening;
+        // Opening always lands on Order so ticket rows are actionable; Ideal
+        // remains a tab. Arrival auto-Ideal only applies while the menu is open.
+        if (opening) ticketsPanelView = 'order';
         render();
       });
 
@@ -555,6 +729,33 @@ export function mountFloorServiceHud(
         });
       });
 
+    const idealScrollHost = dock.querySelector<HTMLElement>(
+      '#floor-tickets-panel-ideal:not([hidden])',
+    );
+    const idealHint = dock.querySelector<HTMLElement>(
+      '[data-testid="floor-tickets-ideal-scroll-hint"]',
+    );
+    if (idealScrollHost && idealHint) {
+      const updateIdealScrollHint = () => {
+        const overflows =
+          idealScrollHost.scrollHeight > idealScrollHost.clientHeight + 8;
+        const atBottom =
+          idealScrollHost.scrollTop + idealScrollHost.clientHeight >=
+          idealScrollHost.scrollHeight - 8;
+        idealHint.hidden = !overflows || atBottom;
+      };
+      updateIdealScrollHint();
+      idealScrollHost.addEventListener('scroll', updateIdealScrollHint, {
+        passive: true,
+      });
+    }
+
+    if (carrying && ticketsMenuOpen) {
+      dock
+        .querySelector('.floor-tickets-item.carrying')
+        ?.scrollIntoView({ block: 'nearest' });
+    }
+
     restoreDockFocus(focusIdentity);
     notifyNotificationBlockingSurfaceChanged();
   };
@@ -565,6 +766,9 @@ export function mountFloorServiceHud(
     );
     for (const ticketId of nextTicketIds) {
       if (knownTicketIds.has(ticketId)) continue;
+      // Flash Ideal only when the menu is already open so a later open still
+      // defaults to the selectable Order list.
+      if (ticketsMenuOpen) ticketsPanelView = 'ideal';
       arrivingTicketIds.add(ticketId);
       const timer = setTimeout(() => {
         arrivingTicketIds.delete(ticketId);
@@ -589,7 +793,9 @@ export function mountFloorServiceHud(
       state.ceremony !== prev.ceremony ||
       state.activeDay?.floor?.selectedTicketId !==
         prev.activeDay?.floor?.selectedTicketId ||
-      state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets
+      state.activeDay?.floor?.tickets !== prev.activeDay?.floor?.tickets ||
+      state.activeDay?.floor?.carriedTicketId !==
+        prev.activeDay?.floor?.carriedTicketId
     ) {
       render();
     }
@@ -599,6 +805,9 @@ export function mountFloorServiceHud(
 
   return () => {
     unsubscribe();
+    clearPendingFloorActionTimer();
+    unbindFloorActionsKeyboard?.();
+    unbindFloorActionsKeyboard = null;
     document.removeEventListener('pointerdown', onDocumentPointer, true);
     document.removeEventListener('keydown', onDocumentKeydown);
     for (const timer of arrivalTimers) clearTimeout(timer);

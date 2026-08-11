@@ -31,6 +31,7 @@
 | Cooking UI + shared chrome | **Done** — tap-to-open cook lifecycle, 100-item flavor/search pantry, locked sheet tiers, shared meta shell; fast suite 297 ([design](./superpowers/specs/2026-07-28-cooking-ui-system-design.md), [plan](./superpowers/plans/2026-07-28-cooking-ui-system.md)) |
 | Storybook v2 art migration | **Rolled back** — rejected perspective-mismatched room and character art removed; orthographic restaurant assets retained |
 | Chibi responsive UI rebuild | **Done** — exact supplied chef sheet, authored carry poses, project-CC0 chibi cast, purpose-made walls/floors/stations, mobile near-full cooking UX, desktop split workspace + WASD/arrow controls; gameplay rules unchanged |
+| AAA quality program | **Done** — five slices blind-critiqued vs AAA benchmarks, three improvement rounds + closing verification; reports in `docs/aaa-critique/`; fast suite 673; gzip 247,594 |
 
 - Unified floor notifications shipped: one top banner stack and actions-only floor chrome (Chromium CI; Firefox opt-in; WebKit/iOS unverified).
 

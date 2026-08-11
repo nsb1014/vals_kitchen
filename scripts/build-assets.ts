@@ -143,6 +143,10 @@ const TILE_SPRITES: Record<string, string> = {
   wall_w: 'wall_w.png',
   door: 'door.png',
   door_open: 'door_open.png',
+  fx_star: 'fx_star.png',
+  fx_steam: 'fx_steam.png',
+  fx_coin: 'fx_coin.png',
+  fx_dust: 'fx_dust.png',
 };
 
 const FURNITURE_SPRITES: Record<string, string> = {
@@ -170,6 +174,7 @@ const FURNITURE_SPRITES: Record<string, string> = {
   decor_rug: 'decor_rug.png',
   decor_lamp: 'decor_lamp.png',
   decor_sign: 'decor_sign.png',
+  carry_plate: 'carry_plate.png',
 };
 
 /** Exact supplied chef frames plus the project-generated chibi guest cast. */
@@ -253,8 +258,14 @@ function assertVendor(): void {
 }
 
 function runChibiUiBuilder(): void {
+  // Prefer FX-only when authored player frames already exist — regenerating the
+  // full chibi set is non-byte-stable across Pillow builds and breaks digest tests.
+  const fxOnly =
+    process.env.VK_FX_ONLY === '1' ||
+    existsSync(path.join(GENERATED_CHIBI_PLAYER, 'player_carry_down.png'));
   execFileSync('python3', [path.join(__dirname, 'build-chibi-ui-assets.py')], {
     stdio: 'inherit',
+    env: { ...process.env, VK_FX_ONLY: fxOnly ? '1' : '0' },
   });
 }
 
@@ -353,15 +364,20 @@ function buildCredits(shippedFiles: string[]): void {
   };
 
   for (const [sprite, file] of Object.entries(TILE_SPRITES)) {
+    const isFx = sprite.startsWith('fx_');
     add({
       path: `atlases/tiles.json#${sprite}`,
       pack: PACKS.chibiUi.pack,
       author: PACKS.chibiUi.author,
       sourceUrl: PACKS.chibiUi.sourceUrl,
       license: 'CC0',
-      usedIn: ['canvas:GridLayer floor / wall tiles'],
+      usedIn: isFx
+        ? ['canvas:EffectsLayer']
+        : ['canvas:GridLayer floor / wall tiles'],
       sourceFile: file,
-      approximationNote: PACKS.chibiUi.note,
+      approximationNote: isFx
+        ? 'Project-generated 24×24 juice burst frames (star/steam/coin/dust); dedicated to CC0.'
+        : PACKS.chibiUi.note,
     });
   }
 
@@ -373,10 +389,15 @@ function buildCredits(shippedFiles: string[]): void {
       author: "Val's Kitchen project",
       sourceUrl: isChibi ? PACKS.chibiUi.sourceUrl : 'vendor/generated/restaurant-tiles/',
       license: 'CC0',
-      usedIn: [`canvas:FurnitureLayer (${itemKey})`],
+      usedIn:
+        itemKey === 'carry_plate'
+          ? ['canvas:CarryPlateLayer']
+          : [`canvas:FurnitureLayer (${itemKey})`],
       sourceFile: file,
       approximationNote: isChibi
-        ? PACKS.chibiUi.note
+        ? itemKey === 'carry_plate'
+          ? 'Project-generated carry plate sprite for atlas-based held-dish fallback; dedicated to CC0.'
+          : PACKS.chibiUi.note
         : 'Generated 32×48 cozy diner decor art retained where it fits the chibi room; dedicated to CC0.',
     });
   }
@@ -446,7 +467,14 @@ function buildCredits(shippedFiles: string[]): void {
       author: PACKS.generatedFood.author,
       sourceUrl: PACKS.generatedFood.sourceUrl,
       license: 'CC0',
-      usedIn: ['ui:shop', 'ui:compose', 'ui:flavor-inspector', 'ui:recipe-book'],
+      usedIn: [
+        'ui:shop',
+        'ui:compose',
+        'ui:flavor-inspector',
+        'ui:recipe-book',
+        'canvas:CarryPlateLayer',
+        'canvas:EffectsLayer',
+      ],
       sourceFile: `${id}.png`,
     });
   }

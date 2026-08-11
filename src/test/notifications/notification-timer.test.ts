@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
+  NOTICE_DURATION_MS,
+  peekNoticeRemainingMs,
   resolveNoticeScope,
   TUTORIAL_NOTICE_DURATION_MS,
 } from '../../store/notification-timer.ts';
@@ -16,10 +18,12 @@ describe('notification timer', () => {
     vi.useFakeTimers();
     vi.spyOn(performance, 'now').mockReturnValue(0);
     useGameStore.setState({
+      screen: 'restaurant',
       noticeActive: null,
       noticeSticky: null,
       tutorialDismissedStepId: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       celebrationQueue: [],
       floorToast: null,
     });
@@ -28,6 +32,168 @@ describe('notification timer', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('pauses floor-notice dwell on navigateTo(settings) even if surface stays active', () => {
+    const tip = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+    useGameStore.setState({
+      screen: 'restaurant',
+      noticeActive: tip,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      notificationBannerPresented: true,
+      celebrationQueue: [],
+      floorToast: tip.body,
+    });
+    useGameStore.getState().syncNotificationTimer();
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(1_200);
+    vi.advanceTimersByTime(1_200);
+
+    // Missed banner surface sync: leave notificationSurfaceActive true while
+    // leaving the floor — screen gating alone must pause remainingMs.
+    useGameStore.getState().navigateTo('settings');
+    expect(useGameStore.getState().screen).toBe('settings');
+    expect(useGameStore.getState().notificationSurfaceActive).toBe(true);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(20_000);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+
+    useGameStore.getState().navigateTo('restaurant');
+    // Slow remount: screen is restaurant + surface still active, but banner
+    // host is not yet presented — dwell must stay frozen.
+    useGameStore.getState().setNotificationBannerPresented(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(23_900);
+    vi.advanceTimersByTime(3_900);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+    expect(peekNoticeRemainingMs()).toBe(TUTORIAL_NOTICE_DURATION_MS - 1_200);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(23_900);
+    vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS - 1_200 - 1);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('does not tick dwell while host is hidden even when screen is restaurant', () => {
+    const tip = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+    useGameStore.setState({
+      screen: 'restaurant',
+      noticeActive: tip,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      notificationBannerPresented: true,
+      celebrationQueue: [],
+      floorToast: tip.body,
+    });
+    useGameStore.getState().syncNotificationTimer();
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(800);
+    vi.advanceTimersByTime(800);
+    const remainingAfterTick = peekNoticeRemainingMs();
+    expect(remainingAfterTick).toBe(TUTORIAL_NOTICE_DURATION_MS - 800);
+
+    // CI remount window: screen already restaurant, surface active, host hidden.
+    useGameStore.getState().setNotificationBannerPresented(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(20_000);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+    expect(peekNoticeRemainingMs()).toBe(remainingAfterTick);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(remainingAfterTick! - 1);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
+  });
+
+  it('keeps a parked floor tip through Settings and resumes remaining dwell on return', () => {
+    const tip = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Guest at the door — set every table first, then you can seat them.',
+      stepId: 'set_tables' as const,
+    };
+    useGameStore.setState({
+      screen: 'restaurant',
+      noticeActive: tip,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      notificationBannerPresented: true,
+      celebrationQueue: [],
+      floorToast: tip.body,
+    });
+    useGameStore.getState().syncNotificationTimer();
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(1_200);
+    vi.advanceTimersByTime(1_200);
+
+    // Banner host parks the tip (not visible on Settings) and clears the surface.
+    useGameStore.getState().navigateTo('settings');
+    useGameStore.getState().setNotificationBannerPresented(false);
+    useGameStore.getState().setNotificationSurfaceActive(
+      notificationSurfaceShouldRun(
+        true,
+        false,
+        noticeIsVisibleOnScreen(tip, 'settings'),
+      ),
+    );
+    expect(useGameStore.getState().notificationSurfaceActive).toBe(false);
+    expect(noticeIsVisibleOnScreen(tip, 'settings')).toBe(false);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+
+    // Full tutorial budget elapses while parked — tip must remain for remount.
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(30_000);
+    vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS + 1_000);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+
+    // Stale timer dismiss attempts must not drop a parked floor tip.
+    useGameStore.getState().syncNotificationTimer();
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+
+    useGameStore.getState().navigateTo('restaurant');
+    expect(noticeIsVisibleOnScreen(tip, 'restaurant')).toBe(true);
+    // Remount lag: restaurant screen + surface arm before host paints.
+    useGameStore.getState().setNotificationSurfaceActive(
+      notificationSurfaceShouldRun(
+        true,
+        false,
+        noticeIsVisibleOnScreen(tip, 'restaurant'),
+      ),
+    );
+    expect(useGameStore.getState().notificationSurfaceActive).toBe(true);
+    expect(useGameStore.getState().notificationBannerPresented).toBe(false);
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(33_900);
+    vi.advanceTimersByTime(3_900);
+    expect(useGameStore.getState().noticeActive).toBe(tip);
+    expect(peekNoticeRemainingMs()).toBe(TUTORIAL_NOTICE_DURATION_MS - 1_200);
+
+    useGameStore.getState().setNotificationBannerPresented(true);
+    expect(useGameStore.getState().noticeActive?.body).toBe(tip.body);
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(33_900);
+    const remaining = TUTORIAL_NOTICE_DURATION_MS - 1_200;
+    vi.advanceTimersByTime(remaining - 1);
+    expect(useGameStore.getState().noticeActive?.body).toBe(tip.body);
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
   it('clears transient toast after 2500ms when surface active', () => {
@@ -72,9 +238,11 @@ describe('notification timer', () => {
 
   it('pauses when notificationSurfaceActive becomes false', () => {
     useGameStore.getState().setFloorToast('Hi');
+    expect(peekNoticeRemainingMs()).toBe(NOTICE_DURATION_MS);
     useGameStore.getState().setNotificationSurfaceActive(false);
     vi.advanceTimersByTime(10_000);
     expect(useGameStore.getState().noticeActive?.body).toBe('Hi');
+    expect(peekNoticeRemainingMs()).toBe(NOTICE_DURATION_MS);
     useGameStore.getState().setNotificationSurfaceActive(true);
     vi.advanceTimersByTime(2500);
     expect(useGameStore.getState().noticeActive).toBeNull();

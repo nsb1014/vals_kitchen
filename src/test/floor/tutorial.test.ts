@@ -59,7 +59,8 @@ describe('tutorial', () => {
   it('starts at set_tables until tables are set', () => {
     const day = baseDay();
     expect(nextTutorialStep(day, true)).toBe('set_tables');
-    expect(tutorialPrompt('set_tables')).toMatch(/Set every table/);
+    expect(tutorialPrompt('set_tables')).toMatch(/Set every table/i);
+    expect(tutorialPrompt('set_tables')).toMatch(/guest/i);
 
     expect(nextTutorialStep(withSetTables(day), true)).toBe('wait_seat');
     expect(tutorialPrompt('wait_seat')).toMatch(/Seat the next guest/);

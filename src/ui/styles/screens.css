@@ -41,6 +41,26 @@
   border-bottom: 1px solid var(--vk-border);
 }
 
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-close {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.35rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 181, 106, 0.35);
+  background: rgba(40, 26, 16, 0.9);
+  color: #ffe3a9;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .screen-title {
   margin: 0;
   font-size: 1.25rem;
@@ -126,6 +146,10 @@
   border-top: 1px solid var(--vk-border);
 }
 
+.bottom-nav--with-more {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .nav-btn {
   min-height: 44px;
   padding: 0.35rem 0.25rem;
@@ -145,6 +169,93 @@
 .nav-btn:disabled,
 .nav-btn-locked {
   opacity: 0.45;
+}
+
+.nav-more-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.75rem;
+  padding-bottom: calc(var(--vk-nav-height, 3.5rem) + 0.75rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(12, 8, 5, 0.55);
+  pointer-events: auto;
+}
+
+.nav-more-sheet[hidden] {
+  display: none !important;
+}
+
+.nav-more-sheet-card {
+  width: min(100%, 22rem);
+  border: 1px solid var(--vk-border-strong);
+  border-radius: 14px 14px 10px 10px;
+  background:
+    linear-gradient(180deg, rgba(104, 66, 36, 0.35), transparent 28%),
+    #24160f;
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.4);
+  padding: 0.75rem 0.85rem 0.9rem;
+}
+
+.nav-more-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.nav-more-title {
+  margin: 0;
+  font: 800 1.1rem/1.2 var(--vk-display-font);
+  color: var(--vk-text);
+}
+
+.nav-more-close {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 181, 106, 0.35);
+  background: rgba(40, 26, 16, 0.9);
+  color: #ffe3a9;
+  font-weight: 700;
+}
+
+.nav-more-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.nav-more-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 226, 173, 0.06);
+  color: #ffe3a9;
+  font-weight: 700;
+  text-align: left;
+}
+
+.nav-more-item.active {
+  border-color: rgba(226, 181, 106, 0.48);
+  background: linear-gradient(180deg, rgba(232, 191, 116, 0.2), rgba(96, 62, 34, 0.4));
+}
+
+.nav-more-item .nav-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
 }
 
 .nav-lock-hint {
@@ -811,6 +922,160 @@
   color: var(--vk-accent-2);
 }
 
+.achievement-progress {
+  margin-top: 0.35rem;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vk-border) 70%, transparent);
+  overflow: hidden;
+}
+
+.achievement-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--vk-accent) 75%, var(--vk-accent-2));
+  transition: width 180ms ease-out;
+}
+
+.achievement-near-complete {
+  opacity: 1;
+  border-color: color-mix(in srgb, #d4a017 70%, var(--vk-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d4a017 35%, transparent);
+}
+
+.achievement-near-complete .achievement-progress-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #d4a017 80%, var(--vk-accent)),
+    #f0c040
+  );
+}
+
+.achievement-near-complete .achievement-status {
+  color: #d4a017;
+  font-weight: 800;
+}
+
+.achievement-unlocked .achievement-progress-fill {
+  background: var(--vk-accent-2);
+}
+
+.recipe-mastery-bar {
+  margin: 0.2rem 0 0.15rem;
+  height: 4px;
+  max-width: 9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vk-border) 65%, transparent);
+  overflow: hidden;
+}
+
+.recipe-mastery-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--vk-accent) 70%, #fff);
+}
+
+.shop-milestone-strip,
+.layout-catalog-milestone {
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent) 80%, var(--vk-text));
+  line-height: 1.35;
+}
+
+.layout-catalog-purchase-toast {
+  margin: 0.4rem 0 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--vk-text);
+  background: color-mix(in srgb, var(--vk-accent-2) 28%, var(--vk-panel));
+  border: 1px solid color-mix(in srgb, var(--vk-accent-2) 45%, var(--vk-border));
+}
+
+.layout-catalog-row-flash {
+  animation: layout-catalog-purchase-pulse 0.7s ease-out;
+}
+
+@keyframes layout-catalog-purchase-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vk-accent-2) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.guest-voice-line {
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--vk-text) 88%, var(--vk-accent));
+}
+
+.tomorrow-panel {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 35%, var(--vk-border));
+  background: color-mix(in srgb, var(--vk-panel) 88%, var(--vk-accent));
+}
+
+.tomorrow-panel-title {
+  margin: 0 0 0.4rem;
+  font-size: 15px;
+}
+
+.tomorrow-panel-line {
+  margin: 0.2rem 0;
+  font-size: 13px;
+  color: var(--vk-text);
+}
+
+.tomorrow-panel-goal {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent-2) 70%, var(--vk-text));
+}
+
+.rating-nearest-achievement {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--vk-accent) 75%, var(--vk-text));
+}
+
+.celebration-banner-dismiss,
+.notice-banner-dismiss {
+  min-width: max(var(--vk-touch-min, 44px), 45px);
+  min-height: max(var(--vk-touch-min, 44px), 45px);
+  height: auto;
+  width: auto;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: none;
+}
+
+/* Polite live-region payload for banner re-announcements (visual copy is aria-hidden).
+ * Lives as a sibling of the banner testids so banner.innerText stays stable. */
+.celebration-banner-host .banner-live-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .recipe-pager {
   flex: 0 0 auto;
   display: flex;
@@ -973,6 +1238,16 @@
   font-size: 16px;
 }
 
+.settings-volume-field {
+  margin-top: 0.5rem;
+}
+
+.settings-volume-field input[type='range'] {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--vk-accent, #c4a35a);
+}
+
 .save-feedback {
   margin-top: 0.5rem;
   font-size: 14px;
@@ -984,6 +1259,57 @@
 
 .save-feedback-error {
   color: var(--vk-danger);
+}
+
+.settings-import-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(10, 6, 4, 0.62);
+}
+
+.settings-import-confirm[hidden] {
+  display: none !important;
+}
+
+.settings-import-confirm-card {
+  width: min(100%, 22rem);
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--vk-border-strong);
+  background:
+    linear-gradient(180deg, rgba(120, 72, 36, 0.28), transparent 40%),
+    #2a1a11;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+
+.settings-import-confirm-title {
+  margin: 0 0 0.5rem;
+  font: 800 1.2rem/1.2 var(--vk-display-font);
+  color: var(--vk-text);
+}
+
+.settings-import-confirm-desc {
+  margin: 0 0 1rem;
+  color: var(--vk-text-dim);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.settings-import-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.settings-import-confirm-actions .service-btn {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .placement-palette {
@@ -1315,7 +1641,33 @@
 
 @media (prefers-reduced-motion: reduce) {
   .flavor-bar-fill,
-  .rating-bar-fill {
+  .rating-bar-fill,
+  .achievement-progress-fill,
+  .recipe-mastery-bar-fill,
+  .layout-catalog-row-flash {
     transition: none;
+    animation: none;
   }
+}
+
+/* Manual Settings override — mirrors prefers-reduced-motion for chrome screens. */
+html[data-vk-reduced-motion='true'] .flavor-bar-fill,
+html[data-vk-reduced-motion='true'] .rating-bar-fill,
+html[data-vk-reduced-motion='true'] .achievement-progress-fill,
+html[data-vk-reduced-motion='true'] .recipe-mastery-bar-fill,
+html[data-vk-reduced-motion='true'] .layout-catalog-row-flash,
+[data-vk-reduced-motion='true'] .flavor-bar-fill,
+[data-vk-reduced-motion='true'] .rating-bar-fill,
+[data-vk-reduced-motion='true'] .achievement-progress-fill,
+[data-vk-reduced-motion='true'] .recipe-mastery-bar-fill,
+[data-vk-reduced-motion='true'] .layout-catalog-row-flash {
+  transition: none;
+  animation: none;
+}
+
+/* WCAG 2.5.8: settings gear was 42×44 on desktop (service-day flex-basis 2.65rem). */
+.hud-settings-button {
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
 }

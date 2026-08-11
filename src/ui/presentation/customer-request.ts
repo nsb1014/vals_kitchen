@@ -1,5 +1,20 @@
 import type { CustomerPreference } from '../../domain/types.ts';
 
+/** One-line scan chips for Order tickets (full prose stays in formatCustomerRequestText). */
+export function splitCustomerRequestPhrases(
+  preference: CustomerPreference,
+): string[] {
+  const phrases = preference.phrases.filter(Boolean);
+  if (phrases.length === 0) {
+    return ['Something balanced and satisfying'];
+  }
+  return phrases.map((phrase) => {
+    const trimmed = phrase.trim();
+    if (!trimmed) return trimmed;
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  });
+}
+
 export function formatCustomerRequestText(preference: CustomerPreference): string {
   const phrases = preference.phrases.filter(Boolean);
   if (phrases.length === 0) {

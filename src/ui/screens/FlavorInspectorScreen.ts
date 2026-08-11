@@ -14,7 +14,7 @@ export function mountFlavorInspectorScreen(container: HTMLElement): () => void {
     <section class="screen-panel sheet-tier-meta-full meta-screen" id="inspector-screen" data-testid="inspector-screen" hidden>
       <header class="screen-header">
         <h1 class="screen-title">Flavor Inspector</h1>
-        <p class="screen-subtitle">16-axis profiles for unlocked ingredients</p>
+        <p class="screen-subtitle">16-axis profiles for unlocked ingredients · Long-press a compose chip to open</p>
       </header>
       <div class="screen-toolbar">
         <label class="screen-field">
@@ -177,7 +177,7 @@ export function mountFlavorInspectorModal(
           <h2 id="flavor-modal-title">Ingredient Profile</h2>
           <button type="button" class="icon-btn" id="close-flavor-modal" aria-label="Close">✕</button>
         </div>
-        ${renderFlavorInspectorContent(ingredientId)}
+        ${renderFlavorInspectorContent(ingredientId, { showLongPressHint: true })}
         <button type="button" class="service-btn" id="close-flavor-modal-bottom">Back to compose</button>
       </div>
     `;

@@ -10,8 +10,13 @@ import type { AxisKey } from '../../domain/types.ts';
 import { AXIS_KEYS } from '../../domain/types.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 
+/** Shared long-press coach copy — compose chips + inspector modal. */
+export const FLAVOR_INSPECTOR_LONG_PRESS_HINT =
+  'Tip: long-press an ingredient chip (about half a second) to inspect its 16-axis profile.';
+
 export function renderFlavorInspectorContent(
   ingredientId: string,
+  options?: { showLongPressHint?: boolean },
 ): string {
   const ctx = getDomainContext();
   const ingredient = ctx.ingredientsById.get(ingredientId);
@@ -20,7 +25,10 @@ export function renderFlavorInspectorContent(
   }
 
   const model = buildFlavorProfileViewModel(ingredient, getEquipmentNameMap());
-  return `<div class="flavor-profile">${renderFlavorProfileHtml(model)}</div>`;
+  const hint = options?.showLongPressHint
+    ? `<p class="inspector-long-press-hint" data-testid="inspector-long-press-hint">${FLAVOR_INSPECTOR_LONG_PRESS_HINT}</p>`
+    : '';
+  return `${hint}<div class="flavor-profile">${renderFlavorProfileHtml(model)}</div>`;
 }
 
 export function buildInspectorIngredientList(

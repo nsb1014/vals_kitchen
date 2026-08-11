@@ -29,9 +29,16 @@ import {
   playerPoseFrame,
   playerTextureKeyCandidates,
 } from './character-frames.ts';
-import { waitingGuestWorldPosition } from './waiting-line.ts';
+import { waitingGuestWorldPosition, queueLineAdvancePosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
+import {
+  guestCanvasCueAction,
+  guestStageFloorCue,
+  type CarriedDishRelation,
+} from './guest-interaction-hint.ts';
+import { canEnqueue } from '../../domain/floor/tickets.ts';
+import { prefersReducedMotion } from '../../ui/presentation/motion-preference.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 export {
@@ -45,9 +52,98 @@ export {
 
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
-const DEST_MARKER_COLOR = 0xf0e6a8;
+const DEST_MARKER_COLOR = 0xfff1a8;
+const DEST_MARKER_STROKE = 0xc4a35a;
+const CUE_ORDER_COLOR = 0xf4d35e;
+const CUE_DELIVER_COLOR = 0xe07a5f;
+const CUE_EATING_COLOR = 0x9ad0c2;
+const CUE_LEAVING_COLOR = 0xcfcfcf;
+const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
 const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
+
+/** Walk-step squash duration (ms). Feet stay planted via bottom anchor. */
+export const WALK_SQUASH_MS = 70;
+/** Peak ± scale amplitude for walk squash/stretch (~5%). */
+export const WALK_SQUASH_AMPLITUDE = 0.05;
+
+export function walkStepSquash(
+  t: number,
+  amplitude = WALK_SQUASH_AMPLITUDE,
+): { x: number; y: number } {
+  const u = Math.max(0, Math.min(1, t));
+  const wave = Math.sin(u * Math.PI);
+  return {
+    x: 1 + amplitude * wave,
+    y: 1 - amplitude * wave,
+  };
+}
+
+export function actorIdleBobY(nowMs: number, phase = 0): number {
+  return Math.sin(nowMs / 420 + phase) * 1.15;
+}
+
+export function actorEatingPulse(
+  nowMs: number,
+  phase = 0,
+): { scaleX: number; scaleY: number; offsetY: number } {
+  const chew = Math.sin(nowMs / 170 + phase);
+  return {
+    scaleX: 1 + chew * 0.035,
+    scaleY: 1 - chew * 0.03,
+    offsetY: Math.sin(nowMs / 260 + phase) * 1.4,
+  };
+}
+
+export function actorIdleBreathe(
+  nowMs: number,
+  phase = 0,
+): { scaleX: number; scaleY: number } {
+  const wave = Math.sin(nowMs / 520 + phase) * 0.018;
+  return { scaleX: 1 + wave, scaleY: 1 - wave };
+}
+
+function hashPhase(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return (h % 628) / 100;
+}
+
+interface WalkPulseState {
+  lastFrame: number;
+  startMs: number;
+  active: boolean;
+}
+
+function resetWalkPulse(pulse: WalkPulseState): void {
+  pulse.lastFrame = 0;
+  pulse.startMs = 0;
+  pulse.active = false;
+}
+
+function tickWalkPulse(
+  pulse: WalkPulseState,
+  walkFrame: number,
+  isMoving: boolean,
+  nowMs: number,
+): { x: number; y: number } {
+  if (!isMoving) {
+    resetWalkPulse(pulse);
+    return { x: 1, y: 1 };
+  }
+  if (walkFrame !== pulse.lastFrame) {
+    pulse.lastFrame = walkFrame;
+    pulse.startMs = nowMs;
+    pulse.active = true;
+  }
+  if (!pulse.active) return { x: 1, y: 1 };
+  const t = (nowMs - pulse.startMs) / WALK_SQUASH_MS;
+  if (t >= 1) {
+    pulse.active = false;
+    return { x: 1, y: 1 };
+  }
+  return walkStepSquash(t);
+}
 
 interface GuestSpriteEntry {
   root: Container;
@@ -65,6 +161,18 @@ interface GuestSpriteEntry {
   isSeated: boolean;
   isMoving: boolean;
   facing: ActorFacingName;
+  stage: FloorGuest['stage'] | null;
+  walkPulse: WalkPulseState;
+  phase: number;
+  /** Queued silhouette slide-up after an admit (presentation only). */
+  queueAdvance: {
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    startMs: number;
+    active: boolean;
+  } | null;
 }
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
@@ -193,6 +301,11 @@ export class ActorLayer {
   private lastPlayerBoundTextureKey = '';
   private playerUsesCarryTexture = false;
   private plateOverlayVisible = false;
+  private readonly playerWalkPulse: WalkPulseState = {
+    lastFrame: 0,
+    startMs: 0,
+    active: false,
+  };
 
   constructor(actorContainer?: Container) {
     this.actorContainer = actorContainer ?? new Container();
@@ -218,6 +331,7 @@ export class ActorLayer {
       isMoving: boolean;
       walkFrame: () => number;
       destination: GridPoint | null;
+      pathTailCrumbs?: () => { x: number; y: number }[];
     },
     guestMotion?: GuestMotion | null,
     opts: {
@@ -231,7 +345,7 @@ export class ActorLayer {
     if (!floor) {
       this.clearGuests();
       if (opts.showPlayerWithoutFloor) {
-        this.drawDestination(nav.destination);
+        this.drawDestination(nav.destination, nav.facing, nav.pathTailCrumbs?.() ?? []);
         const carrying = opts.playerCarrying === true;
         const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
         this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
@@ -243,7 +357,11 @@ export class ActorLayer {
       return;
     }
 
-    this.drawDestination(nav.destination);
+    this.drawDestination(
+      nav.destination,
+      nav.facing,
+      nav.pathTailCrumbs?.() ?? [],
+    );
     if (opts.showGuests === false) {
       this.clearGuests();
     } else {
@@ -423,13 +541,59 @@ export class ActorLayer {
     };
   }
 
-  private drawDestination(dest: GridPoint | null): void {
+  private drawDestination(
+    dest: GridPoint | null,
+    facing: 0 | 1 | 2 | 3 = 1,
+    crumbs: { x: number; y: number }[] = [],
+  ): void {
+    for (let i = 0; i < crumbs.length; i += 1) {
+      const crumb = crumbs[i]!;
+      const alpha = 0.55 - i * 0.14;
+      this.markerLayer
+        .circle(crumb.x, crumb.y, 3.5 - i * 0.4)
+        .fill({ color: DEST_MARKER_COLOR, alpha: Math.max(0.18, alpha) });
+    }
     if (!dest) return;
     const { x, y } = gridToWorld(dest.x, dest.y);
     const cx = x + TILE_PX / 2;
     const cy = y + TILE_PX / 2;
-    this.markerLayer.circle(cx, cy, 5).stroke({ width: 2, color: DEST_MARKER_COLOR, alpha: 0.85 });
-    this.markerLayer.circle(cx, cy, 2).fill({ color: DEST_MARKER_COLOR, alpha: 0.9 });
+    const size = 8;
+    // Chevron / footprint stamp oriented by travel facing.
+    const tips: [number, number][] =
+      facing === 0
+        ? [
+            [cx + size, cy],
+            [cx - size * 0.55, cy - size * 0.7],
+            [cx - size * 0.2, cy],
+            [cx - size * 0.55, cy + size * 0.7],
+          ]
+        : facing === 3
+          ? [
+              [cx - size, cy],
+              [cx + size * 0.55, cy - size * 0.7],
+              [cx + size * 0.2, cy],
+              [cx + size * 0.55, cy + size * 0.7],
+            ]
+          : facing === 2
+            ? [
+                [cx, cy - size],
+                [cx - size * 0.7, cy + size * 0.55],
+                [cx, cy + size * 0.2],
+                [cx + size * 0.7, cy + size * 0.55],
+              ]
+            : [
+                [cx, cy + size],
+                [cx - size * 0.7, cy - size * 0.55],
+                [cx, cy - size * 0.2],
+                [cx + size * 0.7, cy - size * 0.55],
+              ];
+    this.markerLayer
+      .poly(tips.flat())
+      .fill({ color: DEST_MARKER_COLOR, alpha: 0.92 })
+      .stroke({ width: 2, color: DEST_MARKER_STROKE, alpha: 0.95 });
+    this.markerLayer
+      .circle(cx, cy, 2)
+      .fill({ color: DEST_MARKER_STROKE, alpha: 0.85 });
   }
 
   private syncPlayer(
@@ -449,6 +613,20 @@ export class ActorLayer {
     const frameKey = pose.textureKey;
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
+    const nowMs = performance.now();
+    const reduced = prefersReducedMotion();
+    const squash = reduced
+      ? { x: 1, y: 1 }
+      : tickWalkPulse(this.playerWalkPulse, frame, nav.isMoving, nowMs);
+    const breathe =
+      reduced || nav.isMoving
+        ? { scaleX: 1, scaleY: 1 }
+        : actorIdleBreathe(nowMs);
+    const bobY = reduced || nav.isMoving ? 0 : actorIdleBobY(nowMs);
+    const baseScale = scaleForContent(
+      PLAYER_DISPLAY_HEIGHT,
+      PLAYER_CONTENT_HEIGHT_PX,
+    );
 
     if (
       nextBoundFrameKey({
@@ -472,13 +650,9 @@ export class ActorLayer {
         this.lastPlayerBoundTextureKey = boundTextureKey;
         this.playerUsesCarryTexture = boundTextureKey.startsWith('player_carry_');
         this.playerSprite.texture = texture;
-        this.playerSprite.scale.set(
-          scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
-        );
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
-        // Leave lastPlayerFrameKey stale/empty so the next sync retries after atlas load.
         this.lastPlayerFrameKey = '';
         this.lastPlayerBoundTextureKey = '';
         this.playerUsesCarryTexture = false;
@@ -489,14 +663,18 @@ export class ActorLayer {
     if (this.playerSprite.visible) {
       this.playerSprite.alpha = 1;
       this.playerSprite.scale.set(
-        scaleForContent(PLAYER_DISPLAY_HEIGHT, PLAYER_CONTENT_HEIGHT_PX),
+        baseScale * squash.x * breathe.scaleX,
+        baseScale * squash.y * breathe.scaleY,
       );
-      this.playerSprite.position.set(Math.round(nav.worldX), Math.round(feetY));
-      this.playerSprite.zIndex = this.playerSprite.y;
+      this.playerSprite.position.set(
+        Math.round(nav.worldX),
+        Math.round(feetY + bobY),
+      );
+      this.playerSprite.zIndex = feetY;
     } else {
       this.playerFallback.clear();
       this.playerFallback.y = feetY;
-      this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback.circle(Math.round(nav.worldX), -16 + bobY, 12).fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
     return carrying && this.playerUsesCarryTexture;
@@ -534,44 +712,106 @@ export class ActorLayer {
   ): void {
     const seen = new Set<string>();
     let waitingIndex = 0;
+    const orderAvailable = canEnqueue(floor.tickets, 1);
+    const carriedTicket = floor.tickets.find(
+      (ticket) =>
+        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+    );
+
     for (const guest of floor.pool) {
-      if (guest.stage === 'done' || guest.stage === 'queued') continue;
+      if (guest.stage === 'done') continue;
+
+      if (guest.stage === 'queued') {
+        const lineIndex =
+          floor.pool.filter(
+            (g) => g.stage === 'waiting' || g.stage === 'entering',
+          ).length +
+          floor.pool
+            .filter((g) => g.stage === 'queued')
+            .findIndex((g) => g.id === guest.id);
+        const world = waitingGuestWorldPosition(guestDoor, Math.max(0, lineIndex));
+        seen.add(guest.id);
+        const entry = this.ensureGuestEntry(guest.id);
+        const wasQueued = entry.stage === 'queued';
+        entry.sprite.visible = false;
+        entry.lastFrameKey = '';
+        entry.actualBoundFrameKey = '';
+        entry.requestedFrameKey = '';
+        entry.isSeated = false;
+        entry.isMoving = false;
+        entry.facing = 'down';
+        entry.stage = 'queued';
+        resetWalkPulse(entry.walkPulse);
+        const feetY = world.y + TILE_PX / 2 - 2;
+        const targetX = Math.round(world.x);
+        const targetY = Math.round(feetY);
+        const nowMs = performance.now();
+
+        if (!wasQueued) {
+          // Entering the silhouette line: snap (no slide from off-map).
+          entry.queueAdvance = null;
+          entry.root.position.set(targetX, targetY);
+        } else {
+          const priorTargetX = entry.queueAdvance?.toX ?? entry.root.position.x;
+          const priorTargetY = entry.queueAdvance?.toY ?? entry.root.position.y;
+          const targetMoved =
+            Math.abs(priorTargetX - targetX) > 0.5 ||
+            Math.abs(priorTargetY - targetY) > 0.5;
+          if (targetMoved) {
+            const fromX = entry.queueAdvance?.active
+              ? entry.root.position.x
+              : priorTargetX;
+            const fromY = entry.queueAdvance?.active
+              ? entry.root.position.y
+              : priorTargetY;
+            entry.queueAdvance = {
+              fromX,
+              fromY,
+              toX: targetX,
+              toY: targetY,
+              startMs: nowMs,
+              active: true,
+            };
+          }
+          if (entry.queueAdvance?.active) {
+            const slid = queueLineAdvancePosition(
+              { x: entry.queueAdvance.fromX, y: entry.queueAdvance.fromY },
+              { x: entry.queueAdvance.toX, y: entry.queueAdvance.toY },
+              nowMs - entry.queueAdvance.startMs,
+            );
+            entry.root.position.set(Math.round(slid.x), Math.round(slid.y));
+            if (slid.done) entry.queueAdvance = null;
+          } else {
+            entry.queueAdvance = null;
+            entry.root.position.set(targetX, targetY);
+          }
+        }
+
+        entry.root.zIndex = entry.root.y - 1;
+        entry.cue.clear();
+        // Dim silhouette so the door queue reads before admit.
+        entry.cue
+          .ellipse(0, -6, 10, 4)
+          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.28 });
+        entry.cue
+          .circle(0, -18, 9)
+          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.38 });
+        entry.content.mask = null;
+        entry.content.y = 0;
+        entry.content.renderable = true;
+        entry.doorwayCrop = null;
+        continue;
+      }
+
       const waitIdx =
-        guest.stage === 'waiting' || guest.stage === 'entering' ? waitingIndex++ : undefined;
+        guest.stage === 'waiting' || guest.stage === 'entering'
+          ? waitingIndex++
+          : undefined;
       const pose = resolveGuestPose(guest, waitIdx, guestMotion);
       if (!pose) continue;
       seen.add(guest.id);
-      let entry = this.guestSprites.get(guest.id);
-      if (!entry) {
-        const root = new Container();
-        const content = new Container();
-        const sprite = new Sprite();
-        sprite.roundPixels = true;
-        sprite.anchor.set(0.5, 1);
-        sprite.alpha = 1;
-        const cue = new Graphics();
-        const cropMask = new Graphics();
-        content.addChild(sprite);
-        content.addChild(cue);
-        root.addChild(content);
-        root.addChild(cropMask);
-        this.actorContainer.addChild(root);
-        entry = {
-          root,
-          content,
-          sprite,
-          cue,
-          cropMask,
-          doorwayCrop: null,
-          lastFrameKey: '',
-          requestedFrameKey: '',
-          actualBoundFrameKey: '',
-          isSeated: false,
-          isMoving: false,
-          facing: 'down',
-        };
-        this.guestSprites.set(guest.id, entry);
-      }
+      const entry = this.ensureGuestEntry(guest.id);
+      entry.queueAdvance = null;
 
       const variant = guestVariant(guest.id);
       const facingName = FACING_NAMES[pose.facing];
@@ -587,6 +827,7 @@ export class ActorLayer {
       entry.isSeated = seated;
       entry.isMoving = pose.isMoving;
       entry.facing = facingName;
+      entry.stage = guest.stage;
       if (
         nextBoundFrameKey({
           frameKey,
@@ -643,12 +884,23 @@ export class ActorLayer {
       if (!entry.sprite.visible) {
         entry.cue.circle(0, -8, 8).fill(FALLBACK_GUEST_COLOR);
       }
+      const carriedRelation: CarriedDishRelation = !carriedTicket
+        ? 'none'
+        : carriedTicket.customerId === guest.customer.id
+          ? 'matching'
+          : 'other';
+      this.drawGuestStageCue(
+        entry,
+        guestCanvasCueAction(guest.stage, carriedRelation, orderAvailable) ??
+          guestStageFloorCue(guest.stage),
+      );
       this.syncGuestDoorwayCrop(
         entry,
         guest.stage,
         pose,
         guestDoor,
       );
+      this.applyGuestMotionJuice(entry, guest.stage, pose, performance.now());
     }
 
     for (const [id, entry] of this.guestSprites) {
@@ -656,6 +908,155 @@ export class ActorLayer {
       this.actorContainer.removeChild(entry.root);
       this.guestSprites.delete(id);
     }
+  }
+
+  private applyGuestMotionJuice(
+    entry: GuestSpriteEntry,
+    stage: FloorGuest['stage'],
+    pose: Pick<GuestPose, 'isMoving' | 'walkFrame'>,
+    nowMs: number,
+  ): void {
+    const contentH = entry.isSeated
+      ? GUEST_SIT_CONTENT_HEIGHT_PX
+      : GUEST_WALK_CONTENT_HEIGHT_PX;
+    const displayH = entry.isSeated
+      ? SEATED_GUEST_DISPLAY_HEIGHT
+      : GUEST_DISPLAY_HEIGHT;
+    const base = scaleForContent(displayH, contentH);
+
+    let sx = 1;
+    let sy = 1;
+    let bobY = 0;
+
+    if (!prefersReducedMotion()) {
+      if (pose.isMoving) {
+        const squash = tickWalkPulse(
+          entry.walkPulse,
+          pose.walkFrame,
+          true,
+          nowMs,
+        );
+        sx = squash.x;
+        sy = squash.y;
+      } else {
+        resetWalkPulse(entry.walkPulse);
+        if (stage === 'eating') {
+          const pulse = actorEatingPulse(nowMs, entry.phase);
+          sx = pulse.scaleX;
+          sy = pulse.scaleY;
+          bobY = pulse.offsetY;
+        } else if (
+          stage === 'seated' ||
+          stage === 'ordered' ||
+          stage === 'waiting'
+        ) {
+          const breathe = actorIdleBreathe(nowMs, entry.phase);
+          sx = breathe.scaleX;
+          sy = breathe.scaleY;
+          bobY = actorIdleBobY(nowMs, entry.phase);
+        }
+      }
+    } else {
+      resetWalkPulse(entry.walkPulse);
+    }
+
+    if (entry.sprite.visible) {
+      entry.sprite.scale.set(base * sx, base * sy);
+    }
+
+    const doorY = entry.doorwayCrop?.visualOffsetY ?? 0;
+    entry.content.y = doorY + (entry.doorwayCrop ? 0 : bobY);
+  }
+
+  private ensureGuestEntry(guestId: string): GuestSpriteEntry {
+    let entry = this.guestSprites.get(guestId);
+    if (entry) return entry;
+    const root = new Container();
+    const content = new Container();
+    const sprite = new Sprite();
+    sprite.roundPixels = true;
+    sprite.anchor.set(0.5, 1);
+    sprite.alpha = 1;
+    const cue = new Graphics();
+    const cropMask = new Graphics();
+    content.addChild(sprite);
+    content.addChild(cue);
+    root.addChild(content);
+    root.addChild(cropMask);
+    this.actorContainer.addChild(root);
+    entry = {
+      root,
+      content,
+      sprite,
+      cue,
+      cropMask,
+      doorwayCrop: null,
+      lastFrameKey: '',
+      requestedFrameKey: '',
+      actualBoundFrameKey: '',
+      isSeated: false,
+      isMoving: false,
+      facing: 'down',
+      stage: null,
+      walkPulse: { lastFrame: 0, startMs: 0, active: false },
+      phase: hashPhase(guestId),
+      queueAdvance: null,
+    };
+    this.guestSprites.set(guestId, entry);
+    return entry;
+  }
+
+  private drawGuestStageCue(
+    entry: GuestSpriteEntry,
+    cue:
+      | 'order'
+      | 'deliver'
+      | 'eating'
+      | 'leaving'
+      | null,
+  ): void {
+    if (!cue) return;
+    const headY = entry.sprite.visible ? -SEATED_GUEST_DISPLAY_HEIGHT - 4 : -28;
+    const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 220);
+    if (cue === 'order') {
+      // Speech-bubble “!” — order available.
+      entry.cue
+        .roundRect(-7, headY - 16, 14, 14, 3)
+        .fill({ color: CUE_ORDER_COLOR, alpha: 0.55 + pulse * 0.35 });
+      entry.cue
+        .circle(0, headY - 11, 1.6)
+        .fill({ color: 0x3d2c1e, alpha: 0.95 });
+      entry.cue
+        .rect(-1, headY - 8, 2, 5)
+        .fill({ color: 0x3d2c1e, alpha: 0.95 });
+      return;
+    }
+    if (cue === 'deliver') {
+      // Plate disc — matching dish ready to serve.
+      entry.cue
+        .circle(0, headY - 8, 7 + pulse)
+        .fill({ color: CUE_DELIVER_COLOR, alpha: 0.7 + pulse * 0.25 });
+      entry.cue
+        .circle(0, headY - 8, 3.5)
+        .fill({ color: 0xfff6e0, alpha: 0.95 });
+      return;
+    }
+    if (cue === 'eating') {
+      entry.cue
+        .circle(0, headY - 6, 3)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.55 });
+      entry.cue
+        .circle(-5, headY - 6, 2)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
+      entry.cue
+        .circle(5, headY - 6, 2)
+        .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
+      return;
+    }
+    // leaving — empty-plate hint
+    entry.cue
+      .ellipse(0, headY - 6, 7, 3)
+      .stroke({ width: 1.5, color: CUE_LEAVING_COLOR, alpha: 0.7 });
   }
 
   private clearGuests(): void {

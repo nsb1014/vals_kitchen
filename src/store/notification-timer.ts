@@ -20,6 +20,19 @@ export function resolveNoticeScope(notice: Notice): NoticeScope {
     : 'global';
 }
 
+/**
+ * Floor-scoped guidance only belongs on the restaurant surface. Global toasts
+ * and system notices may run on any screen. Used by the timer controller so
+ * dwell pauses when the player leaves the floor even if the banner host has
+ * not yet cleared notificationSurfaceActive.
+ */
+export function noticeRunsOnScreen(
+  notice: Notice,
+  screen: string,
+): boolean {
+  return resolveNoticeScope(notice) === 'global' || screen === 'restaurant';
+}
+
 export const NOTICE_DURATION_MS = 2500;
 export const TUTORIAL_NOTICE_DURATION_MS = 4000;
 export const CELEBRATION_DURATION_MS = 4000;
@@ -34,6 +47,13 @@ interface NotificationTimerState<Celebration extends object> {
   noticeActive: Notice | null;
   noticeSticky: Notice | null;
   notificationSurfaceActive: boolean;
+  /**
+   * True only while the banner host is connected and not `hidden` (actually
+   * presented). Screen id alone must not burn dwell during slow remounts.
+   */
+  notificationBannerPresented: boolean;
+  /** Current app screen — gates floor-scoped notice dwell independently of the UI surface flag. */
+  screen: string;
   celebrationHead: Celebration | null;
 }
 
@@ -115,6 +135,25 @@ export function clearNotificationTimers(): void {
 }
 
 /**
+ * Remaining dwell for the timed transient notice, accounting for an in-flight
+ * run. Returns null when no notice timer is armed (sticky / idle).
+ */
+export function peekNoticeRemainingMs(nowMs: number = timerNow()): number | null {
+  if (!noticeTimer || !timedNotice) return null;
+  if (
+    runningTarget?.kind === 'notice' &&
+    runningTimerFields === noticeTimer &&
+    noticeTimer.runningSinceMs !== null
+  ) {
+    return Math.max(
+      0,
+      noticeTimer.remainingMs - Math.max(0, nowMs - noticeTimer.runningSinceMs),
+    );
+  }
+  return noticeTimer.remainingMs;
+}
+
+/**
  * Runs only the logical front timer. Sticky notices have no dwell timer and
  * cover (pause) the celebration head until dismissed or replaced.
  */
@@ -153,9 +192,18 @@ export function syncNotificationTimer<Celebration extends object>(
   }
 
   let desiredTarget: RunningTarget | null = null;
-  if (state.notificationSurfaceActive) {
+  // Dwell ticks only while the surface is active AND the banner is actually
+  // presented (host mounted + visible). Returning to screen==='restaurant'
+  // alone must not burn remainingMs during a slow remount window.
+  const presented =
+    state.notificationSurfaceActive && state.notificationBannerPresented;
+  if (presented) {
     if (transientNotice) {
-      desiredTarget = { kind: 'notice', value: transientNotice };
+      // Keep celebrations covered while a floor notice is parked off-screen;
+      // only run the notice timer when that notice is actually presentable.
+      if (noticeRunsOnScreen(transientNotice, state.screen)) {
+        desiredTarget = { kind: 'notice', value: transientNotice };
+      }
     } else if (!state.noticeActive && state.celebrationHead) {
       desiredTarget = {
         kind: 'celebration',

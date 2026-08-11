@@ -30,6 +30,11 @@ import {
   resolveFloorComposeTicket,
 } from '../domain/floor/index.ts';
 import {
+  nextTutorialStep,
+  tutorialPrompt,
+} from '../domain/floor/tutorial.ts';
+import { applyAppShellMotionPreference } from '../ui/presentation/motion-preference.ts';
+import {
   createNewGameState,
   type GameState,
   type Placement,
@@ -122,12 +127,27 @@ interface StoreMeta {
   pendingPlacementItemKey: string | null;
   audioEnabled: boolean;
   musicEnabled: boolean;
+  /** Master volume 0–1 (session meta; default 1). */
+  audioVolume: number;
+  /** Manual reduced-motion override (session meta; default false). */
+  reducedMotion: boolean;
   floorPlayerGrid: { x: number; y: number } | null;
   floorToast: string | null;
   noticeActive: Notice | null;
   noticeSticky: Notice | null;
   tutorialDismissedStepId: NonNullable<Notice['stepId']> | null;
   notificationSurfaceActive: boolean;
+  /**
+   * True when the celebration/notice banner host is connected and not `hidden`.
+   * Notice dwell must not tick until the tip is actually on screen — screen id
+   * alone is not enough under slow Settings→Floor remounts.
+   */
+  notificationBannerPresented: boolean;
+  /**
+   * E2E/CI remount-lag hold: while true, presented stays false and banner
+   * host updates cannot resume dwell (simulates hostHidden during remount).
+   */
+  notificationBannerPresentationHold: boolean;
   celebrationQueue: Celebration[];
   /** Ephemeral UI state. Never included in GameState persistence. */
   composeSheetOpen: boolean;
@@ -154,6 +174,10 @@ export interface GameStore extends GameState, StoreMeta {
   >;
   setAudioEnabled: (enabled: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
+  setAudioVolume: (volume: number) => void;
+  setReducedMotion: (enabled: boolean) => void;
+  /** Re-arm day-1 tutorial tips (clears dismiss + pacing gate). */
+  replayTutorial: () => void;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
   openComposeSheet: () => void;
@@ -165,6 +189,9 @@ export interface GameStore extends GameState, StoreMeta {
   dismissCelebration: () => void;
   clearCelebrations: () => void;
   setNotificationSurfaceActive: (active: boolean) => void;
+  setNotificationBannerPresented: (presented: boolean) => void;
+  /** Test/e2e: freeze presented=false through a simulated remount window. */
+  setNotificationBannerPresentationHold: (hold: boolean) => void;
   syncNotificationTimer: () => void;
   setActiveFloorRoom: (room: FloorRoomId) => void;
   enterConnectingDoor: () => boolean;
@@ -199,6 +226,9 @@ const META_KEYS = [
   'exportSaveCodeToClipboard',
   'setAudioEnabled',
   'setMusicEnabled',
+  'setAudioVolume',
+  'setReducedMotion',
+  'replayTutorial',
   'setFloorNavPosition',
   'setFloorSelectedTicket',
   'openComposeSheet',
@@ -210,6 +240,8 @@ const META_KEYS = [
   'dismissCelebration',
   'clearCelebrations',
   'setNotificationSurfaceActive',
+  'setNotificationBannerPresented',
+  'setNotificationBannerPresentationHold',
   'syncNotificationTimer',
   'floorPlayerGrid',
   'floorToast',
@@ -217,6 +249,8 @@ const META_KEYS = [
   'noticeSticky',
   'tutorialDismissedStepId',
   'notificationSurfaceActive',
+  'notificationBannerPresented',
+  'notificationBannerPresentationHold',
   'celebrationQueue',
   'composeSheetOpen',
   'screen',
@@ -239,6 +273,8 @@ const META_KEYS = [
   'pendingPlacementItemKey',
   'audioEnabled',
   'musicEnabled',
+  'audioVolume',
+  'reducedMotion',
 ] as const;
 
 let toastNoticeSequence = 0;
@@ -375,12 +411,24 @@ function syncStoreNotificationTimer(): void {
       noticeActive: state.noticeActive,
       noticeSticky: state.noticeSticky,
       notificationSurfaceActive: state.notificationSurfaceActive,
+      notificationBannerPresented: state.notificationBannerPresented,
+      screen: state.screen,
       celebrationHead: state.celebrationQueue[0] ?? null,
     },
     {
       dismissNotice(notice) {
         const current = useGameStore.getState();
         if (current.noticeActive !== notice) return;
+        // Stale timeouts must not burn a parked / not-yet-painted floor tip —
+        // keep remainingMs and re-pause until the banner is actually presented.
+        if (
+          resolveNoticeScope(notice) === 'floor' &&
+          (current.screen !== 'restaurant' ||
+            !current.notificationBannerPresented)
+        ) {
+          syncStoreNotificationTimer();
+          return;
+        }
         const nextNotice = current.noticeSticky;
         useGameStore.setState({
           noticeActive: nextNotice,
@@ -454,6 +502,8 @@ function mergeReducerState(
     pendingPlacementItemKey: current.pendingPlacementItemKey,
     audioEnabled: current.audioEnabled,
     musicEnabled: current.musicEnabled,
+    audioVolume: current.audioVolume,
+    reducedMotion: current.reducedMotion,
     floorPlayerGrid: current.floorPlayerGrid,
     floorToast: current.floorToast,
     noticeActive: current.noticeActive,
@@ -591,12 +641,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   pendingPlacementItemKey: null,
   audioEnabled: true,
   musicEnabled: false,
+  audioVolume: 1,
+  reducedMotion: false,
   floorPlayerGrid: null,
   floorToast: null,
   noticeActive: null,
   noticeSticky: null,
   tutorialDismissedStepId: null,
   notificationSurfaceActive: false,
+  notificationBannerPresented: false,
+  notificationBannerPresentationHold: false,
   celebrationQueue: [],
   composeSheetOpen: false,
 
@@ -626,11 +680,16 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       pendingPlacementItemKey: null,
       audioEnabled: true,
       musicEnabled: false,
+      audioVolume: 1,
+      reducedMotion: false,
       floorPlayerGrid: state.activeDay?.floor?.playerPosition ?? null,
       floorToast: null,
       noticeActive: null,
       noticeSticky: null,
       tutorialDismissedStepId: null,
+      notificationSurfaceActive: false,
+      notificationBannerPresented: false,
+      notificationBannerPresentationHold: false,
       celebrationQueue: [],
       composeSheetOpen: false,
     });
@@ -879,6 +938,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       gameplayInteractionGeneration += 1;
     }
     set({ screen, flavorInspectorIngredientId: null, composeSheetOpen: false });
+    // Reconcile notice dwell immediately: floor-scoped tips must pause even if
+    // the banner host has not yet cleared notificationSurfaceActive.
+    syncStoreNotificationTimer();
   },
 
   openFlavorInspector(ingredientId) {
@@ -973,6 +1035,42 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   setMusicEnabled(enabled) {
     set({ musicEnabled: enabled });
+  },
+
+  setAudioVolume(volume) {
+    const next = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 1));
+    set({ audioVolume: next });
+  },
+
+  setReducedMotion(enabled) {
+    set({ reducedMotion: enabled });
+    applyAppShellMotionPreference(enabled);
+  },
+
+  replayTutorial() {
+    lastHudPacingNotice = null;
+    const state = get();
+    const floor = state.activeDay?.floor;
+    const step = floor ? nextTutorialStep(floor, state.day === 1) : null;
+    const prompt = tutorialPrompt(step);
+    if (prompt && step) {
+      const notice = {
+        id: `tutorial:replay:${step}:${Date.now()}`,
+        source: 'tutorial' as const,
+        scope: 'floor' as const,
+        body: prompt,
+        stepId: step,
+      };
+      set({
+        tutorialDismissedStepId: null,
+        noticeActive: notice,
+        floorToast: prompt,
+      });
+      restartNoticeTimer(notice);
+    } else {
+      set({ tutorialDismissedStepId: null });
+    }
+    syncStoreNotificationTimer();
   },
 
   setFloorNavPosition(pos) {
@@ -1178,6 +1276,32 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     syncStoreNotificationTimer();
   },
 
+  setNotificationBannerPresented(presented) {
+    if (get().notificationBannerPresentationHold && presented) return;
+    if (get().notificationBannerPresented === presented) return;
+    set({ notificationBannerPresented: presented });
+    syncStoreNotificationTimer();
+  },
+
+  setNotificationBannerPresentationHold(hold) {
+    if (get().notificationBannerPresentationHold === hold) {
+      if (hold && get().notificationBannerPresented) {
+        set({ notificationBannerPresented: false });
+        syncStoreNotificationTimer();
+      }
+      return;
+    }
+    if (hold) {
+      set({
+        notificationBannerPresentationHold: true,
+        notificationBannerPresented: false,
+      });
+    } else {
+      set({ notificationBannerPresentationHold: false });
+    }
+    syncStoreNotificationTimer();
+  },
+
   syncNotificationTimer() {
     syncStoreNotificationTimer();
   },
@@ -1370,6 +1494,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     await persistGameSnapshot(get());
   },
 }));
+
+// Pause/resume floor-notice dwell as soon as the screen changes — registered
+// before any UI mounts so a slow or failed banner surface sync cannot burn
+// remainingMs while Settings/Recipes/etc. are open.
+useGameStore.subscribe((state, prev) => {
+  if (state.screen !== prev.screen) {
+    syncStoreNotificationTimer();
+  }
+});
 
 export function getGameStateSnapshot(): GameState {
   return pickGameState(useGameStore.getState());

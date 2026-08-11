@@ -117,7 +117,8 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
     return { imageRendering: style.imageRendering, opacity: style.opacity };
   });
   expect(canvasStyle.opacity).toBe('1');
-  expect(canvasStyle.imageRendering).toBe('auto');
+  // Visual round 2 restored crisp pixel art (Tech-Stack integer scaling).
+  expect(canvasStyle.imageRendering).toBe('crisp-edges');
 
   await page.locator('[data-testid="restaurant-canvas"]').screenshot({
     path: 'test-results/floor-seated-qa.png',
@@ -134,13 +135,18 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
       .getGameState()
       .activeDay!.floor!.pool.find((guest) => guest.stage === 'seated');
     if (!seatedGuest?.seat) throw new Error('expected a seated guest');
+    // Place Val on a legal service cell without arming approach-and-complete,
+    // so the Take orders CTA can still be asserted before the order tap.
+    bridge.setFloorNavPosition({
+      x: seatedGuest.seat.x,
+      y: seatedGuest.seat.y + 2,
+    });
     return {
       id: seatedGuest.id,
       seat: { x: seatedGuest.seat.x, y: seatedGuest.seat.y },
     };
   });
 
-  await tapGridCell(page, serviceGuest.seat.x, serviceGuest.seat.y);
   await expect
     .poll(() =>
       page.evaluate(({ x, y }) => {
@@ -156,6 +162,7 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   await expect(takeOrdersAction).toBeEnabled();
   await expect(takeOrdersAction).toHaveClass(/\bprimary\b/);
 
+  // Adjacent guest tap auto-completes the order (round-3 approach-and-complete).
   await tapGridCell(page, serviceGuest.seat.x, serviceGuest.seat.y);
   await expect
     .poll(() =>

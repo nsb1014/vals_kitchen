@@ -15,6 +15,8 @@ export interface RecipeBookEntry {
   ingredientIds: string[];
   masteryLevel: number;
   masteryProgressLabel: string;
+  /** 0–1 fill for mastery micro-bar; optional for legacy test fixtures. */
+  masteryRatio?: number;
 }
 
 export interface RecipeBookPage {
@@ -41,6 +43,14 @@ export function formatMasteryProgressLabel(entry: RecipeMasteryEntry): string {
     return `Lv.${level} · max`;
   }
   return `Lv.${level} · ${progress}/${needed} to next`;
+}
+
+/** 0–1 fill for the mastery micro-bar beside discovered recipe rows. */
+export function masteryProgressRatio(entry: RecipeMasteryEntry): number {
+  if (entry.level >= MASTERY_MAX_LEVEL) return 1;
+  const needed = servesToReachNext(entry.level);
+  if (needed <= 0) return 1;
+  return Math.min(1, Math.max(0, entry.progress / needed));
 }
 
 export function buildRecipeBookProgress(
@@ -86,6 +96,7 @@ export function mapRecipeToEntry(
     ingredientNames: recipe.ingredientIds.map((id) => ingredientNameById.get(id) ?? id),
     masteryLevel: mastery.level,
     masteryProgressLabel: formatMasteryProgressLabel(mastery),
+    masteryRatio: masteryProgressRatio(mastery),
   };
 }
 

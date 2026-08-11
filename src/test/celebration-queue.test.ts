@@ -65,6 +65,7 @@ describe('celebration queue timing', () => {
       noticeActive: null,
       noticeSticky: null,
       notificationSurfaceActive: true,
+      notificationBannerPresented: true,
       celebrationQueue: [],
     });
   });

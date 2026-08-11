@@ -22,10 +22,30 @@ const ORDER: TutorialStepId[] = [
   'done',
 ];
 
+/** Session skip — does not alter step progression rules, only whether they run. */
+let tutorialSkipped = false;
+
+/** Dismiss day-1 guidance for the rest of the current day-1 run. */
+export function skipTutorial(): void {
+  tutorialSkipped = true;
+}
+
+/** Re-arm guidance (Settings → Replay tutorial, or a later day-1 run). */
+export function clearTutorialSkip(): void {
+  tutorialSkipped = false;
+}
+
+export function isTutorialSkipped(): boolean {
+  return tutorialSkipped;
+}
+
 export function tutorialPrompt(step: TutorialStepId | null): string | null {
   switch (step) {
     case 'set_tables':
-      return 'Set every table before guests can sit.';
+      // Guests/queue silhouettes are often already visible during morning setup.
+      // Name the gate and the next seat action so the door guest does not read
+      // as “ready to seat” while Seat stays disabled.
+      return 'Guest at the door — set every table first, then you can seat them.';
     case 'wait_seat':
       return 'Seat the next guest from the door line.';
     case 'take_orders':
@@ -47,7 +67,12 @@ export function tutorialPrompt(step: TutorialStepId | null): string | null {
 
 /** Advance day-1 tutorial based on floor state. */
 export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepId | null {
-  if (!enabled) return null;
+  if (!enabled) {
+    // Leaving day-1 clears skip so a fresh day-1 (new game) can teach again.
+    tutorialSkipped = false;
+    return null;
+  }
+  if (tutorialSkipped) return null;
 
   const allSetOrBusy = day.tables.every((t) => t.state !== 'unset');
   if (!allSetOrBusy) return 'set_tables';
@@ -76,4 +101,36 @@ export function nextTutorialStep(day: FloorDay, enabled: boolean): TutorialStepI
 
 export function tutorialOrder(): readonly TutorialStepId[] {
   return ORDER;
+}
+
+/** Spatial cue target for DOM/canvas overlays (TotK/Overcooked-style where). */
+export type TutorialHighlightTarget =
+  | 'unset_table'
+  | 'door'
+  | 'seated_guest'
+  | 'kitchen'
+  | 'dirty_table'
+  | 'close'
+  | null;
+
+export function tutorialHighlightTarget(
+  step: TutorialStepId | null,
+): TutorialHighlightTarget {
+  switch (step) {
+    case 'set_tables':
+      return 'unset_table';
+    case 'wait_seat':
+      return 'door';
+    case 'take_orders':
+      return 'seated_guest';
+    case 'cook':
+    case 'deliver':
+      return 'kitchen';
+    case 'clear':
+      return 'dirty_table';
+    case 'close':
+      return 'close';
+    default:
+      return null;
+  }
 }

@@ -4,7 +4,7 @@ import {
   MAX_DISH_INGREDIENTS,
   MIN_DISH_INGREDIENTS,
 } from '../../domain/state/game-state.ts';
-import { AXIS_KEYS, type AxisKey, type Band } from '../../domain/types.ts';
+import { AXIS_KEYS, type AxisKey } from '../../domain/types.ts';
 import {
   AXIS_LABELS,
   emptyFlavorProfile,
@@ -35,6 +35,13 @@ import {
   renderFlavorBarsHtml,
 } from '../presentation/flavor-profile.ts';
 import {
+  buildOrderBubbleSpeech,
+  isOrderBubbleOwnedByFloor,
+  orderBubbleSeed,
+  renderOrderBubbleHtml,
+} from '../presentation/order-bubble.ts';
+import { FLAVOR_INSPECTOR_LONG_PRESS_HINT } from './FlavorInspectorPanel.ts';
+import {
   buildReviewDisplay,
   formatReviewModifierLine,
   renderStarGlyphs,
@@ -47,12 +54,25 @@ import {
 } from '../presentation/rating-display.ts';
 import {
   bandLabel,
+  clearComposeAxisFilter,
+  composePantryLowMatchHint,
   composePantrySummary,
   type ComposeAxisBands,
   emptyComposePantryFilters,
   filterComposePantry,
+  setComposeSearchQuery,
   toggleComposeAxis,
 } from '../presentation/compose-pantry.ts';
+import {
+  buildComposeTicketRail,
+  renderComposeTicketRailHtml,
+} from '../presentation/compose-ticket-rail.ts';
+import { formatRequestBandStatus, requestBandShadePercents } from '../presentation/compose-request.ts';
+import {
+  buildComposeProgress,
+  composeProgressMeterHtml,
+} from '../presentation/compose-progress.ts';
+import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { requestRestaurantShopOpen } from '../events/restaurant-shop.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
@@ -61,7 +81,13 @@ import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
-import { isOrderBubbleOwnedByFloor } from '../presentation/order-bubble.ts';
+import { hudDetailDialogAriaAttrString } from '../presentation/hud-detail-dialog.ts';
+import {
+  clearTutorialSkip,
+  isTutorialSkipped,
+  nextTutorialStep,
+  skipTutorial,
+} from '../../domain/floor/tutorial.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -74,22 +100,6 @@ type ServicePanelKind =
   | 'day-summary'
   | 'floor-compose'
   | 'queue-compose';
-
-type RequestBandPosition = 'below' | 'in-range' | 'above';
-
-function requestBandPosition(value: number, band: Band): RequestBandPosition {
-  if (band === 'low') return value <= 3 ? 'in-range' : 'above';
-  if (band === 'mid') {
-    if (value < 3) return 'below';
-    return value <= 7 ? 'in-range' : 'above';
-  }
-  return value >= 6 ? 'in-range' : 'below';
-}
-
-function requestBandPositionLabel(position: RequestBandPosition): string {
-  if (position === 'in-range') return 'In range';
-  return position === 'below' ? 'Below request' : 'Above request';
-}
 
 function escapeHtml(text: string): string {
   return text
@@ -116,6 +126,15 @@ export function mountServiceDayUi(
   `;
 
   const hud = statusMount.querySelector('#game-hud') as HTMLElement;
+  // Stable gear node — reparented across renderHud innerHTML swaps so focus
+  // restore is not destroyed by unrelated HUD updates.
+  const hudSettingsButton = document.createElement('button');
+  hudSettingsButton.type = 'button';
+  hudSettingsButton.className = 'hud-settings-button';
+  hudSettingsButton.dataset.testid = 'hud-settings';
+  hudSettingsButton.setAttribute('aria-label', 'Open settings');
+  hudSettingsButton.textContent = '⚙';
+
   const serviceOverlay = overlayMount.querySelector(
     '#service-overlay',
   ) as HTMLElement;
@@ -148,6 +167,55 @@ export function mountServiceDayUi(
     getRestaurantApp,
   );
 
+  const tutorialSkipHost = document.createElement('div');
+  tutorialSkipHost.className = 'tutorial-skip-host';
+  tutorialSkipHost.dataset.testid = 'tutorial-skip-host';
+  tutorialSkipHost.hidden = true;
+  tutorialSkipHost.innerHTML = `<button type="button" class="tutorial-skip-btn" data-testid="skip-tutorial" aria-label="Skip tutorial">Skip tutorial</button>`;
+  overlayMount.appendChild(tutorialSkipHost);
+  const skipTutorialBtn = tutorialSkipHost.querySelector(
+    '[data-testid="skip-tutorial"]',
+  ) as HTMLButtonElement;
+
+  const syncTutorialSkipAffordance = () => {
+    const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    const step =
+      floor && state.screen === 'restaurant'
+        ? nextTutorialStep(floor, state.day === 1)
+        : null;
+    const show =
+      state.screen === 'restaurant' &&
+      state.day === 1 &&
+      step !== null &&
+      !isTutorialSkipped() &&
+      state.modifierDismissed &&
+      !state.serviceStartPending &&
+      !state.ceremony &&
+      !state.daySummary &&
+      !state.pendingReview;
+    tutorialSkipHost.hidden = !show;
+  };
+
+  skipTutorialBtn.addEventListener('click', () => {
+    skipTutorial();
+    const store = useGameStore.getState();
+    if (store.noticeActive?.source === 'tutorial') {
+      store.dismissFrontNotice();
+    }
+    syncTutorialSkipAffordance();
+  });
+
+  // Clear skip before Settings → Replay tutorial runs its bubble-phase handler.
+  const onReplayTutorialPointer = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('[data-testid="replay-tutorial-btn"]')) {
+      clearTutorialSkip();
+    }
+  };
+  document.addEventListener('click', onReplayTutorialPointer, true);
+
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
   let orderBubbleGuestId: string | null = null;
@@ -164,12 +232,19 @@ export function mountServiceDayUi(
   let servicePanelKind: ServicePanelKind | null = null;
   let servicePanelEnteredAt = Number.NEGATIVE_INFINITY;
 
+  hudSettingsButton.addEventListener('click', () => {
+    hudDetail = null;
+    useGameStore.getState().navigateTo('settings');
+  });
+
   const revealServicePanel = (kind: ServicePanelKind) => {
     const now = performance.now();
     if (servicePanelKind !== kind) servicePanelEnteredAt = now;
     servicePanelKind = kind;
     serviceOverlay.hidden = false;
-    const panel = serviceOverlay.firstElementChild;
+    // Floor compose mounts a dismiss scrim before the sheet; always mark the
+    // `.service-panel` so enter animation / data-panel-entering land on the sheet.
+    const panel = serviceOverlay.querySelector(':scope > .service-panel');
     const entryElapsed = now - servicePanelEnteredAt;
     if (
       entryElapsed < SERVICE_PANEL_ENTER_MS &&
@@ -180,6 +255,16 @@ export function mountServiceDayUi(
         '--vk-service-panel-enter-delay',
         `${-Math.max(0, entryElapsed)}ms`,
       );
+      // Clear on animation end (or timeout fallback when motion is disabled) so
+      // mid-enter re-renders keep the marker without leaving it stuck.
+      const clearEntering = () => {
+        if (panel.dataset.panelEntering !== undefined) {
+          delete panel.dataset.panelEntering;
+          panel.style.removeProperty('--vk-service-panel-enter-delay');
+        }
+      };
+      panel.addEventListener('animationend', clearEntering, { once: true });
+      window.setTimeout(clearEntering, SERVICE_PANEL_ENTER_MS + 32);
     }
   };
 
@@ -378,13 +463,23 @@ export function mountServiceDayUi(
     const customersServed = activeDay?.customersServed ?? 0;
     const customersLeft = Math.max(0, customersTotal - customersServed);
     const dayRatingDelta = activeDay?.dayRatingDelta ?? 0;
+    const detailTitle =
+      hudDetail === 'cash'
+        ? 'Cash'
+        : hudDetail === 'rating'
+          ? 'Rating'
+          : hudDetail === 'prestige'
+            ? `Prestige P${state.prestige}`
+            : hudDetail === 'day'
+              ? `Day ${displayDay}`
+              : '';
     const detailContent =
       hudDetail === 'cash'
-        ? `<h2>Cash</h2>
+        ? `<h2 id="hud-detail-title">Cash</h2>
            <p class="hud-detail-value">$${state.cash.toLocaleString('en-US')}</p>
            <p>Total cash gained since day 1: <strong>$${state.stats.totalEarnings.toLocaleString('en-US')}</strong></p>`
         : hudDetail === 'rating'
-          ? `<h2>Rating</h2>
+          ? `<h2 id="hud-detail-title">Rating</h2>
              <p class="hud-detail-value">${ratingModel.ratingText}</p>
              <p>${ratingModel.prestigeDistanceText}</p>
              <p>${ratingModel.softResetDistanceText}</p>
@@ -402,50 +497,60 @@ export function mountServiceDayUi(
                  : '<li>No reviews yet.</li>'
              }</ul>`
           : hudDetail === 'prestige'
-            ? `<h2>Prestige P${state.prestige}</h2>
+            ? `<h2 id="hud-detail-title">Prestige P${state.prestige}</h2>
                <p>Current permanent payout multiplier: <strong>${prestigeMultiplier(state.prestige).toFixed(2)}×</strong></p>
                <p>At P${state.prestige + 1}: <strong>${prestigeMultiplier(state.prestige + 1).toFixed(2)}×</strong></p>
                <p>Rating points until next level: <strong>${ratingModel.starsToPrestige.toFixed(1)}★</strong></p>`
             : hudDetail === 'day'
               ? state.daySummary
-                ? `<h2>Day ${displayDay}</h2>
+                ? `<h2 id="hud-detail-title">Day ${displayDay}</h2>
                    <p data-testid="hud-day-earnings">${escapeHtml(state.daySummary.earningsLine)}</p>
                    <p data-testid="hud-day-rating-change">${escapeHtml(state.daySummary.ratingDeltaText)}</p>
                    <p data-testid="hud-day-customers-served">${escapeHtml(state.daySummary.customersServedText)}</p>
                    <p>${escapeHtml(state.daySummary.averageMatchText)}</p>`
-                : `<h2>Day ${displayDay}</h2>
+                : `<h2 id="hud-detail-title">Day ${displayDay}</h2>
                    <p>Rating change today: <strong>${dayRatingDelta >= 0 ? '+' : ''}${dayRatingDelta.toFixed(2)}★</strong></p>
                    <p>Cash gained today: <strong>+$${(activeDay?.dayEarnings ?? 0).toLocaleString('en-US')}</strong></p>
                    <p>Customers served: <strong>${customersServed}</strong></p>
                    <p>Customers left: <strong>${customersLeft}</strong></p>`
               : '';
+    const detailMenuId = 'hud-detail-menu';
+    const detailDialogAria = hudDetailDialogAriaAttrString('hud-detail-title');
+    // Keep the gear node identity across HUD rebuilds so Settings focus restore
+    // is not wiped by unrelated store-driven innerHTML swaps.
+    hudSettingsButton.remove();
     hud.innerHTML = `
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-label="Cash details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Cash details">
         <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
         <strong>$${state.cash.toLocaleString('en-US')}</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="rating" aria-expanded="${hudDetail === 'rating'}" aria-label="Restaurant rating details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="rating" aria-expanded="${hudDetail === 'rating'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Restaurant rating details">
         <span class="hud-stat-label"><i aria-hidden="true">★</i> Rating</span>
         <strong>${state.rating.toFixed(1)}★</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="prestige" aria-expanded="${hudDetail === 'prestige'}" aria-label="Prestige details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="prestige" aria-expanded="${hudDetail === 'prestige'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Prestige details">
         <span class="hud-stat-label"><i aria-hidden="true">◆</i> Prestige</span>
         <strong>P${state.prestige}</strong>
       </button>
-      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-label="Day details">
+      <button type="button" class="hud-stat hud-stat-button" data-hud-detail="day" aria-expanded="${hudDetail === 'day'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Day details">
         <span class="hud-stat-label"><i aria-hidden="true">☀</i> Day</span>
         <strong>${displayDay}</strong>
       </button>
-      <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${
         hudDetail
-          ? `<aside class="hud-detail-menu" data-testid="hud-detail-menu" aria-live="polite">
-               <button type="button" class="hud-detail-close" aria-label="Close details">×</button>
+          ? `<aside id="${detailMenuId}" class="hud-detail-menu" data-testid="hud-detail-menu" ${detailDialogAria} aria-label="${escapeHtml(detailTitle)} details">
+               <button type="button" class="hud-detail-close" aria-label="Close ${escapeHtml(detailTitle)} details">×</button>
                ${detailContent}
              </aside>`
           : ''
       }
     `;
+    const detailMenu = hud.querySelector(`#${detailMenuId}`);
+    if (detailMenu) {
+      hud.insertBefore(hudSettingsButton, detailMenu);
+    } else {
+      hud.appendChild(hudSettingsButton);
+    }
     hud
       .querySelectorAll<HTMLButtonElement>('[data-hud-detail]')
       .forEach((button) => {
@@ -454,12 +559,6 @@ export function mountServiceDayUi(
           hudDetail = hudDetail === detail ? null : detail;
           renderHud();
         });
-      });
-    hud
-      .querySelector('[data-testid="hud-settings"]')
-      ?.addEventListener('click', () => {
-        hudDetail = null;
-        useGameStore.getState().navigateTo('settings');
       });
     hud.querySelector('.hud-detail-close')?.addEventListener('click', () => {
       hudDetail = null;
@@ -483,7 +582,7 @@ export function mountServiceDayUi(
     orderBubbleTimer = null;
     if (bubbleEl) {
       bubbleEl.hidden = true;
-      bubbleEl.classList.remove('order-bubble');
+      bubbleEl.classList.remove('order-bubble', 'order-bubble-pulse');
     }
     syncOrderBubbleNoticeBlock();
   };
@@ -568,9 +667,28 @@ export function mountServiceDayUi(
     }
 
     bubbleEl.classList.toggle('order-bubble', showOrderBubble);
-    bubbleEl.textContent = formatCustomerRequestText(
-      orderGuest?.customer.preference ?? customer!.preference,
-    );
+    bubbleEl.classList.toggle('order-bubble-pulse', showOrderBubble);
+    const preference =
+      orderGuest?.customer.preference ?? customer!.preference;
+    const ticketId =
+      showOrderBubble && orderBubbleGuestId
+        ? floor?.tickets.find(
+            (ticket) =>
+              ticket.customerId === orderBubbleGuestId &&
+              ticket.status === 'open',
+          )?.id
+        : null;
+    const seedGuestId =
+      orderGuest?.customer.id ?? customer!.id;
+    const speech = buildOrderBubbleSpeech({
+      preference,
+      seed: orderBubbleSeed({
+        guestId: seedGuestId,
+        ticketId,
+      }),
+      archetypeId: orderGuest?.customer.archetypeId ?? customer?.archetypeId,
+    });
+    bubbleEl.innerHTML = renderOrderBubbleHtml(speech);
     bubbleEl.hidden = false;
     positionChatBubble();
   };
@@ -915,6 +1033,14 @@ export function mountServiceDayUi(
       const requestedAxes = AXIS_KEYS.filter(
         (axis) => requestedBands[axis] !== undefined,
       );
+      const composeProgress = buildComposeProgress({
+        ingredientCount: preview.ingredientCount,
+        requestedBands,
+        profile: preview.profile,
+        minIngredients: MIN_DISH_INGREDIENTS,
+        maxIngredients: MAX_DISH_INGREDIENTS,
+      });
+      const progressHtml = composeProgressMeterHtml(composeProgress, escapeHtml);
 
       const renderIngredientButtons = (): string => {
         const currentDraft = selectComposeDraftIds(useGameStore.getState());
@@ -934,7 +1060,7 @@ export function mountServiceDayUi(
             const name = escapeHtml(item.name);
             return `<div class="compose-ingredient-card">
               <button type="button" class="ingredient-chip${selected ? ' selected' : ''}" data-compose-ingredient-id="${item.id}" data-testid="ingredient-chip" ${disabled ? 'disabled' : ''} aria-label="${name}" title="${name}" aria-pressed="${selected}">${renderFoodIconHtml(item.id, 32)}<span>${name}</span></button>
-              <button type="button" class="compose-ingredient-inspect" id="ingredient-inspect-${item.id}" data-compose-inspect-id="${item.id}" data-testid="ingredient-inspect" aria-label="Inspect ${name}" title="Inspect ${name}"><span aria-hidden="true">i</span></button>
+              <button type="button" class="compose-ingredient-inspect" id="ingredient-inspect-${item.id}" data-compose-inspect-id="${item.id}" data-testid="ingredient-inspect" aria-label="Inspect ${name}. Long-press the ingredient chip to inspect." title="Inspect · or long-press the chip"><span aria-hidden="true">i</span></button>
             </div>`;
           })
           .join('');
@@ -955,21 +1081,35 @@ export function mountServiceDayUi(
         ...requestedAxes,
         ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
       ];
-      const axisChips = orderedFilterAxes
-        .map((axis) => {
-          const selected = composeFilters.selectedAxis === axis;
-          const band = requestedBands[axis];
-          const label = band
-            ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
-            : AXIS_LABELS[axis];
-          return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
-        })
-        .join('');
+      const allChipSelected = composeFilters.selectedAxis === null;
+      // Not a `.filter-axis-chip`: axis chips hide on compact mobile; All stays
+      // visible as a pantry-scope control without counting as a flavor filter.
+      const allChip = `<button type="button" class="compose-all-chip${allChipSelected ? ' selected' : ''}" data-compose-all data-testid="compose-all-ingredients" aria-pressed="${allChipSelected}" title="Show all unlocked ingredients">All ingredients</button>`;
+      const axisChips =
+        allChip +
+        orderedFilterAxes
+          .map((axis) => {
+            const selected = composeFilters.selectedAxis === axis;
+            const band = requestedBands[axis];
+            const label = band
+              ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
+              : AXIS_LABELS[axis];
+            return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
+          })
+          .join('');
       const matchingCount = filterComposePantry(
         unlocked,
         composeFilters,
         requestedBands,
       ).length;
+      const lowMatchHint = composePantryLowMatchHint(
+        matchingCount,
+        composeFilters,
+      );
+      const searchQueryEscaped = escapeHtml(composeFilters.searchQuery);
+      const searchClearHidden = composeFilters.searchQuery.trim()
+        ? ''
+        : 'hidden';
 
       const flavorPreview = buildFlavorBarsViewModel(
         preview.profile ?? emptyFlavorProfile(),
@@ -986,6 +1126,7 @@ export function mountServiceDayUi(
 
       let ticketBadge = '';
       let orderPanel = '';
+      let ticketRailHtml = '';
       if (ticket) {
         const archetypeName = ticketGuest
           ? ctx.archetypes.find(
@@ -1000,6 +1141,40 @@ export function mountServiceDayUi(
         });
         ticketBadge = `<div class="compose-ticket-identity">${ticketGuest ? renderGuestPortraitHtml(ticketGuest.id) : ''}<p class="queue-badge">${escapeHtml(label.guestLabel)}</p></div>`;
 
+        const floor = state.activeDay?.floor;
+        if (floor) {
+          const guestLabelByCustomerId: Record<string, string> = {};
+          const guestIdByCustomerId: Record<string, string> = {};
+          for (const guest of floor.pool) {
+            guestIdByCustomerId[guest.customer.id] = guest.id;
+            const arch = ctx.archetypes.find(
+              (a) => a.id === guest.customer.archetypeId,
+            )?.name;
+            guestLabelByCustomerId[guest.customer.id] = arch?.trim() || 'Guest';
+          }
+          const panel = buildFloorTicketPanelViewModel({
+            tickets: floor.tickets,
+            selectedTicketId: floor.selectedTicketId,
+            carriedTicketId: floor.carriedTicketId,
+            guestLabelByCustomerId,
+          });
+          ticketRailHtml = renderComposeTicketRailHtml(
+            buildComposeTicketRail(panel.rows, {
+              activeTicketId: ticket.id,
+              guestIdByCustomerId,
+            }),
+            {
+              escapeHtml,
+              // Rail portraits share the compose sheet with the header portrait;
+              // a rail-scoped testid keeps e2e locators strict-mode unique.
+              renderPortrait: (guestId) =>
+                renderGuestPortraitHtml(guestId, {
+                  testId: 'rail-guest-portrait',
+                }),
+            },
+          );
+        }
+
         if (ticketGuest) {
           const preference = ticketGuest.customer.preference;
           const ideal = resolveIdealFlavorProfile(preference);
@@ -1009,15 +1184,18 @@ export function mountServiceDayUi(
               const band = requestedBands[axis]!;
               const targetValue = ideal[axis];
               const currentValue = preview.profile?.[axis] ?? 0;
-              const position = requestBandPosition(currentValue, band);
-              const positionLabel = requestBandPositionLabel(position);
+              const status = formatRequestBandStatus(currentValue, band);
+              const shade = requestBandShadePercents(band);
+              // Compose stays qualitative: signed deltas stay in format helpers /
+              // Ideal tab numerics, not in the cook-sheet status chip.
               return `<div class="compose-request-axis" data-testid="compose-request-axis">
                 <div class="compose-request-axis-head">
                   <strong>${escapeHtml(`${bandLabel(band)} ${AXIS_LABELS[axis]}`)}</strong>
-                  <span class="compose-request-status ${position}">${escapeHtml(positionLabel)}</span>
+                  <span class="compose-request-status ${status.position}">${escapeHtml(status.label)}</span>
                 </div>
                 <div class="compose-request-bars" aria-hidden="true">
                   <span class="compose-request-bar target">
+                    <span class="compose-request-band" style="left:${shade.leftPct.toFixed(1)}%;width:${shade.widthPct.toFixed(1)}%"></span>
                     <span style="width:${Math.min(100, Math.max(0, targetValue * 10)).toFixed(1)}%"></span>
                   </span>
                   <span class="compose-request-bar current">
@@ -1042,7 +1220,8 @@ export function mountServiceDayUi(
       }
 
       serviceOverlay.innerHTML = `
-        <div class="service-panel sheet-tier-near-full" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+        <button type="button" class="compose-dismiss-scrim" data-testid="compose-dismiss-scrim" aria-label="Close cooking sheet and return to floor"></button>
+        <div class="service-panel sheet-tier-near-full compose-sheet-panel" data-testid="compose-sheet" role="dialog" aria-modal="true" aria-labelledby="compose-title">
           <div class="service-card sheet-card-layout compose-sheet-card">
             <header class="sheet-header compose-sheet-header">
               <div>
@@ -1051,18 +1230,28 @@ export function mountServiceDayUi(
               </div>
               <button type="button" class="icon-btn" data-testid="compose-close" aria-label="Close cooking sheet">✕</button>
             </header>
+            ${ticketRailHtml}
             <section class="compose-selection" aria-label="Selected ingredients">
               <div class="compose-section-heading">
                 <strong>Selected</strong>
-                <span>${preview.ingredientCount} / ${MAX_DISH_INGREDIENTS}</span>
               </div>
+              ${progressHtml}
               <div class="compose-selected-strip">${selectedStrip}</div>
             </section>
             <section class="compose-filters" aria-label="Pantry filters">
+              <div class="compose-search-row">
+                <div class="compose-search-field">
+                  <label class="sr-only" for="compose-search-input">Search ingredients</label>
+                  <input id="compose-search-input" class="compose-search-input" type="search" data-testid="compose-search-input" placeholder="Search ingredients" value="${searchQueryEscaped}" autocomplete="off" enterkeyhint="search" />
+                </div>
+                <button type="button" class="compose-search-clear" data-testid="compose-search-clear" aria-label="Clear search" ${searchClearHidden}>Clear</button>
+              </div>
               <div class="compose-axis-row" role="group" aria-label="Filter ingredients by one flavor">
                 ${axisChips}
               </div>
               <p class="compose-filter-summary" data-testid="compose-filter-summary" aria-live="polite">${escapeHtml(composePantrySummary(composeFilters, matchingCount, requestedBands))}</p>
+              <p class="compose-inspect-hint" data-testid="compose-inspect-hint">${escapeHtml(FLAVOR_INSPECTOR_LONG_PRESS_HINT)}</p>
+              ${lowMatchHint ? `<p class="compose-filter-hint" data-testid="compose-filter-hint">${escapeHtml(lowMatchHint)}</p>` : ''}
             </section>
             <div class="compose-workspace">
               <div class="sheet-body-scroll compose-pantry" data-testid="compose-pantry">
@@ -1073,7 +1262,7 @@ export function mountServiceDayUi(
             <footer class="sheet-footer compose-sheet-footer">
               <div class="compose-footer-copy">
                 <span>Dish flavor</span>
-                <span>${preview.profile ? 'Tune each requested flavor into range' : `Pick ${MIN_DISH_INGREDIENTS}–${MAX_DISH_INGREDIENTS} ingredients`}</span>
+                <span>${preview.profile ? escapeHtml(composeProgress.coherenceLabel) : escapeHtml(composeProgress.statusHint)}</span>
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
               <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
@@ -1187,6 +1376,22 @@ export function mountServiceDayUi(
             requestedBands,
           );
         }
+        const hintText = composePantryLowMatchHint(count, composeFilters);
+        let hint = serviceOverlay.querySelector<HTMLElement>(
+          '[data-testid="compose-filter-hint"]',
+        );
+        const filtersSection = serviceOverlay.querySelector('.compose-filters');
+        if (hintText) {
+          if (!hint && filtersSection) {
+            hint = document.createElement('p');
+            hint.className = 'compose-filter-hint';
+            hint.dataset.testid = 'compose-filter-hint';
+            filtersSection.appendChild(hint);
+          }
+          if (hint) hint.textContent = hintText;
+        } else {
+          hint?.remove();
+        }
         serviceOverlay
           .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
           .forEach((button) => {
@@ -1196,6 +1401,20 @@ export function mountServiceDayUi(
             button.classList.toggle('selected', selected);
             button.setAttribute('aria-pressed', String(selected));
           });
+        const allBtn = serviceOverlay.querySelector<HTMLButtonElement>(
+          '[data-compose-all]',
+        );
+        if (allBtn) {
+          const selected = composeFilters.selectedAxis === null;
+          allBtn.classList.toggle('selected', selected);
+          allBtn.setAttribute('aria-pressed', String(selected));
+        }
+        const clearBtn = serviceOverlay.querySelector<HTMLButtonElement>(
+          '[data-testid="compose-search-clear"]',
+        );
+        if (clearBtn) {
+          clearBtn.hidden = composeFilters.searchQuery.trim().length === 0;
+        }
       };
 
       bindIngredientButtons(serviceOverlay);
@@ -1236,6 +1455,13 @@ export function mountServiceDayUi(
           () => useGameStore.getState().closeComposeSheet(),
           { once: true },
         );
+      serviceOverlay
+        .querySelector('[data-testid="compose-dismiss-scrim"]')
+        ?.addEventListener(
+          'click',
+          () => useGameStore.getState().closeComposeSheet(),
+          { once: true },
+        );
 
       serviceOverlay
         .querySelectorAll<HTMLButtonElement>('[data-compose-axis]')
@@ -1248,6 +1474,54 @@ export function mountServiceDayUi(
             updateFilterUi();
           });
         });
+      serviceOverlay
+        .querySelector<HTMLButtonElement>('[data-compose-all]')
+        ?.addEventListener('click', () => {
+          composeFilters = clearComposeAxisFilter(composeFilters);
+          updateFilterUi();
+        });
+
+      const searchInput = serviceOverlay.querySelector<HTMLInputElement>(
+        '[data-testid="compose-search-input"]',
+      );
+      searchInput?.addEventListener('input', () => {
+        composeFilters = setComposeSearchQuery(
+          composeFilters,
+          searchInput.value,
+        );
+        updateFilterUi();
+      });
+      serviceOverlay
+        .querySelector<HTMLButtonElement>('[data-testid="compose-search-clear"]')
+        ?.addEventListener('click', () => {
+          composeFilters = setComposeSearchQuery(composeFilters, '');
+          if (searchInput) searchInput.value = '';
+          updateFilterUi();
+          searchInput?.focus();
+        });
+
+      serviceOverlay
+        .querySelectorAll<HTMLButtonElement>('[data-compose-rail-ticket]')
+        .forEach((button) => {
+          button.addEventListener('click', () => {
+            const ticketId = button.dataset.composeRailTicket;
+            if (!ticketId) return;
+            const current = useGameStore.getState();
+            const currentFloor = current.activeDay?.floor;
+            if (
+              currentFloor?.carriedTicketId &&
+              currentFloor.tickets.some(
+                (row) =>
+                  row.id === currentFloor.carriedTicketId &&
+                  row.status === 'plated',
+              )
+            ) {
+              return;
+            }
+            current.setFloorSelectedTicket(ticketId);
+          });
+        });
+
       serviceOverlay.querySelector('#plate-btn')?.addEventListener(
         'click',
         () => {
@@ -1508,6 +1782,7 @@ export function mountServiceDayUi(
     renderCeremony();
     renderServiceOverlay();
     renderChatBubble();
+    syncTutorialSkipAffordance();
     reconcileBlockingScope(
       previousScope,
       currentBlockingScope(),
@@ -1567,6 +1842,8 @@ export function mountServiceDayUi(
     if (newTicket) {
       orderBubbleGuestId = newTicket.customerId;
       if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+      // Keep under the floor notice dwell so the bubble yields the banner
+      // quickly; pulse CSS is visual-only and must not extend lifetime.
       orderBubbleTimer = setTimeout(() => {
         clearOrderBubble();
         renderChatBubble();
@@ -1619,6 +1896,8 @@ export function mountServiceDayUi(
     surface?.style.removeProperty('--vk-status-hud-height');
     cleanupCelebrationBanner();
     cleanupFloorHud();
+    document.removeEventListener('click', onReplayTutorialPointer, true);
+    tutorialSkipHost.remove();
     window.removeEventListener('resize', positionChatBubble);
     document.removeEventListener('keydown', onBlockingScopeKeydown, true);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);

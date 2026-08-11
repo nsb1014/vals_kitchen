@@ -1,4 +1,7 @@
-import { showScreen } from '../../app/screenRouter.ts';
+import {
+  ensureMountedMetaScreens,
+  showScreen,
+} from '../../app/screenRouter.ts';
 import { useGameStore, type ScreenId } from '../../store/game-store.ts';
 import {
   NAV_SCREENS,
@@ -25,33 +28,119 @@ const NAV_ICONS: Record<ScreenId, string> = {
   settings: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM19.4 15a8 8 0 0 0 0-6l2-1.5-2-3.4-2.4 1a8 8 0 0 0-5.2-3L11.5 0h-4L7 3a8 8 0 0 0-3.9 3.9l-2.7-1-2 3.4L.6 11a8 8 0 0 0 0 2l-2.2 1.7 2 3.4 2.7-1A8 8 0 0 0 7 21l.5 3h4l.3-2.1a8 8 0 0 0 5.2-3l2.4 1 2-3.4z"/>',
 };
 
+const MORE_ICON =
+  '<path d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>';
+
+/** Hub destinations beyond the primary Floor / Recipe Book tabs (PRD meta screens). */
+export const MORE_HUB_SCREENS: ScreenId[] = [
+  'shop',
+  'inspector',
+  'rating',
+  'settings',
+];
+
+const MORE_ACTIVE_SCREENS = new Set<ScreenId>(MORE_HUB_SCREENS);
+
+function navigateIfAllowed(target: ScreenId): void {
+  const state = useGameStore.getState();
+  if (!selectCanNavigateTo(state, target)) {
+    const reason = navigationLockReason(state);
+    if (reason) state.setFloorToast(reason);
+    return;
+  }
+  state.navigateTo(target);
+  showScreen(target);
+}
+
 export function mountNavigationBar(container: HTMLElement): () => void {
+  ensureMountedMetaScreens();
   container.innerHTML = `
-    <nav class="bottom-nav" id="bottom-nav" aria-label="Main navigation">
+    <nav class="bottom-nav bottom-nav--with-more" id="bottom-nav" aria-label="Main navigation">
       ${NAV_SCREENS.map(
         (id) =>
           `<button type="button" class="nav-btn" data-screen="${id}" data-testid="nav-${id}" aria-label="${NAV_LABELS[id]}"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">${NAV_ICONS[id]}</svg><span>${NAV_LABELS[id]}</span></button>`,
       ).join('')}
+      <button type="button" class="nav-btn" data-testid="nav-more" aria-label="More" aria-haspopup="dialog" aria-expanded="false" aria-controls="nav-more-sheet">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">${MORE_ICON}</svg>
+        <span>More</span>
+      </button>
     </nav>
+    <div class="nav-more-sheet" id="nav-more-sheet" data-testid="nav-more-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="nav-more-title">
+      <div class="nav-more-sheet-card">
+        <header class="nav-more-sheet-header">
+          <h2 id="nav-more-title" class="nav-more-title" tabindex="-1">More</h2>
+          <button type="button" class="nav-more-close" data-testid="nav-more-close" aria-label="Close More menu">Close</button>
+        </header>
+        <ul class="nav-more-list">
+          ${MORE_HUB_SCREENS.map(
+            (id) =>
+              `<li><button type="button" class="nav-more-item" data-more-screen="${id}" data-testid="nav-more-${id}" aria-label="${NAV_LABELS[id]}"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">${NAV_ICONS[id]}</svg><span>${NAV_LABELS[id]}</span></button></li>`,
+          ).join('')}
+        </ul>
+      </div>
+    </div>
     <p class="nav-lock-hint" id="nav-lock-hint" hidden></p>
   `;
 
   const nav = container.querySelector('#bottom-nav') as HTMLElement;
   const hint = container.querySelector('#nav-lock-hint') as HTMLElement;
+  const moreBtn = container.querySelector(
+    '[data-testid="nav-more"]',
+  ) as HTMLButtonElement;
+  const moreSheet = container.querySelector(
+    '#nav-more-sheet',
+  ) as HTMLElement;
+  const moreTitle = container.querySelector('#nav-more-title') as HTMLElement;
 
-  nav.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((button) => {
+  // Portal above service overlays (nav-mount sits under overlay-mount z-index).
+  const portalHost =
+    (container.closest('#game-root') as HTMLElement | null) ?? document.body;
+  if (moreSheet.parentElement !== portalHost) {
+    portalHost.appendChild(moreSheet);
+  }
+
+  let moreOpen = false;
+
+  const setMoreOpen = (open: boolean) => {
+    moreOpen = open;
+    moreSheet.hidden = !open;
+    moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      queueMicrotask(() => moreTitle.focus({ preventScroll: true }));
+    }
+  };
+
+  nav.querySelectorAll<HTMLButtonElement>('.nav-btn[data-screen]').forEach((button) => {
     button.addEventListener('click', () => {
+      setMoreOpen(false);
       const target = button.dataset.screen as ScreenId;
-      const state = useGameStore.getState();
-      if (!selectCanNavigateTo(state, target)) {
-        const reason = navigationLockReason(state);
-        if (reason) state.setFloorToast(reason);
-        return;
-      }
-      state.navigateTo(target);
-      showScreen(target);
+      navigateIfAllowed(target);
     });
   });
+
+  moreBtn.addEventListener('click', () => {
+    setMoreOpen(!moreOpen);
+  });
+
+  moreSheet
+    .querySelector('[data-testid="nav-more-close"]')
+    ?.addEventListener('click', () => setMoreOpen(false));
+
+  moreSheet.querySelectorAll<HTMLButtonElement>('[data-more-screen]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.moreScreen as ScreenId;
+      setMoreOpen(false);
+      navigateIfAllowed(target);
+    });
+  });
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!moreOpen || event.key !== 'Escape') return;
+    event.preventDefault();
+    setMoreOpen(false);
+    moreBtn.focus({ preventScroll: true });
+  };
+  document.addEventListener('keydown', onKeyDown);
 
   const sync = () => {
     const state = useGameStore.getState();
@@ -59,7 +148,7 @@ export function mountNavigationBar(container: HTMLElement): () => void {
     hint.hidden = !showHint;
     hint.textContent = showHint ? (navigationLockReason(state) ?? '') : '';
 
-    nav.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((button) => {
+    nav.querySelectorAll<HTMLButtonElement>('.nav-btn[data-screen]').forEach((button) => {
       const target = button.dataset.screen as ScreenId;
       const active = state.screen === target;
       const locked = !selectCanNavigateTo(state, target) && !active;
@@ -71,9 +160,22 @@ export function mountNavigationBar(container: HTMLElement): () => void {
       button.setAttribute('aria-current', active ? 'page' : 'false');
     });
 
+    const moreActive = MORE_ACTIVE_SCREENS.has(state.screen);
+    moreBtn.classList.toggle('active', moreActive);
+    moreBtn.setAttribute('aria-current', moreActive ? 'page' : 'false');
+
+    moreSheet.querySelectorAll<HTMLButtonElement>('[data-more-screen]').forEach((button) => {
+      const target = button.dataset.moreScreen as ScreenId;
+      const locked = !selectCanNavigateTo(state, target);
+      button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+      button.classList.toggle('nav-btn-locked', locked);
+      button.classList.toggle('active', state.screen === target);
+    });
+
     nav.hidden = Boolean(
       state.screen === 'restaurant' && (state.activeDay || state.daySummary),
     );
+    if (nav.hidden) setMoreOpen(false);
   };
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
@@ -90,6 +192,8 @@ export function mountNavigationBar(container: HTMLElement): () => void {
 
   return () => {
     unsubscribe();
+    document.removeEventListener('keydown', onKeyDown);
+    moreSheet.remove();
     container.innerHTML = '';
   };
 }

@@ -460,33 +460,39 @@ test('final floor action remains activatable at 200% page zoom', async ({
 
   await applyPageZoom(page, 2);
   const actionMetrics = await page
-    .locator('.floor-actions .service-btn')
+    .locator('.floor-actions .service-btn:visible')
     .evaluateAll((buttons) =>
       buttons.map((button) => {
         const label = button.querySelector(
           '.floor-action-label',
         ) as HTMLElement | null;
         if (!label) throw new Error('floor action label is missing');
-        const buttonStyle = getComputedStyle(button);
         const labelStyle = getComputedStyle(label);
+        const ctaH = Number.parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            '--vk-cta-h',
+          ),
+        );
+        // offsetHeight is layout px (zoom-invariant); matches the reserved CTA strip.
         return {
           buttonHeight: (button as HTMLElement).offsetHeight,
+          ctaHeight: ctaH,
           labelLineClamp: labelStyle.webkitLineClamp,
           labelLineHeight: Number.parseFloat(labelStyle.lineHeight),
           labelMaxHeight: Number.parseFloat(labelStyle.maxHeight),
-          verticalExtras:
-            Number.parseFloat(buttonStyle.paddingTop) +
-            Number.parseFloat(buttonStyle.paddingBottom) +
-            Number.parseFloat(buttonStyle.borderTopWidth) +
-            Number.parseFloat(buttonStyle.borderBottomWidth),
+          labelClientHeight: label.clientHeight,
+          labelScrollHeight: label.scrollHeight,
         };
       }),
     );
+  expect(actionMetrics.length).toBe(1);
   for (const metric of actionMetrics) {
     expect(metric.labelLineClamp).toBe('2');
     expect(metric.labelMaxHeight).toBeCloseTo(metric.labelLineHeight * 2, 1);
-    expect(metric.buttonHeight).toBeLessThanOrEqual(
-      metric.labelMaxHeight + metric.verticalExtras + 1,
+    // Fixed CTA strip: height tracks --vk-cta-h; labels clamp inside it.
+    expect(metric.buttonHeight).toBeCloseTo(metric.ctaHeight, 0);
+    expect(metric.labelScrollHeight).toBeLessThanOrEqual(
+      metric.labelClientHeight + 1,
     );
   }
   await assertScrollportAtLeastCta(page);

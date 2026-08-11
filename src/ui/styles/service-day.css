@@ -73,6 +73,46 @@
   pointer-events: auto;
 }
 
+.tutorial-skip-host {
+  position: absolute;
+  /* Sit just under the notice/celebration band so the control stays visible at 390px. */
+  top: calc(var(--vk-status-hud-height, 2.75rem) + 5.4rem);
+  right: 0.55rem;
+  z-index: 81;
+  pointer-events: none;
+}
+
+/* Tickets menu owns the pointer; skip must not intercept Close / rows. */
+.game-surface:has([data-testid='floor-tickets-menu']:not([hidden])) .tutorial-skip-host {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tutorial-skip-host[hidden] {
+  display: none !important;
+}
+
+.tutorial-skip-btn {
+  pointer-events: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 8px;
+  background: rgba(30, 23, 20, 0.92);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tutorial-skip-btn:focus-visible {
+  outline: 2px solid var(--vk-accent);
+  outline-offset: 2px;
+}
+
 .hud-detail-menu h2,
 .hud-detail-menu h3,
 .hud-detail-menu p {
@@ -198,6 +238,88 @@
   animation: order-bubble-pop 260ms cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
 }
 
+.chat-bubble.order-bubble.order-bubble-pulse {
+  animation:
+    order-bubble-pop 260ms cubic-bezier(0.2, 0.9, 0.25, 1.2) both,
+    order-bubble-pulse 1.6s ease-in-out 260ms 2;
+}
+
+.order-bubble-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.order-bubble-cues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.order-bubble-ticket-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 22px;
+  border: 2px solid color-mix(in srgb, var(--vk-accent) 70%, #5a4030);
+  border-radius: 3px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--vk-accent) 35%, #fff) 0 28%,
+      #fff 28%
+    );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.order-bubble-ticket-icon::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 10px;
+  height: 2px;
+  background: color-mix(in srgb, var(--vk-accent) 45%, #cbb);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--vk-accent) 30%, #cbb);
+}
+
+.order-bubble-cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 22px;
+  padding: 0 0.3rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 40%, #caa);
+  background: color-mix(in srgb, var(--vk-accent) 14%, #fff);
+  color: #3a2a20;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.order-bubble-cue-high {
+  background: color-mix(in srgb, var(--vk-accent) 28%, #fff);
+}
+
+.order-bubble-cue-low,
+.order-bubble-cue-avoid {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.order-bubble-gibberish {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  font-style: italic;
+  color: #2c2118;
+}
+
 @keyframes order-bubble-pop {
   from {
     opacity: 0;
@@ -209,8 +331,19 @@
   }
 }
 
+@keyframes order-bubble-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vk-accent) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--vk-accent) 35%, transparent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .chat-bubble.order-bubble {
+  .chat-bubble.order-bubble,
+  .chat-bubble.order-bubble.order-bubble-pulse {
     animation: none;
   }
 }
@@ -245,6 +378,18 @@
   .service-panel[data-panel-entering] {
     animation: none;
   }
+}
+
+html[data-vk-reduced-motion='true'] .service-panel[data-panel-entering],
+[data-vk-reduced-motion='true'] .service-panel[data-panel-entering] {
+  animation: none;
+}
+
+html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble,
+html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse,
+[data-vk-reduced-motion='true'] .chat-bubble.order-bubble,
+[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse {
+  animation: none;
 }
 
 .service-panel.sheet-tier-compact,
@@ -479,8 +624,10 @@
 
 .sheet-footer .service-btn,
 #plate-btn {
-  min-height: var(--vk-cta-h);
-  height: var(--vk-cta-h);
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  transition: none;
 }
 
 .service-btn:disabled {
@@ -705,6 +852,13 @@
   color: var(--vk-accent);
 }
 
+.floor-tickets-toggle.carrying {
+  border-color: var(--vk-accent);
+  background: color-mix(in srgb, var(--vk-accent) 18%, rgba(30, 23, 20, 0.92));
+  color: var(--vk-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vk-accent) 45%, transparent);
+}
+
 .floor-tickets-menu {
   /* The body remains the sole scroll host, but short order lists stay compact. */
   --vk-tickets-menu-max-h: min(42vh, 18rem);
@@ -801,12 +955,47 @@
   box-sizing: border-box;
 }
 
+.floor-tickets-ideal-wrap {
+  position: relative;
+}
+
 .floor-tickets-ideal .flavor-profile-name {
   font-size: 15px;
 }
 
 .floor-tickets-ideal .flavor-profile-meta {
   font-size: 12px;
+}
+
+.floor-tickets-ideal .flavor-group {
+  margin-top: 0.35rem;
+}
+
+.floor-tickets-ideal .flavor-group-title {
+  margin: 0 0 0.2rem;
+  font-size: 11px;
+}
+
+.floor-tickets-ideal .flavor-bar-row {
+  min-height: 0;
+  margin-bottom: 0.15rem;
+}
+
+.floor-tickets-ideal-scroll-hint {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, rgba(30, 23, 20, 0.96) 88%, transparent)
+  );
+  color: var(--vk-accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
 }
 
 .floor-tickets-close {
@@ -914,6 +1103,112 @@
   color: var(--vk-sage, #6a994e);
 }
 
+.floor-tickets-item.carrying {
+  outline: 1px solid color-mix(in srgb, var(--vk-accent) 70%, transparent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--vk-accent) 12%, transparent);
+}
+
+.floor-tickets-item.carrying .floor-tickets-item-status {
+  color: var(--vk-accent);
+  font-weight: 800;
+}
+
+.floor-tickets-item-phrases,
+.floor-tickets-item-cues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.floor-tickets-phrase-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 45%, var(--vk-border));
+  border-radius: 999px;
+  color: var(--vk-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floor-tickets-order-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 28px;
+  min-width: 2.4rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--vk-accent) 42%, #caa);
+  background: color-mix(in srgb, var(--vk-accent) 16%, #2a1a12);
+  color: #ffe7b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.floor-tickets-order-cue-glyph {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--vk-accent) 75%, #fff);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.floor-tickets-order-cue-high {
+  background: color-mix(in srgb, var(--vk-accent) 28%, #2a1a12);
+}
+
+.floor-tickets-order-cue-high .floor-tickets-order-cue-glyph {
+  background: #f0c15a;
+}
+
+.floor-tickets-order-cue-mid .floor-tickets-order-cue-glyph {
+  background: #d7b07a;
+}
+
+.floor-tickets-order-cue-low,
+.floor-tickets-order-cue-avoid {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+.floor-tickets-order-cue-low .floor-tickets-order-cue-glyph,
+.floor-tickets-order-cue-avoid .floor-tickets-order-cue-glyph {
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--vk-accent) 55%, #caa);
+}
+
+.floor-tickets-item-detail {
+  margin: 0.15rem 0.55rem 0.35rem;
+}
+
+.floor-tickets-item-detail > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.2rem 0.15rem;
+  color: var(--vk-text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+
+.floor-tickets-item-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
 .floor-tickets-item-wants {
   margin: 0;
   font-size: 13px;
@@ -993,9 +1288,13 @@
 }
 
 .floor-actions-scroll {
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   max-height: min(
     var(--vk-floor-chrome-min-h-3),
-    max(var(--vk-cta-h), calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
+    max(
+      max(var(--vk-touch-min, 44px), var(--vk-cta-h)),
+      calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem)
+    )
   );
   overflow-x: auto;
   overflow-y: auto;
@@ -1004,12 +1303,99 @@
 
 .floor-actions .service-btn {
   width: 100%;
-  height: auto;
-  min-height: var(--vk-cta-h);
+  /* Fill the reserved CTA strip at normal zoom (service-visual geometry).
+   * Cap growth; label clamp + overflow:hidden keep 200% zoom activatable.
+   * Floor with --vk-touch-min so DPR never reports a hair under 44px. */
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding-block: 0.35rem;
-  padding-inline: 0.25rem;
+  padding-block: 0.2rem;
+  padding-inline: 0.3rem;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  /* Height is a fixed strip — never tween it (hit-target assertions). */
+  transition: none;
+}
+
+.floor-action-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  color: #ffe7b8;
+  filter: drop-shadow(0 1px #1a1008);
+}
+
+.floor-actions .service-btn.primary .floor-action-icon {
+  color: #f7ffd8;
+}
+
+.floor-actions .service-btn.in-flight {
+  border-color: color-mix(in srgb, var(--vk-accent) 70%, #8b6238);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--vk-accent) 28%, #5e3d24),
+    color-mix(in srgb, var(--vk-accent) 18%, #382216)
+  );
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--vk-accent) 55%, transparent),
+    inset 0 1px rgba(255, 239, 207, 0.22),
+    0 3px 0 #140c08;
+}
+
+.floor-actions .service-btn.in-flight .floor-action-label::after {
+  content: '…';
+  letter-spacing: 0.05em;
+}
+
+.floor-actions .service-btn.in-flight::after,
+.floor-tickets-toggle.in-flight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 35%,
+    color-mix(in srgb, #fff 35%, transparent) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: floor-action-shimmer 1.1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes floor-action-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-actions .service-btn.in-flight::after,
+  .floor-tickets-toggle.in-flight::after {
+    animation: none;
+    background: color-mix(in srgb, var(--vk-accent) 18%, transparent);
+  }
+}
+
+html[data-vk-reduced-motion='true'] .floor-actions .service-btn.in-flight::after,
+html[data-vk-reduced-motion='true'] .floor-tickets-toggle.in-flight::after,
+[data-vk-reduced-motion='true'] .floor-actions .service-btn.in-flight::after,
+[data-vk-reduced-motion='true'] .floor-tickets-toggle.in-flight::after {
+  animation: none;
+  background: color-mix(in srgb, var(--vk-accent) 18%, transparent);
 }
 
 .floor-actions .floor-action-label {
@@ -1017,11 +1403,32 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  max-height: calc(1.2em + 1.2em);
+  line-height: 14px;
+  max-height: 28px;
   overflow: hidden;
-  line-height: 1.2;
   overflow-wrap: anywhere;
   white-space: normal;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+  font-size: 12px;
+}
+
+.floor-tickets-toggle {
+  position: relative;
+  overflow: hidden;
+}
+
+.floor-tickets-toggle.carrying {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.floor-tickets-toggle .floor-action-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 760px) and (min-width: 321px) and (min-height: 501px) {
@@ -1031,6 +1438,18 @@
 
   .floor-actions {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* 321–359px 4-col: keep “Take orders” inside the 2-line clamp. */
+  .floor-actions .service-btn {
+    padding-inline: 0.2rem;
+    gap: 0.2rem;
+  }
+
+  .floor-actions .floor-action-label {
+    font-size: 11px;
+    line-height: 13px;
+    max-height: 26px;
   }
 }
 
@@ -1115,6 +1534,112 @@
   padding-top: 0.45rem;
 }
 
+.compose-progress {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.45rem;
+}
+
+.compose-progress-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+.compose-progress-count strong {
+  font: 800 0.95rem/1.2 var(--vk-display-font);
+  color: #fff1d2;
+}
+
+.compose-progress-hint {
+  color: var(--vk-text-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compose-progress-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 160, 0.12);
+}
+
+.compose-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d8f3a, #c4a24a);
+  transition: width 160ms ease-out;
+}
+
+.compose-progress-window-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #ffe7b8;
+  opacity: 0.85;
+  transform: translateX(-50%);
+}
+
+.compose-progress-coherence {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d9c09a;
+}
+
+.compose-progress[data-coherence='matched'] .compose-progress-coherence {
+  color: #c6e27a;
+}
+
+.compose-progress[data-status='ready'] .compose-progress-fill,
+.compose-progress[data-status='full'] .compose-progress-fill {
+  background: linear-gradient(90deg, #789d43, #d7b24d);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compose-progress-fill {
+    transition: none;
+  }
+}
+
+html[data-vk-reduced-motion='true'] .compose-progress-fill,
+[data-vk-reduced-motion='true'] .compose-progress-fill {
+  transition: none;
+}
+
+.compose-dismiss-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 5, 3, 0.18) 0%,
+    rgba(8, 5, 3, 0.28) 42%,
+    rgba(8, 5, 3, 0.45) 100%
+  );
+  cursor: pointer;
+}
+
+.compose-sheet-panel {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ghost floor CTAs stay inert under compose; dim them so they read as context. */
+.game-surface:has(.compose-sheet-panel) .chrome-mount {
+  opacity: 0.4;
+  filter: saturate(0.65);
+}
+
 .compose-section-heading,
 .compose-footer-copy {
   display: flex;
@@ -1190,7 +1715,22 @@
   font-weight: 700;
 }
 
-.filter-axis-chip.selected {
+.compose-all-chip {
+  flex: 0 0 auto;
+  height: var(--vk-chip-h);
+  min-width: 44px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 999px;
+  background: var(--vk-panel-2);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.filter-axis-chip.selected,
+.compose-all-chip.selected {
   border-color: var(--vk-accent-2);
   background: var(--vk-accent-2);
   color: var(--vk-bg-deep);
@@ -1214,7 +1754,8 @@
 
 .compose-search-input {
   width: 100%;
-  height: 42px;
+  height: 44px;
+  min-height: 44px;
   padding: 0.5rem 0.7rem;
   border: 1px solid var(--vk-border);
   border-radius: 9px;
@@ -1227,7 +1768,7 @@
 .compose-search-clear {
   flex: 0 0 auto;
   min-width: 44px;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--vk-border);
   border-radius: 9px;
   background: transparent;
@@ -1242,6 +1783,118 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.compose-filter-hint {
+  margin: 0.2rem 0 0;
+  color: var(--vk-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.compose-ticket-rail {
+  display: flex;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.15rem 0.75rem 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--vk-border);
+}
+
+.compose-ticket-rail-item {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 44px;
+  max-width: 11rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 999px;
+  background: var(--vk-panel-2);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.compose-ticket-rail-item .guest-portrait {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+}
+
+.compose-ticket-rail-guest {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-ticket-rail-status {
+  flex: 0 0 auto;
+  color: var(--vk-text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.compose-ticket-rail-item.selected {
+  border-color: var(--vk-accent-2);
+  background: color-mix(in srgb, var(--vk-accent-2) 22%, var(--vk-panel));
+  color: var(--vk-text);
+}
+
+.compose-ticket-rail-item.carrying {
+  border-color: var(--vk-accent);
+  color: var(--vk-accent);
+}
+
+.compose-ticket-rail-item.status-plated:not(.carrying) {
+  border-color: color-mix(in srgb, var(--vk-accent-2) 55%, var(--vk-border));
+}
+
+.compose-ticket-rail--multi .compose-ticket-rail-item {
+  max-width: 9.5rem;
+}
+
+.compose-ticket-rail--multi[data-rail-count='3'] .compose-ticket-rail-item,
+.compose-ticket-rail--multi[data-rail-count='4'] .compose-ticket-rail-item {
+  max-width: 8.25rem;
+  padding-inline: 0.4rem;
+}
+
+.compose-ticket-rail--multi[data-rail-count='4'] .compose-ticket-rail-guest {
+  max-width: 3.5rem;
+}
+
+.compose-ticket-rail-item:not(button) {
+  cursor: default;
+}
+
+.compose-inspect-hint {
+  margin: 0.15rem 0 0;
+  color: var(--vk-text-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.inspector-long-press-hint {
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px dashed color-mix(in srgb, var(--vk-accent) 45%, var(--vk-border));
+  background: color-mix(in srgb, var(--vk-accent) 12%, transparent);
+  color: var(--vk-text);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .compose-pantry {
@@ -1345,6 +1998,7 @@
 }
 
 .compose-request-bar {
+  position: relative;
   display: block;
   height: 5px;
   overflow: hidden;
@@ -1358,7 +2012,18 @@
   border-radius: inherit;
 }
 
-.compose-request-bar.target > span {
+.compose-request-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  background: color-mix(in srgb, var(--vk-accent) 28%, transparent);
+  pointer-events: none;
+}
+
+.compose-request-bar.target > span:not(.compose-request-band) {
+  position: relative;
+  z-index: 1;
   background: var(--vk-accent);
 }
 
@@ -1510,8 +2175,9 @@
 .compose-sheet-footer #plate-btn {
   align-self: stretch;
   height: auto;
-  min-height: var(--vk-cta-h);
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   margin: 0;
+  transition: none;
 }
 
 .sr-only {
@@ -1565,12 +2231,21 @@
     padding-bottom: 0.25rem;
   }
 
-  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+  .compose-filters .filter-axis-chip:not(.requested) {
     display: none;
   }
 
   .compose-filter-summary {
-    display: none;
+    display: block;
+    white-space: normal;
+  }
+
+  .compose-filter-hint {
+    display: block;
+  }
+
+  .compose-ticket-rail {
+    padding-inline: 0.6rem;
   }
 
   .compose-workspace {
@@ -1610,13 +2285,18 @@
     display: none;
   }
 
+  .compose-request-axis-head .compose-request-status {
+    display: inline;
+    font-size: 9px;
+  }
+
   .compose-pantry {
     padding: 0.4rem 0.6rem;
   }
 
   .compose-sheet-footer {
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 34%);
-    grid-template-rows: auto var(--vk-cta-h) auto;
+    grid-template-rows: auto max(var(--vk-touch-min, 44px), var(--vk-cta-h)) auto;
     height: auto;
     min-height: 5.4rem;
     padding: 0.35rem 0.6rem 0.5rem;
@@ -1634,7 +2314,7 @@
     display: block;
     grid-column: 1;
     grid-row: 2;
-    min-height: var(--vk-cta-h);
+    min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
     margin: 0;
     padding: 0.35rem 0.55rem;
     border: 1px solid var(--vk-border);
@@ -1673,6 +2353,14 @@
   }
 
   .compose-selection {
+    display: none;
+  }
+
+  .compose-ticket-rail {
+    display: none;
+  }
+
+  .compose-inspect-hint {
     display: none;
   }
 
@@ -1743,6 +2431,10 @@
   background: linear-gradient(180deg, transparent 55%, rgba(5, 3, 2, 0.5));
 }
 
+.service-overlay:has(.compose-sheet-panel) {
+  background: transparent;
+}
+
 .service-panel {
   border-top: 2px solid var(--vk-border-strong);
   background: linear-gradient(180deg, rgba(112, 69, 37, 0.18), transparent 18%), rgba(30, 18, 11, 0.985);
@@ -1782,6 +2474,16 @@
     inset 0 1px rgba(255, 239, 207, 0.14),
     0 3px 0 #140c08;
   font-weight: 800;
+}
+
+/* Floor chrome fills the reserved CTA strip; reassert after chibi .service-btn. */
+.floor-actions .service-btn {
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  padding-block: 0.2rem;
+  padding-inline: 0.3rem;
+  transition: none;
 }
 
 .service-btn.primary {
@@ -1907,7 +2609,8 @@
 }
 
 .compose-selected-chip,
-.filter-axis-chip {
+.filter-axis-chip,
+.compose-all-chip {
   border: 1px solid #73502e;
   background: linear-gradient(180deg, #4a301d, #2e1d13);
   color: #e3c99c;
@@ -1915,7 +2618,9 @@
 }
 
 .filter-axis-chip.selected,
-.filter-axis-chip[aria-pressed='true'] {
+.filter-axis-chip[aria-pressed='true'],
+.compose-all-chip.selected,
+.compose-all-chip[aria-pressed='true'] {
   border-color: #ddb26a;
   background: linear-gradient(180deg, #e5bd77, #ba8243);
   color: #2a190f;
@@ -1944,9 +2649,13 @@
   background: #130b07;
 }
 
-.compose-request-bar.target > span,
+.compose-request-bar.target > span:not(.compose-request-band),
 .compose-flavor-mini-fill {
   background: linear-gradient(180deg, #edbd6b, #b87531);
+}
+
+.compose-request-band {
+  background: color-mix(in srgb, #edbd6b 28%, transparent);
 }
 
 .compose-request-bar.current > span {
@@ -2041,11 +2750,108 @@
     display: none;
   }
 
+  /* Leave a readable floor strip above the sheet (lifecycle unchanged). */
+  .service-panel.sheet-tier-near-full.compose-sheet-panel {
+    height: 90%;
+    max-height: 90%;
+  }
+
+  /* Single-ticket rail is redundant with the header identity; keep multi-ticket. */
+  .compose-ticket-rail:not(.compose-ticket-rail--multi) {
+    display: none;
+  }
+
+  .compose-inspect-hint {
+    display: none;
+  }
+
+  /* Peek + progress chrome leave no room for a persistent search field; desktop
+   * (min-width 900) keeps the full search row. */
+  .compose-search-row {
+    display: none;
+  }
+
+  .compose-ticket-rail {
+    padding-block: 0.1rem 0.25rem;
+  }
+
+  .compose-ticket-rail-item {
+    min-height: 40px;
+  }
+
+  .compose-sheet-header {
+    min-height: 56px;
+    padding-block: 0.3rem;
+  }
+
+  .compose-section-heading {
+    display: none;
+  }
+
+  .compose-progress {
+    margin: 0.05rem 0 0.2rem;
+    gap: 0.2rem;
+  }
+
+  .compose-progress-track {
+    display: none;
+  }
+
+  .compose-selected-strip {
+    min-height: 28px;
+    padding-block: 0.1rem;
+  }
+
+  .compose-filters {
+    padding-block: 0.2rem;
+  }
+
+  /* Keep chips wrapping inside the filter row (no horizontal overflow). */
+  .compose-axis-row {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: none;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    padding-bottom: 0.1rem;
+    gap: 0.25rem;
+  }
+
+  .compose-axis-row .filter-axis-chip,
+  .compose-axis-row .compose-all-chip {
+    width: auto;
+    flex: 1 1 calc(25% - 0.25rem);
+    min-width: min(4.25rem, calc(50% - 0.25rem));
+    max-width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 0.2rem 0.35rem;
+    font-size: 11px;
+    box-sizing: border-box;
+  }
+
+  .compose-filter-summary {
+    margin-top: 0.15rem;
+  }
+
+  .compose-order-panel {
+    max-height: 5rem;
+  }
+
+  .compose-sheet-footer {
+    min-height: 5.1rem;
+    padding-block: 0.3rem 0.4rem;
+  }
+
   .service-panel.sheet-tier-near-full {
     height: 91%;
     max-height: 91%;
     padding: 0;
     border-radius: 20px 20px 0 0;
+  }
+
+  .game-surface:has(.compose-sheet-panel) .canvas-mount {
+    filter: brightness(0.92);
   }
 
   /* The end-of-day ledger has a bounded body but should not erase the
@@ -2066,20 +2872,31 @@
     padding-block: 0.35rem;
   }
 
-  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+  .compose-filters .filter-axis-chip:not(.requested) {
     display: none;
   }
 
   .compose-axis-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
-    overflow: visible;
-    padding-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.1rem;
   }
 
-  .compose-axis-row .filter-axis-chip {
-    width: 100%;
-    min-width: 0;
+  .compose-axis-row .filter-axis-chip,
+  .compose-axis-row .compose-all-chip {
+    width: auto;
+    min-width: min(4.25rem, calc(50% - 0.25rem));
+    max-width: 100%;
+    flex: 1 1 calc(25% - 0.25rem);
+    height: 36px;
+    min-height: 36px;
+    padding: 0.2rem 0.35rem;
+    font-size: 11px;
+    box-sizing: border-box;
   }
 
   .compose-workspace {
@@ -2089,7 +2906,7 @@
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: 7rem;
+    max-height: 5rem;
     border-top: 1px solid #694525;
     border-left: 0;
   }
@@ -2139,6 +2956,11 @@
     display: none;
   }
 
+  .compose-request-axis-head .compose-request-status {
+    display: inline;
+    font-size: 9px;
+  }
+
   .compose-pantry {
     grid-row: 2;
   }
@@ -2147,9 +2969,9 @@
     grid-template-columns: minmax(0, 1fr) minmax(7.8rem, 36%);
     grid-template-rows: auto 48px auto;
     height: auto;
-    min-height: 5.8rem;
+    min-height: 5.1rem;
     gap: 0.25rem 0.5rem;
-    padding: 0.4rem 0.65rem 0.55rem;
+    padding: 0.3rem 0.65rem 0.4rem;
   }
 
   .compose-footer-copy {
@@ -2337,60 +3159,106 @@
     margin-top: 0.35rem;
   }
 
-  .service-panel.sheet-tier-near-full {
+  .service-panel.sheet-tier-near-full:not(.compose-sheet-panel) {
     height: 96%;
     max-height: 96%;
   }
 
+  /* Keep Plate inside the sheet while leaving a usable pantry: short
+   * landscape cannot afford the tall-phone peek plus Round-3 chrome. */
+  .service-panel.sheet-tier-near-full.compose-sheet-panel {
+    height: 92%;
+    max-height: 92%;
+  }
+
+  .compose-ticket-rail {
+    display: none;
+  }
+
+  .compose-inspect-hint,
+  .compose-search-row,
+  .compose-filter-summary,
+  .compose-filter-hint,
+  .compose-section-heading,
+  .compose-progress-track,
+  .compose-selected-strip {
+    display: none;
+  }
+
+  .compose-progress {
+    margin: 0.05rem 0 0.1rem;
+    gap: 0.1rem;
+  }
+
   .compose-sheet-header {
-    min-height: 64px;
-    padding-block: 0.35rem;
+    min-height: 44px;
+    padding-block: 0.15rem;
   }
 
   .compose-sheet-header::before {
-    width: 42px;
-    height: 42px;
+    width: 28px;
+    height: 28px;
   }
 
   .compose-filters {
-    padding-block: 0.2rem;
+    padding-block: 0.1rem;
+  }
+
+  .compose-axis-row {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+
+  /* Side-by-side so pantry keeps the full workspace height. */
+  .compose-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 34%);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .compose-order-panel {
-    padding-block: 0.2rem 0.25rem;
+    grid-row: 1;
+    grid-column: 2;
+    max-height: none;
+    height: 100%;
+    padding: 0.15rem 0.35rem;
+    border-top: 0;
+    border-left: 1px solid #694525;
+  }
+
+  .compose-pantry {
+    grid-row: 1;
+    grid-column: 1;
   }
 
   .compose-order-mobile-legend {
-    margin-bottom: 0.1rem;
-  }
-
-  .compose-filter-summary {
-    display: none;
+    margin-bottom: 0.05rem;
   }
 
   .compose-sheet-footer {
     height: auto;
-    min-height: 4.9rem;
-    grid-template-rows: auto 44px auto;
-    padding-block: 0.25rem;
+    min-height: 4.1rem;
+    max-height: 4.6rem;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding-block: 0.15rem;
   }
 
   .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    height: 40px;
+    height: 34px;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip {
-    height: 46px;
-    min-height: 46px;
+    height: 44px;
+    min-height: 44px;
     flex-direction: row;
     padding-inline: 0.35rem;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip .food-icon {
-    width: 28px !important;
-    height: 28px !important;
-    flex-basis: 28px;
+    width: 26px !important;
+    height: 26px !important;
+    flex-basis: 26px;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-ingredient-inspect {
@@ -2400,5 +3268,50 @@
   .compose-sheet-footer #plate-btn {
     min-height: 44px;
     height: 44px;
+  }
+}
+
+/* Mobile portrait review/summary: after chibi theme so padding/margins stick.
+ * Keeps cook-ui compact ratio budgets without touching short-landscape rules. */
+@media (max-width: 899px) and (min-height: 521px) {
+  .service-panel.review-service-panel {
+    padding: 0.45rem 0.55rem;
+  }
+
+  .review-service-panel .service-card {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .review-service-panel .review-detail {
+    margin-block: 0.12rem;
+  }
+
+  .review-service-panel .review-stars {
+    margin-block: 0.15rem 0.05rem;
+    font-size: 18px;
+  }
+
+  .review-service-panel .sheet-footer {
+    margin-top: 0.3rem;
+  }
+
+  .service-panel.sheet-tier-near-full.summary-service-panel {
+    padding: 0.45rem 0.65rem 0.55rem;
+  }
+
+  .summary-service-panel .service-card {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .summary-service-panel .review-detail {
+    margin-block: 0.16rem;
+  }
+
+  .summary-service-panel .sheet-header {
+    min-height: 0;
+  }
+
+  .summary-service-panel .service-title {
+    margin-bottom: 0.3rem;
   }
 }

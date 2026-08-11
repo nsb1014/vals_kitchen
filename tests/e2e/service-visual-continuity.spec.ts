@@ -258,31 +258,104 @@ test.describe('service visual continuity', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoFreshGame(page);
-    await page.getByTestId('open-day-btn').click();
+    // Assert the animated path: clear the e2e reduced-motion dataset so
+    // service-panel-enter actually runs (OS media is already no-preference).
+    // Capture enter animation in the same browser task as open-day. Under CPU
+    // throttle Playwright's next assertion often lands after the 180ms enter
+    // window, so observe data-panel-entering via rAF before yielding to the test.
+    const modifierEnter = await page.evaluate(async () => {
+      delete document.documentElement.dataset.vkReducedMotion;
+      document
+        .querySelector('#game-root')
+        ?.removeAttribute('data-vk-reduced-motion');
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="open-day-btn"]')
+        ?.click();
+      const panel = await new Promise<HTMLElement | null>((resolve) => {
+        const deadline = performance.now() + 2_000;
+        const probe = () => {
+          const found = document.querySelector<HTMLElement>(
+            '[data-testid="modifier-sheet"]',
+          );
+          if (found) {
+            resolve(found);
+            return;
+          }
+          if (performance.now() >= deadline) {
+            resolve(null);
+            return;
+          }
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+      });
+      return {
+        present: Boolean(panel),
+        entering: panel?.hasAttribute('data-panel-entering') ?? false,
+        animationNames: panel
+          ? getComputedStyle(panel)
+              .animationName.split(',')
+              .map((name) => name.trim())
+          : [],
+      };
+    });
+    expect(modifierEnter.present).toBe(true);
+    expect(modifierEnter.entering).toBe(true);
+    expect(modifierEnter.animationNames).toContain('service-panel-enter');
 
     const modifier = page.getByTestId('modifier-sheet');
     await expect(modifier).toBeVisible();
-    await expect(modifier).toHaveAttribute('data-panel-entering', '');
-    expect(
-      await modifier.evaluate((element) =>
-        getComputedStyle(element).animationName
-          .split(',')
-          .map((name) => name.trim())
-          .includes('service-panel-enter'),
-      ),
-    ).toBe(true);
 
     await page.getByTestId('start-service-btn').click();
     await waitForServiceStarted(page);
-    await page.evaluate(async () => {
+    const composeEnter = await page.evaluate(async () => {
       await window.__E2E__!.prepareCookUiFixture();
+      // Clear reduced-motion again in case a remount re-applied the dataset.
+      delete document.documentElement.dataset.vkReducedMotion;
+      document
+        .querySelector('#game-root')
+        ?.removeAttribute('data-vk-reduced-motion');
       window.__E2E__!.openComposeSheet();
+      const panel = await new Promise<HTMLElement | null>((resolve) => {
+        const deadline = performance.now() + 2_000;
+        const probe = () => {
+          const found = document.querySelector<HTMLElement>(
+            '[data-testid="compose-sheet"]',
+          );
+          if (found) {
+            resolve(found);
+            return;
+          }
+          if (performance.now() >= deadline) {
+            resolve(null);
+            return;
+          }
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+      });
+      return {
+        present: Boolean(panel),
+        entering: panel?.hasAttribute('data-panel-entering') ?? false,
+        animationNames: panel
+          ? getComputedStyle(panel)
+              .animationName.split(',')
+              .map((name) => name.trim())
+          : [],
+      };
     });
+    expect(composeEnter.present).toBe(true);
+    expect(composeEnter.entering).toBe(true);
+    expect(composeEnter.animationNames).toContain('service-panel-enter');
     const compose = page.getByTestId('compose-sheet');
     await expect(compose).toBeVisible();
-    await expect(compose).toHaveAttribute('data-panel-entering', '');
     await compose.evaluate(async (element) => {
-      await Promise.all(element.getAnimations().map((animation) => animation.finished));
+      const animations = element.getAnimations();
+      if (animations.length === 0) return;
+      // animationend / dataset clear can abort finished(); ignore AbortError.
+      await Promise.all(
+        animations.map((animation) => animation.finished.catch(() => undefined)),
+      );
     });
 
     await compose.getByTestId('ingredient-chip').first().click();
@@ -383,7 +456,11 @@ test.describe('service visual continuity', () => {
       expect(controls.buttons.length).toBeGreaterThan(0);
       for (const control of controls.buttons) {
         expect(control.height).toBeCloseTo(controls.expectedHeight, 0);
-        expect(control.labelScrollHeight).toBeLessThanOrEqual(control.labelClientHeight);
+        // Chromium -webkit-line-clamp reports scrollHeight = clientHeight + 1px;
+        // same allowance as floor-notifications zoom CTA (not a looser overflow budget).
+        expect(control.labelScrollHeight).toBeLessThanOrEqual(
+          control.labelClientHeight + 1,
+        );
       }
     }
   });

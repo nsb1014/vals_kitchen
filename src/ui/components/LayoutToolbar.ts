@@ -4,16 +4,20 @@ import {
   getEquipmentCatalog,
   getEquipmentNameMap,
 } from '../../app/content-loader.ts';
+import { playSfx, unlockAudioOnGesture } from '../../assets/audio.ts';
 import { useGameStore, type GameStore } from '../../store/game-store.ts';
 import { selectShowLayoutHud } from '../../store/selectors/layout.ts';
 import { selectUnplacedItems } from '../../store/selectors/shop.ts';
 import {
   buildEquipmentShopRows,
   buildIngredientShopRows,
+  buildShopMilestoneStrip,
   buildUtilityShopRows,
   formatShopCost,
+  purchaseFeedbackMessage,
   shopRowActionLabel,
   shopAvailabilityClass,
+  shopRowDescription,
   type ShopRow,
 } from '../presentation/shop-items.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
@@ -48,18 +52,6 @@ const CATALOG_PANEL_IDS: Record<CatalogTab, string> = {
   equipment: 'restaurant-shop-panel-equipment',
   layout: 'restaurant-shop-panel-layout',
 };
-
-function shopRowDescription(row: ShopRow): string {
-  if (row.kind === 'ingredient') {
-    return row.availability === 'gate_locked'
-      ? `Requires ${row.equipmentGateName}`
-      : row.category;
-  }
-  if (row.kind === 'equipment') {
-    return `Unlocks ${row.groupName} ingredients`;
-  }
-  return row.description;
-}
 
 function placementItemKey(row: ShopRow): string | null {
   if (row.kind === 'equipment') return row.id;
@@ -102,6 +94,28 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
   let pendingCatalogFocus: CatalogFocusIdentity | null = null;
   let catalogScrollTop = 0;
   let focusPlacementCancelAfterSync = false;
+  let catalogPurchaseToast: string | null = null;
+  let catalogFlashRowId: string | null = null;
+  let toastClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const announcePurchase = (row: ShopRow, keepCatalogOpen: boolean) => {
+    void unlockAudioOnGesture();
+    playSfx('purchase');
+    const message = purchaseFeedbackMessage(row);
+    catalogFlashRowId = row.id;
+    if (keepCatalogOpen) {
+      catalogPurchaseToast = message;
+      if (toastClearTimer) clearTimeout(toastClearTimer);
+      toastClearTimer = setTimeout(() => {
+        catalogPurchaseToast = null;
+        catalogFlashRowId = null;
+        if (catalogOpen) renderCatalog(useGameStore.getState());
+      }, 2200);
+    } else {
+      catalogPurchaseToast = null;
+      useGameStore.getState().setFloorToast(message);
+    }
+  };
 
   const syncCatalogViewport = () => {
     const rootZoom =
@@ -168,6 +182,8 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
     catalogOpen = false;
     pendingCatalogFocus = null;
     catalogScrollTop = 0;
+    catalogPurchaseToast = null;
+    catalogFlashRowId = null;
     renderCatalog(useGameStore.getState());
     if (restoreShopFocus) catalogBtn?.focus({ preventScroll: true });
   };
@@ -221,6 +237,11 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       ctx,
     );
     const utilityRows = buildUtilityShopRows(state, ctx);
+    const milestone = buildShopMilestoneStrip(
+      state,
+      equipmentRows,
+      ctx.ingredients,
+    );
     const rows: ShopRow[] =
       catalogTab === 'ingredients'
         ? ingredientRows
@@ -229,7 +250,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
           : utilityRows;
     const unplaced = selectUnplacedItems(state, getEquipmentNameMap());
     const renderPurchaseRow = (row: ShopRow) => `
-      <button type="button" class="layout-catalog-row ${shopAvailabilityClass(row.availability)}" data-catalog-row-id="${row.id}" ${row.availability === 'available' ? '' : 'disabled'}>
+      <button type="button" class="layout-catalog-row ${shopAvailabilityClass(row.availability)}${catalogFlashRowId === row.id ? ' layout-catalog-row-flash' : ''}" data-catalog-row-id="${row.id}" ${row.availability === 'available' ? '' : 'disabled'}>
         <span class="layout-catalog-row-copy">
           <strong>${row.kind === 'ingredient' ? renderFoodIconHtml(row.id, 26) : ''}${row.name}</strong>
           <small>${shopRowDescription(row)}</small>
@@ -249,6 +270,12 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
         <div>
           <h2 id="restaurant-shop-title">Restaurant shop</h2>
           <p>Cash: $${state.cash.toLocaleString('en-US')}</p>
+          <p class="layout-catalog-milestone" data-testid="shop-milestone-strip" data-milestone-kind="${milestone.kind}">${milestone.text}</p>
+          ${
+            catalogPurchaseToast
+              ? `<p class="layout-catalog-purchase-toast" data-testid="layout-purchase-toast" role="status">${catalogPurchaseToast}</p>`
+              : ''
+          }
         </div>
         <button type="button" class="layout-catalog-close" aria-label="Close restaurant shop">×</button>
       </header>
@@ -346,6 +373,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
         try {
           const itemKey = placementItemKey(row);
           if (itemKey) {
+            announcePurchase(row, false);
             catalogOpen = false;
             renderCatalog(store);
             const placementRoom =
@@ -371,6 +399,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
               ? { kind: 'row', rowId: nextRow.id }
               : { kind: 'tab', tab: catalogTab };
             await store.dispatch({ type: 'PURCHASE', purchase: row.purchase });
+            announcePurchase(row, true);
           }
         } catch {
           catalogOpen = true;
@@ -515,6 +544,7 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
 
   return () => {
     unsubscribe();
+    if (toastClearTimer) clearTimeout(toastClearTimer);
     window.removeEventListener(OPEN_RESTAURANT_SHOP_EVENT, onOpenRestaurantShop);
     window.removeEventListener('resize', syncCatalogViewport);
     document.removeEventListener('keydown', onDocumentKeydown);

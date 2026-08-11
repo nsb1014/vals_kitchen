@@ -26,7 +26,8 @@ export function restaurantAtlasScaleMode(id: AtlasId): 'nearest' | 'linear' {
   // Room surfaces are edge-to-edge repeating tiles, so nearest filtering keeps
   // adjacent atlas cells from bleeding into their seams. Illustrated actors
   // and furniture have transparent padding and need smooth downsampling.
-  return id === 'tiles' ? 'nearest' : 'linear';
+  // Food icons stay nearest so DOM and canvas juice share crisp pixels.
+  return id === 'tiles' || id === 'food' ? 'nearest' : 'linear';
 }
 
 async function loadTexture(url: string, scaleMode: 'nearest' | 'linear'): Promise<Texture> {
@@ -67,7 +68,7 @@ async function loadSpritesheet(
 
 export async function loadRestaurantAtlases(): Promise<void> {
   if (restaurantLoaded) return;
-  const ids: AtlasId[] = ['tiles', 'furniture', 'characters'];
+  const ids: AtlasId[] = ['tiles', 'furniture', 'characters', 'food'];
   await Promise.all(
     ids.map(async (id) => {
       sheets[id] = await loadSpritesheet(
@@ -96,7 +97,11 @@ export function getTileTexture(
     | 'wall_s'
     | 'wall_w'
     | 'door'
-    | 'door_open',
+    | 'door_open'
+    | 'fx_star'
+    | 'fx_steam'
+    | 'fx_coin'
+    | 'fx_dust',
 ): Texture | null {
   const sheet = sheets.tiles;
   if (!sheet) return null;
@@ -105,6 +110,12 @@ export function getTileTexture(
 
 export function getFurnitureTexture(spriteName: string): Texture | null {
   const sheet = sheets.furniture;
+  if (!sheet) return null;
+  return textureFromSheet(sheet, spriteName);
+}
+
+export function getFoodTexture(spriteName: string): Texture | null {
+  const sheet = sheets.food;
   if (!sheet) return null;
   return textureFromSheet(sheet, spriteName);
 }

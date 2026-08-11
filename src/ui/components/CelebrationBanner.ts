@@ -1,5 +1,7 @@
 import {
   useGameStore,
+  type Celebration,
+  type CelebrationKind,
   type GameStore,
 } from '../../store/game-store.ts';
 import { selectShowFloorCompose } from '../../store/selectors/service-day.ts';
@@ -9,7 +11,7 @@ import {
 } from '../../domain/achievements/catalog.ts';
 import { bindNotificationSurfaceLifecycle } from '../notifications/surface-lifecycle.ts';
 import {
-  resolveNoticeScope,
+  noticeRunsOnScreen,
   type Notice,
 } from '../../store/notification-timer.ts';
 import {
@@ -17,6 +19,8 @@ import {
   NOTIFICATION_BLOCKING_SURFACE_CHANGE,
 } from '../notifications/blocking-surface.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
+import { mountMetaSheetEnhancer } from './MetaSheetEnhancer.ts';
+import { getActiveScreen } from '../../app/screenRouter.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -24,6 +28,87 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * Banner dismiss stays pointer-reachable but out of sequential Tab order so
+ * floor toolbar / primary chrome come first (status/toast pattern, not dialog).
+ */
+export const BANNER_DISMISS_TABINDEX = -1;
+
+/** ARIA for the notice live region (tutorial / toast / pacing). */
+export function noticeBannerAria(
+  source: Notice['source'],
+): { role: 'status'; 'aria-live': 'polite'; 'aria-label': string } {
+  return {
+    role: 'status',
+    'aria-live': 'polite',
+    'aria-label': source === 'tutorial' ? 'Tutorial' : 'Notice',
+  };
+}
+
+/** ARIA for the celebration live region (recipe / mastery / achievement / prestige). */
+export function celebrationBannerAria(
+  kind: CelebrationKind,
+): {
+  role: 'status';
+  'aria-live': 'polite';
+  'aria-atomic': 'true';
+  'aria-label': string;
+} {
+  const labels: Record<CelebrationKind, string> = {
+    recipe: 'Recipe celebration',
+    mastery: 'Mastery celebration',
+    achievement: 'Achievement celebration',
+    prestige: 'Prestige celebration',
+  };
+  return {
+    role: 'status',
+    'aria-live': 'polite',
+    'aria-atomic': 'true',
+    'aria-label': labels[kind],
+  };
+}
+
+/** Stable identity so re-queued / next-FIFO celebrations re-announce. */
+export function celebrationAnnounceKey(celebration: Celebration): string {
+  return [
+    celebration.kind,
+    celebration.title,
+    celebration.body,
+    celebration.achievementId ?? '',
+    celebration.level ?? '',
+  ].join('\0');
+}
+
+export function celebrationAnnounceText(celebration: Celebration): string {
+  return `${celebration.title}. ${celebration.body}`;
+}
+
+/**
+ * Clear-then-set text so polite live regions re-fire for each new message
+ * even when the same status node is reused.
+ */
+export function replaceLiveRegionText(
+  target: { textContent: string | null },
+  next: string,
+): void {
+  target.textContent = '';
+  target.textContent = next;
+}
+
+/**
+ * Escape dismisses the front banner when no blocking sheet owns focus.
+ * Status regions do not take focus; dismiss remains tabindex=-1.
+ */
+export function resolveBannerEscapeAction(
+  state: Pick<GameStore, 'noticeActive' | 'celebrationQueue'>,
+  blocked: boolean,
+): 'notice' | 'celebration' | null {
+  if (blocked) return null;
+  if (state.noticeActive) return 'notice';
+  if (state.celebrationQueue[0]) return 'celebration';
+  return null;
 }
 
 /**
@@ -52,7 +137,7 @@ export function noticeIsVisibleOnScreen(
   notice: Notice,
   screen: GameStore['screen'],
 ): boolean {
-  return resolveNoticeScope(notice) === 'global' || screen === 'restaurant';
+  return noticeRunsOnScreen(notice, screen);
 }
 
 export function mountCelebrationBanner(mount: HTMLElement): () => void {
@@ -64,6 +149,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   mount.appendChild(host);
 
   let pageLifecycleActive = false;
+  let lastCelebrationAnnounceKey: string | null = null;
   const computeUiBlocked = () =>
     selectNotificationUiBlocked(useGameStore.getState()) ||
     hasLocalNotificationBlockingSurface();
@@ -72,8 +158,35 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   const isFrontContentVisible = () => {
     const state = useGameStore.getState();
     return state.noticeActive
-      ? noticeIsVisibleOnScreen(state.noticeActive, state.screen)
+      ? noticeIsVisibleOnScreen(state.noticeActive, presentationScreen(state))
       : true;
+  };
+
+  /**
+   * Shell screen from `#game-root[data-screen]`. CelebrationBanner subscribes
+   * before the screen router, so store.screen can be `restaurant` for a turn
+   * while Settings is still the painted shell — dwell must not start then.
+   */
+  const presentationScreen = (
+    state: Pick<GameStore, 'screen'> = useGameStore.getState(),
+  ): GameStore['screen'] => {
+    const shell = getActiveScreen();
+    return (shell as GameStore['screen'] | null) ?? state.screen;
+  };
+
+  const syncBannerPresented = () => {
+    // Same source of truth as e2e bannerPresent: host mounted, not hidden,
+    // and a banner element actually in the DOM.
+    const hasBanner = Boolean(
+      host.querySelector(
+        '[data-testid="notice-banner"], [data-testid="celebration-banner"]',
+      ),
+    );
+    useGameStore
+      .getState()
+      .setNotificationBannerPresented(
+        host.isConnected && !host.hidden && hasBanner,
+      );
   };
 
   const syncNotificationSurface = () => {
@@ -86,26 +199,90 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
           isFrontContentVisible(),
         ),
       );
+    syncBannerPresented();
   };
 
   const syncHostVisibility = () => {
     const state = useGameStore.getState();
+    const shell = presentationScreen(state);
+    const noticeVisible = state.noticeActive
+      ? noticeIsVisibleOnScreen(state.noticeActive, shell)
+      : false;
     host.hidden =
       uiBlocked ||
-      !isFrontContentVisible() ||
+      (state.noticeActive ? !noticeVisible : false) ||
       (!state.noticeActive && !state.celebrationQueue[0]);
+    syncBannerPresented();
+  };
+
+  const wireDismiss = (
+    selector: string,
+    dismiss: () => void,
+  ): void => {
+    host.querySelector(selector)?.addEventListener('click', dismiss, {
+      once: true,
+    });
+  };
+
+  const announceCelebrationIfNeeded = (celebration: Celebration): void => {
+    const live = host.querySelector<HTMLElement>(
+      '[data-testid="celebration-live-text"]',
+    );
+    if (!live) return;
+    // Covered celebrations stay inert/hidden — announce once they become front.
+    const aside = host.querySelector('.celebration-banner');
+    if (aside?.hasAttribute('aria-hidden')) return;
+    const key = celebrationAnnounceKey(celebration);
+    if (key === lastCelebrationAnnounceKey) {
+      // Remount after pause: keep polite text without clear-then-set retrigger.
+      live.textContent = celebrationAnnounceText(celebration);
+      live.removeAttribute('aria-hidden');
+      live.setAttribute('aria-live', 'polite');
+      live.setAttribute('role', 'status');
+      return;
+    }
+    lastCelebrationAnnounceKey = key;
+    live.removeAttribute('aria-hidden');
+    live.setAttribute('aria-live', 'polite');
+    live.setAttribute('role', 'status');
+    replaceLiveRegionText(live, celebrationAnnounceText(celebration));
+  };
+
+  const announceNoticeIfNeeded = (notice: Notice): void => {
+    const live = host.querySelector<HTMLElement>(
+      '[data-testid="notice-live-text"]',
+    );
+    if (!live) return;
+    // The visible aside already has role=status + aria-live. Keep the twin
+    // empty/hidden so Playwright getByText and SR trees do not see two copies.
+    void notice;
+    live.textContent = '';
+    live.setAttribute('aria-hidden', 'true');
+    live.removeAttribute('aria-live');
+    live.removeAttribute('role');
   };
 
   const render = () => {
     const state = useGameStore.getState();
     const notice = state.noticeActive;
     const celebration = state.celebrationQueue[0];
+    // Prefer the painted shell over store.screen — banner host mounts before
+    // the screen router, so store can flip to restaurant while Settings CSS
+    // still owns the viewport.
+    const noticeVisible = notice
+      ? noticeIsVisibleOnScreen(notice, presentationScreen(state))
+      : false;
+    // Park floor-scoped tips off the restaurant without dismissing them: keep
+    // noticeActive + remaining dwell, but drop the DOM node so Settings is
+    // uncovered and return remounts a fresh presentable banner.
     host.hidden =
       uiBlocked ||
-      (notice ? !noticeIsVisibleOnScreen(notice, state.screen) : false) ||
+      (notice ? !noticeVisible : false) ||
       (!notice && !celebration);
-    if (!notice && !celebration) {
+    if ((!notice || !noticeVisible) && !celebration) {
       host.innerHTML = '';
+      lastCelebrationAnnounceKey = null;
+      syncBannerPresented();
       return;
     }
 
@@ -120,50 +297,59 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
           const achievementIcon = achievement
             ? `<img class="celebration-achievement-badge" src="${achievementBadgeUrl(achievement.id)}" alt="" width="48" height="48" />`
             : '';
-          const coveredAttributes = notice ? ' aria-hidden="true" inert' : '';
+          // Only cover celebrations when a presentable notice is actually front.
+          const coveredAttributes = noticeVisible ? ' aria-hidden="true" inert' : '';
+          const aria = celebrationBannerAria(celebration.kind);
           return `
-            <aside class="celebration-banner celebration-banner-${celebration.kind}" data-testid="celebration-banner"${coveredAttributes}>
+            <aside class="celebration-banner celebration-banner-${celebration.kind}" data-testid="celebration-banner" role="${aria.role}" aria-live="${aria['aria-live']}" aria-atomic="${aria['aria-atomic']}" aria-label="${aria['aria-label']}"${coveredAttributes}>
               ${achievementIcon}
-              ${icons ? `<div class="celebration-banner-icons">${icons}</div>` : ''}
-              <div class="celebration-banner-copy">
+              ${icons ? `<div class="celebration-banner-icons" aria-hidden="true">${icons}</div>` : ''}
+              <div class="celebration-banner-copy" aria-hidden="true">
                 <strong class="celebration-banner-title">${escapeHtml(celebration.title)}</strong>
                 <span class="celebration-banner-body">${escapeHtml(celebration.body)}</span>
               </div>
-              <button class="celebration-banner-dismiss" type="button" aria-label="Dismiss celebration">×</button>
+              <button class="celebration-banner-dismiss" type="button" tabindex="${BANNER_DISMISS_TABINDEX}" aria-label="Dismiss celebration" data-testid="celebration-dismiss">×</button>
             </aside>
           `;
         })()
       : '';
-    const noticeHtml = notice
-      ? `
-          <aside class="notice-banner notice-banner-${notice.source}" data-testid="notice-banner">
-            <div class="notice-banner-copy">
+    const noticeHtml =
+      notice && noticeVisible
+        ? (() => {
+            const aria = noticeBannerAria(notice.source);
+            return `
+          <aside class="notice-banner notice-banner-${notice.source}" data-testid="notice-banner" role="${aria.role}" aria-live="${aria['aria-live']}" aria-label="${aria['aria-label']}">
+            <div class="notice-banner-copy" aria-hidden="true">
               ${notice.title ? `<strong class="notice-banner-title">${escapeHtml(notice.title)}</strong>` : ''}
               <span class="notice-banner-body">${escapeHtml(notice.body)}</span>
             </div>
-            <button class="notice-banner-dismiss" type="button" aria-label="Dismiss notice">×</button>
+            <button class="notice-banner-dismiss" type="button" tabindex="${BANNER_DISMISS_TABINDEX}" aria-label="Dismiss notice">×</button>
           </aside>
-        `
-      : '';
+        `;
+          })()
+        : '';
 
+    // Live payloads sit outside the banner testids so banner.innerText stays a
+    // stable copy+dismiss string across pause/resume remounts (no duplicate
+    // announce text leaking into e2e checkpoints).
     host.innerHTML = `
       ${celebrationHtml}
       ${noticeHtml}
+      <span class="banner-live-text" data-testid="celebration-live-text" aria-hidden="true"></span>
+      <span class="banner-live-text" data-testid="notice-live-text" aria-hidden="true"></span>
     `;
-    host
-      .querySelector('.celebration-banner-dismiss')
-      ?.addEventListener(
-        'click',
-        () => useGameStore.getState().dismissCelebration(),
-        { once: true },
-      );
-    host
-      .querySelector('.notice-banner-dismiss')
-      ?.addEventListener(
-        'click',
-        () => useGameStore.getState().dismissFrontNotice(),
-        { once: true },
-      );
+    wireDismiss('.celebration-banner-dismiss', () =>
+      useGameStore.getState().dismissCelebration(),
+    );
+    wireDismiss('.notice-banner-dismiss', () =>
+      useGameStore.getState().dismissFrontNotice(),
+    );
+
+    if (celebration) announceCelebrationIfNeeded(celebration);
+    else lastCelebrationAnnounceKey = null;
+    if (notice && noticeVisible) announceNoticeIfNeeded(notice);
+    // Presented follows the painted banner node, not host.hidden alone.
+    syncBannerPresented();
   };
 
   const syncLocalBlockingSurface = () => {
@@ -172,6 +358,18 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     uiBlocked = nextUiBlocked;
     syncHostVisibility();
     syncNotificationSurface();
+  };
+
+  const onBannerEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    const action = resolveBannerEscapeAction(
+      useGameStore.getState(),
+      uiBlocked || computeUiBlocked(),
+    );
+    if (!action) return;
+    event.preventDefault();
+    if (action === 'notice') useGameStore.getState().dismissFrontNotice();
+    else useGameStore.getState().dismissCelebration();
   };
 
   const unsubscribe = useGameStore.subscribe((state, previous) => {
@@ -192,11 +390,15 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       syncNotificationSurface();
     }
     if (state.screen !== previous.screen) {
-      // The screen router subscribes after this component, so CSS visibility
-      // still reflects the previous screen during the synchronous store turn.
-      // Reconcile once every subscriber has updated the root data attribute.
+      // The screen router subscribes after this component, so `#game-root`
+      // data-screen still reflects the previous route during this turn.
+      // Re-render once the shell attribute matches store.screen so floor tips
+      // unpark (and dwell resumes) only on the painted restaurant shell.
       queueMicrotask(() => {
-        if (host.isConnected) syncLocalBlockingSurface();
+        if (!host.isConnected) return;
+        render();
+        syncLocalBlockingSurface();
+        syncNotificationSurface();
       });
     }
   });
@@ -204,6 +406,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     NOTIFICATION_BLOCKING_SURFACE_CHANGE,
     syncLocalBlockingSurface,
   );
+  window.addEventListener('keydown', onBannerEscape);
   const unbindSurfaceLifecycle = bindNotificationSurfaceLifecycle({
     isHostConnected: () => host.isConnected,
     setActive: (active) => {
@@ -211,19 +414,40 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       syncNotificationSurface();
     },
   });
+  // Paint-accurate shell screen: unpark/present only when data-screen flips,
+  // not merely when store.screen changes ahead of the router subscriber.
+  const gameRoot = document.querySelector('#game-root');
+  const shellObserver =
+    typeof MutationObserver !== 'undefined' && gameRoot
+      ? new MutationObserver(() => {
+          if (!host.isConnected) return;
+          render();
+          syncLocalBlockingSurface();
+          syncNotificationSurface();
+        })
+      : null;
+  shellObserver?.observe(gameRoot!, {
+    attributes: true,
+    attributeFilter: ['data-screen'],
+  });
   window.addEventListener('food-atlas-ready', render);
   render();
+  const unmountMetaSheets = mountMetaSheetEnhancer();
 
   return () => {
+    unmountMetaSheets();
     unsubscribe();
     unbindSurfaceLifecycle();
+    shellObserver?.disconnect();
     pageLifecycleActive = false;
     syncNotificationSurface();
     window.removeEventListener('food-atlas-ready', render);
+    window.removeEventListener('keydown', onBannerEscape);
     window.removeEventListener(
       NOTIFICATION_BLOCKING_SURFACE_CHANGE,
       syncLocalBlockingSurface,
     );
     host.remove();
+    useGameStore.getState().setNotificationBannerPresented(false);
   };
 }

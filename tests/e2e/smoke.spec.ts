@@ -99,8 +99,15 @@ test.describe('screen navigation', () => {
     await assertScreenOpen(page, 'recipes-screen');
     await expect(page.getByRole('tab', { name: 'Flavors' })).toHaveAttribute('aria-selected', 'true');
     // Flavor profiles intentionally omit axes whose displayed value is zero.
-    await expect(page.locator('[data-testid="flavor-axis-row"]')).toHaveCount(5);
-    await expect(page.locator('.flavor-temp-badge')).toBeVisible();
+    // Scope to the selected detail pane (list chrome must not duplicate rows).
+    await expect(
+      page
+        .getByTestId('recipe-flavor-detail')
+        .locator('[data-testid="flavor-axis-row"]'),
+    ).toHaveCount(5);
+    await expect(
+      page.getByTestId('recipe-flavor-detail').locator('.flavor-temp-badge'),
+    ).toBeVisible();
 
     await page.getByRole('tab', { name: 'Recipes' }).click();
     await expect(page.locator('#recipe-progress')).not.toHaveText('Loading…');
@@ -254,11 +261,16 @@ test.describe('save code', () => {
 
     await page.locator('[data-testid="import-save-input"]').fill('RS1.not-a-valid-save-code');
     await page.locator('[data-testid="import-save-btn"]').click();
+    await page.locator('[data-testid="import-save-confirm"]').click();
     await expect(page.locator('[data-testid="save-feedback"]')).toHaveClass(/save-feedback-error/);
 
     await page.locator('[data-testid="import-save-input"]').fill(saveCode);
     await page.locator('[data-testid="import-save-btn"]').click();
-    await expect(page.locator('[data-testid="save-feedback"]')).toHaveClass(/save-feedback-success/);
+    await page.locator('[data-testid="import-save-confirm"]').click();
+    // Successful restore leaves Settings and lands on the restaurant shell.
+    await expect
+      .poll(() => page.evaluate(() => window.__E2E__!.getState().screen))
+      .toBe('restaurant');
 
     const restored = await page.evaluate(() => window.__E2E__!.getGameState());
     expect(restored.day).toBe(exported.day);

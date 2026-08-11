@@ -1,7 +1,38 @@
 import { useGameStore } from '../store/game-store.ts';
-import { playSfx, setAudioFlagBridge, syncMusicEnabled } from '../assets/audio.ts';
+import {
+  playSfx,
+  setAudioFlagBridge,
+  syncMusicEnabled,
+  startMusicLoop,
+} from '../assets/audio.ts';
+import {
+  emitVisualJuice,
+  type VisualJuiceKind,
+} from '../assets/visual-juice.ts';
 
 let attached = false;
+
+function masterVolume(): number {
+  const volume = useGameStore.getState().audioVolume;
+  return typeof volume === 'number' && Number.isFinite(volume)
+    ? Math.min(1, Math.max(0, volume))
+    : 1;
+}
+
+function playJuiceSfx(
+  id: 'serve' | 'review' | 'placement',
+  volume?: number,
+): void {
+  playSfx(id, (volume ?? 0.85) * masterVolume());
+  emitVisualJuice(id satisfies VisualJuiceKind);
+}
+
+function playScaledSfx(
+  id: Parameters<typeof playSfx>[0],
+  volume = 0.85,
+): void {
+  playSfx(id, volume * masterVolume());
+}
 
 export function attachAudioBridge(): () => void {
   if (attached || typeof window === 'undefined') return () => undefined;
@@ -14,6 +45,9 @@ export function attachAudioBridge(): () => void {
       musicEnabled: state.musicEnabled,
     });
     syncMusicEnabled(state.musicEnabled);
+    if (state.musicEnabled) {
+      startMusicLoop(0.35 * masterVolume());
+    }
   };
 
   syncFlags();
@@ -26,32 +60,39 @@ export function attachAudioBridge(): () => void {
     useGameStore.getState().activeDay?.floor?.tickets.map((ticket) => ticket.id) ??
       [],
   );
+  let prevDeliverSting = Boolean(
+    (useGameStore.getState() as { playDeliverSting?: boolean }).playDeliverSting,
+  );
 
   const unsubscribe = useGameStore.subscribe((state, prev) => {
-    if (state.audioEnabled !== prev.audioEnabled || state.musicEnabled !== prev.musicEnabled) {
+    if (
+      state.audioEnabled !== prev.audioEnabled ||
+      state.musicEnabled !== prev.musicEnabled ||
+      state.audioVolume !== prev.audioVolume
+    ) {
       syncFlags();
     }
 
     if (state.pendingReview && !prevPendingReview) {
-      playSfx('review');
+      playJuiceSfx('review');
     }
     prevPendingReview = state.pendingReview;
 
     if (state.activeDay && !prevActiveDay) {
-      playSfx('dayOpen');
+      playScaledSfx('dayOpen');
     }
     if (!state.activeDay && prevActiveDay && state.daySummary) {
-      playSfx('dayClose');
+      playScaledSfx('dayClose');
     }
     prevActiveDay = state.activeDay;
 
     if (state.cash < prevCash && state.screen === 'shop') {
-      playSfx('purchase');
+      playScaledSfx('purchase');
     }
     prevCash = state.cash;
 
     if (state.placements.length !== prevPlacementsLen && !state.activeDay) {
-      playSfx('placement', 0.65);
+      playJuiceSfx('placement', 0.65);
     }
     prevPlacementsLen = state.placements.length;
 
@@ -59,9 +100,25 @@ export function attachAudioBridge(): () => void {
       state.activeDay?.floor?.tickets.map((ticket) => ticket.id) ?? [],
     );
     if ([...nextTicketIds].some((ticketId) => !knownTicketIds.has(ticketId))) {
-      playSfx('uiClick', 0.7);
+      playScaledSfx('uiClick', 0.7);
     }
     knownTicketIds = nextTicketIds;
+
+    const deliverSting = Boolean(
+      (state as { playDeliverSting?: boolean }).playDeliverSting,
+    );
+    if (deliverSting && !prevDeliverSting) {
+      emitVisualJuice('serve');
+      queueMicrotask(() => {
+        const current = useGameStore.getState() as {
+          playDeliverSting?: boolean;
+        };
+        if (current.playDeliverSting) {
+          useGameStore.setState({ playDeliverSting: false } as never);
+        }
+      });
+    }
+    prevDeliverSting = deliverSting;
   });
 
   const originalDispatch = useGameStore.getState().dispatch.bind(useGameStore.getState());
@@ -69,7 +126,7 @@ export function attachAudioBridge(): () => void {
     dispatch: async (action) => {
       await originalDispatch(action);
       if (action.type === 'SERVE_DISH') {
-        playSfx('serve');
+        playJuiceSfx('serve');
       }
     },
   });

@@ -14,6 +14,7 @@ import {
   useGameStore,
   type Celebration,
 } from '../store/game-store.ts';
+import { restartNoticeTimer, peekNoticeRemainingMs, resolveNoticeScope } from '../store/notification-timer.ts';
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
@@ -140,8 +141,46 @@ export interface E2eBridge {
     revision: number;
     destination: { x: number; y: number };
   } | null;
+  getPendingApproachIntentDebug: () => {
+    revision: number;
+    kind: 'seat' | 'order' | 'deliver' | 'set' | 'clear' | 'compose';
+    destination: { x: number; y: number };
+  } | null;
   setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
   failNextSaveForTest: () => void;
+  /** Restart the active transient notice dwell (e2e pause/resume determinism). */
+  restartActiveNoticeDwell: () => boolean;
+  /**
+   * CI/debug snapshot of notice store + banner mount (no side effects).
+   * Logged by notice-resume-debug so failed CI runs show park/resume state.
+   */
+  getNoticeDebugSnapshot: () => {
+    screen: string;
+    rootScreen: string | null;
+    notificationSurfaceActive: boolean;
+    notificationBannerPresented: boolean;
+    noticeActive: {
+      id: string;
+      source: string;
+      scope: string;
+      body: string;
+      stepId: string | null;
+    } | null;
+    noticeSticky: { id: string; source: string } | null;
+    remainingMs: number | null;
+    hostConnected: boolean;
+    hostHidden: boolean | null;
+    bannerPresent: boolean;
+    bannerText: string | null;
+  };
+  /**
+   * Hold/release banner presentation for e2e remount-delay simulation.
+   * While held, dwell stays frozen even if screen==='restaurant' and the
+   * banner host would otherwise mark itself presented.
+   */
+  setNotificationBannerPresentationHold: (hold: boolean) => void;
+  /** Release hold and sync presented from the live banner host. */
+  releaseNotificationBannerPresentationHold: () => void;
   dismissPendingReview: () => Promise<void>;
   showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
@@ -402,6 +441,15 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
   if (typeof window === 'undefined') return;
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
 
+  // Deterministic geometry: skip enter/shimmer transitions that shift layout boxes
+  // under CI load. Dataset + game-root attribute are what canvas reads via
+  // prefersReducedMotion() (matchMedia alone is not enough in Playwright).
+  document.documentElement.dataset.vkReducedMotion = 'true';
+  document
+    .querySelector('#game-root')
+    ?.setAttribute('data-vk-reduced-motion', 'true');
+  document.documentElement.style.setProperty('scroll-behavior', 'auto');
+
   window.__E2E__ = {
     getPlacements() {
       return useGameStore.getState().placements.map((p) => ({
@@ -479,6 +527,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPendingSeatingIntentDebug() {
       return getRestaurantApp()?.getPendingSeatingIntentDebug() ?? null;
+    },
+
+    getPendingApproachIntentDebug() {
+      return getRestaurantApp()?.getPendingApproachIntentDebug() ?? null;
     },
 
     setWaitingGuestServiceBlockedForTest(blocked) {
@@ -653,6 +705,76 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       return useGameStore.getState().dismissPendingReview();
     },
 
+    restartActiveNoticeDwell() {
+      const notice = useGameStore.getState().noticeActive;
+      if (!notice || notice === useGameStore.getState().noticeSticky) {
+        return false;
+      }
+      // pauseRunningTimer inside restartNoticeTimer clears any in-flight timeout
+      // so the following sync re-arms from the full dwell.
+      restartNoticeTimer(notice);
+      useGameStore.getState().syncNotificationTimer();
+      return true;
+    },
+
+    getNoticeDebugSnapshot() {
+      const state = useGameStore.getState();
+      const notice = state.noticeActive;
+      const sticky = state.noticeSticky;
+      const host = document.querySelector<HTMLElement>(
+        '[data-testid="celebration-banner-host"]',
+      );
+      const banner = document.querySelector<HTMLElement>(
+        '[data-testid="notice-banner"]',
+      );
+      return {
+        screen: state.screen,
+        rootScreen:
+          document.querySelector<HTMLElement>('#game-root')?.dataset.screen ??
+          null,
+        notificationSurfaceActive: state.notificationSurfaceActive,
+        notificationBannerPresented: state.notificationBannerPresented,
+        noticeActive: notice
+          ? {
+              id: notice.id,
+              source: notice.source,
+              scope: resolveNoticeScope(notice),
+              body: notice.body,
+              stepId: notice.stepId ?? null,
+            }
+          : null,
+        noticeSticky: sticky
+          ? { id: sticky.id, source: sticky.source }
+          : null,
+        remainingMs: peekNoticeRemainingMs(),
+        hostConnected: Boolean(host?.isConnected),
+        hostHidden: host?.hidden ?? null,
+        bannerPresent: Boolean(banner),
+        bannerText: banner?.innerText?.trim() ?? null,
+      };
+    },
+
+    setNotificationBannerPresentationHold(hold) {
+      useGameStore.getState().setNotificationBannerPresentationHold(hold);
+    },
+
+    releaseNotificationBannerPresentationHold() {
+      useGameStore.getState().setNotificationBannerPresentationHold(false);
+      const host = document.querySelector<HTMLElement>(
+        '[data-testid="celebration-banner-host"]',
+      );
+      const hasBanner = Boolean(
+        host?.querySelector(
+          '[data-testid="notice-banner"], [data-testid="celebration-banner"]',
+        ),
+      );
+      useGameStore
+        .getState()
+        .setNotificationBannerPresented(
+          Boolean(host?.isConnected && host && !host.hidden && hasBanner),
+        );
+    },
+
     failNextSaveForTest() {
       const failOnceRepository: SaveRepository = {
         load: () => defaultSaveRepository.load(),
@@ -682,7 +804,6 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         ceremonyPrestige: Math.max(1, state.prestige),
       });
     },
-
     async prepareCookUiFixture() {
       if (!useGameStore.getState().activeDay) {
         await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });

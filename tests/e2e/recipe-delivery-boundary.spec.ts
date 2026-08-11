@@ -285,7 +285,9 @@ test.describe("retryable recipe delivery boundary", () => {
     await recipesRequest.waitForFirstRequest();
     recipesRequest.releaseFailure();
     await expect(
-      page.getByText("Could not deliver that dish — tap the guest to retry"),
+      page.getByTestId("notice-banner").getByText(
+        "Could not deliver that dish — tap the guest to retry",
+      ),
     ).toBeVisible();
     expect(
       await deliverySnapshot(page, fixture.ticketId, fixture.customerId),
@@ -335,6 +337,7 @@ test.describe("retryable recipe delivery boundary", () => {
     );
     await page.getByTestId("import-save-input").fill(saveCode);
     await page.getByTestId("import-save-btn").click();
+    await page.getByTestId("import-save-confirm").click();
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().screen))
       .toBe("restaurant");
