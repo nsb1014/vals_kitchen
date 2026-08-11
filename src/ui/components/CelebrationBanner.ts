@@ -232,11 +232,17 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     const state = useGameStore.getState();
     const notice = state.noticeActive;
     const celebration = state.celebrationQueue[0];
+    const noticeVisible = notice
+      ? noticeIsVisibleOnScreen(notice, state.screen)
+      : false;
+    // Park floor-scoped tips off the restaurant without dismissing them: keep
+    // noticeActive + remaining dwell, but drop the DOM node so Settings is
+    // uncovered and return remounts a fresh presentable banner.
     host.hidden =
       uiBlocked ||
-      (notice ? !noticeIsVisibleOnScreen(notice, state.screen) : false) ||
+      (notice ? !noticeVisible : false) ||
       (!notice && !celebration);
-    if (!notice && !celebration) {
+    if ((!notice || !noticeVisible) && !celebration) {
       host.innerHTML = '';
       lastCelebrationAnnounceKey = null;
       return;
@@ -253,7 +259,8 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
           const achievementIcon = achievement
             ? `<img class="celebration-achievement-badge" src="${achievementBadgeUrl(achievement.id)}" alt="" width="48" height="48" />`
             : '';
-          const coveredAttributes = notice ? ' aria-hidden="true" inert' : '';
+          // Only cover celebrations when a presentable notice is actually front.
+          const coveredAttributes = noticeVisible ? ' aria-hidden="true" inert' : '';
           const aria = celebrationBannerAria(celebration.kind);
           return `
             <aside class="celebration-banner celebration-banner-${celebration.kind}" data-testid="celebration-banner" role="${aria.role}" aria-live="${aria['aria-live']}" aria-atomic="${aria['aria-atomic']}" aria-label="${aria['aria-label']}"${coveredAttributes}>
@@ -268,10 +275,11 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
           `;
         })()
       : '';
-    const noticeHtml = notice
-      ? (() => {
-          const aria = noticeBannerAria(notice.source);
-          return `
+    const noticeHtml =
+      notice && noticeVisible
+        ? (() => {
+            const aria = noticeBannerAria(notice.source);
+            return `
           <aside class="notice-banner notice-banner-${notice.source}" data-testid="notice-banner" role="${aria.role}" aria-live="${aria['aria-live']}" aria-label="${aria['aria-label']}">
             <div class="notice-banner-copy" aria-hidden="true">
               ${notice.title ? `<strong class="notice-banner-title">${escapeHtml(notice.title)}</strong>` : ''}
@@ -280,8 +288,8 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
             <button class="notice-banner-dismiss" type="button" tabindex="${BANNER_DISMISS_TABINDEX}" aria-label="Dismiss notice">×</button>
           </aside>
         `;
-        })()
-      : '';
+          })()
+        : '';
 
     // Live payloads sit outside the banner testids so banner.innerText stays a
     // stable copy+dismiss string across pause/resume remounts (no duplicate
@@ -301,7 +309,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
 
     if (celebration) announceCelebrationIfNeeded(celebration);
     else lastCelebrationAnnounceKey = null;
-    if (notice) announceNoticeIfNeeded(notice);
+    if (notice && noticeVisible) announceNoticeIfNeeded(notice);
   };
 
   const syncLocalBlockingSurface = () => {

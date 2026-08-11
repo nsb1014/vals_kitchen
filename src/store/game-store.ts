@@ -400,6 +400,15 @@ function syncStoreNotificationTimer(): void {
       dismissNotice(notice) {
         const current = useGameStore.getState();
         if (current.noticeActive !== notice) return;
+        // Stale timeouts must not burn a parked floor tip while Settings /
+        // Recipes / etc. own the shell — keep remainingMs and re-pause.
+        if (
+          resolveNoticeScope(notice) === 'floor' &&
+          current.screen !== 'restaurant'
+        ) {
+          syncStoreNotificationTimer();
+          return;
+        }
         const nextNotice = current.noticeSticky;
         useGameStore.setState({
           noticeActive: nextNotice,

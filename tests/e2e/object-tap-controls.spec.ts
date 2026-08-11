@@ -1332,17 +1332,18 @@ test.describe('object tap controls', () => {
     await tapGridCell(page, fixture.door.x, fixture.door.y);
     await expect
       .poll(() =>
-        page.evaluate(
-          () =>
+        page.evaluate(() => {
+          const transition =
             document.querySelector<HTMLCanvasElement>(
               '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null,
-        ),
+            )?.dataset.roomTransition ?? null;
+          return {
+            transition,
+            room: window.__E2E__!.getState().activeFloorRoom,
+          };
+        }),
       )
-      .toBe('out');
-    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe(
-      'main',
-    );
+      .toEqual({ transition: 'out', room: 'main' });
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
       .toBe('back_kitchen');
@@ -1381,17 +1382,18 @@ test.describe('object tap controls', () => {
     );
     await expect
       .poll(() =>
-        page.evaluate(
-          () =>
+        page.evaluate(() => {
+          const transition =
             document.querySelector<HTMLCanvasElement>(
               '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null,
-        ),
+            )?.dataset.roomTransition ?? null;
+          return {
+            transition,
+            room: window.__E2E__!.getState().activeFloorRoom,
+          };
+        }),
       )
-      .toBe('out');
-    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe(
-      'main',
-    );
+      .toEqual({ transition: 'out', room: 'main' });
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
       .toBe('back_kitchen');
@@ -1626,16 +1628,19 @@ test.describe('object tap controls', () => {
     await expect
       .poll(
         () =>
-          page.evaluate(
-            () =>
+          page.evaluate(() => {
+            const transition =
               document.querySelector<HTMLCanvasElement>(
                 '[data-testid="restaurant-canvas"]',
-              )?.dataset.roomTransition ?? null,
-          ),
+              )?.dataset.roomTransition ?? null;
+            return {
+              transition,
+              room: window.__E2E__!.getState().activeFloorRoom,
+            };
+          }),
         { timeout: 10_000, intervals: [20, 20, 20, 50] },
       )
-      .toBe('out');
-    expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe('main');
+      .toEqual({ transition: 'out', room: 'main' });
 
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom), {

@@ -1467,74 +1467,65 @@ export class RestaurantApp {
     if (this.roomTransitionInFlight) return;
     this.cancelPendingSeatingIntent();
     const canvas = this.app.canvas;
-    if (typeof canvas.animate !== 'function' || prefersReducedMotion()) {
-      // Keep the out marker for the authored fade-out budget so walk-then-room
-      // observers (and e2e polls) can sample it under reduced-motion snaps.
-      this.roomTransitionInFlight = true;
-      canvas.dataset.roomTransition = 'out';
-      canvas.style.pointerEvents = 'none';
-      if (this.roomTransitionTimer !== null) {
-        window.clearTimeout(this.roomTransitionTimer);
-      }
-      this.roomTransitionTimer = window.setTimeout(() => {
-        this.roomTransitionTimer = null;
-        if (!this.mounted) {
-          this.roomTransitionInFlight = false;
-          delete canvas.dataset.roomTransition;
-          canvas.style.removeProperty('pointer-events');
-          return;
-        }
-        changeRoom();
-        this.roomTransitionInFlight = false;
-        delete canvas.dataset.roomTransition;
-        canvas.style.removeProperty('pointer-events');
-      }, ROOM_FADE_OUT_MS);
-      return;
-    }
-
     this.roomTransitionInFlight = true;
     canvas.style.pointerEvents = 'none';
-    void this.runRoomTransition(changeRoom);
+    // Reduced-motion / missing animate: same out→swap→in phase markers as the
+    // motion path, driven by Animation.finished (not setTimeout) so completion
+    // cannot race ahead of observers sampling `data-room-transition=out`.
+    void this.runRoomTransition(changeRoom, prefersReducedMotion());
   }
 
-  private async runRoomTransition(changeRoom: () => boolean): Promise<void> {
+  private async runRoomTransition(
+    changeRoom: () => boolean,
+    reducedMotion = false,
+  ): Promise<void> {
     const canvas = this.app.canvas;
     let roomChanged = false;
+    const hold = async (
+      phase: 'out' | 'in',
+      duration: number,
+    ): Promise<void> => {
+      canvas.dataset.roomTransition = phase;
+      if (typeof canvas.animate !== 'function') {
+        await new Promise<void>((resolve) => {
+          this.roomTransitionTimer = window.setTimeout(() => {
+            this.roomTransitionTimer = null;
+            resolve();
+          }, duration);
+        });
+        return;
+      }
+      const frames = reducedMotion
+        ? [{ opacity: 1 }, { opacity: 1 }]
+        : phase === 'out'
+          ? [{ opacity: 1 }, { opacity: 0 }]
+          : [{ opacity: 0 }, { opacity: 1 }];
+      const animation = canvas.animate(frames, {
+        duration,
+        easing: phase === 'out' ? 'ease-in' : 'ease-out',
+        fill: 'forwards',
+      });
+      this.roomTransitionAnimation = animation;
+      await animation.finished;
+      animation.cancel();
+    };
     try {
-      canvas.dataset.roomTransition = 'out';
-      const fadeOut = canvas.animate(
-        [{ opacity: 1 }, { opacity: 0 }],
-        {
-          duration: ROOM_FADE_OUT_MS,
-          easing: 'ease-in',
-          fill: 'forwards',
-        },
-      );
-      this.roomTransitionAnimation = fadeOut;
-      await fadeOut.finished;
-      fadeOut.cancel();
+      await hold('out', ROOM_FADE_OUT_MS);
 
       if (!this.mounted) return;
       roomChanged = changeRoom();
       if (!roomChanged) return;
 
-      canvas.dataset.roomTransition = 'in';
-      const fadeIn = canvas.animate(
-        [{ opacity: 0 }, { opacity: 1 }],
-        {
-          duration: ROOM_FADE_IN_MS,
-          easing: 'ease-out',
-          fill: 'forwards',
-        },
-      );
-      this.roomTransitionAnimation = fadeIn;
-      await fadeIn.finished;
-      fadeIn.cancel();
+      await hold('in', ROOM_FADE_IN_MS);
     } catch {
       // Cancellation during teardown is expected. If animation support fails
       // while still mounted, preserve the doorway action without the effect.
       if (this.mounted && !roomChanged) changeRoom();
     } finally {
+      if (this.roomTransitionTimer !== null) {
+        window.clearTimeout(this.roomTransitionTimer);
+        this.roomTransitionTimer = null;
+      }
       this.roomTransitionAnimation = null;
       this.roomTransitionInFlight = false;
       delete canvas.dataset.roomTransition;
