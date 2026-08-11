@@ -133,8 +133,10 @@ test.describe('ticket planning panel', () => {
     await prepareTickets(page, 2, true);
 
     const toggle = page.getByTestId('floor-tickets-toggle');
-    await expect(toggle).toContainText(/^Carrying .+ · 2\/4$/);
-    await toggle.click();
+    // Carry toggle appends an explicit deliver cue while a plated dish is held.
+    await expect(toggle).toContainText(/^Carrying .+ · 2\/4 → deliver$/);
+    // Round-3: picking up a dish auto-opens the ticket menu.
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const carryingRow = page.locator('.floor-tickets-item.carrying');
     await expect(carryingRow).toContainText('Carrying');
     const carryingGuest = await carryingRow

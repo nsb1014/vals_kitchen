@@ -14,6 +14,7 @@ import {
   useGameStore,
   type Celebration,
 } from '../store/game-store.ts';
+import { restartNoticeTimer } from '../store/notification-timer.ts';
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
@@ -147,6 +148,8 @@ export interface E2eBridge {
   } | null;
   setWaitingGuestServiceBlockedForTest: (blocked: boolean) => void;
   failNextSaveForTest: () => void;
+  /** Restart the active transient notice dwell (e2e pause/resume determinism). */
+  restartActiveNoticeDwell: () => boolean;
   dismissPendingReview: () => Promise<void>;
   showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
@@ -669,6 +672,18 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     dismissPendingReview() {
       return useGameStore.getState().dismissPendingReview();
+    },
+
+    restartActiveNoticeDwell() {
+      const notice = useGameStore.getState().noticeActive;
+      if (!notice || notice === useGameStore.getState().noticeSticky) {
+        return false;
+      }
+      // pauseRunningTimer inside restartNoticeTimer clears any in-flight timeout
+      // so the following sync re-arms from the full dwell.
+      restartNoticeTimer(notice);
+      useGameStore.getState().syncNotificationTimer();
+      return true;
     },
 
     failNextSaveForTest() {

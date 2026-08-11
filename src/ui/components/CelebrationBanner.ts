@@ -149,7 +149,6 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
 
   let pageLifecycleActive = false;
   let lastCelebrationAnnounceKey: string | null = null;
-  let lastNoticeAnnounceKey: string | null = null;
   const computeUiBlocked = () =>
     selectNotificationUiBlocked(useGameStore.getState()) ||
     hasLocalNotificationBlockingSurface();
@@ -216,26 +215,17 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   };
 
   const announceNoticeIfNeeded = (notice: Notice): void => {
-    const key = `${notice.id}\0${notice.title ?? ''}\0${notice.body}`;
     const live = host.querySelector<HTMLElement>(
       '[data-testid="notice-live-text"]',
     );
     if (!live) return;
-    const text = notice.title
-      ? `${notice.title}. ${notice.body}`
-      : notice.body;
-    if (key === lastNoticeAnnounceKey) {
-      live.textContent = text;
-      live.removeAttribute('aria-hidden');
-      live.setAttribute('aria-live', 'polite');
-      live.setAttribute('role', 'status');
-      return;
-    }
-    lastNoticeAnnounceKey = key;
-    live.removeAttribute('aria-hidden');
-    live.setAttribute('aria-live', 'polite');
-    live.setAttribute('role', 'status');
-    replaceLiveRegionText(live, text);
+    // The visible aside already has role=status + aria-live. Keep the twin
+    // empty/hidden so Playwright getByText and SR trees do not see two copies.
+    void notice;
+    live.textContent = '';
+    live.setAttribute('aria-hidden', 'true');
+    live.removeAttribute('aria-live');
+    live.removeAttribute('role');
   };
 
   const render = () => {
@@ -249,7 +239,6 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     if (!notice && !celebration) {
       host.innerHTML = '';
       lastCelebrationAnnounceKey = null;
-      lastNoticeAnnounceKey = null;
       return;
     }
 
@@ -313,7 +302,6 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     if (celebration) announceCelebrationIfNeeded(celebration);
     else lastCelebrationAnnounceKey = null;
     if (notice) announceNoticeIfNeeded(notice);
-    else lastNoticeAnnounceKey = null;
   };
 
   const syncLocalBlockingSurface = () => {

@@ -258,6 +258,14 @@ test.describe('service visual continuity', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoFreshGame(page);
+    // Assert the animated path: clear the e2e reduced-motion dataset so
+    // service-panel-enter actually runs (OS media is already no-preference).
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.vkReducedMotion;
+      document
+        .querySelector('#game-root')
+        ?.removeAttribute('data-vk-reduced-motion');
+    });
     await page.getByTestId('open-day-btn').click();
 
     const modifier = page.getByTestId('modifier-sheet');
@@ -276,11 +284,24 @@ test.describe('service visual continuity', () => {
     await waitForServiceStarted(page);
     await page.evaluate(async () => {
       await window.__E2E__!.prepareCookUiFixture();
+      // Clear reduced-motion again in case a remount re-applied the dataset.
+      delete document.documentElement.dataset.vkReducedMotion;
+      document
+        .querySelector('#game-root')
+        ?.removeAttribute('data-vk-reduced-motion');
       window.__E2E__!.openComposeSheet();
     });
     const compose = page.getByTestId('compose-sheet');
     await expect(compose).toBeVisible();
     await expect(compose).toHaveAttribute('data-panel-entering', '');
+    expect(
+      await compose.evaluate((element) =>
+        getComputedStyle(element).animationName
+          .split(',')
+          .map((name) => name.trim())
+          .includes('service-panel-enter'),
+      ),
+    ).toBe(true);
     await compose.evaluate(async (element) => {
       await Promise.all(element.getAnimations().map((animation) => animation.finished));
     });
@@ -383,7 +404,11 @@ test.describe('service visual continuity', () => {
       expect(controls.buttons.length).toBeGreaterThan(0);
       for (const control of controls.buttons) {
         expect(control.height).toBeCloseTo(controls.expectedHeight, 0);
-        expect(control.labelScrollHeight).toBeLessThanOrEqual(control.labelClientHeight);
+        // Chromium -webkit-line-clamp reports scrollHeight = clientHeight + 1px;
+        // same allowance as floor-notifications zoom CTA (not a looser overflow budget).
+        expect(control.labelScrollHeight).toBeLessThanOrEqual(
+          control.labelClientHeight + 1,
+        );
       }
     }
   });

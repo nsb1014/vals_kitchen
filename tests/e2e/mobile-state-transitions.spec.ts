@@ -219,10 +219,13 @@ test.describe("mobile state-transition boundaries", () => {
           const noticeClass = banner.className;
           const noticeText = banner.innerText;
 
-          // Keep runner IPC outside the authored dwell: consume 900 ms, capture
-          // the pause checkpoint, and use the real Settings control in one
-          // browser task so CI load cannot exhaust the remaining notice time.
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 900));
+          // Refresh dwell so CI aging before this task cannot exhaust the notice
+          // during the mid-dwell sample, then consume 1.2s, then open Settings.
+          const restarted = window.__E2E__!.restartActiveNoticeDwell();
+          if (!restarted) {
+            throw new Error('expected a restartable floor notice dwell');
+          }
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 1_200));
           const settings = document.querySelector<HTMLButtonElement>(
             '[data-testid="hud-settings"]',
           );

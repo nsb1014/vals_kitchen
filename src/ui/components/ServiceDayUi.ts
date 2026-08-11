@@ -228,7 +228,9 @@ export function mountServiceDayUi(
     if (servicePanelKind !== kind) servicePanelEnteredAt = now;
     servicePanelKind = kind;
     serviceOverlay.hidden = false;
-    const panel = serviceOverlay.firstElementChild;
+    // Floor compose mounts a dismiss scrim before the sheet; always mark the
+    // `.service-panel` so enter animation / data-panel-entering land on the sheet.
+    const panel = serviceOverlay.querySelector(':scope > .service-panel');
     const entryElapsed = now - servicePanelEnteredAt;
     if (
       entryElapsed < SERVICE_PANEL_ENTER_MS &&

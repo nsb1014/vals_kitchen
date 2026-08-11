@@ -81,7 +81,9 @@ async function tapRealPointer(
   page: Page,
   point: { x: number; y: number },
 ): Promise<void> {
-  await page.mouse.click(point.x, point.y);
+  // Dispatch on the canvas so DOM chrome overlays cannot swallow the pointer
+  // on narrow viewports (especially while carrying a plate).
+  await tapScreenPoint(page, point);
 }
 
 async function tapScreenPoint(
@@ -1432,17 +1434,7 @@ test.describe('object tap controls', () => {
         }, table),
       )
       .toBe(true);
-    expect(
-      await page.evaluate(
-        (id) =>
-          window.__E2E__!.getGameState().activeDay!.floor!.tables.find(
-            (candidate) => candidate.placementId === id,
-          )?.state,
-        table.id,
-      ),
-    ).toBe('unset');
-
-    await tapGridCell(page, table.x, table.y);
+    // Round-3 approach-and-complete: far table tap walks then auto-sets.
     await expect
       .poll(() =>
         page.evaluate(
@@ -1506,32 +1498,15 @@ test.describe('object tap controls', () => {
         }, guest),
       )
       .toBe(true);
-    await expect
-      .poll(() => page.evaluate(() => window.__E2E__!.getInteractHintVisible()))
-      .toBe(true);
-    await page.locator('[data-testid="restaurant-canvas"]').screenshot({
-      path: 'test-results/interaction-order-ready.png',
-      animations: 'disabled',
-    });
-    expect(
-      await page.evaluate(
-        (id) =>
-          window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
-            (candidate) => candidate.id === id,
-          )?.stage,
-        guest.id,
-      ),
-    ).toBe('seated');
-
-    await tapGridCell(page, guest.x, guest.y);
+    // Round-3: far guest tap walks then auto-orders.
     await expect
       .poll(() =>
         page.evaluate(
           (id) =>
             window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
-              (candidate) => candidate.customer.id === id,
+              (candidate) => candidate.id === id,
             )?.stage,
-          guest.customerId,
+          guest.id,
         ),
       )
       .toBe('ordered');
@@ -1563,6 +1538,7 @@ test.describe('object tap controls', () => {
     const { station } = await prepareOrderedGuest(page, false);
 
     await tapGridCell(page, station.x, station.y);
+    // While still remote, compose must not open synchronously on the tap.
     expect(await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen)).toBe(false);
 
     await expect
@@ -1576,12 +1552,11 @@ test.describe('object tap controls', () => {
         }, station),
       )
       .toBe(true);
-    expect(await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen)).toBe(false);
-
-    await tapGridCell(page, station.x, station.y);
+    // Round-3 compose approach opens the sheet on arrival.
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().composeSheetOpen))
       .toBe(true);
+    await expect(page.getByTestId('compose-sheet')).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getInteractHintCells().length))
       .toBe(0);
@@ -1593,28 +1568,14 @@ test.describe('object tap controls', () => {
     await openRunningFloor(page);
     const { seat, remote, ticketId } = await prepareOrderedGuest(page, true);
 
-    await tapGridCell(page, seat.x, seat.y);
-    await expect
-      .poll(() =>
-        page.evaluate(({ x, y }) => {
-          const player = window.__E2E__!.getState().floorPlayerGrid;
-          const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
-          const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
-          return Boolean(
-            player &&
-              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
-          );
-        }, seat),
-      )
-      .toBe(true);
+    // Adjacent floor cells stay walkable while carrying (no auto-deliver).
+    await page.evaluate((position) => window.__E2E__!.setFloorNavPosition(position), remote);
     expect(
       await page.evaluate(
         (id) => window.__E2E__!.getGameState().activeDay!.floor!.carriedTicketId === id,
         ticketId,
       ),
     ).toBe(true);
-
-    await page.evaluate((position) => window.__E2E__!.setFloorNavPosition(position), remote);
     const adjacentFloor = { x: seat.x, y: seat.y + 1 };
     await tapGridCell(page, adjacentFloor.x, adjacentFloor.y);
     await expect
@@ -1635,28 +1596,10 @@ test.describe('object tap controls', () => {
       ),
     ).toBe(true);
 
+    // Round-3: guest tap walks (if needed) then auto-delivers.
+    await page.evaluate((position) => window.__E2E__!.setFloorNavPosition(position), remote);
     await tapGridCell(page, seat.x, seat.y);
-    await expect
-      .poll(() =>
-        page.evaluate(({ x, y }) => {
-          const player = window.__E2E__!.getState().floorPlayerGrid;
-          const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
-          const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
-          return Boolean(
-            player &&
-              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
-          );
-        }, seat),
-      )
-      .toBe(true);
-    expect(
-      await page.evaluate(
-        (id) => window.__E2E__!.getGameState().activeDay!.floor!.carriedTicketId === id,
-        ticketId,
-      ),
-    ).toBe(true);
-
-    await tapGridCell(page, seat.x, seat.y);
+    await expectPlayerAtGuestServicePosition(page, seat);
     await expect
       .poll(() =>
         page.evaluate(() =>

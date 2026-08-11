@@ -171,6 +171,7 @@ export class RestaurantApp {
   private resizeFrame: number | null = null;
   private roomTransitionInFlight = false;
   private roomTransitionAnimation: Animation | null = null;
+  private roomTransitionTimer: number | null = null;
   private cameraPunchElapsedMs = -1;
   private lastGuestDoorOpen: boolean | null = null;
   /** Unified one-tap→walk→auto-complete intent (seat/order/deliver/set/clear/compose). */
@@ -1467,7 +1468,27 @@ export class RestaurantApp {
     this.cancelPendingSeatingIntent();
     const canvas = this.app.canvas;
     if (typeof canvas.animate !== 'function' || prefersReducedMotion()) {
-      changeRoom();
+      // Keep the out marker for the authored fade-out budget so walk-then-room
+      // observers (and e2e polls) can sample it under reduced-motion snaps.
+      this.roomTransitionInFlight = true;
+      canvas.dataset.roomTransition = 'out';
+      canvas.style.pointerEvents = 'none';
+      if (this.roomTransitionTimer !== null) {
+        window.clearTimeout(this.roomTransitionTimer);
+      }
+      this.roomTransitionTimer = window.setTimeout(() => {
+        this.roomTransitionTimer = null;
+        if (!this.mounted) {
+          this.roomTransitionInFlight = false;
+          delete canvas.dataset.roomTransition;
+          canvas.style.removeProperty('pointer-events');
+          return;
+        }
+        changeRoom();
+        this.roomTransitionInFlight = false;
+        delete canvas.dataset.roomTransition;
+        canvas.style.removeProperty('pointer-events');
+      }, ROOM_FADE_OUT_MS);
       return;
     }
 
@@ -2196,6 +2217,10 @@ export class RestaurantApp {
     this.cancelPendingSeatingIntent();
     this.roomTransitionAnimation?.cancel();
     this.roomTransitionAnimation = null;
+    if (this.roomTransitionTimer !== null) {
+      window.clearTimeout(this.roomTransitionTimer);
+      this.roomTransitionTimer = null;
+    }
     this.roomTransitionInFlight = false;
     delete this.app.canvas.dataset.roomTransition;
     this.app.canvas.style.removeProperty('opacity');

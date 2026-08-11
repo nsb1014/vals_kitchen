@@ -1298,10 +1298,10 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 
 .floor-actions .service-btn {
   width: 100%;
-  /* Height tracks the 2-line label budget (e2e 200% zoom assertion). Do not
-   * force a 44px min here — that exceeds labelMaxHeight + padding at zoom. */
-  height: auto;
-  min-height: 0;
+  /* Fill the reserved CTA strip at normal zoom (service-visual geometry).
+   * Cap growth; label clamp + overflow:hidden keep 200% zoom activatable. */
+  height: var(--vk-cta-h);
+  min-height: var(--vk-cta-h);
   max-height: var(--vk-cta-h);
   box-sizing: border-box;
   min-width: 0;
@@ -1395,9 +1395,9 @@ html[data-vk-reduced-motion='true'] .floor-tickets-toggle.in-flight::after,
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  max-height: calc(1.2em + 1.2em);
+  line-height: 14px;
+  max-height: 28px;
   overflow: hidden;
-  line-height: 1.2;
   overflow-wrap: anywhere;
   white-space: normal;
   min-width: 0;
@@ -1430,6 +1430,18 @@ html[data-vk-reduced-motion='true'] .floor-tickets-toggle.in-flight::after,
 
   .floor-actions {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* 321–359px 4-col: keep “Take orders” inside the 2-line clamp. */
+  .floor-actions .service-btn {
+    padding-inline: 0.2rem;
+    gap: 0.2rem;
+  }
+
+  .floor-actions .floor-action-label {
+    font-size: 11px;
+    line-height: 13px;
+    max-height: 26px;
   }
 }
 
@@ -2455,11 +2467,10 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   font-weight: 800;
 }
 
-/* Floor chrome must stay within the 2-line label height budget (zoom e2e).
- * Reassert after the chibi .service-btn min-height: 48px reset above. */
+/* Floor chrome fills the reserved CTA strip; reassert after chibi .service-btn. */
 .floor-actions .service-btn {
-  min-height: 0;
-  height: auto;
+  height: var(--vk-cta-h);
+  min-height: var(--vk-cta-h);
   max-height: var(--vk-cta-h);
   padding-block: 0.2rem;
   padding-inline: 0.3rem;
@@ -3247,5 +3258,50 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   .compose-sheet-footer #plate-btn {
     min-height: 44px;
     height: 44px;
+  }
+}
+
+/* Mobile portrait review/summary: after chibi theme so padding/margins stick.
+ * Keeps cook-ui compact ratio budgets without touching short-landscape rules. */
+@media (max-width: 899px) and (min-height: 521px) {
+  .service-panel.review-service-panel {
+    padding: 0.45rem 0.55rem;
+  }
+
+  .review-service-panel .service-card {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .review-service-panel .review-detail {
+    margin-block: 0.12rem;
+  }
+
+  .review-service-panel .review-stars {
+    margin-block: 0.15rem 0.05rem;
+    font-size: 18px;
+  }
+
+  .review-service-panel .sheet-footer {
+    margin-top: 0.3rem;
+  }
+
+  .service-panel.sheet-tier-near-full.summary-service-panel {
+    padding: 0.45rem 0.65rem 0.55rem;
+  }
+
+  .summary-service-panel .service-card {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .summary-service-panel .review-detail {
+    margin-block: 0.16rem;
+  }
+
+  .summary-service-panel .sheet-header {
+    min-height: 0;
+  }
+
+  .summary-service-panel .service-title {
+    margin-bottom: 0.3rem;
   }
 }

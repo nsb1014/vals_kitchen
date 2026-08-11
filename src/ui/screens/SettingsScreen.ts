@@ -192,6 +192,10 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
       showFeedback(buildImportSuccessFeedback(state.day, state.prestige));
       importInput.value = '';
       syncControls(state);
+      // importSaveCode already sets screen=restaurant; keep the shell data-screen
+      // and return-route bookkeeping aligned when restore finishes from Settings.
+      trackScreenChange('restaurant');
+      showScreen('restaurant');
     } else {
       showFeedback(buildImportErrorFeedback(new Error(result.error)));
     }
