@@ -12,7 +12,7 @@ import { renderFoodIconHtml } from './food-icon.ts';
 
 /** Shared long-press coach copy — compose chips + inspector modal. */
 export const FLAVOR_INSPECTOR_LONG_PRESS_HINT =
-  'Tip: long-press an ingredient chip (about half a second) to inspect its 16-axis profile.';
+  'Tip: tap the i button on a chip (or long-press) to inspect its flavor profile.';
 
 export function renderFlavorInspectorContent(
   ingredientId: string,

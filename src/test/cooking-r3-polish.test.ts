@@ -53,6 +53,8 @@ describe('compose progress feedback', () => {
     expect(html).toContain('data-testid="compose-progress"');
     expect(html).toContain('data-status="ready"');
     expect(html).toContain('data-coherence="matched"');
+    expect(html).toContain('data-testid="compose-progress-count"');
+    expect(html).toMatch(/3 \/ 6/);
   });
 });
 
