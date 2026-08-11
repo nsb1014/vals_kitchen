@@ -281,21 +281,6 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
     return style.display !== 'none' && style.visibility !== 'hidden';
   };
 
-  const resolveFocusReturn = (): HTMLElement | null => {
-    const byTestId = focusReturnTestId
-      ? document.querySelector<HTMLElement>(
-          `[data-testid="${CSS.escape(focusReturnTestId)}"]`,
-        )
-      : null;
-    const target = byTestId ?? focusReturnElement;
-    if (!isUsableFocusTarget(target)) {
-      return document.querySelector<HTMLElement>(
-        '[data-testid="restaurant-canvas"]',
-      );
-    }
-    return target;
-  };
-
   const syncVisibility = () => {
     const state = useGameStore.getState();
     const nextVisible = state.screen === 'settings';
@@ -313,19 +298,35 @@ export function mountSettingsScreen(container: HTMLElement): () => void {
       });
     } else if (!nextVisible && visible) {
       closeConfirm();
-      queueMicrotask(() => {
-        const active =
-          document.activeElement instanceof HTMLElement
-            ? document.activeElement
+      // Capture before clearing so a double-rAF restore can re-query by testid
+      // after NavigationBar hides mid-service Floor chrome and HUD re-renders
+      // replace the opener node.
+      const savedTestId = focusReturnTestId;
+      const savedElement = focusReturnElement;
+      focusReturnTestId = null;
+      focusReturnElement = null;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const active =
+            document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+          // Destination control still interactive on the new screen (e.g. Recipes
+          // from pre-day Settings) — keep that focus.
+          if (isUsableFocusTarget(active)) return;
+          const byTestId = savedTestId
+            ? document.querySelector<HTMLElement>(
+                `[data-testid="${CSS.escape(savedTestId)}"]`,
+              )
             : null;
-        if (isUsableFocusTarget(active)) {
-          focusReturnTestId = null;
-          focusReturnElement = null;
-          return;
-        }
-        resolveFocusReturn()?.focus({ preventScroll: true });
-        focusReturnTestId = null;
-        focusReturnElement = null;
+          const target =
+            (isUsableFocusTarget(byTestId) ? byTestId : null) ??
+            (isUsableFocusTarget(savedElement) ? savedElement : null) ??
+            document.querySelector<HTMLElement>(
+              '[data-testid="restaurant-canvas"]',
+            );
+          target?.focus({ preventScroll: true });
+        });
       });
     }
     panel.hidden = !nextVisible;

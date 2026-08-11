@@ -130,6 +130,25 @@ export function clearNotificationTimers(): void {
 }
 
 /**
+ * Remaining dwell for the timed transient notice, accounting for an in-flight
+ * run. Returns null when no notice timer is armed (sticky / idle).
+ */
+export function peekNoticeRemainingMs(nowMs: number = timerNow()): number | null {
+  if (!noticeTimer || !timedNotice) return null;
+  if (
+    runningTarget?.kind === 'notice' &&
+    runningTimerFields === noticeTimer &&
+    noticeTimer.runningSinceMs !== null
+  ) {
+    return Math.max(
+      0,
+      noticeTimer.remainingMs - Math.max(0, nowMs - noticeTimer.runningSinceMs),
+    );
+  }
+  return noticeTimer.remainingMs;
+}
+
+/**
  * Runs only the logical front timer. Sticky notices have no dwell timer and
  * cover (pause) the celebration head until dismissed or replaced.
  */

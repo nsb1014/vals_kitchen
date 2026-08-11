@@ -14,7 +14,7 @@ import {
   useGameStore,
   type Celebration,
 } from '../store/game-store.ts';
-import { restartNoticeTimer } from '../store/notification-timer.ts';
+import { restartNoticeTimer, peekNoticeRemainingMs, resolveNoticeScope } from '../store/notification-timer.ts';
 import { selectComposeDraftIds } from '../store/selectors/service-day.ts';
 import { getDomainContext, isRecipesContentReady, isScoringContentReady } from './content-loader.ts';
 import type { RestaurantApp } from '../canvas/RestaurantApp.ts';
@@ -150,6 +150,28 @@ export interface E2eBridge {
   failNextSaveForTest: () => void;
   /** Restart the active transient notice dwell (e2e pause/resume determinism). */
   restartActiveNoticeDwell: () => boolean;
+  /**
+   * CI/debug snapshot of notice store + banner mount (no side effects).
+   * Logged by notice-resume-debug so failed CI runs show park/resume state.
+   */
+  getNoticeDebugSnapshot: () => {
+    screen: string;
+    rootScreen: string | null;
+    notificationSurfaceActive: boolean;
+    noticeActive: {
+      id: string;
+      source: string;
+      scope: string;
+      body: string;
+      stepId: string | null;
+    } | null;
+    noticeSticky: { id: string; source: string } | null;
+    remainingMs: number | null;
+    hostConnected: boolean;
+    hostHidden: boolean | null;
+    bannerPresent: boolean;
+    bannerText: string | null;
+  };
   dismissPendingReview: () => Promise<void>;
   showCeremonyOverPendingReview: () => void;
   prepareCookUiFixture: () => Promise<void>;
@@ -686,6 +708,42 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       return true;
     },
 
+    getNoticeDebugSnapshot() {
+      const state = useGameStore.getState();
+      const notice = state.noticeActive;
+      const sticky = state.noticeSticky;
+      const host = document.querySelector<HTMLElement>(
+        '[data-testid="celebration-banner-host"]',
+      );
+      const banner = document.querySelector<HTMLElement>(
+        '[data-testid="notice-banner"]',
+      );
+      return {
+        screen: state.screen,
+        rootScreen:
+          document.querySelector<HTMLElement>('#game-root')?.dataset.screen ??
+          null,
+        notificationSurfaceActive: state.notificationSurfaceActive,
+        noticeActive: notice
+          ? {
+              id: notice.id,
+              source: notice.source,
+              scope: resolveNoticeScope(notice),
+              body: notice.body,
+              stepId: notice.stepId ?? null,
+            }
+          : null,
+        noticeSticky: sticky
+          ? { id: sticky.id, source: sticky.source }
+          : null,
+        remainingMs: peekNoticeRemainingMs(),
+        hostConnected: Boolean(host?.isConnected),
+        hostHidden: host?.hidden ?? null,
+        bannerPresent: Boolean(banner),
+        bannerText: banner?.innerText?.trim() ?? null,
+      };
+    },
+
     failNextSaveForTest() {
       const failOnceRepository: SaveRepository = {
         load: () => defaultSaveRepository.load(),
@@ -715,7 +773,6 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
         ceremonyPrestige: Math.max(1, state.prestige),
       });
     },
-
     async prepareCookUiFixture() {
       if (!useGameStore.getState().activeDay) {
         await useGameStore.getState().dispatch({ type: 'OPEN_DAY' });

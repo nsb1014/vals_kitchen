@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNewGameState } from '../../domain/state/game-state.ts';
 import { useGameStore } from '../../store/game-store.ts';
 import {
+  NOTICE_DURATION_MS,
+  peekNoticeRemainingMs,
   resolveNoticeScope,
   TUTORIAL_NOTICE_DURATION_MS,
 } from '../../store/notification-timer.ts';
@@ -176,9 +178,11 @@ describe('notification timer', () => {
 
   it('pauses when notificationSurfaceActive becomes false', () => {
     useGameStore.getState().setFloorToast('Hi');
+    expect(peekNoticeRemainingMs()).toBe(NOTICE_DURATION_MS);
     useGameStore.getState().setNotificationSurfaceActive(false);
     vi.advanceTimersByTime(10_000);
     expect(useGameStore.getState().noticeActive?.body).toBe('Hi');
+    expect(peekNoticeRemainingMs()).toBe(NOTICE_DURATION_MS);
     useGameStore.getState().setNotificationSurfaceActive(true);
     vi.advanceTimersByTime(2500);
     expect(useGameStore.getState().noticeActive).toBeNull();

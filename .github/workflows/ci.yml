@@ -152,3 +152,14 @@ jobs:
         run: npm run test:e2e
         env:
           CI: true
+
+      - name: Upload Playwright failure artifacts
+        if: failure() && steps.scope.outputs.core == 'true' && steps.scope.outputs.e2e == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 5

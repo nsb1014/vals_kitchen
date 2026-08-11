@@ -584,6 +584,25 @@ declare global {
       }) => Promise<void>;
       setFloorNavPosition: (pos: { x: number; y: number }) => void;
       failNextSaveForTest: () => void;
+      restartActiveNoticeDwell: () => boolean;
+      getNoticeDebugSnapshot: () => {
+        screen: string;
+        rootScreen: string | null;
+        notificationSurfaceActive: boolean;
+        noticeActive: {
+          id: string;
+          source: string;
+          scope: string;
+          body: string;
+          stepId: string | null;
+        } | null;
+        noticeSticky: { id: string; source: string } | null;
+        remainingMs: number | null;
+        hostConnected: boolean;
+        hostHidden: boolean | null;
+        bannerPresent: boolean;
+        bannerText: string | null;
+      };
       dismissPendingReview: () => Promise<void>;
       prepareCookUiFixture: () => Promise<void>;
       prepareFourFacingSeatedGuestsFixture: () => Promise<

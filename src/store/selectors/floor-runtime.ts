@@ -31,12 +31,11 @@ export function selectFloorRuntimeRunning(
 }
 
 /**
- * Cap a single ticker frame so CI hitch / background catch-up cannot jump
- * doorway crop fractions or approach holds by more than ~one tile substep.
- * Doorway continuity e2e samples per rAF and rejects per-frame visibility
- * deltas above ~0.26; uncapped 100ms+ frames at 2.4 tiles/s overshoot that.
+ * Cap hitch frames under the doorway e2e max visibility delta (~0.26): at
+ * 2.4 tiles/s a 48ms step can still crest that band, so keep the cap at one
+ * 30fps frame (33ms) with headroom.
  */
-export const MAX_FLOOR_FRAME_DELTA_MS = 48;
+export const MAX_FLOOR_FRAME_DELTA_MS = 33;
 
 /** Discard the first frame after a pause so elapsed hidden time cannot advance play. */
 export function resumeSafeFloorDeltaMs(
