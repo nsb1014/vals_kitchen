@@ -79,19 +79,14 @@ export function walkStepSquash(
   };
 }
 
-export function actorIdleBobY(nowMs: number, phase = 0): number {
-  return Math.sin(nowMs / 420 + phase) * 1.15;
-}
-
 export function actorEatingPulse(
   nowMs: number,
   phase = 0,
-): { scaleX: number; scaleY: number; offsetY: number } {
+): { scaleX: number; scaleY: number } {
   const chew = Math.sin(nowMs / 170 + phase);
   return {
     scaleX: 1 + chew * 0.035,
     scaleY: 1 - chew * 0.03,
-    offsetY: Math.sin(nowMs / 260 + phase) * 1.4,
   };
 }
 
@@ -622,7 +617,6 @@ export class ActorLayer {
       reduced || nav.isMoving
         ? { scaleX: 1, scaleY: 1 }
         : actorIdleBreathe(nowMs);
-    const bobY = reduced || nav.isMoving ? 0 : actorIdleBobY(nowMs);
     const baseScale = scaleForContent(
       PLAYER_DISPLAY_HEIGHT,
       PLAYER_CONTENT_HEIGHT_PX,
@@ -666,15 +660,16 @@ export class ActorLayer {
         baseScale * squash.x * breathe.scaleX,
         baseScale * squash.y * breathe.scaleY,
       );
+      // Feet stay planted: no vertical idle bob (rhythmic lift read as floating).
       this.playerSprite.position.set(
         Math.round(nav.worldX),
-        Math.round(feetY + bobY),
+        Math.round(feetY),
       );
       this.playerSprite.zIndex = feetY;
     } else {
       this.playerFallback.clear();
       this.playerFallback.y = feetY;
-      this.playerFallback.circle(Math.round(nav.worldX), -16 + bobY, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
     return carrying && this.playerUsesCarryTexture;
@@ -926,7 +921,6 @@ export class ActorLayer {
 
     let sx = 1;
     let sy = 1;
-    let bobY = 0;
 
     if (!prefersReducedMotion()) {
       if (pose.isMoving) {
@@ -941,22 +935,16 @@ export class ActorLayer {
       } else {
         resetWalkPulse(entry.walkPulse);
         if (stage === 'eating') {
+          // Chew scale only — vertical bob lifts diners off the cushion.
           const pulse = actorEatingPulse(nowMs, entry.phase);
           sx = pulse.scaleX;
           sy = pulse.scaleY;
-          // Keep chew scale only — vertical bob lifts diners off the cushion.
-          bobY = 0;
-        } else if (stage === 'seated' || stage === 'ordered') {
-          // Seated: breathe in place. No vertical bob — it reads as floating.
+        } else if (stage === 'seated' || stage === 'ordered' || stage === 'waiting') {
+          // Breathe in place. No vertical bob anywhere — rhythmic lift read
+          // as floating/bouncing.
           const breathe = actorIdleBreathe(nowMs, entry.phase);
           sx = breathe.scaleX;
           sy = breathe.scaleY;
-          bobY = 0;
-        } else if (stage === 'waiting') {
-          const breathe = actorIdleBreathe(nowMs, entry.phase);
-          sx = breathe.scaleX;
-          sy = breathe.scaleY;
-          bobY = actorIdleBobY(nowMs, entry.phase);
         }
       }
     } else {
@@ -968,7 +956,7 @@ export class ActorLayer {
     }
 
     const doorY = entry.doorwayCrop?.visualOffsetY ?? 0;
-    entry.content.y = doorY + (entry.doorwayCrop ? 0 : bobY);
+    entry.content.y = doorY;
   }
 
   private ensureGuestEntry(guestId: string): GuestSpriteEntry {

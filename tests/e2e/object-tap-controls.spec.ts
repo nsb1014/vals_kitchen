@@ -140,8 +140,11 @@ async function expectPlayerAtGuestServicePosition(
         const player = window.__E2E__!.getState().floorPlayerGrid;
         const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
         const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
+        // Tableside cells: one cell in any direction, or the two-cell
+        // vertical fallback when the near cells are blocked.
         return Boolean(
-          player && ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
+          player &&
+            ((dx === 1 && dy === 0) || (dx === 0 && (dy === 1 || dy === 2))),
         );
       }, seat),
     )
@@ -1477,9 +1480,12 @@ test.describe('object tap controls', () => {
           const player = window.__E2E__!.getState().floorPlayerGrid;
           const dx = player ? Math.abs(player.x - x) : Number.POSITIVE_INFINITY;
           const dy = player ? Math.abs(player.y - y) : Number.POSITIVE_INFINITY;
+          // Tableside service cells: one cell in any direction, or the
+          // two-cell vertical fallback when the near cells are blocked.
           return Boolean(
             player &&
-              ((dx === 1 && dy === 0) || (dx === 0 && dy === 2)),
+              ((dx === 1 && dy === 0) ||
+                (dx === 0 && (dy === 1 || dy === 2))),
           );
         }, guest),
       )

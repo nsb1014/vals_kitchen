@@ -41,10 +41,12 @@ describe('furniture seating depth debug', () => {
         { placementId: 'table_a', itemKey: 'table_2seat', zIndex: 96, x: 64, y: 64 },
         { placementId: 'table_b', itemKey: 'table_4seat', zIndex: 96, x: 128, y: 64 },
       ],
+      // Stool roots tuck toward their table by the shared hip shift (side 6px,
+      // NS 4px) so cushions stay under the seated guests.
       chairs: [
-        { tablePlacementId: 'table_a', slotIndex: 0, zIndex: 65, x: 64, y: 30 },
-        { tablePlacementId: 'table_a', slotIndex: 1, zIndex: 93, x: 64, y: 62 },
-        { tablePlacementId: 'table_b', slotIndex: 1, zIndex: 121, x: 128, y: 94 },
+        { tablePlacementId: 'table_a', slotIndex: 0, zIndex: 65, x: 64, y: 34 },
+        { tablePlacementId: 'table_a', slotIndex: 1, zIndex: 93, x: 70, y: 62 },
+        { tablePlacementId: 'table_b', slotIndex: 1, zIndex: 121, x: 128, y: 90 },
       ],
     });
   });

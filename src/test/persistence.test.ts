@@ -838,9 +838,18 @@ describe('persistence', () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
     const state = createNewGameState(80801);
-    state.placements = state.placements.map((placement) =>
-      placement.id === 'table_2' ? { ...placement, x: 2, y: 4 } : placement,
-    );
+    // Enclosure around the west stool (2,2) of table_1@3,2: tables at (2,3)
+    // and (2,4) seat off (1,3)/(2,4), walls cover (2,0), and table_2@(5,1)
+    // seats off (4,1) — the last gap — stranding every service position.
+    state.placements = [
+      ...state.placements.filter((p) => !p.itemKey.startsWith('table')),
+      { id: 'table_1', itemKey: 'table_2seat', x: 3, y: 2, rotation: 0 },
+      { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 3, rotation: 0 },
+      { id: 'table_b', itemKey: 'table_2seat', x: 2, y: 4, rotation: 0 },
+      { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 1, rotation: 0 },
+    ];
+    state.tableCount = 4;
+    state.seatingCapacity = 8;
 
     expect(
       keepsGuestServiceReachable(
@@ -853,12 +862,12 @@ describe('persistence', () => {
     await repo.save(state);
     const loaded = (await repo.load()).state!;
     expect(loaded.placements.find((placement) => placement.id === 'table_1')).toMatchObject({
-      x: 2,
+      x: 3,
       y: 2,
     });
     expect(loaded.placements.find((placement) => placement.id === 'table_2')).not.toMatchObject({
-      x: 2,
-      y: 4,
+      x: 5,
+      y: 1,
     });
     expect(loaded.placements).toHaveLength(state.placements.length);
     expect(
@@ -875,17 +884,25 @@ describe('persistence', () => {
     const storage = createMemoryStorage();
     const repo = createSaveRepository(storage);
     let state = gameReducer(createNewGameState(808011), { type: 'OPEN_DAY' }, testContext).state;
+    // Same enclosure as the strand fixture: table_2@(5,1) seals the (4,1)
+    // gap, so repair relocates table_2 to (5,4) — Val's saved cell.
     state = {
       ...state,
-      placements: state.placements.map((placement) =>
-        placement.id === 'table_2' ? { ...placement, x: 2, y: 4 } : placement,
-      ),
+      placements: [
+        ...state.placements.filter((p) => !p.itemKey.startsWith('table')),
+        { id: 'table_1', itemKey: 'table_2seat', x: 3, y: 2, rotation: 0 },
+        { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 3, rotation: 0 },
+        { id: 'table_b', itemKey: 'table_2seat', x: 2, y: 4, rotation: 0 },
+        { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 1, rotation: 0 },
+      ],
+      tableCount: 4,
+      seatingCapacity: 8,
       activeDay: {
         ...state.activeDay!,
         floor: {
           ...state.activeDay!.floor!,
           playerRoom: 'main',
-          playerPosition: { x: 2, y: 1 },
+          playerPosition: { x: 5, y: 4 },
         },
       },
     };
@@ -894,7 +911,7 @@ describe('persistence', () => {
     const loaded = (await repo.load()).state!;
     expect(loaded.placements.find((placement) => placement.id === 'table_2')).toMatchObject({
       x: 5,
-      y: 1,
+      y: 4,
     });
     expect(loaded.activeDay!.floor!.playerPosition).toEqual(
       servicePlayerSpawn(loaded.gridSize.w, loaded.gridSize.h),
@@ -935,11 +952,13 @@ describe('persistence', () => {
 
     await repo.save(state);
     const loaded = (await repo.load()).state!;
+    // With tableside (one-cell) service positions allowed, the repair finds a
+    // full relocation that keeps every owned table physically placed.
     expect(
       loaded.placements.filter((placement) => placement.itemKey.startsWith('table')),
-    ).toHaveLength(5);
+    ).toHaveLength(tablePositions.length);
     expect(loaded.tableCount).toBe(tablePositions.length);
-    expect(loaded.placements.some((placement) => placement.id === 'table_2')).toBe(false);
+    expect(loaded.placements.some((placement) => placement.id === 'table_2')).toBe(true);
     expect(loaded.placements).toContainEqual(
       expect.objectContaining({ id: 'station_prep', itemKey: 'prep_station' }),
     );

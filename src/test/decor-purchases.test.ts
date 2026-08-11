@@ -72,13 +72,24 @@ describe('decor purchases', () => {
       testContext,
     );
 
-    // Keep the original adversarial cell: the west stool is at (1,2), and
-    // (1,4) is its only service position not already occupied by a wall/table.
+    // Enclosure around the west stool (2,2) of the table at (3,2): tables at
+    // (2,3)/(2,4) seat off (1,3)/(2,4), walls cover (2,0), and the only open
+    // service cells are (1,2)/(2,1), reachable through the (4,1) gap. The
+    // flowers plug that last gap.
+    state.placements = [
+      ...state.placements.filter((p) => !p.itemKey.startsWith('table')),
+      { id: 'table_1', itemKey: 'table_2seat', x: 3, y: 2, rotation: 0 },
+      { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 3, rotation: 0 },
+      { id: 'table_b', itemKey: 'table_2seat', x: 2, y: 4, rotation: 0 },
+      { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 4, rotation: 0 },
+    ];
+    state.tableCount = 4;
+    state.seatingCapacity = 8;
     const placement: Placement = {
       id: 'stranded_by_flowers',
       itemKey: 'decor_flowers',
-      x: 1,
-      y: 4,
+      x: 4,
+      y: 1,
       rotation: 0,
     };
     expect(validatePlacement(state, placement)).toBe(false);
