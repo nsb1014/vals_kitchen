@@ -20,7 +20,10 @@ jobs:
     # PR ready triggers the complete job. Manual runs always execute every scope.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The e2e suite grew from 55 to 136 specs; at CI pacing the suite alone runs
+    # ~19-20 minutes. 20 minutes timed the whole job out mid-suite (cancelled
+    # with zero test failures). 45 covers the suite plus setup with headroom.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
