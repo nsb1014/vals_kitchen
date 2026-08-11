@@ -3315,3 +3315,26 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     margin-bottom: 0.3rem;
   }
 }
+
+/* --- notice / hud-hint / tutorial (notification-agent append; do not reorder above) --- */
+.hud-hint {
+  margin: 0 0 0.35rem;
+  padding: 0 0.15rem;
+  min-height: 0;
+  max-height: 2.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: var(--vk-text-dim, #9a8f7e);
+  white-space: normal;
+}
+
+.hud-hint[hidden] {
+  display: none;
+}

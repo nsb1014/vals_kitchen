@@ -86,7 +86,6 @@ import {
   clearTutorialSkip,
   isTutorialSkipped,
   nextTutorialStep,
-  skipTutorial,
 } from '../../domain/floor/tutorial.ts';
 
 const SERVE_LOCK_MS = 300;
@@ -198,11 +197,9 @@ export function mountServiceDayUi(
   };
 
   skipTutorialBtn.addEventListener('click', () => {
-    skipTutorial();
-    const store = useGameStore.getState();
-    if (store.noticeActive?.source === 'tutorial') {
-      store.dismissFrontNotice();
-    }
+    // Store action clears leftover instructional notices and triggers the
+    // HUD re-render; bare skipTutorial() would not notify subscribers.
+    useGameStore.getState().skipTutorialGuidance();
     syncTutorialSkipAffordance();
   });
 

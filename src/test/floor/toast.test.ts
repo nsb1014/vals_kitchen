@@ -49,7 +49,7 @@ describe('floor toast', () => {
     expect(useGameStore.getState().floorToast).toBeNull();
   });
 
-  it('lets gameplay feedback finish before a changed HUD notice appears', () => {
+  it('lets gameplay feedback finish; instructional HUD pacing stays off the banner', () => {
     useGameStore.getState().setFloorToast('Wrong table');
 
     const pacing = {
@@ -70,7 +70,8 @@ describe('floor toast', () => {
       sticky: null,
       pacing,
     });
-    expect(useGameStore.getState().noticeActive?.source).toBe('pacing');
+    // Quiet policy: pacing/tutorial never reclaim the top banner.
+    expect(useGameStore.getState().noticeActive).toBeNull();
     expect(useGameStore.getState().floorToast).toBeNull();
   });
 });

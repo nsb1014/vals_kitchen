@@ -1,4 +1,5 @@
 import {
+  isTutorialSkipped,
   nextTutorialStep,
   tutorialPrompt,
   type TutorialStepId,
@@ -89,6 +90,37 @@ export function buildFloorTutorialNotice(
         : `tutorial:${step}`,
     body,
   };
+}
+
+/**
+ * Quiet, non-queued floor guidance for the chrome hint line. Skipped day-1
+ * tutorial never returns copy; day>1 keeps a single persistent status line.
+ */
+export function resolveFloorHudHint(input: {
+  day: number;
+  rating: number;
+  prestige: number;
+  floor: FloorDay;
+  tutorialSkipped?: boolean;
+}): string | null {
+  if (input.tutorialSkipped ?? isTutorialSkipped()) return null;
+
+  const step = nextTutorialStep(input.floor, input.day === 1);
+  const prompt = tutorialPrompt(step);
+  const tutorial = buildFloorTutorialNotice(input.floor, step, prompt);
+  if (tutorial) return tutorial.body;
+
+  const initialGuestArriving =
+    input.floor.pool.some((guest) => guest.stage === 'entering') &&
+    !input.floor.pool.some(
+      (guest) => guest.stage !== 'queued' && guest.stage !== 'entering',
+    );
+  if (initialGuestArriving) return 'The first guest is arriving…';
+
+  if (input.day > 1) {
+    return `Day ${input.day} · ${input.rating.toFixed(1)}★ · P${input.prestige} — match tastes, grow mastery`;
+  }
+  return null;
 }
 
 export function mountFloorServiceHud(
@@ -273,11 +305,6 @@ export function mountFloorServiceHud(
     chromeMount.style.removeProperty('visibility');
     chromeMount.inert = false;
     chromeMount.removeAttribute('aria-hidden');
-    const initialGuestArriving =
-      floor.pool.some((guest) => guest.stage === 'entering') &&
-      !floor.pool.some(
-        (guest) => guest.stage !== 'queued' && guest.stage !== 'entering',
-      );
     dock.hidden = false;
     const canSetTable = selectCanSetFloorTable(state);
     const canClearTable = selectCanClearFloorTable(state);
@@ -285,7 +312,6 @@ export function mountFloorServiceHud(
     const canRequestSeatGuest = selectCanRequestSeatFloorGuest(state);
     const canTakeOrders = selectCanTakeFloorOrders(state);
     const step = nextTutorialStep(floor, state.day === 1);
-    const prompt = tutorialPrompt(step);
     const emphasize = (actionStep: typeof step, available: boolean) =>
       available && (step === null || step === actionStep);
     const emphasizeSetTable = emphasize('set_tables', canSetTable);
@@ -372,49 +398,17 @@ export function mountFloorServiceHud(
       if (inFlight) classes.push('in-flight');
       return classes.join(' ');
     };
-    const tutorialPresentation = buildFloorTutorialNotice(
+    const hudHint = resolveFloorHudHint({
+      day: state.day,
+      rating: state.rating,
+      prestige: state.prestige,
       floor,
-      step,
-      prompt,
-    );
-    const tutorialNotice =
-      tutorialPresentation && step
-        ? {
-            id: tutorialPresentation.id,
-            source: 'tutorial' as const,
-            scope: 'floor' as const,
-            body: tutorialPresentation.body,
-            stepId: step,
-          }
-        : null;
-    const selectedTicketId = floor.selectedTicketId;
-    const pacingHint =
-      state.day > 1
-        ? `Day ${state.day} · ${state.rating.toFixed(1)}★ · P${state.prestige} — match tastes, grow mastery`
-        : null;
-    // Day-one guidance introduces each state once, then yields the room to the
-    // contextual action emphasis and object highlights. Treat it as a paced
-    // notice instead of permanent chrome so experienced play does not require
-    // dismissing seven separate instructions.
-    const pacing =
-      tutorialNotice ??
-      (initialGuestArriving
-        ? {
-            id: `pacing:first-guest-arriving:${state.day}`,
-            source: 'pacing' as const,
-            scope: 'floor' as const,
-            body: 'The first guest is arriving…',
-          }
-        : pacingHint
-          ? {
-              id: `pacing:day:${state.day}`,
-              source: 'pacing' as const,
-              scope: 'floor' as const,
-              body: pacingHint,
-            }
-          : null);
-    state.syncFloorNoticesFromHud({ sticky: null, pacing });
+    });
+    // Instructional copy stays on the quiet HUD hint line. Never cycle it
+    // through the shared top banner (achievements / actionable toasts only).
+    state.syncFloorNoticesFromHud({ sticky: null, pacing: null });
 
+    const selectedTicketId = floor.selectedTicketId;
     const ctx = getDomainContext();
     const guestLabelByCustomerId: Record<string, string> = {};
     const ticketMeta = floor.tickets.map((t) => {
@@ -453,6 +447,11 @@ export function mountFloorServiceHud(
 
     chromeMount.innerHTML = `
       <div class="floor-service-panel" data-testid="floor-service-panel">
+        ${
+          hudHint
+            ? `<p class="hud-hint" data-testid="hud-hint" role="status" aria-live="polite">${escapeHtml(hudHint)}</p>`
+            : ''
+        }
         <div class="floor-actions-scroll">
           <div class="floor-actions">
             <button type="button" class="${actionClass(emphasizeSetTable, inFlightSetTable)}" id="floor-set-table" data-testid="floor-set-table" ${canSetTable ? '' : 'disabled'} ${inFlightSetTable ? 'aria-busy="true"' : ''}>${renderFloorActionLabelHtml('set-table', 'Set table')}</button>
