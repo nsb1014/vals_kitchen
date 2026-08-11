@@ -5,9 +5,11 @@ import type { SeatSlot } from '../../domain/floor/types.ts';
  * ¾-view seating model (compact tables, separate backless-stool cells):
  *
  * 1. Seats live in adjacent grid cells — never on the table cell.
- * 2. The stool stays centered in its cell. The authored sit-pose root shifts
- *    toward the table so the hips land on the inner half of the seat while
- *    the legs occupy the intentional gap beside the tabletop.
+ * 2. The stool tucks toward the table by the same hip shift as the seated
+ *    guest, so the sit pose stays centered on the cushion instead of
+ *    perching on the stool's table-side edge. The authored sit-pose root
+ *    provides the tableward lean; the legs occupy the gap beside the
+ *    tabletop.
  * 3. Draw order: table (floor prop) → stool → guest.
  * 4. Guests match the chef’s silhouette height (content-based scale).
  *
@@ -24,13 +26,14 @@ export const SEAT_CAMERA_BIAS_PX = 0;
  */
 export const SEAT_SIT_OFFSET_Y = 0;
 /**
- * Tableward hip shift for west/east seats. Kept modest so the butt stays on
- * the stool cushion (10px previously slid guests off the seat entirely).
+ * Tableward hip shift for west/east seats. Applied to BOTH the guest anchor
+ * and the stool so the two move together (a guest-only shift perched diners
+ * on the stool's table-side edge).
  */
 export const SEAT_SIDE_HIP_OFFSET_PX = 6;
 /**
- * Tableward hip shift for north/south seats. Modest so down-facing guests do
- * not sink past the cushion and up-facing guests do not lift off it.
+ * Tableward hip shift for north/south seats. Applied to BOTH the guest
+ * anchor and the stool (see SEAT_SIDE_HIP_OFFSET_PX).
  */
 export const SEAT_NS_HIP_OFFSET_PX = 4;
 
@@ -42,23 +45,32 @@ function seatCellCenter(seat: SeatSlot): { x: number; y: number } {
   };
 }
 
-/** Chair feet: planted on the seat-cell floor. */
+/** Tableward shift shared by the stool and the seated guest anchor. */
+function seatHipShift(seat: SeatSlot): { dx: number; dy: number } {
+  if (seat.facing === 90) return { dx: SEAT_SIDE_HIP_OFFSET_PX, dy: 0 };
+  if (seat.facing === 270) return { dx: -SEAT_SIDE_HIP_OFFSET_PX, dy: 0 };
+  if (seat.facing === 0) return { dx: 0, dy: SEAT_NS_HIP_OFFSET_PX };
+  if (seat.facing === 180) return { dx: 0, dy: -SEAT_NS_HIP_OFFSET_PX };
+  return { dx: 0, dy: 0 };
+}
+
+/**
+ * Chair feet: planted on the seat-cell floor, tucked toward the table by the
+ * shared hip shift so the cushion stays under the seated guest.
+ */
 export function seatChairWorldPosition(seat: SeatSlot): { x: number; y: number } {
-  return seatCellCenter(seat);
+  const center = seatCellCenter(seat);
+  const { dx, dy } = seatHipShift(seat);
+  return { x: center.x + dx, y: center.y + dy };
 }
 
 /**
  * World nav-center for a seated guest (feet derived by ActorLayer).
- * Offset onto the cushion relative to the chair feet, then shifted tableward.
+ * Matches the stool anchor so the sit pose stays centered on the cushion.
  */
 export function seatSitWorldPosition(seat: SeatSlot): { x: number; y: number } {
-  const center = seatCellCenter(seat);
-  const y = center.y + SEAT_SIT_OFFSET_Y;
-  if (seat.facing === 90) return { x: center.x + SEAT_SIDE_HIP_OFFSET_PX, y };
-  if (seat.facing === 270) return { x: center.x - SEAT_SIDE_HIP_OFFSET_PX, y };
-  if (seat.facing === 0) return { x: center.x, y: y + SEAT_NS_HIP_OFFSET_PX };
-  if (seat.facing === 180) return { x: center.x, y: y - SEAT_NS_HIP_OFFSET_PX };
-  return { x: center.x, y };
+  const chair = seatChairWorldPosition(seat);
+  return { x: chair.x, y: chair.y + SEAT_SIT_OFFSET_Y };
 }
 
 /** Map seat facing degrees to NavController / ActorLayer facing: 0 right, 1 down, 2 up, 3 left. */
@@ -70,15 +82,19 @@ export function seatFacingToActorFacing(facing: SeatSlot['facing']): 0 | 1 | 2 |
 }
 
 /**
- * True when a seated guest's sit anchor still overlaps the stool top enough
- * to read as "on the chair" (used by regression tests).
+ * True when the shared sit/stool anchor keeps the stool inside its own cell
+ * (used by regression tests). The stool is 24px wide in a 32px cell, so the
+ * tableward tuck must stay well under half a tile to avoid crossing into the
+ * table cell.
  */
 export function seatSitStaysOnChair(seat: SeatSlot): boolean {
+  const center = seatCellCenter(seat);
   const chair = seatChairWorldPosition(seat);
   const sit = seatSitWorldPosition(seat);
-  const dx = Math.abs(sit.x - chair.x);
-  const dy = Math.abs(sit.y - chair.y);
-  // Side hip shift is purely X; NS shift is purely Y. Either axis must stay
-  // inside the drawn stool half-width (~12px) so the lap covers the cushion.
-  return dx <= 12 && dy <= 12;
+  const withinCell =
+    Math.abs(chair.x - center.x) <= TILE_PX / 4 &&
+    Math.abs(chair.y - center.y) <= TILE_PX / 4;
+  // Guest and stool share the anchor — the sit pose rides the cushion center.
+  const aligned = sit.x === chair.x && sit.y === chair.y + SEAT_SIT_OFFSET_Y;
+  return withinCell && aligned;
 }

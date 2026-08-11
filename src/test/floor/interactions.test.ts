@@ -132,7 +132,7 @@ describe('floor interact helpers', () => {
   });
 
   describe('playerNearGuestSeat', () => {
-    it('keeps vertical chibi silhouettes two cells apart while allowing side service', () => {
+    it('allows tableside service one cell away in every direction, with two-cell vertical fallbacks', () => {
       const guest: FloorGuest = {
         id: 'g1',
         customer: customer('c1'),
@@ -143,11 +143,14 @@ describe('floor interact helpers', () => {
       expect(guestServicePositions(guest.seat!)).toEqual([
         { x: 0, y: 3 },
         { x: 2, y: 3 },
+        { x: 1, y: 2 },
+        { x: 1, y: 4 },
         { x: 1, y: 1 },
         { x: 1, y: 5 },
       ]);
       expect(playerNearGuestSeat({ x: 0, y: 3 }, guest)).toBe(true);
-      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(false);
+      expect(playerNearGuestSeat({ x: 1, y: 2 }, guest)).toBe(true);
+      expect(playerNearGuestSeat({ x: 1, y: 4 }, guest)).toBe(true);
       expect(playerNearGuestSeat({ x: 1, y: 5 }, guest)).toBe(true);
       expect(playerNearGuestSeat({ x: 1, y: 3 }, guest)).toBe(false);
       expect(playerNearGuestSeat({ x: 5, y: 5 }, guest)).toBe(false);

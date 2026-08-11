@@ -117,10 +117,12 @@ export function playerNearGuestSeat(
 }
 
 /**
- * Service positions around a seated guest, ordered left/right then vertical.
- * Chibi actors are almost two tiles tall but less than one tile wide, so a
- * one-cell vertical neighbor visibly stacks their bodies. Horizontal neighbors
- * remain natural; vertical approaches keep a two-cell personal-space gap.
+ * Service positions around a seated guest, ordered by closeness: the four
+ * one-cell neighbors first (direct tableside service), then the two-cell
+ * vertical fallback cells for layouts where the near cells are blocked.
+ * Chibi actors are tall, so a one-cell vertical neighbor overlaps the seated
+ * guest's silhouette slightly — acceptable tableside attendance, and much
+ * closer to the table than a forced two-cell gap.
  *
  * Domain proximity is locked to these cells. Canvas approach-and-complete
  * routes a far tap to the nearest reachable cell among them, then auto-fires
@@ -130,6 +132,8 @@ export function guestServicePositions(seat: GridPoint): GridPoint[] {
   return [
     { x: seat.x - 1, y: seat.y },
     { x: seat.x + 1, y: seat.y },
+    { x: seat.x, y: seat.y - 1 },
+    { x: seat.x, y: seat.y + 1 },
     { x: seat.x, y: seat.y - 2 },
     { x: seat.x, y: seat.y + 2 },
   ];

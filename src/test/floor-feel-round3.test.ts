@@ -118,9 +118,10 @@ describe('floor-feel round 3 — approach-and-complete', () => {
     });
     expect(approachIntentReadyToComplete(armed, arrived)).toBe(true);
 
+    // Diagonal cells are never guest service positions.
     const wrongCell = baseCtx({
       floor: emptyFloor({ pool: [guest] }),
-      player: { x: seat.x, y: seat.y - 1 },
+      player: { x: seat.x + 1, y: seat.y - 1 },
       isMoving: false,
       navDestination: null,
       arrivedAtDestination: true,
@@ -128,7 +129,7 @@ describe('floor-feel round 3 — approach-and-complete', () => {
     // Wrong cell fails adjacency even if a stale destination flag slipped through.
     const wrongIntent = intent(
       { kind: 'order', guestId: guest.id, customerId: guest.customer.id },
-      { x: seat.x, y: seat.y - 1 },
+      { x: seat.x + 1, y: seat.y - 1 },
     );
     expect(approachIntentReadyToComplete(wrongIntent, wrongCell)).toBe(false);
   });

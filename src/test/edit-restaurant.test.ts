@@ -86,14 +86,28 @@ describe('edit restaurant placement rules', () => {
 
   it('rejects a layout that strands every service position around a stool', () => {
     const state = createNewGameState(1021);
+    // Enclosure around the west stool (2,2) of table_1@3,2: tables at (2,3)
+    // and (2,4) seat off (1,3) and (2,4); walls cover (2,0). The only open
+    // service cells are (1,2)/(2,1), reachable through the (4,1) gap.
+    state.placements = [
+      ...state.placements.filter((p) => !p.itemKey.startsWith('table')),
+      { id: 'table_1', itemKey: 'table_2seat', x: 3, y: 2, rotation: 0 },
+      { id: 'table_a', itemKey: 'table_2seat', x: 2, y: 3, rotation: 0 },
+      { id: 'table_b', itemKey: 'table_2seat', x: 2, y: 4, rotation: 0 },
+      { id: 'table_2', itemKey: 'table_2seat', x: 5, y: 4, rotation: 0 },
+    ];
     const secondTable = state.placements.find((placement) => placement.id === 'table_2')!;
 
-    // The west stool of table_1 is at (1,2). In this otherwise collision-free
-    // move its service cells become wall, table_1, wall, and table_2's stool.
+    // The current layout is feasible (the (4,1) gap is open)…
+    expect(
+      validatePlacement(state, secondTable, secondTable.id),
+    ).toBe(true);
+    // …but parking table_2 at (5,1) seats off (4,1), enclosing (1,2)/(2,1) and
+    // stranding every service position of the (2,2) stool.
     expect(
       validatePlacement(
         state,
-        { ...secondTable, x: 2, y: 4 },
+        { ...secondTable, x: 5, y: 1 },
         secondTable.id,
       ),
     ).toBe(false);

@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   actorEatingPulse,
-  actorIdleBobY,
   actorIdleBreathe,
   walkStepSquash,
   WALK_SQUASH_AMPLITUDE,
@@ -29,21 +28,20 @@ describe('walk squash helpers', () => {
 });
 
 describe('idle / eating canvas loops', () => {
-  it('bobs within a small pixel band', () => {
-    const samples = [0, 200, 420, 840, 1260].map((t) => actorIdleBobY(t, 0.5));
-    for (const y of samples) {
-      expect(Math.abs(y)).toBeLessThanOrEqual(1.3);
-    }
-    expect(samples.some((y) => y !== 0)).toBe(true);
+  it('keeps idle motion vertical-free: breathe scale only, feet planted', () => {
+    // The rhythmic vertical idle bob was removed — actors must not translate
+    // up/down while standing, waiting, or seated (it read as bouncing).
+    const breathe = actorIdleBreathe(0);
+    expect(Math.abs(breathe.scaleX - 1)).toBeLessThanOrEqual(0.02);
+    expect(Math.abs(breathe.scaleY - 1)).toBeLessThanOrEqual(0.02);
+    expect('offsetY' in breathe).toBe(false);
   });
 
-  it('eating pulse uses scale/translate only within subtle bounds', () => {
+  it('eating pulse uses scale only within subtle bounds', () => {
     const pulse = actorEatingPulse(90, 1);
     expect(Math.abs(pulse.scaleX - 1)).toBeLessThanOrEqual(0.04);
     expect(Math.abs(pulse.scaleY - 1)).toBeLessThanOrEqual(0.04);
-    expect(Math.abs(pulse.offsetY)).toBeLessThanOrEqual(1.5);
-    const breathe = actorIdleBreathe(0);
-    expect(Math.abs(breathe.scaleX - 1)).toBeLessThanOrEqual(0.02);
+    expect('offsetY' in pulse).toBe(false);
   });
 });
 
