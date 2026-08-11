@@ -67,7 +67,7 @@ jobs:
             echo 'assets=false' >> "$GITHUB_OUTPUT"
           fi
 
-          if grep -Eq '^(src/(app|assets|canvas|store|ui)/|src/domain/(floor|state)/|public/|tests/e2e/|index\.html$|playwright\.config\.ts$|vite\.config\.ts$|package(-lock)?\.json$)' <<< "$changed_files"; then
+          if grep -Eq '^(src/(app|assets|canvas|store|ui)/|src/domain/(floor|state)/|public/|tests/e2e/|index\.html$|playwright\.config\.ts$|vite\.config\.ts$|package(-lock)?\.json$|\.github/workflows/ci\.yml$)' <<< "$changed_files"; then
             echo 'e2e=true' >> "$GITHUB_OUTPUT"
           else
             echo 'e2e=false' >> "$GITHUB_OUTPUT"
