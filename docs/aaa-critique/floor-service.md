@@ -416,3 +416,92 @@ Val's Kitchen floor service has **correct domain logic and several polished edge
 
 - `npx vitest run src/test/floor src/test/canvas src/test/floor-feel-*` — green (254 tests)
 - Visual: `/tmp/aaa-shots/floor-r3/` — far seat-cell tap from `(7,5)` armed `order` approach to `(1,4)`, `data-in-flight="order"` en route, auto-`FLOOR_TAKE_ORDERS` on arrival (`05-auto-complete`); Escape and tap-elsewhere cleared the armed intent (`06`/`07`, `results.json`)
+
+---
+
+## Closing verification (round 3)
+
+**Method:** Fresh blind re-run 2026-08-10 — `npm run sync:data`, Vite dev on `127.0.0.1:4181/?e2e=1`, Playwright Chromium (`/tmp/aaa-shots/floor-close/verify.mjs` + spot checks). Code cross-check of `approach-intent.ts` / `RestaurantApp` fence. Scores from live evidence only; prior scorecards not used as anchors.
+
+**Evidence:** `/tmp/aaa-shots/floor-close/` — `playwright-notes.txt`, `results.json`, mobile 390×844 and desktop 1280×800 stills (`01-boot` … `12-delivered`, `14`–`18`). Cancel paths corroborated from `/tmp/aaa-shots/floor-r3/results.json` (same build).
+
+**Locked-rule audit:** Player **2 tiles/s**, guests **2.4 tiles/s**; `guestServicePositions` adjacency enforced at dispatch — approach-and-complete is presentation-only walk-then-act.
+
+### Verified improvements (live)
+
+| Claim | Evidence |
+|-------|----------|
+| Far-tap **set** auto-complete | From `(7,5)` tap unset table `(2,2)` → `approach.kind=set`, `destination (3,3)`, `data-in-flight="set"` for full walk → table `ready` (`04-set-enroute`, `05-set-complete`, `results.json` `set`) |
+| Far-tap **seat** auto-complete | After tables set, **Seat guest** CTA from `(7,5)` → `approach.kind=seat`, `destination (3,5)`, `inFlight=seat` en route → guest leaves `waiting` (`06-seat-enroute`, `07-seat-complete`) |
+| Far-tap **order** auto-complete | `prepareFourFacingSeatedGuestsFixture`; guest tap from `(7,5)` → `approach.kind=order`, `destination (1,4)`, `inFlight=order` sustained ≥12 samples → `ordered` + ticket (`08-order-enroute`, `09-order-complete`) |
+| Far-tap **deliver** auto-complete | `prepareStationCarryFixture('valid_carry')`; guest tap while carrying → `approach.kind=deliver`, `inFlight=deliver` → guest `eating`, carry cleared (`11-deliver-enroute`, `12-delivered`) |
+| Pending visibility en route | All four kinds above: `getPendingApproachIntentDebug()` non-null + matching `canvas.dataset.inFlight` while `isMoving`; clears on dispatch (`results.json` trails) |
+| Sustained approach preview | Order walk: `destination (1,4)` unchanged across entire trail (`order.sustainedPreview: true`) |
+| **Escape** / tap-elsewhere cancel | `floor-r3/results.json`: `escapeCleared: true`, `elsewhereCleared: true`; armed `order` revision cleared after Escape / empty-cell tap (`06`/`07` stills) |
+| Distant intent hints (round 1) | Service start: `getInteractHintCells()` → `(3,3)`, `(4,3)` before any walk (`02-service-start`) |
+| Guest head cues + mouth anchor (round 2) | Order bubble `visible:true`; `mouthInHeadBand`, `anchorNotAtFeet` on seated guest (`10-order-bubble`, `results.json` `bubble`) |
+| Door-line queue staging (round 1) | `queuedGuests: 3` at service open (`03-door-line`) |
+| Morning-gate copy (round 2) | *"Guest at the door — set every table first, then you can seat them."*; seat CTA disabled (`02-service-start`) |
+| Mid-walk input buffer (round 2) | Fresh session: `(7,5)` → tap `(3,4)` mid-walk retap `(5,6)` → arrives `(5,6)` without dropped input |
+| Canvas presence | Mobile mount **~81%** / desktop **~80%** viewport height (`results.json` `canvasFill`) |
+
+**Partial / not re-verified live this run:**
+
+| Claim | Finding |
+|-------|---------|
+| Far-tap **clear** | Main run: no `dirty` table after deliver-chain eating ticks; `clear`/`set`/`deliver` arrival gates covered in `floor-feel-round3.test.ts` |
+| Far-tap **compose** | Long-session station tap returned `approach: null` (fixture/grid state polluted after deliver); compose path logic green in unit tests |
+| Camera lead-ahead | `cameraLead.moving: null` — offset probe used wrong guest-debug camera; lead code unchanged (`cameraLeadOffset` 0.75 tile in `RestaurantApp.onTick`) |
+| HUD `data-in-flight` shimmer | Still absent — `FloorServiceHud.ts` unchanged |
+
+---
+
+### Blind scorecard (re-scored)
+
+| Category | OC2 | PlateUp | Dead Cells | Diner Dash | Val's | Verdict vs benchmarks | One-line evidence |
+|----------|:---:|:-------:|:----------:|:----------:|:-----:|:---------------------:|-------------------|
+| **Input responsiveness** | 5 | 4 | 5 | 4 | **4** | **Below** | Far-tap walk-and-complete + mid-walk buffer verified; **locked-rule ceiling:** 2 t/s still feels leisurely vs OC snap. |
+| **Pathing quality** | 5 | 4 | 4 | 3 | **3** | **Below** | A* + buffer repath solid; 90° segments, guest blocking, constant tile timing unchanged. |
+| **Camera feel** | 4 | 4 | 5 | 3 | **4** | **Below** | ~81%/80% canvas fill; lead-ahead in code; static scale vs Dead Cells parallax. |
+| **Interaction affordances** | 5 | 5 | 4 | 4 | **4** | **Below** | Far/near hints + sustained approach preview + head bubbles; floor bar still text-only labels. |
+| **Action feedback / anticipation** | 5 | 4 | 5 | 3 | **4** | **Below** | `data-in-flight` on all approach kinds en route; seat hold + doorway crop; deliver/serve punch still thin vs OC. |
+| **State readability under load** | 5 | 5 | 4 | 4 | **4** | **Below** | Morning banner names door guest; 3 queued + disabled seat coexist; approach destination readable en route. |
+| **Error / forgiveness handling** | 3 | 4 | 5 | 3 | **3** | **At** | Escape clears armed approach; wrong-table toast + delivery retry unchanged. |
+| **Animation-transition smoothness** | 4 | 4 | 5 | 3 | **4** | **Below** | Smoothstep ends + linear mid-segments; stop-anticipation before auto-dispatch; corners still snap. |
+| **Audio-visual feedback coupling** | 5 | 4 | 5 | 3 | **3** | **Below** | Deliver `serve` + review juice; seat/order/walk still quiet `uiClick`. |
+| **Pacing legibility (no timers)** | 4 | 5 | 3 | 4 | **4** | **Below** | Order bubble + eating/leaving cues + banner; eating dots easy to miss at mobile zoom. |
+| **Waiting-line behavior** | 3 | 5 | — | 5 | **4** | **Below** | Three `queued` guests at open (`03`); admit remains single-slot. |
+| **Service flow clarity (seat→order→deliver)** | 5 | 5 | — | 4 | **4** | **Below** | One far tap → walk → auto seat/order/deliver/set verified; dual HUD/canvas + walk latency keep it below PlateUp one-glance service. |
+
+**Roll-up:** Val's remains **at** error/forgiveness only. Round 3 closes the adjacency-friction gap (one-tap walk-and-complete) but **does not reach AAA parity** on locomotion pace, feedback punch, or floor chrome.
+
+---
+
+### Overall verdict
+
+**Does the slice now meet or exceed the AAA benchmark in a blind side-by-side?** **No.** Against Overcooked! 2 / PlateUp! the floor reads as a **complete casual service loop** — far taps reliably path, preview, and finish seat/order/deliver/set without hunt-the-tile — but **locked-rule ceiling** 2 t/s grid walk and text-only floor HUD keep moment-to-moment play below benchmark snap and iconographic clarity. Standout win: **unified approach-and-complete with sustained preview + cancel**. Standout remaining drag: **walk pace (locked)** and **floor HUD presentation**.
+
+---
+
+### Remaining gaps (ranked by player impact)
+
+| Rank | Gap | Where | Notes |
+|:----:|-----|-------|-------|
+| 1 | Floor action bar text-only — no icons or `data-in-flight` CTA shimmer | `FloorServiceHud.ts` | Concurrent agent scope |
+| 2 | Locomotion still 2 t/s — feels sluggish vs OC | `NavController.ts` default | **Locked-rule ceiling** |
+| 3 | Far actions still require full walk before dispatch | `approach-intent.ts` + PRD adjacency | **Locked-rule ceiling** (by design; not OC instant-range) |
+| 4 | Seat/order SFX use generic `uiClick` — weak vs deliver `serve` | `service-events.sfxForFloorFeelBeat` | S |
+| 5 | Single-slot admit — silhouettes promise throughput domain blocks | `domain/floor/entry.ts` | L |
+| 6 | Clear/compose far-tap not exercised end-to-end in this Playwright pass | live closing run | Covered in `floor-feel-round3.test.ts` |
+| 7 | Camera lead not re-measured live this run | `RestaurantApp.onTick` | Code unchanged from round 1 |
+
+## Implemented (round 4)
+
+Micro-polish closing round (final). Tasks that landed in this doc's fence:
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **1** | Seat / order / deliver use distinct shipped Kenney SFX (`placement` / `purchase` / `serve`); walk stays `uiClick`. Punchier volumes on seat/order play sites. | `service-events.ts` `sfxForFloorFeelBeat`, `RestaurantApp.ts` playSfx path | `floor-feel-round4.test.ts`, updated `floor-feel-hints` SFX case |
+| **2** | Remaining queued silhouettes **slide** to the next line slot on admit (smoothstep ~280ms) instead of popping. Presentation only — admit rules untouched. | `waiting-line.ts` (`queueLineAdvancePosition`), `ActorLayer.ts` queued sync | `floor-feel-round4.test.ts` |
+
+Chrome tasks (#3 HUD dialog, #4 tutorial skip) are recorded in `chrome-onboarding.md` § Implemented (round 4).

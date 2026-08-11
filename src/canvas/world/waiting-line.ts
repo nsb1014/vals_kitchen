@@ -60,3 +60,35 @@ export function waitingGuestWorldPosition(
 export function waitingLineGuestSpacingPx(): number {
   return WAIT_LINE_SPACING_PX;
 }
+
+/** Short slide when remaining queue silhouettes advance after an admit. */
+export const QUEUE_LINE_ADVANCE_MS = 280;
+
+/** Smoothstep ease for queue-line advance (0→1). */
+export function easeQueueLineAdvance(t: number): number {
+  const u = Math.max(0, Math.min(1, t));
+  return u * u * (3 - 2 * u);
+}
+
+/**
+ * Interpolate a queued silhouette from a prior slot toward its new line index.
+ * Used so admit reads as a short slide-up of the line rather than a pop.
+ */
+export function queueLineAdvancePosition(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  elapsedMs: number,
+  durationMs = QUEUE_LINE_ADVANCE_MS,
+): { x: number; y: number; done: boolean } {
+  if (durationMs <= 0) {
+    return { x: to.x, y: to.y, done: true };
+  }
+  const t = easeQueueLineAdvance(elapsedMs / durationMs);
+  const done = elapsedMs >= durationMs;
+  if (done) return { x: to.x, y: to.y, done: true };
+  return {
+    x: from.x + (to.x - from.x) * t,
+    y: from.y + (to.y - from.y) * t,
+    done: false,
+  };
+}

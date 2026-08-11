@@ -697,11 +697,11 @@ export class RestaurantApp {
 
     switch (action.kind) {
       case 'seat':
-        playSfx(sfxForFloorFeelBeat('seat'), 0.75);
+        playSfx(sfxForFloorFeelBeat('seat'), 0.9);
         void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
         break;
       case 'order':
-        playSfx(sfxForFloorFeelBeat('order'), 0.75);
+        playSfx(sfxForFloorFeelBeat('order'), 0.9);
         void store.dispatch({
           type: 'FLOOR_TAKE_ORDERS',
           customerIds: [action.customerId],
@@ -1676,7 +1676,7 @@ export class RestaurantApp {
               type: 'FLOOR_TAKE_ORDERS',
               customerIds: [tappedGuest.customer.id],
             });
-            playSfx(sfxForFloorFeelBeat('order'), 0.75);
+            playSfx(sfxForFloorFeelBeat('order'), 0.9);
           },
         );
         return;

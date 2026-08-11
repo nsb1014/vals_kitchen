@@ -142,7 +142,9 @@ describe('floor-feel waiting-line staging geometry', () => {
 describe('floor-feel service-events SFX wiring', () => {
   it('maps deliver to the shipped serve sting and flags CUSTOMER_SERVED', () => {
     expect(sfxForFloorFeelBeat('deliver')).toBe('serve');
-    expect(sfxForFloorFeelBeat('seat')).toBe('uiClick');
+    expect(sfxForFloorFeelBeat('seat')).toBe('placement');
+    expect(sfxForFloorFeelBeat('order')).toBe('purchase');
+    expect(sfxForFloorFeelBeat('walk')).toBe('uiClick');
     const patch = mapReducerEventsToUi(
       [
         {

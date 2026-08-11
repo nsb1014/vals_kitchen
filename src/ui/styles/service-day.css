@@ -73,6 +73,40 @@
   pointer-events: auto;
 }
 
+.tutorial-skip-host {
+  position: absolute;
+  /* Sit just under the notice/celebration band so the control stays visible at 390px. */
+  top: calc(var(--vk-status-hud-height, 2.75rem) + 5.4rem);
+  right: 0.55rem;
+  z-index: 81;
+  pointer-events: none;
+}
+
+.tutorial-skip-host[hidden] {
+  display: none !important;
+}
+
+.tutorial-skip-btn {
+  pointer-events: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 8px;
+  background: rgba(30, 23, 20, 0.92);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tutorial-skip-btn:focus-visible {
+  outline: 2px solid var(--vk-accent);
+  outline-offset: 2px;
+}
+
 .hud-detail-menu h2,
 .hud-detail-menu h3,
 .hud-detail-menu p {

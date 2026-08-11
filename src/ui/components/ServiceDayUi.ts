@@ -81,6 +81,13 @@ import { mountCelebrationBanner } from './CelebrationBanner.ts';
 import { worldToScreen } from '../../canvas/coordinates.ts';
 import { computeChatBubblePlacement } from '../presentation/chat-bubble-placement.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
+import { hudDetailDialogAriaAttrString } from '../presentation/hud-detail-dialog.ts';
+import {
+  clearTutorialSkip,
+  isTutorialSkipped,
+  nextTutorialStep,
+  skipTutorial,
+} from '../../domain/floor/tutorial.ts';
 
 const SERVE_LOCK_MS = 300;
 const LONG_PRESS_MS = 450;
@@ -150,6 +157,55 @@ export function mountServiceDayUi(
     overlayMount,
     getRestaurantApp,
   );
+
+  const tutorialSkipHost = document.createElement('div');
+  tutorialSkipHost.className = 'tutorial-skip-host';
+  tutorialSkipHost.dataset.testid = 'tutorial-skip-host';
+  tutorialSkipHost.hidden = true;
+  tutorialSkipHost.innerHTML = `<button type="button" class="tutorial-skip-btn" data-testid="skip-tutorial" aria-label="Skip tutorial">Skip tutorial</button>`;
+  overlayMount.appendChild(tutorialSkipHost);
+  const skipTutorialBtn = tutorialSkipHost.querySelector(
+    '[data-testid="skip-tutorial"]',
+  ) as HTMLButtonElement;
+
+  const syncTutorialSkipAffordance = () => {
+    const state = useGameStore.getState();
+    const floor = state.activeDay?.floor;
+    const step =
+      floor && state.screen === 'restaurant'
+        ? nextTutorialStep(floor, state.day === 1)
+        : null;
+    const show =
+      state.screen === 'restaurant' &&
+      state.day === 1 &&
+      step !== null &&
+      !isTutorialSkipped() &&
+      state.modifierDismissed &&
+      !state.serviceStartPending &&
+      !state.ceremony &&
+      !state.daySummary &&
+      !state.pendingReview;
+    tutorialSkipHost.hidden = !show;
+  };
+
+  skipTutorialBtn.addEventListener('click', () => {
+    skipTutorial();
+    const store = useGameStore.getState();
+    if (store.noticeActive?.source === 'tutorial') {
+      store.dismissFrontNotice();
+    }
+    syncTutorialSkipAffordance();
+  });
+
+  // Clear skip before Settings → Replay tutorial runs its bubble-phase handler.
+  const onReplayTutorialPointer = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('[data-testid="replay-tutorial-btn"]')) {
+      clearTutorialSkip();
+    }
+  };
+  document.addEventListener('click', onReplayTutorialPointer, true);
 
   let serveLockedUntil = 0;
   let bubbleEl: HTMLElement | null = null;
@@ -433,6 +489,7 @@ export function mountServiceDayUi(
                    <p>Customers left: <strong>${customersLeft}</strong></p>`
               : '';
     const detailMenuId = 'hud-detail-menu';
+    const detailDialogAria = hudDetailDialogAriaAttrString('hud-detail-title');
     hud.innerHTML = `
       <button type="button" class="hud-stat hud-stat-button" data-hud-detail="cash" aria-expanded="${hudDetail === 'cash'}" aria-haspopup="dialog" aria-controls="${detailMenuId}" aria-label="Cash details">
         <span class="hud-stat-label"><i aria-hidden="true">$</i> Cash</span>
@@ -453,7 +510,7 @@ export function mountServiceDayUi(
       <button type="button" class="hud-settings-button" data-testid="hud-settings" aria-label="Open settings">⚙</button>
       ${
         hudDetail
-          ? `<aside id="${detailMenuId}" class="hud-detail-menu" data-testid="hud-detail-menu" role="dialog" aria-modal="true" aria-label="${escapeHtml(detailTitle)} details" aria-labelledby="hud-detail-title">
+          ? `<aside id="${detailMenuId}" class="hud-detail-menu" data-testid="hud-detail-menu" ${detailDialogAria} aria-label="${escapeHtml(detailTitle)} details">
                <button type="button" class="hud-detail-close" aria-label="Close ${escapeHtml(detailTitle)} details">×</button>
                ${detailContent}
              </aside>`
@@ -1691,6 +1748,7 @@ export function mountServiceDayUi(
     renderCeremony();
     renderServiceOverlay();
     renderChatBubble();
+    syncTutorialSkipAffordance();
     reconcileBlockingScope(
       previousScope,
       currentBlockingScope(),
@@ -1802,6 +1860,8 @@ export function mountServiceDayUi(
     surface?.style.removeProperty('--vk-status-hud-height');
     cleanupCelebrationBanner();
     cleanupFloorHud();
+    document.removeEventListener('click', onReplayTutorialPointer, true);
+    tutorialSkipHost.remove();
     window.removeEventListener('resize', positionChatBubble);
     document.removeEventListener('keydown', onBlockingScopeKeydown, true);
     window.removeEventListener('food-atlas-ready', onFoodAtlas);

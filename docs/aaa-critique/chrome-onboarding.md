@@ -276,3 +276,71 @@ Completed top-5 chrome opportunities inside the agent fence:
 | **Environment-limited (no code)** | Round-2 gaps **#3** (PWA toast e2e) and **#4** (audible SFX delta in headless) remain verification limits only. HUD dialog labels (#5) owned by concurrent floor agent. |
 
 **Tests:** extended `chrome-notice-semantics` (celebration live region + retrigger + dismiss tabindex/Escape).
+
+---
+
+## Closing verification (round 3)
+
+**Method:** `npm run sync:data` → Vite dev `127.0.0.1:4185/?e2e=1` → Playwright headless session (`/tmp/chrome-close-eval.mjs`, pattern `tests/e2e/helpers.ts`). Screenshots at `/tmp/aaa-shots/chrome-close/` (320×568, 390×844, 1280×800). Machine report: `/tmp/aaa-shots/chrome-close/eval-report.json`. Supplementary front-celebration + Escape probe run inline. No test-suite runs; read-only doc append.
+
+### Round-3 claim verification (live)
+
+| Claim | Result | Evidence |
+|-------|--------|----------|
+| Celebration `role=status` + polite live region | **PASS** | Front celebration aside: `role=status`, `aria-live=polite`, `aria-atomic=true`, `aria-label=Recipe celebration`. When covered by notice toast, `.banner-live-text` stays empty until front; uncovered probe: live text `Herb Pasta. New recipe unlocked`. |
+| Celebration re-announces on repeat triggers | **PASS** | FIFO second celebration after dismiss: live text swaps to `Regular. Complete seven service days` (first queue) and `Tomato Pro. Level 2 mastery` (supplementary front probe). `replaceLiveRegionText` clear-then-set fires. |
+| Dismiss out of Tab order (`tabindex=-1`) | **PASS** | Notice + celebration dismiss both `tabindex=-1`. Mid-service 20× Tab trail: `dismissIndex=-1`; tickets → HUD stats → gear → canvas (`role=application`, WASD label) → floor toolbar (`role=toolbar`) — dismiss never reached. |
+| Escape dismisses front banner | **PASS** | Escape with front celebration visible → `bannerCount=0` (queue cleared). |
+| Settings Close + Escape (pre-day & mid-service) | **PASS** | Recipes→More→Settings→Close restores `data-screen=recipes`; Escape same. Mid-service: gear→Settings→Escape/Close→`restaurant`, floor panel still visible. |
+| More hub mounts Shop/Flavors/Rating/Settings | **PASS** | Hub lists all four; each `nav-more-*` navigates and mounts (`shop-screen`, `inspector-screen`, `rating-screen`, `settings-screen`). |
+| Volume / reduced-motion / replay tutorial | **PASS** | Slider `25` → store `audioVolume=0.25`. Reduce motion sets `html[data-vk-reduced-motion=true]` + `#game-root` attr. Replay clears `tutorialDismissedStepId`, feedback “Tutorial tips re-armed…”. |
+| Gear ≥44px desktop | **PASS** | `hud-settings` bounding box **44×44** at 1280×800. Close button **65×44**. |
+
+### Scorecard (fresh, evidence-only)
+
+| # | Category | Score | Verdict |
+|---|----------|:-----:|---------|
+| 1 | First-60-seconds clarity | **4** | Cold boot: HUD + “Open for service?” + Floor/Recipes/More nav (`390x844-01-cold-boot.png`). Still no explicit Day-1 framing or skip. |
+| 2 | Tutorial teach-by-doing | **4** | Contextual `role=status` copy during service (`390x844-06-tutorial.png`); DOM pulse highlight ships. Not TotK in-world pointer. |
+| 3 | Navigation legibility | **4** | More hub exposes Shop/Flavors/Rating/Settings; all mount and navigate. Primary nav still Floor + Recipe Book only. |
+| 4 | Notification manners | **5** | Celebration `role=status` + polite live re-announce; dismiss `tabindex=-1`; floor toolbar/canvas precede dismiss in Tab cycle. |
+| 5 | Settings completeness | **4** | Close/Escape return tracking verified pre-day + mid-service; volume slider, reduced-motion override, replay tutorial wired end-to-end. |
+| 6 | Keyboard / focus coverage | **4** | Floor toolbar + canvas both reachable via Tab (`tabindex=0`, WASD label). Dismiss removed from sequential Tab order. |
+| 7 | ARIA / screen-reader semantics | **4** | Notice + celebration both `role=status` polite; HUD detail `<aside>` popovers still lack `role=dialog`. |
+| 8 | Touch targets & zoom | **4** | Gear 44×44, settings Close 65×44, global CTA 52px; viewport allows pinch-zoom. |
+| 9 | Offline / PWA communication | **3** | Dev `manifest` link present; `mountPwaStatusNotices` wired in `pwa-status.ts` (install/offline/update/iOS A2HS copy) — **not exercised live** (environment-limited). |
+| 10 | Error recovery guidance | **3** | Import confirm DOM exists; boot-error / save feedback unchanged; no new recovery paths verified live. |
+| 11 | Responsive behavior | **4** | No horizontal overflow at 320×568, 390×844, 1280×800; desktop meta rail holds (`*-07-floor-chrome.png`). |
+
+**Overall: ~3.9 / 5** (prior round-2 3.8). **MEET OR EXCEED blind 4.0 bar: NO** — round-3 fixes land (celebration `role=status`, live re-announce, dismiss tab order + Escape) and all round-2 wins hold, but PWA surfacing (#9) and error recovery (#10) remain at 3 and drag the average below benchmark.
+
+### Ranked remaining gaps
+
+| Rank | Gap | Where | Complexity |
+|------|-----|-------|:----------:|
+| 1 | PWA install / offline / update / iOS A2HS toasts not verified end-to-end (environment-limited; wiring present in `pwa-status.ts`) | `pwa-status.ts` | S |
+| 2 | Audible SFX delta from volume slider not instrumented in headless (store wiring verified) | `audio-bridge.ts` | S |
+| 3 | HUD cash/rating/prestige/day detail panels lack `role=dialog` + labelled heading | `ServiceDayUi.ts` | S |
+| 4 | No explicit Day-1 tutorial framing or skip affordance | `ServiceDayUi.ts` / `tutorial.ts` | M |
+| 5 | Spatial tutorial highlight is DOM pulse only (no canvas object link) | `TutorialHighlightOverlay.ts` | L |
+
+### Artifact index (this pass)
+
+| Artifact | Path |
+|----------|------|
+| Screenshots | `/tmp/aaa-shots/chrome-close/*.png` |
+| Machine eval JSON | `/tmp/aaa-shots/chrome-close/eval-report.json` |
+| Playwright harness | `/tmp/chrome-close-eval.mjs` (eval-only) |
+
+*Closing verification appended read-only; no source changes.*
+
+## Implemented (round 4)
+
+Micro-polish closing round (final). Tasks that landed in this doc's fence:
+
+| # | What | Where | Tests |
+|---|------|-------|-------|
+| **3** | HUD cash/rating/prestige/day detail popovers: `role="dialog"` + `aria-modal="false"` + `aria-labelledby` (non-modal popovers). | `ServiceDayUi.ts`, `ui/presentation/hud-detail-dialog.ts` (new) | `chrome-tutorial-skip.test.ts` |
+| **4** | Day-1 **Skip tutorial** affordance (44px, keyboard-focusable) completes guidance via `skipTutorial()`; progression rules unchanged. Replay button clears skip. | `tutorial.ts` (`skipTutorial` / `clearTutorialSkip`), `ServiceDayUi.ts`, `service-day.css` | `chrome-tutorial-skip.test.ts` |
+
+Floor tasks (#1 SFX, #2 queue slide) are recorded in `floor-service.md` § Implemented (round 4).

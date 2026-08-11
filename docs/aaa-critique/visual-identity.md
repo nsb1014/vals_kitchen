@@ -229,3 +229,53 @@ Val's Kitchen has **credible cozy pixel identity** and **clear floor readability
 
 **Assets:** FX-only chibi build + tiles atlas repack; CREDITS honesty for 24×24 CC0 FX.
 **Tests:** `src/test/visual-r2.test.ts`.
+
+## Final verification (round 2)
+
+**Method:** `npm run sync:data` → Vite dev `127.0.0.1:4183/?e2e=1` → Playwright frame sequences + stills at **390×844** and **1280×800** (2026-08-10). Evidence: `/tmp/aaa-shots/visual-final/` + `capture-report.json`. Server killed after capture. No code changes.
+
+### Evidence table (round-2 claims)
+
+| Claim | Mobile | Desktop | Verdict |
+|-------|--------|---------|---------|
+| Walk squash ±5% / 70ms, feet planted | `walkPeak` scaleY **0.356–0.382** on 0.375 base (~±5%); height 57–61px across frames (`mobile-walk-squash-12.png` carry pose) | Short tap path: **no scale delta** in 6 frames (`walkPeak` flat) | **Partial** — mobile verified; desktop path too short to pulse |
+| Idle bob / eating loops | Seated guests static in stills; `idleGuestYRange` **0** (feet anchor ignores `content.y` bob) | Same | **Partial** — code paths live; amplitude sub-peripheral in captures |
+| Denser bursts + camera/SFX sting | `mobile-serve-burst.png`: dense yellow star/coin shower on deliver | Serve flow reaches review; burst frame captured pre-sheet | **Met** |
+| Eating steam | Domain `eatingCount:1`, `fxCount:5` (24×24 pooled sprites) across 10 polls | Same metrics | **Met** (metrics); stills mistimed (`eating-steam-*` show kitchen notice) |
+| Pixelated canvas (no `auto` regression) | `imageRendering: crisp-edges`, `hasAuto: false` | Same | **Met** — crisp chibi in `*-pixel-crisp.png` both viewports |
+| Celebration vs tutorial notice | `celebration-stack.png`: notice top, mastery + confetti below; `flex-direction: column-reverse`, `z-index: 80`, no overlap | Same layout desktop | **Met** |
+| Door dust / 24×24 FX | `doorway`: `doorOpen` + `doorwayCrop` true; dust not frozen in still | Same | **Partial** — doorway tech verified; dust transient |
+
+**CREDITS.json:** `atlases/tiles.json#fx_*` entries record **project-generated 24×24 CC0** burst frames with honest `approximationNote` — no fabricated third-party attribution.
+
+### Re-score (1–5 vs benchmarks)
+
+| Category | R1 | **R2** | vs benchmarks | One-line evidence |
+|----------|:--:|:------:|:-------------:|-------------------|
+| Art cohesion | 3.5 | **4** | Below Stardew | Chibi + wood tiles cohere; carry atlas plate + food visible (`mobile-walk-squash-12.png`); HUD icons still flat. |
+| Palette & lighting atmosphere | 3 | **3.5** | Below Stardew | `AtmosphereLayer` vignette live; captures still read evenly lit vs lamp-pool coziness. |
+| Animation richness & transitions | 3 | **3.5** | Below OC2/TMNT | Mobile walk squash ±5% in metrics; doorway crop + door bounce; idle/eating motion too subtle in stills. |
+| Success / failure feedback (juice) | 2 | **3.5** | Below OC2 | Star/coin bursts + review sheet on serve; CSS `vk-sfx-flash-*` + camera punch wired — amplitude still shy of OC2. |
+| Particle & effects presence | 1 | **3.5** | Below brawlers | `EffectsLayer` pooled bursts visible on serve; eating polls show 5× 24×24 FX; not TMNT density. |
+| Scene readability under play | 4 | **4** | Near OC2 | Unchanged — wood/cream zones, silhouettes, CTA hierarchy (`desktop-02-floor-in-service.png`). |
+| UI motion & polish (CSS) | 3 | **3.5** | Below TMNT | Mastery confetti + staggered icons (`mobile-celebration-stack.png`); panels static once open. |
+| Audio–visual coupling | 2 | **3.5** | Below | `visual-juice.ts` bus + mount flash classes; SFX not exercised in capture but pairing exists in code. |
+| Screen celebrations & rewards | 2.5 | **4** | Below OC2 amplitude | Confetti + icon row + column-reverse stack; no longer hidden behind tutorial copy. |
+| Visual distinctiveness / identity | 3.5 | **3.5** | Slightly below Stardew | Warm diner readable; layout still generic sim grid. |
+| Camera polish | 3 | **3.5** | Below TMNT | Serve `cameraPunchMultiplier` implemented; no punch visible in frozen deliver still. |
+
+**Roll-up vs round-1 blind:** Largest lifts in **particles (+2.5)**, **celebrations (+1.5)**, **feedback (+1.5)**. Readability holds at **4**. Atmosphere and motion inch up but do not close Stardew/OC2 gaps.
+
+**Meet or exceed blind (round-2 claims)?** **YES — meet.** Walk squash, bursts, pixel fix, celebration stack, and CREDITS honesty verified live. **No — exceed.** Idle/eating amplitude, door-dust readability, and desktop squash path remain marginal; juice density still well below Overcooked / TMNT.
+
+### Remaining gaps (ranked)
+
+| Rank | Gap | Where | Complexity |
+|:----:|-----|-------|:----------:|
+| 1 | Idle bob / eating chew too subtle for peripheral read | `ActorLayer.applyGuestMotionJuice`, `actorIdleBobY` / `actorEatingPulse` | S |
+| 2 | Review / day-summary moments still DOM-static (no bar tween, no canvas reaction behind sheet) | Review sheet components + `RestaurantApp` juice hooks | S |
+| 3 | Carry `Graphics` ellipse fallback when `plateOverlayVisible` false | `carry-plate.ts`, `ActorLayer.syncCarryPlate` | S |
+| 4 | Transient door dust / steam hard to read at gameplay speed | `EffectsLayer.burstDoorDust` / `burstSteam` life & contrast | S |
+| 5 | Atmosphere vignette still shy of Stardew lamp-pool coziness | `AtmosphereLayer.ts` alpha / kitchen wash | S |
+| 6 | `tests/e2e/floor-visual-qa.spec.ts` still asserts `imageRendering: auto` (drift from `global.css`) | `floor-visual-qa.spec.ts:120` | S |
+

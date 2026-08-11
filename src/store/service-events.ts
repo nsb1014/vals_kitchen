@@ -27,14 +27,20 @@ export interface ServiceUiPatch {
   floorActionInFlight?: FloorFeelBeat | null;
 }
 
-/** Map floor-feel beats onto shipped SFX ids (no new audio files). */
+/**
+ * Map floor-feel beats onto shipped Kenney SFX ids (no new audio files).
+ * Seat/order use punchier stings than the generic uiClick used for walk.
+ */
 export function sfxForFloorFeelBeat(beat: FloorFeelBeat): SfxId {
   switch (beat) {
     case 'deliver':
       return 'serve';
     case 'seat':
+      // Placement thump — guest lands at the stool.
+      return 'placement';
     case 'order':
-      return 'uiClick';
+      // Purchase ding — order locked in / ticket punched.
+      return 'purchase';
     case 'walk':
       return 'uiClick';
   }

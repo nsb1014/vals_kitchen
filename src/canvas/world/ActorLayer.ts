@@ -29,7 +29,7 @@ import {
   playerPoseFrame,
   playerTextureKeyCandidates,
 } from './character-frames.ts';
-import { waitingGuestWorldPosition } from './waiting-line.ts';
+import { waitingGuestWorldPosition, queueLineAdvancePosition } from './waiting-line.ts';
 import type { GuestMotion, GuestPose } from './GuestMotion.ts';
 import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
 import {
@@ -163,6 +163,15 @@ interface GuestSpriteEntry {
   stage: FloorGuest['stage'] | null;
   walkPulse: WalkPulseState;
   phase: number;
+  /** Queued silhouette slide-up after an admit (presentation only). */
+  queueAdvance: {
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    startMs: number;
+    active: boolean;
+  } | null;
 }
 
 function tileCenter(gx: number, gy: number): { x: number; y: number } {
@@ -723,6 +732,7 @@ export class ActorLayer {
         const world = waitingGuestWorldPosition(guestDoor, Math.max(0, lineIndex));
         seen.add(guest.id);
         const entry = this.ensureGuestEntry(guest.id);
+        const wasQueued = entry.stage === 'queued';
         entry.sprite.visible = false;
         entry.lastFrameKey = '';
         entry.actualBoundFrameKey = '';
@@ -733,7 +743,50 @@ export class ActorLayer {
         entry.stage = 'queued';
         resetWalkPulse(entry.walkPulse);
         const feetY = world.y + TILE_PX / 2 - 2;
-        entry.root.position.set(Math.round(world.x), Math.round(feetY));
+        const targetX = Math.round(world.x);
+        const targetY = Math.round(feetY);
+        const nowMs = performance.now();
+
+        if (!wasQueued) {
+          // Entering the silhouette line: snap (no slide from off-map).
+          entry.queueAdvance = null;
+          entry.root.position.set(targetX, targetY);
+        } else {
+          const priorTargetX = entry.queueAdvance?.toX ?? entry.root.position.x;
+          const priorTargetY = entry.queueAdvance?.toY ?? entry.root.position.y;
+          const targetMoved =
+            Math.abs(priorTargetX - targetX) > 0.5 ||
+            Math.abs(priorTargetY - targetY) > 0.5;
+          if (targetMoved) {
+            const fromX = entry.queueAdvance?.active
+              ? entry.root.position.x
+              : priorTargetX;
+            const fromY = entry.queueAdvance?.active
+              ? entry.root.position.y
+              : priorTargetY;
+            entry.queueAdvance = {
+              fromX,
+              fromY,
+              toX: targetX,
+              toY: targetY,
+              startMs: nowMs,
+              active: true,
+            };
+          }
+          if (entry.queueAdvance?.active) {
+            const slid = queueLineAdvancePosition(
+              { x: entry.queueAdvance.fromX, y: entry.queueAdvance.fromY },
+              { x: entry.queueAdvance.toX, y: entry.queueAdvance.toY },
+              nowMs - entry.queueAdvance.startMs,
+            );
+            entry.root.position.set(Math.round(slid.x), Math.round(slid.y));
+            if (slid.done) entry.queueAdvance = null;
+          } else {
+            entry.queueAdvance = null;
+            entry.root.position.set(targetX, targetY);
+          }
+        }
+
         entry.root.zIndex = entry.root.y - 1;
         entry.cue.clear();
         // Dim silhouette so the door queue reads before admit.
@@ -758,6 +811,7 @@ export class ActorLayer {
       if (!pose) continue;
       seen.add(guest.id);
       const entry = this.ensureGuestEntry(guest.id);
+      entry.queueAdvance = null;
 
       const variant = guestVariant(guest.id);
       const facingName = FACING_NAMES[pose.facing];
@@ -942,6 +996,7 @@ export class ActorLayer {
       stage: null,
       walkPulse: { lastFrame: 0, startMs: 0, active: false },
       phase: hashPhase(guestId),
+      queueAdvance: null,
     };
     this.guestSprites.set(guestId, entry);
     return entry;
