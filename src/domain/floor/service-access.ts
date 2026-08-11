@@ -36,29 +36,40 @@ const CARDINAL_DIRECTIONS = [
   [0, -1],
 ] as const;
 
+/**
+ * Integer cell keys (y * w + x) for the flood-fill hot path. Legacy repair
+ * evaluates keepsGuestServiceReachable tens of thousands of times on dense
+ * saves; string keys were the dominant allocation/hash cost.
+ */
+function cellKey(x: number, y: number, w: number): number {
+  return y * w + x;
+}
+
 function mainFloorPhysicalOccupancy(
   gridSize: { w: number; h: number },
   placements: Placement[],
   kitchenAnnexOwned: boolean,
-): Set<string> {
+): Set<number> {
   const { w, h } = gridSize;
-  const blocked = new Set<string>();
+  const blocked = new Set<number>();
   for (const placement of placements) {
     if (isWalkBlockingPlacement(placement)) {
-      blocked.add(`${placement.x},${placement.y}`);
+      blocked.add(cellKey(placement.x, placement.y, w));
     }
   }
-  for (const seat of seatsFromPlacements(placements)) blocked.add(`${seat.x},${seat.y}`);
+  for (const seat of seatsFromPlacements(placements)) {
+    blocked.add(cellKey(seat.x, seat.y, w));
+  }
 
   const openDoors = new Set(
-    openDoorCellsForRoom('main', w, h, kitchenAnnexOwned).map(
-      (cell) => `${cell.x},${cell.y}`,
+    openDoorCellsForRoom('main', w, h, kitchenAnnexOwned).map((cell) =>
+      cellKey(cell.x, cell.y, w),
     ),
   );
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
-      if (isPerimeterWallCell(x, y, w, h) && !openDoors.has(`${x},${y}`)) {
-        blocked.add(`${x},${y}`);
+      if (isPerimeterWallCell(x, y, w, h) && !openDoors.has(cellKey(x, y, w))) {
+        blocked.add(cellKey(x, y, w));
       }
     }
   }
@@ -68,28 +79,31 @@ function mainFloorPhysicalOccupancy(
 
 function reachableFrom(
   gridSize: { w: number; h: number },
-  blocked: ReadonlySet<string>,
+  blocked: ReadonlySet<number>,
   start: GridCell,
-): Set<string> {
+): Set<number> {
   const { w, h } = gridSize;
-  const reachable = new Set<string>();
-  if (blocked.has(`${start.x},${start.y}`)) return reachable;
+  const reachable = new Set<number>();
   if (start.x < 0 || start.y < 0 || start.x >= w || start.y >= h) {
     return reachable;
   }
+  const startKey = cellKey(start.x, start.y, w);
+  if (blocked.has(startKey)) return reachable;
 
-  reachable.add(`${start.x},${start.y}`);
-  const queue = [start];
+  reachable.add(startKey);
+  const queue = [startKey];
   for (let index = 0; index < queue.length; index += 1) {
     const current = queue[index]!;
+    const cx = current % w;
+    const cy = (current - cx) / w;
     for (const [dx, dy] of CARDINAL_DIRECTIONS) {
-      const x = current.x + dx;
-      const y = current.y + dy;
-      const key = `${x},${y}`;
+      const x = cx + dx;
+      const y = cy + dy;
       if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const key = current + dy * w + dx;
       if (blocked.has(key) || reachable.has(key)) continue;
       reachable.add(key);
-      queue.push({ x, y });
+      queue.push(key);
     }
   }
   return reachable;
@@ -97,31 +111,29 @@ function reachableFrom(
 
 function hasReachableSeatEndpoint(
   seat: GridCell,
-  reachable: ReadonlySet<string>,
+  reachable: ReadonlySet<number>,
+  w: number,
 ): boolean {
   // Seats remain blocked transit cells. Guest pathfinding permits the assigned
   // seat only as its endpoint, which is equivalent to reaching one cardinal
   // neighbor and taking a final step onto the stool.
   return CARDINAL_DIRECTIONS.some(([dx, dy]) =>
-    reachable.has(`${seat.x + dx},${seat.y + dy}`),
+    reachable.has(cellKey(seat.x + dx, seat.y + dy, w)),
   );
 }
 
 function mainFloorPlayerReachability(
   gridSize: { w: number; h: number },
-  placements: Placement[],
-  kitchenAnnexOwned: boolean,
+  physical: ReadonlySet<number>,
 ): {
   spawn: GridCell;
-  reachable: Set<string>;
+  reachable: Set<number>;
 } {
-  const blocked = mainFloorPhysicalOccupancy(
-    gridSize,
-    placements,
-    kitchenAnnexOwned,
-  );
+  // The shared physical occupancy is built once per validation call; the
+  // player flood adds the entrance reserve on its own copy.
+  const blocked = new Set(physical);
   for (const cell of mainGuestEntranceReservedCells(gridSize.w, gridSize.h)) {
-    blocked.add(`${cell.x},${cell.y}`);
+    blocked.add(cellKey(cell.x, cell.y, gridSize.w));
   }
   const spawn = servicePlayerSpawn(gridSize.w, gridSize.h);
   return { spawn, reachable: reachableFrom(gridSize, blocked, spawn) };
@@ -141,16 +153,24 @@ export function keepsGuestServiceReachable(
   kitchenAnnexOwned: boolean,
 ): boolean {
   const seats = seatsFromPlacements(placements);
-  const { spawn, reachable: playerReachable } = mainFloorPlayerReachability(
+  // Build the shared physical occupancy once — the player, arrival, and
+  // departure floods all start from it (legacy repair calls this per DFS
+  // state, so the duplicate build was the hot path's biggest constant).
+  const physical = mainFloorPhysicalOccupancy(
     gridSize,
     placements,
     kitchenAnnexOwned,
   );
-  if (!playerReachable.has(`${spawn.x},${spawn.y}`)) return false;
+  const { spawn, reachable: playerReachable } = mainFloorPlayerReachability(
+    gridSize,
+    physical,
+  );
+  const w = gridSize.w;
+  if (!playerReachable.has(cellKey(spawn.x, spawn.y, w))) return false;
   if (
     !seats.every((seat) =>
       guestServicePositions(seat).some((position) =>
-        playerReachable.has(`${position.x},${position.y}`),
+        playerReachable.has(cellKey(position.x, position.y, w)),
       ),
     )
   ) {
@@ -158,7 +178,7 @@ export function keepsGuestServiceReachable(
   }
   if (
     !waitingGuestServicePositions(gridSize.w, gridSize.h).some((position) =>
-      playerReachable.has(`${position.x},${position.y}`),
+      playerReachable.has(cellKey(position.x, position.y, w)),
     )
   ) {
     return false;
@@ -167,27 +187,24 @@ export function keepsGuestServiceReachable(
 
   // A pair of flood fills answers both guest-route checks for every stool;
   // seats stay blocked and are admitted only as route endpoints.
-  const physical = mainFloorPhysicalOccupancy(
-    gridSize,
-    placements,
-    kitchenAnnexOwned,
-  );
   const door = doorForGrid(gridSize.w, gridSize.h);
   const waiting = guestWaitingAlcove(door);
   const arrivalReachable = reachableFrom(gridSize, physical, waiting);
-  if (!seats.every((seat) => hasReachableSeatEndpoint(seat, arrivalReachable))) {
+  if (
+    !seats.every((seat) => hasReachableSeatEndpoint(seat, arrivalReachable, w))
+  ) {
     return false;
   }
 
   const departureBlocked = new Set(physical);
-  departureBlocked.add(`${waiting.x},${waiting.y}`);
+  departureBlocked.add(cellKey(waiting.x, waiting.y, w));
   const departureReachable = reachableFrom(
     gridSize,
     departureBlocked,
     guestDoorwayLane(door),
   );
   return seats.every((seat) =>
-    hasReachableSeatEndpoint(seat, departureReachable),
+    hasReachableSeatEndpoint(seat, departureReachable, w),
   );
 }
 
@@ -198,11 +215,14 @@ export function recoverMainFloorPlayerPosition(
   kitchenAnnexOwned: boolean,
   saved: { x: number; y: number } | undefined,
 ): { x: number; y: number } {
-  const { spawn, reachable } = mainFloorPlayerReachability(
+  const physical = mainFloorPhysicalOccupancy(
     gridSize,
     placements,
     kitchenAnnexOwned,
   );
-  if (saved && reachable.has(`${saved.x},${saved.y}`)) return { ...saved };
+  const { spawn, reachable } = mainFloorPlayerReachability(gridSize, physical);
+  if (saved && reachable.has(cellKey(saved.x, saved.y, gridSize.w))) {
+    return { ...saved };
+  }
   return spawn;
 }
