@@ -624,8 +624,10 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 
 .sheet-footer .service-btn,
 #plate-btn {
-  min-height: var(--vk-cta-h);
-  height: var(--vk-cta-h);
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  transition: none;
 }
 
 .service-btn:disabled {
@@ -1286,10 +1288,13 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 }
 
 .floor-actions-scroll {
-  min-height: var(--vk-cta-h);
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   max-height: min(
     var(--vk-floor-chrome-min-h-3),
-    max(var(--vk-cta-h), calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
+    max(
+      max(var(--vk-touch-min, 44px), var(--vk-cta-h)),
+      calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem)
+    )
   );
   overflow-x: auto;
   overflow-y: auto;
@@ -1299,10 +1304,11 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 .floor-actions .service-btn {
   width: 100%;
   /* Fill the reserved CTA strip at normal zoom (service-visual geometry).
-   * Cap growth; label clamp + overflow:hidden keep 200% zoom activatable. */
-  height: var(--vk-cta-h);
-  min-height: var(--vk-cta-h);
-  max-height: var(--vk-cta-h);
+   * Cap growth; label clamp + overflow:hidden keep 200% zoom activatable.
+   * Floor with --vk-touch-min so DPR never reports a hair under 44px. */
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   box-sizing: border-box;
   min-width: 0;
   margin: 0;
@@ -1315,6 +1321,8 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
+  /* Height is a fixed strip — never tween it (hit-target assertions). */
+  transition: none;
 }
 
 .floor-action-icon {
@@ -2167,8 +2175,9 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 .compose-sheet-footer #plate-btn {
   align-self: stretch;
   height: auto;
-  min-height: var(--vk-cta-h);
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   margin: 0;
+  transition: none;
 }
 
 .sr-only {
@@ -2287,7 +2296,7 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-sheet-footer {
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 34%);
-    grid-template-rows: auto var(--vk-cta-h) auto;
+    grid-template-rows: auto max(var(--vk-touch-min, 44px), var(--vk-cta-h)) auto;
     height: auto;
     min-height: 5.4rem;
     padding: 0.35rem 0.6rem 0.5rem;
@@ -2305,7 +2314,7 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     display: block;
     grid-column: 1;
     grid-row: 2;
-    min-height: var(--vk-cta-h);
+    min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
     margin: 0;
     padding: 0.35rem 0.55rem;
     border: 1px solid var(--vk-border);
@@ -2469,11 +2478,12 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
 /* Floor chrome fills the reserved CTA strip; reassert after chibi .service-btn. */
 .floor-actions .service-btn {
-  height: var(--vk-cta-h);
-  min-height: var(--vk-cta-h);
-  max-height: var(--vk-cta-h);
+  height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
+  max-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   padding-block: 0.2rem;
   padding-inline: 0.3rem;
+  transition: none;
 }
 
 .service-btn.primary {

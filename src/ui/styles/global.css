@@ -24,6 +24,8 @@
   --vk-row-h: 56px;
   --vk-shop-row-h: 92px;
   --vk-recipe-row-h: 72px;
+  /* WCAG 2.5.8 target floor — pair with max(var(--vk-touch-min), …) at use sites. */
+  --vk-touch-min: 44px;
   --vk-cta-h: 48px;
   --vk-sheet-header-h: 3.25rem;
   --vk-floor-chrome-pad-y: 0.75rem;
@@ -331,16 +333,23 @@ body {
 .celebration-banner-dismiss,
 .notice-banner-dismiss {
   flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 45px;
+  /* 45px layout floor so DPR/subpixel getBoundingClientRect stays ≥ 44. */
+  min-width: max(var(--vk-touch-min, 44px), 45px);
+  min-height: max(var(--vk-touch-min, 44px), 45px);
+  height: auto;
+  width: auto;
+  box-sizing: border-box;
   border: 0;
   border-radius: 999px;
   background: rgba(30, 23, 20, 0.45);
   color: var(--vk-text-dim);
   font: inherit;
   font-size: 1.25rem;
+  line-height: 1;
   cursor: pointer;
   pointer-events: auto;
+  /* Hit size must not animate; banner-enter only translates the host. */
+  transition: none;
 }
 
 @keyframes banner-enter {
