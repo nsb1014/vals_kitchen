@@ -29,7 +29,9 @@
   --vk-cta-h: 48px;
   --vk-sheet-header-h: 3.25rem;
   --vk-floor-chrome-pad-y: 0.75rem;
-  --vk-floor-chrome-gap: 0.5rem;
+  /* Must match .floor-actions gap — the chrome min-height reserve formulas
+   * below assume it, and drift moves the canvas rect. */
+  --vk-floor-chrome-gap: 0.55rem;
   --vk-floor-chrome-min-h-1: calc(
     var(--vk-cta-h) + var(--vk-floor-chrome-pad-y) + 1px
   );
@@ -86,6 +88,9 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior: none;
   touch-action: manipulation;
   background: var(--vk-bg);
@@ -93,18 +98,19 @@ body {
   font-family: var(--vk-font);
 }
 
+/* Viewport-lock the app: menu panels scroll themselves; the document never
+ * page-scrolls (wheel / touch chaining from overflow regions). */
 .game-shell {
-  /* Absolute keeps normal full-viewport sizing while allowing root-zoomed
-   * chrome to contribute to document scrolling. */
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
-  /* inset defines height; keep svh/dvh as a floor for odd containing blocks */
-  min-height: 100svh;
-  min-height: 100dvh;
+  height: 100%;
+  max-height: 100svh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
     var(--vk-safe-bottom) env(safe-area-inset-left, 0px);
-  overscroll-behavior: none;
 }
 
 .game-surface {
@@ -116,18 +122,24 @@ body {
   min-height: 0;
   touch-action: manipulation;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .canvas-mount {
   position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .status-mount {
+  /* position required for z-index; keep flex order so HUD stays top-of-column */
+  position: relative;
+  z-index: 45;
   flex: 0 0 auto;
-  z-index: 20;
 }
 
 .chrome-mount {
@@ -397,7 +409,7 @@ body {
     box-shadow: inset 0 0 0 0 rgba(232, 212, 138, 0);
   }
   35% {
-    box-shadow: inset 0 0 0 999px rgba(232, 212, 138, 0.16);
+    box-shadow: inset 0 0 0 999px rgba(232, 212, 138, 0.08);
   }
   100% {
     box-shadow: inset 0 0 0 0 rgba(232, 212, 138, 0);
@@ -473,11 +485,13 @@ body {
   left: 0;
   right: 0;
   bottom: var(--vk-nav-height);
+  /* Above canvas (1) / bubbles (25); below chrome (55) and overlays (60). */
   z-index: 50;
   padding: 0.5rem 0.75rem;
   background: rgba(42, 33, 28, 0.92);
   border-top: 1px solid var(--vk-border);
   contain: layout style;
+  pointer-events: auto;
 }
 
 .layout-hud.layout-catalog-open {
@@ -560,6 +574,9 @@ body {
   background:
     radial-gradient(circle at 50% -20%, #4d321f 0, transparent 45%),
     #0b0806;
+  /* Reassert viewport lock after the chibi theme block. */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {

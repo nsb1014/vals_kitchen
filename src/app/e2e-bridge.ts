@@ -436,6 +436,8 @@ export interface E2eBridge {
   /** Debug: whether a ticket currently owns the async delivery boundary. */
   isDeliveryPending: (ticketId: string) => boolean;
   setFloorToast: (message: string | null) => void;
+  /** Clears day-1 tutorial/pacing guidance and blocks HUD resurrection. */
+  skipTutorialGuidance: () => void;
   enqueueCelebration: (celebration: Celebration) => void;
 }
 
@@ -1667,6 +1669,10 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     setFloorToast(message) {
       useGameStore.getState().setFloorToast(message);
+    },
+
+    skipTutorialGuidance() {
+      useGameStore.getState().skipTutorialGuidance();
     },
 
     enqueueCelebration(celebration) {

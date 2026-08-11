@@ -30,8 +30,9 @@ import {
   resolveFloorComposeTicket,
 } from '../domain/floor/index.ts';
 import {
-  nextTutorialStep,
-  tutorialPrompt,
+  clearTutorialSkip,
+  isTutorialSkipped,
+  skipTutorial,
 } from '../domain/floor/tutorial.ts';
 import { applyAppShellMotionPreference } from '../ui/presentation/motion-preference.ts';
 import {
@@ -178,6 +179,11 @@ export interface GameStore extends GameState, StoreMeta {
   setReducedMotion: (enabled: boolean) => void;
   /** Re-arm day-1 tutorial tips (clears dismiss + pacing gate). */
   replayTutorial: () => void;
+  /**
+   * Dismiss day-1 tutorial/pacing guidance for the rest of the day and clear
+   * any banner leftovers so HUD sync cannot resurrect them.
+   */
+  skipTutorialGuidance: () => void;
   setFloorNavPosition: (pos: { x: number; y: number }) => void;
   setFloorSelectedTicket: (ticketId: string | null) => void;
   openComposeSheet: () => void;
@@ -229,6 +235,7 @@ const META_KEYS = [
   'setAudioVolume',
   'setReducedMotion',
   'replayTutorial',
+  'skipTutorialGuidance',
   'setFloorNavPosition',
   'setFloorSelectedTicket',
   'openComposeSheet',
@@ -278,7 +285,6 @@ const META_KEYS = [
 ] as const;
 
 let toastNoticeSequence = 0;
-let lastHudPacingNotice: Notice | null = null;
 let gameSaveRepository: Pick<SaveRepository, 'load' | 'save'> =
   defaultSaveRepository;
 let serviceStartFence: Promise<void> | null = null;
@@ -399,8 +405,16 @@ function floorToastFromNotice(notice: Notice | null): string | null {
   return notice?.source === 'toast' ? notice.body : null;
 }
 
+/** Routine instructional sources never own the top banner under the quiet policy. */
+function isInstructionalNotice(notice: Notice | null): boolean {
+  return notice?.source === 'tutorial' || notice?.source === 'pacing';
+}
+
+function stripInstructionalNotice(notice: Notice | null): Notice | null {
+  return isInstructionalNotice(notice) ? null : notice;
+}
+
 function clearStoreNotificationTimers(): void {
-  lastHudPacingNotice = null;
   clearNotificationTimers();
 }
 
@@ -1048,28 +1062,31 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
   },
 
   replayTutorial() {
-    lastHudPacingNotice = null;
+    clearTutorialSkip();
     const state = get();
-    const floor = state.activeDay?.floor;
-    const step = floor ? nextTutorialStep(floor, state.day === 1) : null;
-    const prompt = tutorialPrompt(step);
-    if (prompt && step) {
-      const notice = {
-        id: `tutorial:replay:${step}:${Date.now()}`,
-        source: 'tutorial' as const,
-        scope: 'floor' as const,
-        body: prompt,
-        stepId: step,
-      };
-      set({
-        tutorialDismissedStepId: null,
-        noticeActive: notice,
-        floorToast: prompt,
-      });
-      restartNoticeTimer(notice);
-    } else {
-      set({ tutorialDismissedStepId: null });
-    }
+    // Replay re-arms HUD hint generation; instructional copy no longer rides
+    // the top banner (celebrations / actionable toasts / system own that lane).
+    set({
+      tutorialDismissedStepId: null,
+      noticeActive: stripInstructionalNotice(state.noticeActive),
+      noticeSticky: stripInstructionalNotice(state.noticeSticky),
+      floorToast:
+        state.noticeActive?.source === 'toast' ? state.floorToast : null,
+    });
+    syncStoreNotificationTimer();
+  },
+
+  skipTutorialGuidance() {
+    skipTutorial();
+    const current = get();
+    const noticeActive = stripInstructionalNotice(current.noticeActive);
+    const noticeSticky = stripInstructionalNotice(current.noticeSticky);
+    set({
+      noticeActive,
+      noticeSticky,
+      tutorialDismissedStepId: null,
+      floorToast: floorToastFromNotice(noticeActive),
+    });
     syncStoreNotificationTimer();
   },
 
@@ -1145,24 +1162,23 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       return;
     }
 
-    const notice =
+    // Identical actionable feedback already on the banner: coalesce — do not
+    // restart dwell or allocate a new notice identity (anti-spam).
+    if (
       current.noticeActive?.source === 'toast' &&
       current.noticeActive.body === message
-        ? current.noticeActive
-        : {
-            id: `toast:${++toastNoticeSequence}`,
-            source: 'toast' as const,
-            body: message,
-          };
-    if (
-      current.noticeActive &&
-      resolveNoticeScope(current.noticeActive) === 'floor'
     ) {
-      // A global toast temporarily owns the banner. Allow the HUD to reinstall
-      // its contextual pacing notice when the toast completes instead of
-      // treating that guidance as already delivered and losing it forever.
-      lastHudPacingNotice = null;
+      if (current.floorToast !== message) {
+        set({ floorToast: message });
+      }
+      return;
     }
+
+    const notice = {
+      id: `toast:${++toastNoticeSequence}`,
+      source: 'toast' as const,
+      body: message,
+    };
     set({ floorToast: message, noticeActive: notice });
     restartNoticeTimer(notice);
     syncStoreNotificationTimer();
@@ -1170,9 +1186,13 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
 
   syncFloorNoticesFromHud({ sticky, pacing }) {
     const current = get();
-    const pacingChanged = !sameNotice(lastHudPacingNotice, pacing);
-    let tutorialDismissedStepId = current.tutorialDismissedStepId;
+    const skipped = isTutorialSkipped();
+    // Pacing/tutorial cues are quiet HUD hints — never promote them to the
+    // top banner. Keep the argument so callers need not change, and so a
+    // null pacing signal can still clear stale instructional leftovers.
+    void pacing;
 
+    let tutorialDismissedStepId = current.tutorialDismissedStepId;
     if (!sticky?.stepId) {
       tutorialDismissedStepId = null;
     } else if (
@@ -1182,46 +1202,31 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       tutorialDismissedStepId = null;
     }
 
+    // Quiet policy + skip: instructional sticky/pacing never owns the banner.
     const allowedSticky =
-      sticky?.stepId && sticky.stepId === tutorialDismissedStepId
+      skipped || isInstructionalNotice(sticky)
         ? null
-        : sticky;
+        : sticky?.stepId && sticky.stepId === tutorialDismissedStepId
+          ? null
+          : sticky;
+
     const nextSticky = sameNotice(current.noticeSticky, allowedSticky)
       ? current.noticeSticky
       : allowedSticky;
-    const activeIsSticky =
-      current.noticeActive === null ||
-      current.noticeActive === current.noticeSticky;
-    const activeIsHudNotice =
-      current.noticeActive?.source === 'pacing' ||
-      current.noticeActive?.source === 'tutorial';
 
-    if (
-      pacing &&
-      pacingChanged &&
-      (activeIsSticky || activeIsHudNotice) &&
-      !sameNotice(current.noticeActive, pacing)
-    ) {
-      lastHudPacingNotice = pacing;
-      set({
-        noticeActive: pacing,
-        noticeSticky: nextSticky,
-        tutorialDismissedStepId,
-        floorToast: floorToastFromNotice(pacing),
-      });
-      restartNoticeTimer(pacing);
-    } else {
-      // A toast/system message owns the front until its timer completes. Keep
-      // a changed HUD notice pending so the next render may introduce it.
-      if (!pacing) lastHudPacingNotice = null;
-      const nextActive = activeIsSticky ? nextSticky : current.noticeActive;
-      set({
-        noticeActive: nextActive,
-        noticeSticky: nextSticky,
-        tutorialDismissedStepId,
-        floorToast: floorToastFromNotice(nextActive),
-      });
-    }
+    // Drop leftover tutorial/pacing banners (skip, policy change, or HUD clear)
+    // without disturbing an actionable toast / system message.
+    const clearedActive = stripInstructionalNotice(current.noticeActive);
+    const activeIsSticky =
+      clearedActive === null || clearedActive === current.noticeSticky;
+    const nextActive = activeIsSticky ? nextSticky : clearedActive;
+
+    set({
+      noticeActive: nextActive,
+      noticeSticky: nextSticky,
+      tutorialDismissedStepId,
+      floorToast: floorToastFromNotice(nextActive),
+    });
     syncStoreNotificationTimer();
   },
 

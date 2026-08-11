@@ -66,16 +66,19 @@ test('uses distinct guidance while a guest arrives, waits, and walks to a table'
     return bridge.getGameState().gridSize;
   });
 
-  const noticeBody = page.locator('.notice-banner-body');
+  // Instructional guidance rides the quiet hud-hint line; the top banner is
+  // reserved for celebrations and actionable toasts.
+  const hudHint = page.getByTestId('hud-hint');
   const seatGuest = page.getByTestId('floor-seat-next');
-  await expect(noticeBody).toHaveText('The first guest is arriving…');
+  await expect(hudHint).toHaveText('The first guest is arriving…');
+  await expect(page.getByTestId('notice-banner')).toHaveCount(0);
   await expect(seatGuest).toBeDisabled();
   await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
 
   await page.evaluate(() =>
     window.__E2E__!.dispatch({ type: 'FLOOR_COMPLETE_ENTERING' }),
   );
-  await expect(noticeBody).toHaveText('Seat the waiting guest.');
+  await expect(hudHint).toHaveText('Seat the waiting guest.');
   await expect(seatGuest).toBeEnabled();
   await expect(seatGuest).toHaveClass(/\bprimary\b/);
 
@@ -88,7 +91,8 @@ test('uses distinct guidance while a guest arrives, waits, and walks to a table'
     bridge.setFloorNavPosition(position);
     await bridge.dispatch({ type: 'FLOOR_SEAT_NEXT' });
   }, nearWaiting);
-  await expect(noticeBody).toHaveText('Guest is heading to the table…');
+  await expect(hudHint).toHaveText('Guest is heading to the table…');
+  await expect(page.getByTestId('notice-banner')).toHaveCount(0);
   await expect(seatGuest).toBeDisabled();
   await expect(seatGuest).not.toHaveClass(/\bprimary\b/);
 });
@@ -337,7 +341,7 @@ test('banner uses the HUD offset, clamps body, and reveals queued celebration', 
   expect(dismissHitBoxes.height).toBeGreaterThanOrEqual(44);
 });
 
-test('an elapsed tutorial cue does not replay after compose closes', async ({
+test('the cook cue stays a quiet hint and never replays onto the banner after compose closes', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -345,21 +349,21 @@ test('an elapsed tutorial cue does not replay after compose closes', async ({
   await dismissInitialNotice(page);
   await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
 
+  // Instructional cook guidance is a persistent hud-hint, not a timed banner.
   const notice = page.getByTestId('notice-banner');
-  const orderBubble = page.getByTestId('chat-bubble');
-  await expect(notice).toContainText('Plate a ticket');
-  await expect(orderBubble).toBeVisible();
-  await expect(notice).toBeHidden();
-  await expect(orderBubble).toBeHidden({ timeout: 3_000 });
-  await expect(notice).toBeVisible();
-  await expect(notice).toHaveCount(0, { timeout: 5000 });
+  const hudHint = page.getByTestId('hud-hint');
+  await expect(hudHint).toContainText('Plate a ticket');
+  await expect(notice).toHaveCount(0);
 
   await page.evaluate(() => window.__E2E__!.openComposeSheet());
   await expect(page.getByTestId('compose-sheet')).toBeVisible();
   await page.getByTestId('compose-close').click();
   await expect(page.getByTestId('compose-sheet')).toHaveCount(0);
   await page.waitForTimeout(250);
+  // No replay churn: banner stays empty and the hint shows the cue once.
   await expect(notice).toHaveCount(0);
+  await expect(hudHint).toHaveCount(1);
+  await expect(hudHint).toContainText('Plate a ticket');
 });
 
 test('transient notices pause behind compose and review sheets, then resume', async ({

@@ -9,6 +9,7 @@ import {
   renderedAlphaMaskContainsWorldPoint,
   renderedNodePaintsAbove,
   renderedSpriteBoundsContainWorldPoint,
+  resolveNearestGuestHit,
   resolveTopmostGuestHit,
   type GuestHitTargetCandidate,
   type GuestWorldBounds,
@@ -155,7 +156,11 @@ describe('guest hit geometry', () => {
 
   it('never shrinks authored bounds that already exceed the minimum', () => {
     const authored = { left: -40, top: -30, right: 50, bottom: 60 };
-    expect(expandGuestHitBounds(authored, 2)).toEqual(authored);
+    const expanded = expandGuestHitBounds(authored, 2);
+    expect(expanded.left).toBeLessThanOrEqual(authored.left);
+    expect(expanded.top).toBeLessThanOrEqual(authored.top);
+    expect(expanded.right).toBeGreaterThanOrEqual(authored.right);
+    expect(expanded.bottom).toBeGreaterThanOrEqual(authored.bottom);
   });
 
   it('clamps invalid and tiny camera scales to 0.01', () => {
@@ -276,5 +281,20 @@ describe('topmost guest hit resolution', () => {
     const beta = candidate('guest_b', 100, 8);
     expect(resolveTopmostGuestHit(point, [beta, alpha], 1)).toBe(beta);
     expect(resolveTopmostGuestHit(point, [alpha, beta], 1)).toBe(beta);
+  });
+
+  it('falls back to the nearest guest within radius for head taps beside the body', () => {
+    const seated = candidate('seated', 100, 4, {
+      left: 10,
+      top: 40,
+      right: 30,
+      bottom: 70,
+    });
+    // Far enough above the expanded body rect that topmost misses, but still
+    // inside the nearest-guest radius around the sprite center (20, 55).
+    const headTap = { x: 20, y: 16 };
+    expect(resolveTopmostGuestHit(headTap, [seated], 1)).toBeNull();
+    expect(resolveNearestGuestHit(headTap, [seated], 1)).toBe(seated);
+    expect(resolveNearestGuestHit({ x: 200, y: 200 }, [seated], 1)).toBeNull();
   });
 });

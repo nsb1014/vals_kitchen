@@ -87,13 +87,9 @@ test('captures pre- and post-delivery floor states for visual QA', async ({ page
   const seatGuestAction = page.getByTestId('floor-seat-next');
   await expect(seatGuestAction).toBeEnabled();
   await expect(seatGuestAction).not.toHaveClass(/\bprimary\b/);
-  await expect(page.getByTestId('notice-banner')).toContainText('Take orders');
-
-  // The state cue appears once, then the world/action affordances stand alone.
-  // This also allows GuestMotion walks to finish (nav speed ~2.4 tiles/s).
-  await expect(page.getByTestId('notice-banner')).toHaveCount(0, {
-    timeout: 5000,
-  });
+  // The state cue is a quiet hud-hint line; the top banner stays reserved.
+  await expect(page.getByTestId('hud-hint')).toContainText('Take orders');
+  await expect(page.getByTestId('notice-banner')).toHaveCount(0);
   await assertCanvasHasRenderedContent(page);
 
   const metrics = await page.evaluate(() => window.__E2E__!.getActorSpriteMetrics());

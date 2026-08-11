@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   NavController,
+  easePathDistance,
   easeSegmentProgress,
 } from '../../canvas/world/NavController.ts';
 import { TILE_PX } from '../../canvas/coordinates.ts';
@@ -35,14 +36,15 @@ describe('NavController', () => {
     expect(nav.walkFrame()).toBeGreaterThanOrEqual(0);
   });
 
-  it('eases segment world lerp without changing tile timing', () => {
-    expect(easeSegmentProgress(0)).toBe(0);
-    expect(easeSegmentProgress(1)).toBe(1);
-    expect(easeSegmentProgress(0.5)).toBe(0.5);
-    // Early segment lag vs linear; late segment lead — Dead Cells weight.
-    expect(easeSegmentProgress(0.25)).toBeLessThan(0.25);
-    expect(easeSegmentProgress(0.75)).toBeGreaterThan(0.75);
-    // Mid-path corners stay linear so turns keep momentum.
+  it('eases path world lerp without changing tile timing', () => {
+    expect(easePathDistance(0, 1)).toBe(0);
+    expect(easePathDistance(1, 1)).toBe(1);
+    expect(easePathDistance(0.5, 1)).toBe(0.5);
+    // Early path lag vs linear; late path lead.
+    expect(easePathDistance(0.25, 1)).toBeLessThan(0.25);
+    expect(easePathDistance(0.75, 1)).toBeGreaterThan(0.75);
+    // Mid-path on longer routes stays linear.
+    expect(easePathDistance(1.5, 3)).toBe(1.5);
     expect(easeSegmentProgress(0.25, 'mid')).toBe(0.25);
     expect(easeSegmentProgress(0.75, 'mid')).toBe(0.75);
 
@@ -59,6 +61,30 @@ describe('NavController', () => {
     nav.update(75);
     expect(nav.isMoving).toBe(false);
     expect(nav.position).toEqual({ x: 1, y: 0 });
+  });
+
+  it('keeps mid-path corners at constant visual speed across tile boundaries', () => {
+    const nav = new NavController({ x: 0, y: 0 }, 10);
+    nav.setPath([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ]);
+    // Advance into the linear mid of the path (past the start ease span).
+    nav.update(100); // at cell 1
+    nav.update(20); // into segment 1
+    const samples: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      const before = nav.worldX;
+      nav.update(10); // 0.1 tile of linear time each
+      samples.push(nav.worldX - before);
+    }
+    // Crossing the segment boundary mid-path must not spike or stall.
+    const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+    for (const step of samples) {
+      expect(Math.abs(step - mean)).toBeLessThan(TILE_PX * 0.02);
+    }
   });
 
   it('keeps mid-path corners linear so turns do not full-stop', () => {
@@ -107,22 +133,27 @@ describe('NavController', () => {
     expect(crumbs.every((c) => c.y === nav.worldY)).toBe(true);
   });
 
-  it('returns through the neutral pose between opposite strides', () => {
+  it('phases walk frames from visual distance so cadence tracks on-screen speed', () => {
     const nav = new NavController({ x: 0, y: 0 }, 4);
     nav.setPath([
       { x: 0, y: 0 },
+      { x: 1, y: 0 },
       { x: 2, y: 0 },
+      { x: 3, y: 0 },
     ]);
 
     expect(nav.walkFrame()).toBe(0);
-    nav.update(62.5);
-    expect(nav.walkFrame()).toBe(1);
-    nav.update(62.5);
-    expect(nav.walkFrame()).toBe(0);
-    nav.update(62.5);
-    expect(nav.walkFrame()).toBe(2);
-    nav.update(62.5);
-    expect(nav.walkFrame()).toBe(0);
+    // Skip the start ease, then advance by 0.25 visual tiles at a time mid-path.
+    nav.update(200); // 0.8 linear tiles into a 3-tile path (past ease span)
+    const frames: number[] = [nav.walkFrame()];
+    const visualBefore = nav.distanceWalked;
+    for (let i = 0; i < 4; i += 1) {
+      nav.update(62.5); // 0.25 linear tiles at 4 tiles/s
+      frames.push(nav.walkFrame());
+    }
+    expect(nav.distanceWalked - visualBefore).toBeCloseTo(1, 1);
+    // Mid-path visual speed ≈ linear, so the 0/1/0/2 cycle still advances.
+    expect(frames.some((frame) => frame === 1 || frame === 2)).toBe(true);
   });
 
   it('snapTo clears path and centers on the cell', () => {

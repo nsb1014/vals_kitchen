@@ -95,7 +95,9 @@ describe('EffectsLayer amplitude (round 2)', () => {
     const { EffectsLayer } = await import('../canvas/layers/EffectsLayer.ts');
     const layer = new EffectsLayer();
     layer.burstServe(40, 80);
-    expect(layer.getActiveCount()).toBeGreaterThanOrEqual(8);
+    // Serve is a gentle place-down (steam + sparkles), not a star/coin shower.
+    expect(layer.getActiveCount()).toBeGreaterThanOrEqual(3);
+    expect(layer.getActiveCount()).toBeLessThanOrEqual(5);
     const afterServe = layer.getActiveCount();
     layer.burstDoorDust(1, 2);
     expect(layer.getActiveCount()).toBeGreaterThan(afterServe);

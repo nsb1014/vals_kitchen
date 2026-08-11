@@ -72,6 +72,10 @@ import {
   buildComposeProgress,
   composeProgressMeterHtml,
 } from '../presentation/compose-progress.ts';
+import {
+  buildComposePlateCta,
+  formatGuestTableLabel,
+} from '../presentation/compose-plate-cta.ts';
 import { buildFloorTicketPanelViewModel } from '../presentation/floor-ticket-panel.ts';
 import { resolveIdealFlavorProfile } from '../presentation/ideal-flavor.ts';
 import { requestRestaurantShopOpen } from '../events/restaurant-shop.ts';
@@ -86,7 +90,6 @@ import {
   clearTutorialSkip,
   isTutorialSkipped,
   nextTutorialStep,
-  skipTutorial,
 } from '../../domain/floor/tutorial.ts';
 
 const SERVE_LOCK_MS = 300;
@@ -198,11 +201,9 @@ export function mountServiceDayUi(
   };
 
   skipTutorialBtn.addEventListener('click', () => {
-    skipTutorial();
-    const store = useGameStore.getState();
-    if (store.noticeActive?.source === 'tutorial') {
-      store.dismissFrontNotice();
-    }
+    // Store action clears leftover instructional notices and triggers the
+    // HUD re-render; bare skipTutorial() would not notify subscribers.
+    useGameStore.getState().skipTutorialGuidance();
     syncTutorialSkipAffordance();
   });
 
@@ -745,6 +746,14 @@ export function mountServiceDayUi(
 
     if (composeOpenedNow) {
       resetComposeUi();
+      const floor = useGameStore.getState().activeDay?.floor;
+      const resolved = selectFloorComposeTicket(useGameStore.getState());
+      if (resolved && floor && floor.selectedTicketId !== resolved.id) {
+        // Mirror store auto-advance: make the actionable ticket explicitly selected.
+        queueMicrotask(() => {
+          useGameStore.getState().setFloorSelectedTicket(resolved.id);
+        });
+      }
     } else if (!composeVisible && composeWasVisible) {
       resetComposeUi();
     } else if (
@@ -753,6 +762,13 @@ export function mountServiceDayUi(
       nextComposeTicketId !== composeTicketId
     ) {
       resetComposeUi();
+      const floor = useGameStore.getState().activeDay?.floor;
+      const resolved = selectFloorComposeTicket(useGameStore.getState());
+      if (resolved && floor && floor.selectedTicketId !== resolved.id) {
+        queueMicrotask(() => {
+          useGameStore.getState().setFloorSelectedTicket(resolved.id);
+        });
+      }
     }
     composeWasVisible = composeVisible;
     composeTicketId = nextComposeTicketId;
@@ -1016,6 +1032,12 @@ export function mountServiceDayUi(
         : undefined;
       const canPlate =
         preview.isValidCount && ticket && Date.now() >= serveLockedUntil;
+      const tablePlacementIds =
+        state.activeDay?.floor?.tables.map((table) => table.placementId) ?? [];
+      const tableLabel = formatGuestTableLabel({
+        tablePlacementId: ticketGuest?.seat?.tablePlacementId,
+        tablePlacementIds,
+      });
       const unlocked = state.unlockedIngredientIds.flatMap((id) => {
         const ingredient = ctx.ingredientsById.get(id);
         return ingredient ? [ingredient] : [];
@@ -1205,19 +1227,40 @@ export function mountServiceDayUi(
               </div>`;
             })
             .join('');
-          orderPanel = `<aside class="compose-order-panel" data-testid="compose-order-panel" aria-label="Pinned order target">
+          orderPanel = `<aside class="compose-order-panel" data-testid="compose-order-panel" aria-label="Order target">
             <div class="compose-order-panel-head">
               <div>
+                <p class="compose-order-kicker">Order</p>
                 <strong>${escapeHtml(label.guestLabel)}</strong>
                 <p>${escapeHtml(requestText)}</p>
               </div>
               <span class="compose-order-legend"><i></i> target <i></i> dish</span>
             </div>
-            <span class="compose-order-mobile-legend"><i></i> target <i></i> dish</span>
+            <span class="compose-order-mobile-legend"><strong>Order</strong> · <i></i> target <i></i> dish</span>
             <div class="compose-request-axis-list">${requestRows}</div>
           </aside>`;
         }
       }
+
+      const plateGuestLabel = ticket
+        ? formatFloorTicketLabel({
+            ticket,
+            customer: ticketGuest?.customer,
+            archetypeName: ticketGuest
+              ? ctx.archetypes.find(
+                  (a) => a.id === ticketGuest.customer.archetypeId,
+                )?.name
+              : undefined,
+            selected: true,
+          }).guestLabel
+        : null;
+      const plateCta = buildComposePlateCta({
+        hasTicket: Boolean(ticket),
+        ingredientCount: preview.ingredientCount,
+        tableLabel,
+        guestLabel: plateGuestLabel,
+        canPlate: Boolean(canPlate),
+      });
 
       serviceOverlay.innerHTML = `
         <button type="button" class="compose-dismiss-scrim" data-testid="compose-dismiss-scrim" aria-label="Close cooking sheet and return to floor"></button>
@@ -1233,10 +1276,13 @@ export function mountServiceDayUi(
             ${ticketRailHtml}
             <section class="compose-selection" aria-label="Selected ingredients">
               <div class="compose-section-heading">
-                <strong>Selected</strong>
+                <strong>Selected · <span data-testid="compose-slot-count">${escapeHtml(composeProgress.countLabel)}</span> (min ${MIN_DISH_INGREDIENTS})</strong>
+                <button type="button" class="compose-clear-dish" data-testid="compose-clear-dish" ${draftIds.length === 0 ? 'disabled' : ''} aria-label="Clear dish">Clear dish</button>
               </div>
               ${progressHtml}
-              <div class="compose-selected-strip">${selectedStrip}</div>
+              <div class="compose-selected-row">
+                <div class="compose-selected-strip">${selectedStrip}</div>
+              </div>
             </section>
             <section class="compose-filters" aria-label="Pantry filters">
               <div class="compose-search-row">
@@ -1266,7 +1312,12 @@ export function mountServiceDayUi(
               </div>
               <button type="button" class="compose-flavor-toggle" data-testid="compose-flavor-toggle" aria-expanded="${composeFlavorDetailsOpen}">${composeFlavorDetailsOpen ? 'Hide flavor details' : 'Flavor details'}</button>
               <div class="compose-flavor-strip${composeFlavorDetailsOpen ? ' expanded' : ''}" aria-label="Dish flavor preview"${composeFlavorDetailsOpen ? ' tabindex="0"' : ''}>${flavorPreview}</div>
-              <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${canPlate ? '' : 'disabled'}>Plate</button>
+              <button type="button" class="service-btn primary" id="plate-btn" data-testid="plate-btn" ${plateCta.canPlate ? '' : 'disabled'} ${plateCta.disabledReason ? 'aria-describedby="compose-plate-reason"' : ''}>${escapeHtml(plateCta.label)}</button>
+              ${
+                plateCta.disabledReason
+                  ? `<p class="compose-plate-reason" id="compose-plate-reason" data-testid="compose-plate-reason">${escapeHtml(plateCta.disabledReason)}</p>`
+                  : ''
+              }
             </footer>
           </div>
         </div>
@@ -1537,6 +1588,20 @@ export function mountServiceDayUi(
         },
         { once: true },
       );
+
+      serviceOverlay
+        .querySelector('[data-testid="compose-clear-dish"]')
+        ?.addEventListener('click', () => {
+          const current = useGameStore.getState();
+          const activeTicket = selectFloorComposeTicket(current);
+          if (!activeTicket) return;
+          if (selectComposeDraftIds(current).length === 0) return;
+          void current.dispatch({
+            type: 'FLOOR_SET_TICKET_DRAFT',
+            ticketId: activeTicket.id,
+            ingredientIds: [],
+          });
+        });
       return;
     }
 

@@ -140,8 +140,8 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
+  gap: 0.45rem;
+  padding: 0.35rem 0.55rem;
   background: rgba(30, 23, 20, 0.96);
   border-top: 1px solid var(--vk-border);
 }
@@ -229,7 +229,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.55rem;
 }
 
 .nav-more-item {
@@ -350,8 +350,8 @@
 }
 
 .bottom-nav {
-  gap: 0.3rem;
-  padding: 0.4rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
   border-top: 2px solid var(--vk-border-strong);
   background:
     linear-gradient(180deg, rgba(104, 66, 36, 0.96), rgba(31, 19, 12, 0.99));
@@ -490,6 +490,8 @@
 
 .inspector-list {
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -537,6 +539,8 @@
 
 .inspector-detail {
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 0.5rem;
 }
 
@@ -615,6 +619,8 @@
 .flavor-modal-card {
   max-height: min(80svh, 720px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-card-header {
@@ -638,6 +644,8 @@
 .shop-sections {
   flex: 1;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0 1rem 5.75rem;
 }
 
@@ -801,6 +809,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   margin: 0 1rem;
   padding-bottom: 4.5rem;
 }
@@ -1099,6 +1109,8 @@
 .rating-body {
   flex: 1;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0.75rem 1rem 5.5rem;
 }
 
@@ -1199,6 +1211,8 @@
 .settings-body {
   flex: 1;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0.75rem 1rem 5.5rem;
 }
 

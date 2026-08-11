@@ -213,9 +213,12 @@ for (const viewport of VIEWPORTS) {
     expect(west.paintOrder).toBeLessThan(table!.paintOrder);
     expect(east.paintOrder).toBeLessThan(table!.paintOrder);
     expect(table!.paintOrder).toBeLessThan(south.paintOrder);
-    expect(table!.zIndex - north.rootZIndex).toBe(26);
+    // Exact deltas mirror the seated feet-align constants (NS hip offset 4px):
+    // north/south diners sit 4px closer to the tabletop than the original 8px
+    // model, so the sandwich margins shifted symmetrically from 26/22 to 30/26.
+    expect(table!.zIndex - north.rootZIndex).toBe(30);
     expect(table!.zIndex - west.rootZIndex).toBe(2);
-    expect(south.rootZIndex - table!.zIndex).toBe(22);
+    expect(south.rootZIndex - table!.zIndex).toBe(26);
 
     await page.screenshot({
       path: `test-results/table-depth-continuity-${viewport.name}.png`,

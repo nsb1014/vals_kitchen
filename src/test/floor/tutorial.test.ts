@@ -1,11 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createFloorDayFromCustomers, tablesFromPlacements } from '../../domain/floor/sim.ts';
 import { seatsFromPlacements } from '../../domain/floor/seats.ts';
 import { setTable } from '../../domain/floor/tables.ts';
-import { nextTutorialStep, tutorialPrompt } from '../../domain/floor/tutorial.ts';
+import {
+  clearTutorialSkip,
+  nextTutorialStep,
+  skipTutorial,
+  tutorialPrompt,
+} from '../../domain/floor/tutorial.ts';
 import type { Customer } from '../../domain/day/types.ts';
 import type { FloorDay } from '../../domain/floor/types.ts';
-import { buildFloorTutorialNotice } from '../../ui/components/FloorServiceHud.ts';
+import {
+  buildFloorTutorialNotice,
+  resolveFloorHudHint,
+} from '../../ui/components/FloorServiceHud.ts';
 
 const customer: Customer = {
   id: 'c1',
@@ -223,5 +231,55 @@ describe('tutorial', () => {
 
   it('returns null when tutorial is disabled', () => {
     expect(nextTutorialStep(baseDay(), false)).toBeNull();
+  });
+});
+
+describe('floor HUD quiet hint', () => {
+  afterEach(() => {
+    clearTutorialSkip();
+  });
+
+  it('surfaces day-1 tutorial copy as a persistent hint, not a banner source', () => {
+    const day = baseDay();
+    expect(
+      resolveFloorHudHint({
+        day: 1,
+        rating: 3,
+        prestige: 0,
+        floor: day,
+      }),
+    ).toMatch(/set every table/i);
+  });
+
+  it('returns null after skip so guidance cannot reappear for the rest of day 1', () => {
+    skipTutorial();
+    expect(
+      resolveFloorHudHint({
+        day: 1,
+        rating: 3,
+        prestige: 0,
+        floor: withGuestStage(withSetTables(baseDay()), 'waiting'),
+      }),
+    ).toBeNull();
+  });
+
+  it('keeps a single day>1 status line without animation/queue semantics', () => {
+    const quietFloor = {
+      ...withSetTables(baseDay()),
+      pool: withSetTables(baseDay()).pool.map((guest) => ({
+        ...guest,
+        stage: 'done' as const,
+        eatTicksRemaining: 0,
+      })),
+    };
+    expect(
+      resolveFloorHudHint({
+        day: 2,
+        rating: 3.5,
+        prestige: 1,
+        floor: quietFloor,
+        tutorialSkipped: false,
+      }),
+    ).toMatch(/Day 2 · 3\.5★ · P1/);
   });
 });

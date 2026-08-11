@@ -193,11 +193,10 @@ test.describe("mobile state-transition boundaries", () => {
       test(`pauses floor guidance without covering Settings at ${viewport.label}`, async ({
         page,
       }) => {
-        // Deliberate waits in this flow: 1.2s mid-dwell + 4.2s Settings stay +
-        // up to ~3s remaining dwell after return, plus boot/transitions and
-        // three unobscured checks. The suite default (60s) covers CI pacing;
-        // a 30s override raced the return expects after the tip had already
-        // remounted and burned (~2.7s) unseen (CI 31476780162 / 390 portrait).
+        // Floor guidance is now a persistent quiet hud-hint (no banner dwell to
+        // pause/resume). The contract: the hint never covers Settings, time away
+        // must not mutate the paused service simulation, and the same guidance
+        // is intact on return without banner churn.
         await page.setViewportSize(viewport);
         const diagnostics = await gotoFreshGame(page);
         await page.getByTestId("open-day-btn").click();
@@ -205,31 +204,12 @@ test.describe("mobile state-transition boundaries", () => {
         await waitForServiceStarted(page);
 
         const notice = page.getByTestId("notice-banner");
-        const timedCheckpoint = await page.evaluate(async () => {
-          const banner = document.querySelector<HTMLElement>(
-            '[data-testid="notice-banner"]',
-          );
-          if (!banner) throw new Error("expected the floor notice");
-          const bounds = banner.getBoundingClientRect();
-          const style = getComputedStyle(banner);
-          if (
-            bounds.width === 0 ||
-            bounds.height === 0 ||
-            style.display === "none" ||
-            style.visibility === "hidden"
-          ) {
-            throw new Error("expected the floor notice to be visible");
-          }
-          const noticeClass = banner.className;
-          const noticeText = banner.innerText;
+        const hudHint = page.getByTestId("hud-hint");
+        await expect(hudHint).toBeVisible();
+        const hintText = await hudHint.innerText();
+        await expect(notice).toHaveCount(0);
 
-          // Refresh dwell so CI aging before this task cannot exhaust the notice
-          // during the mid-dwell sample, then consume 1.2s, then open Settings.
-          const restarted = window.__E2E__!.restartActiveNoticeDwell();
-          if (!restarted) {
-            throw new Error('expected a restartable floor notice dwell');
-          }
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 1_200));
+        const timedCheckpoint = await page.evaluate(async () => {
           const settings = document.querySelector<HTMLButtonElement>(
             '[data-testid="hud-settings"]',
           );
@@ -260,59 +240,28 @@ test.describe("mobile state-transition boundaries", () => {
             activeDay: state.activeDay,
           };
           settings.click();
-          return { beforeSettings, noticeClass, noticeText };
+          return { beforeSettings };
         });
 
-        expect(timedCheckpoint.noticeClass).toContain("notice-banner-tutorial");
         await expect(page.getByTestId("settings-screen")).toBeVisible();
-        await expect(notice).toBeHidden();
+        await expect(notice).toHaveCount(0);
+        await expect(hudHint).toBeHidden();
         await expect(page.locator("#nav-lock-hint")).toBeHidden();
         await expectControlUnobscured(page.getByTestId("export-save-btn"));
         await expectControlUnobscured(page.getByTestId("import-save-input"));
         await expectControlUnobscured(page.getByTestId("import-save-btn"));
 
-        // Staying away longer than the full tutorial duration must not consume
-        // a floor-scoped notice or mutate the paused service simulation.
+        // Staying away must not mutate the paused service simulation.
         await page.waitForTimeout(4_200);
         expect(await floorSnapshot(page)).toEqual(
           timedCheckpoint.beforeSettings,
         );
 
-        // Freeze dwell across Settings→Floor settle so CI pacing cannot burn
-        // the remounted tip before we assert survival (same hold as notice-resume-debug).
-        await page.evaluate(() => {
-          window.__E2E__!.setNotificationBannerPresentationHold(true);
-        });
         await navigateToScreen(page, "restaurant");
-        const resumeSnap = await page.evaluate(() =>
-          window.__E2E__!.getNoticeDebugSnapshot(),
-        );
-        expect(
-          resumeSnap.noticeActive,
-          `notice lost during return: ${JSON.stringify(resumeSnap)}`,
-        ).not.toBeNull();
-        expect(
-          resumeSnap.remainingMs,
-          `dwell exhausted during return: ${JSON.stringify(resumeSnap)}`,
-        ).toBeGreaterThan(0);
-        const remainingBudgetMs = resumeSnap.remainingMs!;
-
-        await page.evaluate(() => {
-          window.__E2E__!.releaseNotificationBannerPresentationHold();
-        });
-        await expect(
-          notice,
-          `notice missing after return: ${JSON.stringify(resumeSnap)}`,
-        ).toBeVisible();
-        await expect(notice).toContainText(timedCheckpoint.noticeText);
-        const resumedAt = Date.now();
-        // remaining + slack for paint/timer arm; not a weakened duration assert.
-        await expect(notice).toBeHidden({
-          timeout: Math.ceil(remainingBudgetMs) + 1_000,
-        });
-        expect(Date.now() - resumedAt).toBeLessThan(
-          Math.ceil(remainingBudgetMs) + 1_000,
-        );
+        // Guidance returns as the same quiet hint; the banner stays reserved.
+        await expect(hudHint).toBeVisible();
+        await expect(hudHint).toHaveText(hintText);
+        await expect(notice).toHaveCount(0);
 
         assertNoDiagnostics(diagnostics);
       });
@@ -327,9 +276,12 @@ test.describe("mobile state-transition boundaries", () => {
       await page.getByTestId("start-service-btn").click();
       await waitForServiceStarted(page);
 
+      // Guidance lives on the quiet hint line; the banner is toast-only here.
       const notice = page.getByTestId("notice-banner");
-      await expect(notice).toBeVisible();
-      const floorNoticeText = await notice.innerText();
+      const hudHint = page.getByTestId("hud-hint");
+      await expect(hudHint).toBeVisible();
+      const floorHintText = await hudHint.innerText();
+      await expect(notice).toHaveCount(0);
       await navigateToScreen(page, "settings");
       await page.getByTestId("nav-recipes").click({ force: true });
       await expect(notice).toBeVisible();
@@ -340,8 +292,9 @@ test.describe("mobile state-transition boundaries", () => {
       await expect(notice).toBeHidden({ timeout: 3_500 });
 
       await navigateToScreen(page, "restaurant");
-      await expect(notice).toBeVisible();
-      await expect(notice).toContainText(floorNoticeText);
+      await expect(hudHint).toBeVisible();
+      await expect(hudHint).toHaveText(floorHintText);
+      await expect(notice).toHaveCount(0);
       assertNoDiagnostics(diagnostics);
     });
 
@@ -354,12 +307,16 @@ test.describe("mobile state-transition boundaries", () => {
       await page.getByTestId("start-service-btn").click();
       await waitForServiceStarted(page);
 
+      // The tickets dock owns the space above the panel while open; the quiet
+      // hint yields until it closes, then returns unchanged (no banner churn).
       const notice = page.getByTestId("notice-banner");
-      await expect(notice).toBeVisible();
-      const noticeText = await notice.innerText();
+      const hudHint = page.getByTestId("hud-hint");
+      await expect(hudHint).toBeVisible();
+      const hintText = await hudHint.innerText();
       await page.getByTestId("floor-tickets-toggle").click();
       await expect(page.getByTestId("floor-tickets-menu")).toBeVisible();
-      await expect(notice).toBeHidden();
+      await expect(hudHint).toBeHidden();
+      await expect(notice).toHaveCount(0);
 
       await page
         .getByTestId("hud-settings")
@@ -376,11 +333,13 @@ test.describe("mobile state-transition boundaries", () => {
         "restaurant",
       );
       await expect(page.getByTestId("floor-tickets-menu")).toBeVisible();
-      await expect(notice).toBeHidden();
+      await expect(hudHint).toBeHidden();
+      await expect(notice).toHaveCount(0);
 
       await page.getByTestId("floor-tickets-close").click();
-      await expect(notice).toBeVisible();
-      await expect(notice).toContainText(noticeText);
+      await expect(hudHint).toBeVisible();
+      await expect(hudHint).toHaveText(hintText);
+      await expect(notice).toHaveCount(0);
       assertNoDiagnostics(diagnostics);
     });
 

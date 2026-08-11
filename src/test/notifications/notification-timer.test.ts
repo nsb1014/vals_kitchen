@@ -205,13 +205,14 @@ describe('notification timer', () => {
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
-  it('extends dwell when the same toast body is set again', () => {
+  it('coalesces identical toast resets without extending dwell (anti-spam)', () => {
     useGameStore.getState().setFloorToast('Blocked');
     vi.advanceTimersByTime(2000);
     useGameStore.getState().setFloorToast('Blocked');
-    vi.advanceTimersByTime(2000);
+    // Same body must not restart the 2500ms dwell.
+    vi.advanceTimersByTime(499);
     expect(useGameStore.getState().noticeActive?.body).toBe('Blocked');
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(1);
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
@@ -338,7 +339,7 @@ describe('notification timer', () => {
     expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
-  it('restores a sticky notice after a transient ends', () => {
+  it('restores nothing instructional after a toast; sticky tutorial stays off the banner', () => {
     useGameStore.getState().syncFloorNoticesFromHud({
       sticky: {
         id: 'tutorial:set_tables',
@@ -348,18 +349,17 @@ describe('notification timer', () => {
       },
       pacing: null,
     });
+    expect(useGameStore.getState().noticeSticky).toBeNull();
     useGameStore.getState().setFloorToast('Blocked');
     expect(useGameStore.getState().noticeActive?.source).toBe('toast');
 
     vi.advanceTimersByTime(2500);
 
-    expect(useGameStore.getState().noticeActive).toBe(
-      useGameStore.getState().noticeSticky,
-    );
-    expect(useGameStore.getState().noticeActive?.stepId).toBe('set_tables');
+    expect(useGameStore.getState().noticeActive).toBeNull();
+    expect(useGameStore.getState().noticeSticky).toBeNull();
   });
 
-  it('reinstalls paced floor guidance after a global toast displaces it', () => {
+  it('does not reinstall instructional pacing onto the banner after a toast', () => {
     const pacing = {
       id: 'tutorial:paced-seat',
       source: 'tutorial' as const,
@@ -371,6 +371,7 @@ describe('notification timer', () => {
       sticky: null,
       pacing,
     });
+    expect(useGameStore.getState().noticeActive).toBeNull();
     useGameStore.getState().setFloorToast('Recipe Book is locked.');
     expect(useGameStore.getState().noticeActive?.source).toBe('toast');
 
@@ -381,10 +382,12 @@ describe('notification timer', () => {
       pacing,
     });
 
-    expect(useGameStore.getState().noticeActive).toBe(pacing);
+    expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
   it('does not re-show dismissed tutorial until step changes', () => {
+    // Direct sticky install is rejected under quiet instructional policy; the
+    // dismiss-gate still clears tutorialDismissedStepId bookkeeping via sync.
     useGameStore.getState().syncFloorNoticesFromHud({
       sticky: {
         id: 't1',
@@ -394,6 +397,7 @@ describe('notification timer', () => {
       },
       pacing: null,
     });
+    expect(useGameStore.getState().noticeSticky).toBeNull();
     useGameStore.getState().dismissFrontNotice();
     expect(useGameStore.getState().noticeSticky).toBeNull();
     useGameStore.getState().syncFloorNoticesFromHud({
@@ -415,10 +419,10 @@ describe('notification timer', () => {
       },
       pacing: null,
     });
-    expect(useGameStore.getState().noticeSticky?.stepId).toBe('wait_seat');
+    expect(useGameStore.getState().noticeSticky).toBeNull();
   });
 
-  it('shows paced tutorial guidance once per step and then clears it', () => {
+  it('keeps paced tutorial guidance off the banner (once-per-step identity unused)', () => {
     const setTables = {
       id: 'tutorial:paced-set-tables',
       source: 'tutorial' as const,
@@ -430,7 +434,7 @@ describe('notification timer', () => {
       sticky: null,
       pacing: setTables,
     });
-    expect(useGameStore.getState().noticeActive).toBe(setTables);
+    expect(useGameStore.getState().noticeActive).toBeNull();
     expect(useGameStore.getState().noticeSticky).toBeNull();
 
     vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS);
@@ -451,7 +455,7 @@ describe('notification timer', () => {
         stepId: 'wait_seat',
       },
     });
-    expect(useGameStore.getState().noticeActive?.stepId).toBe('wait_seat');
+    expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
   it('clears notices and stale timers when SERVE_DISH soft-resets the day', async () => {

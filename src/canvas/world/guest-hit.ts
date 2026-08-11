@@ -120,13 +120,21 @@ export function expandGuestHitBounds(
   const height = bounds.bottom - bounds.top;
   const horizontalExpansion = Math.max(0, minimumSize - width) / 2;
   const verticalExpansion = Math.max(0, minimumSize - height) / 2;
+  // Extra pad so head/torso taps on a neighboring cell still land on the guest.
+  const pad = Math.max(TILE_HIT_PAD_WORLD, minimumSize * 0.08);
   return {
-    left: bounds.left - horizontalExpansion,
-    top: bounds.top - verticalExpansion,
-    right: bounds.right + horizontalExpansion,
-    bottom: bounds.bottom + verticalExpansion,
+    left: bounds.left - horizontalExpansion - pad,
+    top: bounds.top - verticalExpansion - pad,
+    right: bounds.right + horizontalExpansion + pad,
+    bottom: bounds.bottom + verticalExpansion + pad,
   };
 }
+
+/** World-space pad beyond the 44 CSS-px floor (about ⅓ tile). */
+const TILE_HIT_PAD_WORLD = 10;
+
+/** Max distance for nearest-guest fallback when the tap misses expanded bounds. */
+export const GUEST_HIT_NEAREST_RADIUS_WORLD = 40;
 
 /** Boundary pixels belong to the target so exact-edge taps remain actionable. */
 export function guestHitBoundsContainPoint(
@@ -226,4 +234,44 @@ export function resolveTopmostGuestHit(
     }
   }
   return topmost;
+}
+
+function guestBoundsCenter(bounds: GuestWorldBounds): GuestHitPoint {
+  return {
+    x: (bounds.left + bounds.right) / 2,
+    y: (bounds.top + bounds.bottom) / 2,
+  };
+}
+
+/**
+ * When a tap misses every expanded body rect (common for head taps that land
+ * one cell above a seated diner), pick the nearest eligible guest within a
+ * generous radius of the sprite center.
+ */
+export function resolveNearestGuestHit(
+  point: GuestHitPoint,
+  candidates: readonly GuestHitTargetCandidate[],
+  cameraScale: number,
+  radiusWorld = GUEST_HIT_NEAREST_RADIUS_WORLD,
+): GuestHitTargetCandidate | null {
+  const scale =
+    Number.isFinite(cameraScale) && cameraScale > 0 ? cameraScale : 1;
+  // Keep the search radius at least ~44 CSS px so zoomed-out play still works.
+  const radius = Math.max(radiusWorld, minimumGuestHitWorldSize(scale) * 0.5);
+  let best: GuestHitTargetCandidate | null = null;
+  let bestDist = Infinity;
+  for (const candidate of candidates) {
+    const center = guestBoundsCenter(candidate.bounds);
+    const dist = Math.hypot(point.x - center.x, point.y - center.y);
+    if (dist > radius) continue;
+    if (
+      !best ||
+      dist < bestDist - 0.01 ||
+      (Math.abs(dist - bestDist) <= 0.01 && candidatePaintsAbove(candidate, best))
+    ) {
+      best = candidate;
+      bestDist = dist;
+    }
+  }
+  return best;
 }
