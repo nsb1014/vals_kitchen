@@ -29,7 +29,9 @@
   --vk-cta-h: 48px;
   --vk-sheet-header-h: 3.25rem;
   --vk-floor-chrome-pad-y: 0.75rem;
-  --vk-floor-chrome-gap: 0.5rem;
+  /* Must match .floor-actions gap — the chrome min-height reserve formulas
+   * below assume it, and drift moves the canvas rect. */
+  --vk-floor-chrome-gap: 0.55rem;
   --vk-floor-chrome-min-h-1: calc(
     var(--vk-cta-h) + var(--vk-floor-chrome-pad-y) + 1px
   );

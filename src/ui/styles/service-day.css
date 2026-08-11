@@ -495,14 +495,10 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 
 .day-summary-actions {
   border-top: 0;
-  flex-direction: column;
+  /* Two next-choice buttons stay on one row — stacking them broke the
+   * compact day-summary height contract. */
+  flex-direction: row;
   gap: 0.65rem;
-}
-
-@media (min-width: 420px) {
-  .day-summary-actions {
-    flex-direction: row;
-  }
 }
 
 .service-card {
@@ -1287,7 +1283,7 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
-  gap: 0.55rem;
+  gap: var(--vk-floor-chrome-gap, 0.55rem);
   min-height: 0;
   overflow: hidden;
 }
@@ -3424,9 +3420,15 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 }
 
 /* --- notice / hud-hint / tutorial (notification-agent append; do not reorder above) --- */
+/* Overlay above the floor chrome: guidance must never grow the reserved
+ * chrome height (service-visual / doorway camera geometry contracts). */
 .hud-hint {
-  margin: 0 0 0.35rem;
-  padding: 0 0.15rem;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0.65rem;
+  right: 0.65rem;
+  margin: 0;
+  padding: 0.15rem 0.5rem;
   min-height: 0;
   max-height: 2.5em;
   overflow: hidden;
@@ -3440,8 +3442,17 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   font-weight: 500;
   color: var(--vk-text-dim, #9a8f7e);
   white-space: normal;
+  text-align: center;
+  background: rgba(30, 23, 20, 0.82);
+  border-radius: 8px;
+  pointer-events: none;
 }
 
 .hud-hint[hidden] {
+  display: none;
+}
+
+/* The tickets dock owns the space above the panel while open. */
+.game-surface:has([data-testid='floor-tickets-menu']:not([hidden])) .hud-hint {
   display: none;
 }

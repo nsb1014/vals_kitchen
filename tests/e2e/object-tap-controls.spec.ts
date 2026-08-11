@@ -1514,7 +1514,9 @@ test.describe('object tap controls', () => {
       animations: 'disabled',
     });
     await expect(page.getByTestId('chat-bubble')).toBeHidden({ timeout: 3_000 });
-    await expect(page.getByTestId('notice-banner')).toBeVisible();
+    // Next-step guidance is a quiet hint line; the banner stays reserved.
+    await expect(page.getByTestId('hud-hint')).toBeVisible();
+    await expect(page.getByTestId('notice-banner')).toHaveCount(0);
   });
 
   test('approaches a remote station before opening its cooking workspace', async ({
