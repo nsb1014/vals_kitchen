@@ -11,7 +11,7 @@ import {
 } from '../../domain/achievements/catalog.ts';
 import { bindNotificationSurfaceLifecycle } from '../notifications/surface-lifecycle.ts';
 import {
-  resolveNoticeScope,
+  noticeRunsOnScreen,
   type Notice,
 } from '../../store/notification-timer.ts';
 import {
@@ -136,7 +136,7 @@ export function noticeIsVisibleOnScreen(
   notice: Notice,
   screen: GameStore['screen'],
 ): boolean {
-  return resolveNoticeScope(notice) === 'global' || screen === 'restaurant';
+  return noticeRunsOnScreen(notice, screen);
 }
 
 export function mountCelebrationBanner(mount: HTMLElement): () => void {

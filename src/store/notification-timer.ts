@@ -20,6 +20,19 @@ export function resolveNoticeScope(notice: Notice): NoticeScope {
     : 'global';
 }
 
+/**
+ * Floor-scoped guidance only belongs on the restaurant surface. Global toasts
+ * and system notices may run on any screen. Used by the timer controller so
+ * dwell pauses when the player leaves the floor even if the banner host has
+ * not yet cleared notificationSurfaceActive.
+ */
+export function noticeRunsOnScreen(
+  notice: Notice,
+  screen: string,
+): boolean {
+  return resolveNoticeScope(notice) === 'global' || screen === 'restaurant';
+}
+
 export const NOTICE_DURATION_MS = 2500;
 export const TUTORIAL_NOTICE_DURATION_MS = 4000;
 export const CELEBRATION_DURATION_MS = 4000;
@@ -34,6 +47,8 @@ interface NotificationTimerState<Celebration extends object> {
   noticeActive: Notice | null;
   noticeSticky: Notice | null;
   notificationSurfaceActive: boolean;
+  /** Current app screen — gates floor-scoped notice dwell independently of the UI surface flag. */
+  screen: string;
   celebrationHead: Celebration | null;
 }
 
@@ -155,7 +170,11 @@ export function syncNotificationTimer<Celebration extends object>(
   let desiredTarget: RunningTarget | null = null;
   if (state.notificationSurfaceActive) {
     if (transientNotice) {
-      desiredTarget = { kind: 'notice', value: transientNotice };
+      // Keep celebrations covered while a floor notice is parked off-screen;
+      // only run the notice timer when that notice is actually presentable.
+      if (noticeRunsOnScreen(transientNotice, state.screen)) {
+        desiredTarget = { kind: 'notice', value: transientNotice };
+      }
     } else if (!state.noticeActive && state.celebrationHead) {
       desiredTarget = {
         kind: 'celebration',

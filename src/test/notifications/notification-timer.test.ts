@@ -16,6 +16,7 @@ describe('notification timer', () => {
     vi.useFakeTimers();
     vi.spyOn(performance, 'now').mockReturnValue(0);
     useGameStore.setState({
+      screen: 'restaurant',
       noticeActive: null,
       noticeSticky: null,
       tutorialDismissedStepId: null,
@@ -28,6 +29,46 @@ describe('notification timer', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it('pauses floor-notice dwell on navigateTo(settings) even if surface stays active', () => {
+    const tip = {
+      id: 'tutorial:paced-set-tables',
+      source: 'tutorial' as const,
+      scope: 'floor' as const,
+      body: 'Set every table',
+      stepId: 'set_tables' as const,
+    };
+    useGameStore.setState({
+      screen: 'restaurant',
+      noticeActive: tip,
+      noticeSticky: null,
+      notificationSurfaceActive: true,
+      celebrationQueue: [],
+      floorToast: tip.body,
+    });
+    useGameStore.getState().syncNotificationTimer();
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(1_200);
+    vi.advanceTimersByTime(1_200);
+
+    // Missed banner surface sync: leave notificationSurfaceActive true while
+    // leaving the floor — screen gating alone must pause remainingMs.
+    useGameStore.getState().navigateTo('settings');
+    expect(useGameStore.getState().screen).toBe('settings');
+    expect(useGameStore.getState().notificationSurfaceActive).toBe(true);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(20_000);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+
+    useGameStore.getState().navigateTo('restaurant');
+    (performance.now as ReturnType<typeof vi.fn>).mockReturnValue(20_000);
+    vi.advanceTimersByTime(TUTORIAL_NOTICE_DURATION_MS - 1_200 - 1);
+    expect(useGameStore.getState().noticeActive?.body).toBe('Set every table');
+    vi.advanceTimersByTime(1);
+    expect(useGameStore.getState().noticeActive).toBeNull();
   });
 
   it('clears transient toast after 2500ms when surface active', () => {

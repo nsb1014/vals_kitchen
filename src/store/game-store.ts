@@ -393,6 +393,7 @@ function syncStoreNotificationTimer(): void {
       noticeActive: state.noticeActive,
       noticeSticky: state.noticeSticky,
       notificationSurfaceActive: state.notificationSurfaceActive,
+      screen: state.screen,
       celebrationHead: state.celebrationQueue[0] ?? null,
     },
     {
@@ -903,6 +904,9 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
       gameplayInteractionGeneration += 1;
     }
     set({ screen, flavorInspectorIngredientId: null, composeSheetOpen: false });
+    // Reconcile notice dwell immediately: floor-scoped tips must pause even if
+    // the banner host has not yet cleared notificationSurfaceActive.
+    syncStoreNotificationTimer();
   },
 
   openFlavorInspector(ingredientId) {
@@ -1430,6 +1434,15 @@ export const useGameStore = createStore<GameStore>((set, get) => ({
     await persistGameSnapshot(get());
   },
 }));
+
+// Pause/resume floor-notice dwell as soon as the screen changes — registered
+// before any UI mounts so a slow or failed banner surface sync cannot burn
+// remainingMs while Settings/Recipes/etc. are open.
+useGameStore.subscribe((state, prev) => {
+  if (state.screen !== prev.screen) {
+    syncStoreNotificationTimer();
+  }
+});
 
 export function getGameStateSnapshot(): GameState {
   return pickGameState(useGameStore.getState());
