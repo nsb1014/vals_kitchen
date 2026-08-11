@@ -1336,28 +1336,18 @@ test.describe('object tap controls', () => {
     await tapGridCell(page, fixture.door.x, fixture.door.y);
     await expect
       .poll(() =>
-        page.evaluate(() => {
-          const transition =
-            document.querySelector<HTMLCanvasElement>(
-              '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null;
-          return {
-            transition,
-            room: window.__E2E__!.getState().activeFloorRoom,
-          };
-        }),
+        page.evaluate(
+          () => window.__E2E__!.getRoomTransitionProbe().outFromRoom,
+        ),
       )
-      .toEqual({ transition: 'out', room: 'main' });
+      .toBe('main');
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
       .toBe('back_kitchen');
     await expect
       .poll(() =>
         page.evaluate(
-          () =>
-            document.querySelector<HTMLCanvasElement>(
-              '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null,
+          () => window.__E2E__!.getRoomTransitionProbe().phase,
         ),
       )
       .toBeNull();
@@ -1369,10 +1359,7 @@ test.describe('object tap controls', () => {
     await expect
       .poll(() =>
         page.evaluate(
-          () =>
-            document.querySelector<HTMLCanvasElement>(
-              '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null,
+          () => window.__E2E__!.getRoomTransitionProbe().phase,
         ),
       )
       .toBeNull();
@@ -1386,18 +1373,11 @@ test.describe('object tap controls', () => {
     );
     await expect
       .poll(() =>
-        page.evaluate(() => {
-          const transition =
-            document.querySelector<HTMLCanvasElement>(
-              '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null;
-          return {
-            transition,
-            room: window.__E2E__!.getState().activeFloorRoom,
-          };
-        }),
+        page.evaluate(
+          () => window.__E2E__!.getRoomTransitionProbe().outFromRoom,
+        ),
       )
-      .toEqual({ transition: 'out', room: 'main' });
+      .toBe('main');
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom))
       .toBe('back_kitchen');
@@ -1629,35 +1609,40 @@ test.describe('object tap controls', () => {
     await tapGridCell(page, door.x, door.y);
     expect(await page.evaluate(() => window.__E2E__!.getState().activeFloorRoom)).toBe('main');
 
+    // Latch survives the brief reduced-motion `out` hold (e2e always arms
+    // reduced motion; WAAPI no-ops were unobservable between poll RTTs).
     await expect
       .poll(
         () =>
           page.evaluate(() => {
-            const transition =
-              document.querySelector<HTMLCanvasElement>(
-                '[data-testid="restaurant-canvas"]',
-              )?.dataset.roomTransition ?? null;
+            const probe = window.__E2E__!.getRoomTransitionProbe();
             return {
-              transition,
+              outFromRoom: probe.outFromRoom,
               room: window.__E2E__!.getState().activeFloorRoom,
+              // Still on main when out latched, or already swapped after out.
+              sawOutFromMain: probe.outFromRoom === 'main',
             };
           }),
-        { timeout: 10_000, intervals: [20, 20, 20, 50] },
+        { timeout: 20_000, intervals: [20, 20, 40, 80] },
       )
-      .toEqual({ transition: 'out', room: 'main' });
+      .toMatchObject({ sawOutFromMain: true });
+    // Prove we did not teleport: out latched while store room was still main
+    // (probe writes outFrom before changeRoom).
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getRoomTransitionProbe().outFromRoom,
+      ),
+    ).toBe('main');
 
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom), {
-        timeout: 10_000,
+        timeout: 20_000,
       })
       .toBe('back_kitchen');
     await expect
       .poll(() =>
         page.evaluate(
-          () =>
-            document.querySelector<HTMLCanvasElement>(
-              '[data-testid="restaurant-canvas"]',
-            )?.dataset.roomTransition ?? null,
+          () => window.__E2E__!.getRoomTransitionProbe().phase,
         ),
       )
       .toBeNull();
@@ -1678,16 +1663,19 @@ test.describe('object tap controls', () => {
     await tapGridCell(page, door.x, door.y);
     await expect
       .poll(() => page.evaluate(() => window.__E2E__!.getState().activeFloorRoom), {
-        timeout: 10_000,
+        // Walk is delta-capped at 33ms/frame; CPU throttle slows wall-clock arrival.
+        timeout: 20_000,
       })
       .toBe('back_kitchen');
     expect(
       await page.evaluate(
-        () =>
-          document.querySelector<HTMLCanvasElement>(
-            '[data-testid="restaurant-canvas"]',
-          )?.dataset.roomTransition ?? null,
+        () => window.__E2E__!.getRoomTransitionProbe().phase,
       ),
     ).toBeNull();
+    expect(
+      await page.evaluate(
+        () => window.__E2E__!.getRoomTransitionProbe().outFromRoom,
+      ),
+    ).toBe('main');
   });
 });

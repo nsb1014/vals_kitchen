@@ -286,6 +286,15 @@ export interface E2eBridge {
     facing: 'right' | 'down' | 'up' | 'left';
     isMoving: boolean;
   } | null;
+  /**
+   * Annex doorway fade probe: live phase plus latched source room when `out`
+   * began (survives phase clear so reduced-motion / throttle polls cannot miss it).
+   */
+  getRoomTransitionProbe: () => {
+    phase: 'out' | 'in' | null;
+    outFromRoom: string | null;
+    inFlight: boolean;
+  };
   /** Debug: one guest plus the authoritative/painted south-door state. */
   getGuestDoorwayTransitionDebug: (guestId: string) => {
     guestId: string;
@@ -627,6 +636,16 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
 
     getPlayerVisualDebug() {
       return getRestaurantApp()?.getPlayerVisualDebug() ?? null;
+    },
+
+    getRoomTransitionProbe() {
+      return (
+        getRestaurantApp()?.getRoomTransitionProbe() ?? {
+          phase: null,
+          outFromRoom: null,
+          inFlight: false,
+        }
+      );
     },
 
     getGuestDoorwayTransitionDebug(guestId) {

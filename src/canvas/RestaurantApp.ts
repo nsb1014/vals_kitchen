@@ -83,6 +83,13 @@ import {
 } from '../store/selectors/floor-runtime.ts';
 import { prefersReducedMotion } from '../ui/presentation/motion-preference.ts';
 import {
+  clearRoomTransitionPhase,
+  holdRoomTransitionPhase,
+  latchRoomTransitionOutFrom,
+  readRoomTransitionOutFrom,
+  readRoomTransitionPhase,
+} from './room-transition.ts';
+import {
   cameraPunchMultiplier,
   clampCameraPunchScale,
   screenToGrid,
@@ -1484,9 +1491,9 @@ export class RestaurantApp {
     const canvas = this.app.canvas;
     this.roomTransitionInFlight = true;
     canvas.style.pointerEvents = 'none';
-    // Reduced-motion / missing animate: same out→swap→in phase markers as the
-    // motion path, driven by Animation.finished (not setTimeout) so completion
-    // cannot race ahead of observers sampling `data-room-transition=out`.
+    // Reduced-motion uses an explicit timer hold (not a no-op WAAPI) so the
+    // out→swap→in markers stay ordered; `data-room-transition-out-from`
+    // latches the source room for observers that miss the brief `out` attr.
     void this.runRoomTransition(changeRoom, prefersReducedMotion());
   }
 
@@ -1496,33 +1503,28 @@ export class RestaurantApp {
   ): Promise<void> {
     const canvas = this.app.canvas;
     let roomChanged = false;
-    const hold = async (
-      phase: 'out' | 'in',
-      duration: number,
-    ): Promise<void> => {
-      canvas.dataset.roomTransition = phase;
-      if (typeof canvas.animate !== 'function') {
-        await new Promise<void>((resolve) => {
-          this.roomTransitionTimer = window.setTimeout(() => {
-            this.roomTransitionTimer = null;
-            resolve();
-          }, duration);
-        });
-        return;
-      }
-      const frames = reducedMotion
-        ? [{ opacity: 1 }, { opacity: 1 }]
-        : phase === 'out'
-          ? [{ opacity: 1 }, { opacity: 0 }]
-          : [{ opacity: 0 }, { opacity: 1 }];
-      const animation = canvas.animate(frames, {
-        duration,
-        easing: phase === 'out' ? 'ease-in' : 'ease-out',
-        fill: 'forwards',
+    const delayWithTimer = (ms: number) =>
+      new Promise<void>((resolve) => {
+        this.roomTransitionTimer = window.setTimeout(() => {
+          this.roomTransitionTimer = null;
+          resolve();
+        }, ms);
       });
-      this.roomTransitionAnimation = animation;
-      await animation.finished;
-      animation.cancel();
+    const hold = async (phase: 'out' | 'in', duration: number) => {
+      if (phase === 'out') {
+        latchRoomTransitionOutFrom(
+          canvas,
+          useGameStore.getState().activeFloorRoom,
+        );
+      }
+      await holdRoomTransitionPhase(canvas, phase, {
+        reducedMotion,
+        durationMs: duration,
+        setAnimation: (animation) => {
+          this.roomTransitionAnimation = animation;
+        },
+        delay: delayWithTimer,
+      });
     };
     try {
       await hold('out', ROOM_FADE_OUT_MS);
@@ -1543,10 +1545,24 @@ export class RestaurantApp {
       }
       this.roomTransitionAnimation = null;
       this.roomTransitionInFlight = false;
-      delete canvas.dataset.roomTransition;
+      clearRoomTransitionPhase(canvas);
       canvas.style.removeProperty('opacity');
       canvas.style.removeProperty('pointer-events');
     }
+  }
+
+  /** E2E probe: live phase + latched source room for annex travel. */
+  getRoomTransitionProbe(): {
+    phase: 'out' | 'in' | null;
+    outFromRoom: string | null;
+    inFlight: boolean;
+  } {
+    const canvas = this.app.canvas;
+    return {
+      phase: readRoomTransitionPhase(canvas),
+      outFromRoom: readRoomTransitionOutFrom(canvas),
+      inFlight: this.roomTransitionInFlight,
+    };
   }
 
   private onTapMove = (event: PointerEvent): void => {
@@ -2229,7 +2245,8 @@ export class RestaurantApp {
       this.roomTransitionTimer = null;
     }
     this.roomTransitionInFlight = false;
-    delete this.app.canvas.dataset.roomTransition;
+    clearRoomTransitionPhase(this.app.canvas);
+    delete this.app.canvas.dataset.roomTransitionOutFrom;
     this.app.canvas.style.removeProperty('opacity');
     this.app.canvas.style.removeProperty('pointer-events');
     window.removeEventListener('resize', this.handleResize);
