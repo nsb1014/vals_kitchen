@@ -20,6 +20,7 @@ import {
 } from '../notifications/blocking-surface.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { mountMetaSheetEnhancer } from './MetaSheetEnhancer.ts';
+import { getActiveScreen } from '../../app/screenRouter.ts';
 
 function escapeHtml(text: string): string {
   return text
@@ -157,16 +158,35 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
   const isFrontContentVisible = () => {
     const state = useGameStore.getState();
     return state.noticeActive
-      ? noticeIsVisibleOnScreen(state.noticeActive, state.screen)
+      ? noticeIsVisibleOnScreen(state.noticeActive, presentationScreen(state))
       : true;
   };
 
+  /**
+   * Shell screen from `#game-root[data-screen]`. CelebrationBanner subscribes
+   * before the screen router, so store.screen can be `restaurant` for a turn
+   * while Settings is still the painted shell — dwell must not start then.
+   */
+  const presentationScreen = (
+    state: Pick<GameStore, 'screen'> = useGameStore.getState(),
+  ): GameStore['screen'] => {
+    const shell = getActiveScreen();
+    return (shell as GameStore['screen'] | null) ?? state.screen;
+  };
+
   const syncBannerPresented = () => {
-    // Exact presented signal for dwell: connected + not hidden. Screen id
-    // alone must not resume the timer before the host is paint-ready.
+    // Same source of truth as e2e bannerPresent: host mounted, not hidden,
+    // and a banner element actually in the DOM.
+    const hasBanner = Boolean(
+      host.querySelector(
+        '[data-testid="notice-banner"], [data-testid="celebration-banner"]',
+      ),
+    );
     useGameStore
       .getState()
-      .setNotificationBannerPresented(host.isConnected && !host.hidden);
+      .setNotificationBannerPresented(
+        host.isConnected && !host.hidden && hasBanner,
+      );
   };
 
   const syncNotificationSurface = () => {
@@ -184,9 +204,13 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
 
   const syncHostVisibility = () => {
     const state = useGameStore.getState();
+    const shell = presentationScreen(state);
+    const noticeVisible = state.noticeActive
+      ? noticeIsVisibleOnScreen(state.noticeActive, shell)
+      : false;
     host.hidden =
       uiBlocked ||
-      !isFrontContentVisible() ||
+      (state.noticeActive ? !noticeVisible : false) ||
       (!state.noticeActive && !state.celebrationQueue[0]);
     syncBannerPresented();
   };
@@ -242,8 +266,11 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     const state = useGameStore.getState();
     const notice = state.noticeActive;
     const celebration = state.celebrationQueue[0];
+    // Prefer the painted shell over store.screen — banner host mounts before
+    // the screen router, so store can flip to restaurant while Settings CSS
+    // still owns the viewport.
     const noticeVisible = notice
-      ? noticeIsVisibleOnScreen(notice, state.screen)
+      ? noticeIsVisibleOnScreen(notice, presentationScreen(state))
       : false;
     // Park floor-scoped tips off the restaurant without dismissing them: keep
     // noticeActive + remaining dwell, but drop the DOM node so Settings is
@@ -252,10 +279,10 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       uiBlocked ||
       (notice ? !noticeVisible : false) ||
       (!notice && !celebration);
-    syncBannerPresented();
     if ((!notice || !noticeVisible) && !celebration) {
       host.innerHTML = '';
       lastCelebrationAnnounceKey = null;
+      syncBannerPresented();
       return;
     }
 
@@ -321,6 +348,8 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     if (celebration) announceCelebrationIfNeeded(celebration);
     else lastCelebrationAnnounceKey = null;
     if (notice && noticeVisible) announceNoticeIfNeeded(notice);
+    // Presented follows the painted banner node, not host.hidden alone.
+    syncBannerPresented();
   };
 
   const syncLocalBlockingSurface = () => {
@@ -361,11 +390,15 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       syncNotificationSurface();
     }
     if (state.screen !== previous.screen) {
-      // The screen router subscribes after this component, so CSS visibility
-      // still reflects the previous screen during the synchronous store turn.
-      // Reconcile once every subscriber has updated the root data attribute.
+      // The screen router subscribes after this component, so `#game-root`
+      // data-screen still reflects the previous route during this turn.
+      // Re-render once the shell attribute matches store.screen so floor tips
+      // unpark (and dwell resumes) only on the painted restaurant shell.
       queueMicrotask(() => {
-        if (host.isConnected) syncLocalBlockingSurface();
+        if (!host.isConnected) return;
+        render();
+        syncLocalBlockingSurface();
+        syncNotificationSurface();
       });
     }
   });
@@ -381,6 +414,22 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
       syncNotificationSurface();
     },
   });
+  // Paint-accurate shell screen: unpark/present only when data-screen flips,
+  // not merely when store.screen changes ahead of the router subscriber.
+  const gameRoot = document.querySelector('#game-root');
+  const shellObserver =
+    typeof MutationObserver !== 'undefined' && gameRoot
+      ? new MutationObserver(() => {
+          if (!host.isConnected) return;
+          render();
+          syncLocalBlockingSurface();
+          syncNotificationSurface();
+        })
+      : null;
+  shellObserver?.observe(gameRoot!, {
+    attributes: true,
+    attributeFilter: ['data-screen'],
+  });
   window.addEventListener('food-atlas-ready', render);
   render();
   const unmountMetaSheets = mountMetaSheetEnhancer();
@@ -389,6 +438,7 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     unmountMetaSheets();
     unsubscribe();
     unbindSurfaceLifecycle();
+    shellObserver?.disconnect();
     pageLifecycleActive = false;
     syncNotificationSurface();
     window.removeEventListener('food-atlas-ready', render);

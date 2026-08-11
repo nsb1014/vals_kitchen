@@ -115,7 +115,7 @@ const STOP_ANTICIPATION_MS = 100;
 const IN_PLACE_SEAT_ANTICIPATION_MS = 200;
 /** Service-cell approach flash duration after a remote guest tap. */
 const APPROACH_PREVIEW_MS = 420;
-const GUEST_DOOR_EXIT_LINGER_MS = 120;
+const GUEST_DOOR_EXIT_LINGER_MS = 280;
 const SERVE_CAMERA_PUNCH_MS = 150;
 const EATING_STEAM_INTERVAL_MS = 900;
 
@@ -166,6 +166,7 @@ export class RestaurantApp {
   private eatingTickAccumulatorMs = 0;
   private eatingSteamAccumulatorMs = 0;
   private floorRuntimeWasRunning = false;
+  private floorResumeSettleFramesRemaining = 0;
   private guestDoorExitLingerUntilMs = 0;
   private resizeObserver: ResizeObserver | null = null;
   private resizeFrame: number | null = null;
@@ -1194,11 +1195,15 @@ export class RestaurantApp {
       state,
       document.visibilityState === 'visible',
     );
-    const deltaMs = resumeSafeFloorDeltaMs(
+    const resumed = resumeSafeFloorDeltaMs(
       runtimeRunning,
       this.floorRuntimeWasRunning,
       this.app.ticker.deltaMS,
+      this.floorResumeSettleFramesRemaining,
     );
+    const deltaMs = resumed.deltaMs;
+    this.floorResumeSettleFramesRemaining =
+      resumed.resumeSettleFramesRemaining;
     this.floorRuntimeWasRunning = runtimeRunning;
     if (!runtimeRunning || !floor) {
       this.cancelPendingSeatingIntent();
@@ -1208,7 +1213,17 @@ export class RestaurantApp {
     if (deltaMs === 0) {
       // The resume-safe frame advances no gameplay, but it must still repaint
       // wall art so an elapsed post-exit linger cannot leave the door stale.
+      // Also keep actor crop geometry snapped to the current pose so the first
+      // post-resume motion frame does not inherit a stale visual jump.
       this.repaintGuestDoor(state, floor);
+      if (state.activeFloorRoom === 'main') {
+        const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
+          room: 'main',
+        });
+        this.actorLayer.sync(floor, this.nav, this.guestMotion, {
+          guestDoor: door,
+        });
+      }
       this.effectsLayer.update(0);
       this.atmosphereLayer.update(0);
       this.syncCarryPlateOverlay(floor);
@@ -1971,6 +1986,7 @@ export class RestaurantApp {
   private onVisibilityChange = (): void => {
     if (document.visibilityState !== 'visible') {
       this.floorRuntimeWasRunning = false;
+      this.floorResumeSettleFramesRemaining = 0;
       this.cancelPendingSeatingIntent();
     }
   };

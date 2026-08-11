@@ -763,10 +763,15 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
       const host = document.querySelector<HTMLElement>(
         '[data-testid="celebration-banner-host"]',
       );
+      const hasBanner = Boolean(
+        host?.querySelector(
+          '[data-testid="notice-banner"], [data-testid="celebration-banner"]',
+        ),
+      );
       useGameStore
         .getState()
         .setNotificationBannerPresented(
-          Boolean(host?.isConnected && host && !host.hidden),
+          Boolean(host?.isConnected && host && !host.hidden && hasBanner),
         );
     },
 

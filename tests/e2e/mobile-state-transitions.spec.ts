@@ -275,7 +275,13 @@ test.describe("mobile state-transition boundaries", () => {
         );
 
         await navigateToScreen(page, "restaurant");
-        await expect(notice).toBeVisible();
+        const resumeSnap = await page.evaluate(() =>
+          window.__E2E__!.getNoticeDebugSnapshot(),
+        );
+        await expect(
+          notice,
+          `notice missing after return: ${JSON.stringify(resumeSnap)}`,
+        ).toBeVisible();
         await expect(notice).toContainText(timedCheckpoint.noticeText);
         const resumedAt = Date.now();
         await expect(notice).toBeHidden({ timeout: 3_500 });

@@ -102,7 +102,9 @@ async function sampleDoorway(
     ({ id, terminal, heldId }) => {
       const bridge = window.__E2E__!;
       const samples: DoorwaySample[] = [];
-      const deadline = performance.now() + 15_000;
+      // Deterministic wait: expanded grids + resume-safe 33ms frame caps need
+      // headroom under CI/CPU throttle (was 15s; departures timed out mid-walk).
+      const deadline = performance.now() + 30_000;
       let sawTerminal = false;
 
       const push = (debug: DoorwayDebug) => {
@@ -282,7 +284,9 @@ async function pauseDuringExitLinger(
   return page.evaluate(
     ({ firstId, heldId }) => {
       const bridge = window.__E2E__!;
-      const deadline = performance.now() + 15_000;
+      // Deterministic wait: first departure must reach exit linger under the
+      // 33ms hitch cap; 15s was tight on CI when the walk was still in progress.
+      const deadline = performance.now() + 30_000;
       return new Promise<{
         debug: DoorwayDebug;
         gameplay: GameStateDebug;

@@ -257,25 +257,20 @@ async function prepareOrderedGuest(
     }
     const seating = floor().pool.find((guest) => guest.stage === 'seating');
     if (!seating?.seat) throw new Error('expected a guest assigned to a seat');
+    // Match prepareSeatedGuest: body-tap deliver specs need a seated+ordered
+    // guest, not the seating walk (doorway/gameplay-boundaries cover that).
+    // Waiting on visual seating under CI/CPU throttle exceeds 10s when
+    // MAX_FLOOR_FRAME_DELTA_MS caps hitch frames.
+    await bridge.dispatch({
+      type: 'FLOOR_COMPLETE_SEATING',
+      guestId: seating.id,
+    });
 
     return {
       guestId: seating.id,
       seat: { x: seating.seat.x, y: seating.seat.y },
     };
   }, waitingPosition);
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate((guestId) => {
-          const guest = window.__E2E__!
-            .getGameState()
-            .activeDay!.floor!.pool.find((candidate) => candidate.id === guestId);
-          return guest?.stage;
-        }, seatingFixture.guestId),
-      { timeout: 10_000 },
-    )
-    .toBe('seated');
 
   return page.evaluate(async ({ guestId, seat, shouldPlate }) => {
     const bridge = window.__E2E__!;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ActiveDay } from '../../domain/day/types.ts';
 import type { FloorDay } from '../../domain/floor/types.ts';
 import {
+  FLOOR_RESUME_SETTLE_FRAMES,
   MAX_FLOOR_FRAME_DELTA_MS,
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
@@ -75,20 +76,41 @@ describe('floor runtime gate', () => {
 
 describe('floor runtime resume delta', () => {
   it('uses ordinary deltas only while continuously running', () => {
-    expect(resumeSafeFloorDeltaMs(true, true, 16)).toBe(16);
-    expect(resumeSafeFloorDeltaMs(true, true, -1)).toBe(0);
+    expect(resumeSafeFloorDeltaMs(true, true, 16, 0).deltaMs).toBe(16);
+    expect(resumeSafeFloorDeltaMs(true, true, -1, 0).deltaMs).toBe(0);
   });
 
   it('drops paused and first-resume deltas to prevent hidden-time catch-up', () => {
-    expect(resumeSafeFloorDeltaMs(false, true, 5_000)).toBe(0);
-    expect(resumeSafeFloorDeltaMs(true, false, 5_000)).toBe(0);
-    expect(resumeSafeFloorDeltaMs(true, true, 16)).toBe(16);
+    expect(resumeSafeFloorDeltaMs(false, true, 5_000, 0).deltaMs).toBe(0);
+    expect(
+      resumeSafeFloorDeltaMs(false, true, 5_000, 0).resumeSettleFramesRemaining,
+    ).toBe(FLOOR_RESUME_SETTLE_FRAMES);
+    expect(resumeSafeFloorDeltaMs(true, false, 5_000, 0).deltaMs).toBe(0);
+    expect(
+      resumeSafeFloorDeltaMs(true, false, 5_000, 0).resumeSettleFramesRemaining,
+    ).toBe(FLOOR_RESUME_SETTLE_FRAMES);
+  });
+
+  it('gates one settled frame after resume before walk-lerp resumes', () => {
+    const afterResume = resumeSafeFloorDeltaMs(true, false, 5_000, 0);
+    expect(afterResume.deltaMs).toBe(0);
+    const settle = resumeSafeFloorDeltaMs(
+      true,
+      true,
+      16,
+      afterResume.resumeSettleFramesRemaining,
+    );
+    expect(settle.deltaMs).toBe(0);
+    expect(settle.resumeSettleFramesRemaining).toBe(0);
+    expect(resumeSafeFloorDeltaMs(true, true, 16, 0).deltaMs).toBe(16);
   });
 
   it('caps hitch frames so doorway / approach beats stay time-rate limited', () => {
-    expect(resumeSafeFloorDeltaMs(true, true, 200)).toBe(MAX_FLOOR_FRAME_DELTA_MS);
-    expect(resumeSafeFloorDeltaMs(true, true, MAX_FLOOR_FRAME_DELTA_MS)).toBe(
+    expect(resumeSafeFloorDeltaMs(true, true, 200, 0).deltaMs).toBe(
       MAX_FLOOR_FRAME_DELTA_MS,
     );
+    expect(
+      resumeSafeFloorDeltaMs(true, true, MAX_FLOOR_FRAME_DELTA_MS, 0).deltaMs,
+    ).toBe(MAX_FLOOR_FRAME_DELTA_MS);
   });
 });

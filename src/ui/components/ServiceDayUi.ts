@@ -241,6 +241,16 @@ export function mountServiceDayUi(
         '--vk-service-panel-enter-delay',
         `${-Math.max(0, entryElapsed)}ms`,
       );
+      // Clear on animation end (or timeout fallback when motion is disabled) so
+      // mid-enter re-renders keep the marker without leaving it stuck.
+      const clearEntering = () => {
+        if (panel.dataset.panelEntering !== undefined) {
+          delete panel.dataset.panelEntering;
+          panel.style.removeProperty('--vk-service-panel-enter-delay');
+        }
+      };
+      panel.addEventListener('animationend', clearEntering, { once: true });
+      window.setTimeout(clearEntering, SERVICE_PANEL_ENTER_MS + 32);
     }
   };
 
