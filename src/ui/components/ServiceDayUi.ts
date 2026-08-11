@@ -554,7 +554,7 @@ export function mountServiceDayUi(
     orderBubbleTimer = null;
     if (bubbleEl) {
       bubbleEl.hidden = true;
-      bubbleEl.classList.remove('order-bubble');
+      bubbleEl.classList.remove('order-bubble', 'order-bubble-pulse');
     }
     syncOrderBubbleNoticeBlock();
   };
@@ -1054,7 +1054,9 @@ export function mountServiceDayUi(
         ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
       ];
       const allChipSelected = composeFilters.selectedAxis === null;
-      const allChip = `<button type="button" class="filter-axis-chip${allChipSelected ? ' selected' : ''}" data-compose-all data-testid="compose-all-ingredients" aria-pressed="${allChipSelected}" title="Show all unlocked ingredients">All ingredients</button>`;
+      // Not a `.filter-axis-chip`: axis chips hide on compact mobile; All stays
+      // visible as a pantry-scope control without counting as a flavor filter.
+      const allChip = `<button type="button" class="compose-all-chip${allChipSelected ? ' selected' : ''}" data-compose-all data-testid="compose-all-ingredients" aria-pressed="${allChipSelected}" title="Show all unlocked ingredients">All ingredients</button>`;
       const axisChips =
         allChip +
         orderedFilterAxes
@@ -1156,13 +1158,12 @@ export function mountServiceDayUi(
               const currentValue = preview.profile?.[axis] ?? 0;
               const status = formatRequestBandStatus(currentValue, band);
               const shade = requestBandShadePercents(band);
-              const statusText = status.deltaText
-                ? `${status.label} · ${status.deltaText}`
-                : status.label;
+              // Compose stays qualitative: signed deltas stay in format helpers /
+              // Ideal tab numerics, not in the cook-sheet status chip.
               return `<div class="compose-request-axis" data-testid="compose-request-axis">
                 <div class="compose-request-axis-head">
                   <strong>${escapeHtml(`${bandLabel(band)} ${AXIS_LABELS[axis]}`)}</strong>
-                  <span class="compose-request-status ${status.position}">${escapeHtml(statusText)}</span>
+                  <span class="compose-request-status ${status.position}">${escapeHtml(status.label)}</span>
                 </div>
                 <div class="compose-request-bars" aria-hidden="true">
                   <span class="compose-request-bar target">
@@ -1813,10 +1814,12 @@ export function mountServiceDayUi(
     if (newTicket) {
       orderBubbleGuestId = newTicket.customerId;
       if (orderBubbleTimer) clearTimeout(orderBubbleTimer);
+      // Keep under the floor notice dwell so the bubble yields the banner
+      // quickly; pulse CSS is visual-only and must not extend lifetime.
       orderBubbleTimer = setTimeout(() => {
         clearOrderBubble();
         renderChatBubble();
-      }, 5000);
+      }, 2400);
     }
     const floorChanged = state.activeDay?.floor !== prev.activeDay?.floor;
     if (

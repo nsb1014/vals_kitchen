@@ -675,7 +675,11 @@ export function mountFloorServiceHud(
       .querySelector('#floor-tickets-toggle')
       ?.addEventListener('click', (event) => {
         event.stopPropagation();
-        ticketsMenuOpen = !ticketsMenuOpen;
+        const opening = !ticketsMenuOpen;
+        ticketsMenuOpen = opening;
+        // Opening always lands on Order so ticket rows are actionable; Ideal
+        // remains a tab. Arrival auto-Ideal only applies while the menu is open.
+        if (opening) ticketsPanelView = 'order';
         render();
       });
 
@@ -762,7 +766,9 @@ export function mountFloorServiceHud(
     );
     for (const ticketId of nextTicketIds) {
       if (knownTicketIds.has(ticketId)) continue;
-      ticketsPanelView = 'ideal';
+      // Flash Ideal only when the menu is already open so a later open still
+      // defaults to the selectable Order list.
+      if (ticketsMenuOpen) ticketsPanelView = 'ideal';
       arrivingTicketIds.add(ticketId);
       const timer = setTimeout(() => {
         arrivingTicketIds.delete(ticketId);

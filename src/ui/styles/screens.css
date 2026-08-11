@@ -1058,9 +1058,9 @@
   line-height: 1;
 }
 
-/* Polite live-region payload for banner re-announcements (visual copy is aria-hidden). */
-.celebration-banner .banner-live-text,
-.notice-banner .banner-live-text {
+/* Polite live-region payload for banner re-announcements (visual copy is aria-hidden).
+ * Lives as a sibling of the banner testids so banner.innerText stays stable. */
+.celebration-banner-host .banner-live-text {
   position: absolute;
   width: 1px;
   height: 1px;

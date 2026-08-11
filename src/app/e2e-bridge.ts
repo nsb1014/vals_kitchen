@@ -407,6 +407,11 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
   if (typeof window === 'undefined') return;
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
 
+  // Deterministic geometry: skip enter/shimmer transitions that shift layout boxes
+  // under CI load. Matches prefers-reduced-motion CSS already shipped for players.
+  document.documentElement.dataset.vkReducedMotion = 'true';
+  document.documentElement.style.setProperty('scroll-behavior', 'auto');
+
   window.__E2E__ = {
     getPlacements() {
       return useGameStore.getState().placements.map((p) => ({

@@ -197,18 +197,26 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     );
     if (!live) return;
     // Covered celebrations stay inert/hidden — announce once they become front.
-    const aside = live.closest('.celebration-banner');
+    const aside = host.querySelector('.celebration-banner');
     if (aside?.hasAttribute('aria-hidden')) return;
     const key = celebrationAnnounceKey(celebration);
-    if (key === lastCelebrationAnnounceKey) return;
+    if (key === lastCelebrationAnnounceKey) {
+      // Remount after pause: keep polite text without clear-then-set retrigger.
+      live.textContent = celebrationAnnounceText(celebration);
+      live.removeAttribute('aria-hidden');
+      live.setAttribute('aria-live', 'polite');
+      live.setAttribute('role', 'status');
+      return;
+    }
     lastCelebrationAnnounceKey = key;
+    live.removeAttribute('aria-hidden');
+    live.setAttribute('aria-live', 'polite');
+    live.setAttribute('role', 'status');
     replaceLiveRegionText(live, celebrationAnnounceText(celebration));
   };
 
   const announceNoticeIfNeeded = (notice: Notice): void => {
     const key = `${notice.id}\0${notice.title ?? ''}\0${notice.body}`;
-    if (key === lastNoticeAnnounceKey) return;
-    lastNoticeAnnounceKey = key;
     const live = host.querySelector<HTMLElement>(
       '[data-testid="notice-live-text"]',
     );
@@ -216,6 +224,17 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
     const text = notice.title
       ? `${notice.title}. ${notice.body}`
       : notice.body;
+    if (key === lastNoticeAnnounceKey) {
+      live.textContent = text;
+      live.removeAttribute('aria-hidden');
+      live.setAttribute('aria-live', 'polite');
+      live.setAttribute('role', 'status');
+      return;
+    }
+    lastNoticeAnnounceKey = key;
+    live.removeAttribute('aria-hidden');
+    live.setAttribute('aria-live', 'polite');
+    live.setAttribute('role', 'status');
     replaceLiveRegionText(live, text);
   };
 
@@ -255,7 +274,6 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
                 <strong class="celebration-banner-title">${escapeHtml(celebration.title)}</strong>
                 <span class="celebration-banner-body">${escapeHtml(celebration.body)}</span>
               </div>
-              <span class="banner-live-text" data-testid="celebration-live-text"></span>
               <button class="celebration-banner-dismiss" type="button" tabindex="${BANNER_DISMISS_TABINDEX}" aria-label="Dismiss celebration" data-testid="celebration-dismiss">×</button>
             </aside>
           `;
@@ -270,16 +288,20 @@ export function mountCelebrationBanner(mount: HTMLElement): () => void {
               ${notice.title ? `<strong class="notice-banner-title">${escapeHtml(notice.title)}</strong>` : ''}
               <span class="notice-banner-body">${escapeHtml(notice.body)}</span>
             </div>
-            <span class="banner-live-text" data-testid="notice-live-text"></span>
             <button class="notice-banner-dismiss" type="button" tabindex="${BANNER_DISMISS_TABINDEX}" aria-label="Dismiss notice">×</button>
           </aside>
         `;
         })()
       : '';
 
+    // Live payloads sit outside the banner testids so banner.innerText stays a
+    // stable copy+dismiss string across pause/resume remounts (no duplicate
+    // announce text leaking into e2e checkpoints).
     host.innerHTML = `
       ${celebrationHtml}
       ${noticeHtml}
+      <span class="banner-live-text" data-testid="celebration-live-text" aria-hidden="true"></span>
+      <span class="banner-live-text" data-testid="notice-live-text" aria-hidden="true"></span>
     `;
     wireDismiss('.celebration-banner-dismiss', () =>
       useGameStore.getState().dismissCelebration(),

@@ -82,6 +82,12 @@
   pointer-events: none;
 }
 
+/* Tickets menu owns the pointer; skip must not intercept Close / rows. */
+.game-surface:has([data-testid='floor-tickets-menu']:not([hidden])) .tutorial-skip-host {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .tutorial-skip-host[hidden] {
   display: none !important;
 }
@@ -372,6 +378,18 @@
   .service-panel[data-panel-entering] {
     animation: none;
   }
+}
+
+html[data-vk-reduced-motion='true'] .service-panel[data-panel-entering],
+[data-vk-reduced-motion='true'] .service-panel[data-panel-entering] {
+  animation: none;
+}
+
+html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble,
+html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse,
+[data-vk-reduced-motion='true'] .chat-bubble.order-bubble,
+[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse {
+  animation: none;
 }
 
 .service-panel.sheet-tier-compact,
@@ -1279,24 +1297,28 @@
 
 .floor-actions .service-btn {
   width: 100%;
+  /* Row icon+label keeps height ≈ label budget (e2e chrome zoom assertion).
+   * Cap at --vk-cta-h so interactive chrome cannot grow past the reserved strip. */
   height: auto;
-  min-height: max(44px, var(--vk-cta-h));
+  min-height: 44px;
+  max-height: max(44px, var(--vk-cta-h));
+  box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding-block: 0.35rem;
-  padding-inline: 0.25rem;
+  padding-block: 0.2rem;
+  padding-inline: 0.3rem;
   position: relative;
   overflow: hidden;
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.3rem;
 }
 
 .floor-action-icon {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1rem;
+  height: 1rem;
   flex: 0 0 auto;
   color: #ffe7b8;
   filter: drop-shadow(0 1px #1a1008);
@@ -1377,6 +1399,10 @@ html[data-vk-reduced-motion='true'] .floor-tickets-toggle.in-flight::after,
   line-height: 1.2;
   overflow-wrap: anywhere;
   white-space: normal;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+  font-size: 12px;
 }
 
 .floor-tickets-toggle {
@@ -1668,7 +1694,22 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   font-weight: 700;
 }
 
-.filter-axis-chip.selected {
+.compose-all-chip {
+  flex: 0 0 auto;
+  height: var(--vk-chip-h);
+  min-width: 44px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--vk-border);
+  border-radius: 999px;
+  background: var(--vk-panel-2);
+  color: var(--vk-text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.filter-axis-chip.selected,
+.compose-all-chip.selected {
   border-color: var(--vk-accent-2);
   background: var(--vk-accent-2);
   color: var(--vk-bg-deep);
@@ -2168,7 +2209,7 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     padding-bottom: 0.25rem;
   }
 
-  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+  .compose-filters .filter-axis-chip:not(.requested) {
     display: none;
   }
 
@@ -2290,6 +2331,14 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   }
 
   .compose-selection {
+    display: none;
+  }
+
+  .compose-ticket-rail {
+    display: none;
+  }
+
+  .compose-inspect-hint {
     display: none;
   }
 
@@ -2528,7 +2577,8 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 }
 
 .compose-selected-chip,
-.filter-axis-chip {
+.filter-axis-chip,
+.compose-all-chip {
   border: 1px solid #73502e;
   background: linear-gradient(180deg, #4a301d, #2e1d13);
   color: #e3c99c;
@@ -2536,7 +2586,9 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 }
 
 .filter-axis-chip.selected,
-.filter-axis-chip[aria-pressed='true'] {
+.filter-axis-chip[aria-pressed='true'],
+.compose-all-chip.selected,
+.compose-all-chip[aria-pressed='true'] {
   border-color: #ddb26a;
   background: linear-gradient(180deg, #e5bd77, #ba8243);
   color: #2a190f;
@@ -2668,8 +2720,95 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   /* Leave a readable floor strip above the sheet (lifecycle unchanged). */
   .service-panel.sheet-tier-near-full.compose-sheet-panel {
-    height: 78%;
-    max-height: 78%;
+    height: 90%;
+    max-height: 90%;
+  }
+
+  /* Single-ticket rail is redundant with the header identity; keep multi-ticket. */
+  .compose-ticket-rail:not(.compose-ticket-rail--multi) {
+    display: none;
+  }
+
+  .compose-inspect-hint {
+    display: none;
+  }
+
+  /* Peek + progress chrome leave no room for a persistent search field; desktop
+   * (min-width 900) keeps the full search row. */
+  .compose-search-row {
+    display: none;
+  }
+
+  .compose-ticket-rail {
+    padding-block: 0.1rem 0.25rem;
+  }
+
+  .compose-ticket-rail-item {
+    min-height: 40px;
+  }
+
+  .compose-sheet-header {
+    min-height: 56px;
+    padding-block: 0.3rem;
+  }
+
+  .compose-section-heading {
+    display: none;
+  }
+
+  .compose-progress {
+    margin: 0.05rem 0 0.2rem;
+    gap: 0.2rem;
+  }
+
+  .compose-progress-track {
+    display: none;
+  }
+
+  .compose-selected-strip {
+    min-height: 28px;
+    padding-block: 0.1rem;
+  }
+
+  .compose-filters {
+    padding-block: 0.2rem;
+  }
+
+  /* Keep chips wrapping inside the filter row (no horizontal overflow). */
+  .compose-axis-row {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: none;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    padding-bottom: 0.1rem;
+    gap: 0.25rem;
+  }
+
+  .compose-axis-row .filter-axis-chip,
+  .compose-axis-row .compose-all-chip {
+    width: auto;
+    flex: 1 1 calc(25% - 0.25rem);
+    min-width: min(4.25rem, calc(50% - 0.25rem));
+    max-width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 0.2rem 0.35rem;
+    font-size: 11px;
+    box-sizing: border-box;
+  }
+
+  .compose-filter-summary {
+    margin-top: 0.15rem;
+  }
+
+  .compose-order-panel {
+    max-height: 5rem;
+  }
+
+  .compose-sheet-footer {
+    min-height: 5.1rem;
+    padding-block: 0.3rem 0.4rem;
   }
 
   .service-panel.sheet-tier-near-full {
@@ -2701,20 +2840,31 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     padding-block: 0.35rem;
   }
 
-  .compose-filters .filter-axis-chip:not(.requested):not([data-compose-all]) {
+  .compose-filters .filter-axis-chip:not(.requested) {
     display: none;
   }
 
   .compose-axis-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
-    overflow: visible;
-    padding-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.1rem;
   }
 
-  .compose-axis-row .filter-axis-chip {
-    width: 100%;
-    min-width: 0;
+  .compose-axis-row .filter-axis-chip,
+  .compose-axis-row .compose-all-chip {
+    width: auto;
+    min-width: min(4.25rem, calc(50% - 0.25rem));
+    max-width: 100%;
+    flex: 1 1 calc(25% - 0.25rem);
+    height: 36px;
+    min-height: 36px;
+    padding: 0.2rem 0.35rem;
+    font-size: 11px;
+    box-sizing: border-box;
   }
 
   .compose-workspace {
@@ -2724,7 +2874,7 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: 7rem;
+    max-height: 5rem;
     border-top: 1px solid #694525;
     border-left: 0;
   }
@@ -2787,9 +2937,9 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     grid-template-columns: minmax(0, 1fr) minmax(7.8rem, 36%);
     grid-template-rows: auto 48px auto;
     height: auto;
-    min-height: 5.8rem;
+    min-height: 5.1rem;
     gap: 0.25rem 0.5rem;
-    padding: 0.4rem 0.65rem 0.55rem;
+    padding: 0.3rem 0.65rem 0.4rem;
   }
 
   .compose-footer-copy {
@@ -2977,61 +3127,106 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     margin-top: 0.35rem;
   }
 
-  .service-panel.sheet-tier-near-full {
+  .service-panel.sheet-tier-near-full:not(.compose-sheet-panel) {
     height: 96%;
     max-height: 96%;
   }
 
+  /* Keep Plate inside the sheet while leaving a usable pantry: short
+   * landscape cannot afford the tall-phone peek plus Round-3 chrome. */
+  .service-panel.sheet-tier-near-full.compose-sheet-panel {
+    height: 92%;
+    max-height: 92%;
+  }
+
+  .compose-ticket-rail {
+    display: none;
+  }
+
+  .compose-inspect-hint,
+  .compose-search-row,
+  .compose-filter-summary,
+  .compose-filter-hint,
+  .compose-section-heading,
+  .compose-progress-track,
+  .compose-selected-strip {
+    display: none;
+  }
+
+  .compose-progress {
+    margin: 0.05rem 0 0.1rem;
+    gap: 0.1rem;
+  }
+
   .compose-sheet-header {
-    min-height: 64px;
-    padding-block: 0.35rem;
+    min-height: 44px;
+    padding-block: 0.15rem;
   }
 
   .compose-sheet-header::before {
-    width: 42px;
-    height: 42px;
+    width: 28px;
+    height: 28px;
   }
 
   .compose-filters {
-    padding-block: 0.2rem;
+    padding-block: 0.1rem;
+  }
+
+  .compose-axis-row {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+
+  /* Side-by-side so pantry keeps the full workspace height. */
+  .compose-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 34%);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .compose-order-panel {
-    padding-block: 0.2rem 0.25rem;
+    grid-row: 1;
+    grid-column: 2;
+    max-height: none;
+    height: 100%;
+    padding: 0.15rem 0.35rem;
+    border-top: 0;
+    border-left: 1px solid #694525;
+  }
+
+  .compose-pantry {
+    grid-row: 1;
+    grid-column: 1;
   }
 
   .compose-order-mobile-legend {
-    margin-bottom: 0.1rem;
-  }
-
-  .compose-filter-summary {
-    display: block;
-    white-space: normal;
+    margin-bottom: 0.05rem;
   }
 
   .compose-sheet-footer {
     height: auto;
-    min-height: 4.9rem;
-    grid-template-rows: auto 44px auto;
-    padding-block: 0.25rem;
+    min-height: 4.1rem;
+    max-height: 4.6rem;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding-block: 0.15rem;
   }
 
   .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    height: 40px;
+    height: 34px;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip {
-    height: 46px;
-    min-height: 46px;
+    height: 44px;
+    min-height: 44px;
     flex-direction: row;
     padding-inline: 0.35rem;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-pantry .ingredient-chip .food-icon {
-    width: 28px !important;
-    height: 28px !important;
-    flex-basis: 28px;
+    width: 26px !important;
+    height: 26px !important;
+    flex-basis: 26px;
   }
 
   .compose-sheet-card:has(.compose-flavor-strip.expanded) .compose-ingredient-inspect {
