@@ -408,8 +408,12 @@ export function installE2eBridge(getRestaurantApp: () => RestaurantApp | null): 
   if (!new URLSearchParams(window.location.search).has('e2e')) return;
 
   // Deterministic geometry: skip enter/shimmer transitions that shift layout boxes
-  // under CI load. Matches prefers-reduced-motion CSS already shipped for players.
+  // under CI load. Dataset + game-root attribute are what canvas reads via
+  // prefersReducedMotion() (matchMedia alone is not enough in Playwright).
   document.documentElement.dataset.vkReducedMotion = 'true';
+  document
+    .querySelector('#game-root')
+    ?.setAttribute('data-vk-reduced-motion', 'true');
   document.documentElement.style.setProperty('scroll-behavior', 'auto');
 
   window.__E2E__ = {

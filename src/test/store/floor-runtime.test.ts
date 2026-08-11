@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ActiveDay } from '../../domain/day/types.ts';
 import type { FloorDay } from '../../domain/floor/types.ts';
 import {
+  MAX_FLOOR_FRAME_DELTA_MS,
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
   type FloorRuntimeState,
@@ -82,5 +83,12 @@ describe('floor runtime resume delta', () => {
     expect(resumeSafeFloorDeltaMs(false, true, 5_000)).toBe(0);
     expect(resumeSafeFloorDeltaMs(true, false, 5_000)).toBe(0);
     expect(resumeSafeFloorDeltaMs(true, true, 16)).toBe(16);
+  });
+
+  it('caps hitch frames so doorway / approach beats stay time-rate limited', () => {
+    expect(resumeSafeFloorDeltaMs(true, true, 200)).toBe(MAX_FLOOR_FRAME_DELTA_MS);
+    expect(resumeSafeFloorDeltaMs(true, true, MAX_FLOOR_FRAME_DELTA_MS)).toBe(
+      MAX_FLOOR_FRAME_DELTA_MS,
+    );
   });
 });

@@ -81,6 +81,7 @@ import {
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
 } from '../store/selectors/floor-runtime.ts';
+import { prefersReducedMotion } from '../ui/presentation/motion-preference.ts';
 import {
   cameraPunchMultiplier,
   clampCameraPunchScale,
@@ -342,10 +343,7 @@ export class RestaurantApp {
   }
 
   private flashCanvasMount(kind: 'serve' | 'review' | 'placement'): void {
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
+    if (prefersReducedMotion()) return;
     this.mount.classList.remove(
       'vk-sfx-flash-serve',
       'vk-sfx-flash-review',
@@ -661,7 +659,9 @@ export class RestaurantApp {
       action,
     };
     this.approachArrivalHoldMs = 0;
-    this.approachArrivalHoldTargetMs = holdMs;
+    // Reduced-motion / e2e dataset: settle on the next idle tick instead of a
+    // multi-frame anticipation hold that races Playwright polls under hitchy CI.
+    this.approachArrivalHoldTargetMs = prefersReducedMotion() ? 0 : holdMs;
     this.syncFloorActionInFlightDataset();
   }
 
@@ -1466,10 +1466,7 @@ export class RestaurantApp {
     if (this.roomTransitionInFlight) return;
     this.cancelPendingSeatingIntent();
     const canvas = this.app.canvas;
-    if (
-      typeof canvas.animate !== 'function' ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
+    if (typeof canvas.animate !== 'function' || prefersReducedMotion()) {
       changeRoom();
       return;
     }

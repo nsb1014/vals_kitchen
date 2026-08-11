@@ -347,20 +347,7 @@ test.describe('object tap controls', () => {
         await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
       );
       await expectPlayerAtGuestServicePosition(page, fixture.seat);
-      expect(
-        await page.evaluate(
-          (guestId) =>
-            window.__E2E__!.getGameState().activeDay!.floor!.pool.find(
-              (guest) => guest.id === guestId,
-            )?.stage,
-          fixture.guestId,
-        ),
-      ).toBe('seated');
-
-      await tapRealPointer(
-        page,
-        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
-      );
+      // Round-3 approach-and-complete: far body tap walks then auto-orders.
       await expect
         .poll(() =>
           page.evaluate(
@@ -383,19 +370,7 @@ test.describe('object tap controls', () => {
         await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
       );
       await expectPlayerAtGuestServicePosition(page, fixture.seat);
-      expect(
-        await page.evaluate(
-          (ticketId) =>
-            window.__E2E__!.getGameState().activeDay!.floor!
-              .carriedTicketId === ticketId,
-          fixture.ticketId,
-        ),
-      ).toBe(true);
-
-      await tapRealPointer(
-        page,
-        await guestRenderedBodyPoint(page, fixture.guestId, bodyCase.band),
-      );
+      // Approach-and-complete clears the carried plate on arrival.
       await expect
         .poll(() =>
           page.evaluate(
@@ -859,15 +834,13 @@ test.describe('object tap controls', () => {
         }, fixture.station),
       )
       .toBe(true);
-    expect(
-      await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
-    ).toBe(false);
-
-    await tapGridCell(page, fixture.station.x, fixture.station.y);
+    // Round-3 compose approach opens the sheet on arrival (stale carry ignored).
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
+      )
+      .toBe(true);
     await expect(page.getByTestId('compose-sheet')).toBeVisible();
-    expect(
-      await page.evaluate(() => window.__E2E__!.getState().composeSheetOpen),
-    ).toBe(true);
   });
 
   test('rejects a remote station tap when a stale carried id has no open ticket', async ({
@@ -1280,8 +1253,13 @@ test.describe('object tap controls', () => {
       const restore = document.querySelector<HTMLButtonElement>(
         '[data-testid="import-save-btn"]',
       );
-      if (!settings?.hidden || !restore) return false;
+      const confirm = document.querySelector<HTMLButtonElement>(
+        '[data-testid="import-save-confirm"]',
+      );
+      if (!settings?.hidden || !restore || !confirm) return false;
       restore.click();
+      // Confirm is required before importSaveCode runs; keep restaurant mounted.
+      confirm.click();
       return true;
     });
     expect(restoredWhileRestaurantStayedActive).toBe(true);

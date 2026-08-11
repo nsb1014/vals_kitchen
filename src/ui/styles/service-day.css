@@ -1286,6 +1286,7 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 }
 
 .floor-actions-scroll {
+  min-height: var(--vk-cta-h);
   max-height: min(
     var(--vk-floor-chrome-min-h-3),
     max(var(--vk-cta-h), calc(100dvh - var(--vk-status-hud-height, 2.75rem) - 8rem))
@@ -1297,11 +1298,11 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
 
 .floor-actions .service-btn {
   width: 100%;
-  /* Row icon+label keeps height ≈ label budget (e2e chrome zoom assertion).
-   * Cap at --vk-cta-h so interactive chrome cannot grow past the reserved strip. */
+  /* Height tracks the 2-line label budget (e2e 200% zoom assertion). Do not
+   * force a 44px min here — that exceeds labelMaxHeight + padding at zoom. */
   height: auto;
-  min-height: 44px;
-  max-height: max(44px, var(--vk-cta-h));
+  min-height: 0;
+  max-height: var(--vk-cta-h);
   box-sizing: border-box;
   min-width: 0;
   margin: 0;
@@ -2452,6 +2453,16 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     inset 0 1px rgba(255, 239, 207, 0.14),
     0 3px 0 #140c08;
   font-weight: 800;
+}
+
+/* Floor chrome must stay within the 2-line label height budget (zoom e2e).
+ * Reassert after the chibi .service-btn min-height: 48px reset above. */
+.floor-actions .service-btn {
+  min-height: 0;
+  height: auto;
+  max-height: var(--vk-cta-h);
+  padding-block: 0.2rem;
+  padding-inline: 0.3rem;
 }
 
 .service-btn.primary {

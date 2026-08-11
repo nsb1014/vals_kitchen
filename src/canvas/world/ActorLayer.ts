@@ -38,6 +38,7 @@ import {
   type CarriedDishRelation,
 } from './guest-interaction-hint.ts';
 import { canEnqueue } from '../../domain/floor/tickets.ts';
+import { prefersReducedMotion } from '../../ui/presentation/motion-preference.ts';
 
 export { carryPlateGeometry } from './carry-plate.ts';
 export {
@@ -613,16 +614,15 @@ export class ActorLayer {
     const feetY = nav.worldY + TILE_PX / 2 - 2;
     this.playerFeetY = feetY;
     const nowMs = performance.now();
-    const squash = tickWalkPulse(
-      this.playerWalkPulse,
-      frame,
-      nav.isMoving,
-      nowMs,
-    );
-    const breathe = nav.isMoving
-      ? { scaleX: 1, scaleY: 1 }
-      : actorIdleBreathe(nowMs);
-    const bobY = nav.isMoving ? 0 : actorIdleBobY(nowMs);
+    const reduced = prefersReducedMotion();
+    const squash = reduced
+      ? { x: 1, y: 1 }
+      : tickWalkPulse(this.playerWalkPulse, frame, nav.isMoving, nowMs);
+    const breathe =
+      reduced || nav.isMoving
+        ? { scaleX: 1, scaleY: 1 }
+        : actorIdleBreathe(nowMs);
+    const bobY = reduced || nav.isMoving ? 0 : actorIdleBobY(nowMs);
     const baseScale = scaleForContent(
       PLAYER_DISPLAY_HEIGHT,
       PLAYER_CONTENT_HEIGHT_PX,
@@ -928,32 +928,36 @@ export class ActorLayer {
     let sy = 1;
     let bobY = 0;
 
-    if (pose.isMoving) {
-      const squash = tickWalkPulse(
-        entry.walkPulse,
-        pose.walkFrame,
-        true,
-        nowMs,
-      );
-      sx = squash.x;
-      sy = squash.y;
+    if (!prefersReducedMotion()) {
+      if (pose.isMoving) {
+        const squash = tickWalkPulse(
+          entry.walkPulse,
+          pose.walkFrame,
+          true,
+          nowMs,
+        );
+        sx = squash.x;
+        sy = squash.y;
+      } else {
+        resetWalkPulse(entry.walkPulse);
+        if (stage === 'eating') {
+          const pulse = actorEatingPulse(nowMs, entry.phase);
+          sx = pulse.scaleX;
+          sy = pulse.scaleY;
+          bobY = pulse.offsetY;
+        } else if (
+          stage === 'seated' ||
+          stage === 'ordered' ||
+          stage === 'waiting'
+        ) {
+          const breathe = actorIdleBreathe(nowMs, entry.phase);
+          sx = breathe.scaleX;
+          sy = breathe.scaleY;
+          bobY = actorIdleBobY(nowMs, entry.phase);
+        }
+      }
     } else {
       resetWalkPulse(entry.walkPulse);
-      if (stage === 'eating') {
-        const pulse = actorEatingPulse(nowMs, entry.phase);
-        sx = pulse.scaleX;
-        sy = pulse.scaleY;
-        bobY = pulse.offsetY;
-      } else if (
-        stage === 'seated' ||
-        stage === 'ordered' ||
-        stage === 'waiting'
-      ) {
-        const breathe = actorIdleBreathe(nowMs, entry.phase);
-        sx = breathe.scaleX;
-        sy = breathe.scaleY;
-        bobY = actorIdleBobY(nowMs, entry.phase);
-      }
     }
 
     if (entry.sprite.visible) {
