@@ -884,17 +884,21 @@ export class ActorLayer {
         : carriedTicket.customerId === guest.customer.id
           ? 'matching'
           : 'other';
-      this.drawGuestStageCue(
-        entry,
-        guestCanvasCueAction(guest.stage, carriedRelation, orderAvailable) ??
-          guestStageFloorCue(guest.stage),
-      );
       this.syncGuestDoorwayCrop(
         entry,
         guest.stage,
         pose,
         guestDoor,
       );
+      // Head cues during the doorway crop read as a detached blob left on
+      // the threshold once the body has walked clear.
+      if (!entry.doorwayCrop) {
+        this.drawGuestStageCue(
+          entry,
+          guestCanvasCueAction(guest.stage, carriedRelation, orderAvailable) ??
+            guestStageFloorCue(guest.stage),
+        );
+      }
       this.applyGuestMotionJuice(entry, guest.stage, pose, performance.now());
     }
 
@@ -970,6 +974,7 @@ export class ActorLayer {
     sprite.alpha = 1;
     const cue = new Graphics();
     const cropMask = new Graphics();
+    cropMask.renderable = false;
     content.addChild(sprite);
     content.addChild(cue);
     root.addChild(content);
@@ -1077,9 +1082,12 @@ export class ActorLayer {
 
     if (!doorwayCrop) {
       entry.content.mask = null;
+      entry.cropMask.clear();
+      entry.cropMask.renderable = false;
       return;
     }
 
+    entry.cropMask.renderable = false;
     entry.content.mask = entry.cropMask;
     const clipped = doorwayCrop.clippedWorldBounds;
     if (!clipped) return;

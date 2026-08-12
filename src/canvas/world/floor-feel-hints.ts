@@ -10,7 +10,7 @@ import {
   playerNearPlacement,
   waitingGuestServicePositions,
 } from '../../domain/floor/interact.ts';
-import type { FloorDay } from '../../domain/floor/types.ts';
+import type { FloorDay, SeatSlot } from '../../domain/floor/types.ts';
 import type { Placement } from '../../domain/state/game-state.ts';
 import { canEnqueue } from '../../domain/floor/tickets.ts';
 import { guestHintAction } from './guest-interaction-hint.ts';
@@ -43,6 +43,11 @@ export interface FloorFeelHintContext {
 /**
  * Near hints pulse when Val is already in range; far hints mark the nearest
  * reachable service cell so intent is readable across the room.
+ *
+ * Guest highlights land on service cells (never under occupied stools) so the
+ * floor read stays "stand here", not a glowing ring through the diner.
+ * At most one far hint is shown so empty tiles do not light up for every
+ * competing chore at once.
  */
 export function computeFloorInteractHints(
   ctx: FloorFeelHintContext,
@@ -60,12 +65,19 @@ export function computeFloorInteractHints(
   const hints: FloorInteractHint[] = [];
   const seen = new Set<string>();
   const orderAvailable = canEnqueue(floor.tickets, 1);
+  const farCandidates: Array<{ cell: GridPoint; dist: number }> = [];
 
   const add = (cell: GridPoint, strength: InteractHintStrength): void => {
     const key = `${cell.x},${cell.y}`;
     if (seen.has(key)) return;
     seen.add(key);
     hints.push({ x: cell.x, y: cell.y, strength });
+  };
+
+  const proposeFar = (cell: GridPoint): void => {
+    const path = findShortestPathToAny(grid, player, [cell]);
+    if (!path || path.length < 1) return;
+    farCandidates.push({ cell: { ...cell }, dist: path.length - 1 });
   };
 
   // Pending approach wins over the short flash so one-tap→done stays explicit.
@@ -98,7 +110,7 @@ export function computeFloorInteractHints(
       player,
       adjacentWalkCandidates(placement),
     );
-    if (approach) add(approach, 'far');
+    if (approach) proposeFar(approach);
   }
 
   const carriedTicket = floor.tickets.find(
@@ -116,14 +128,14 @@ export function computeFloorInteractHints(
         guestHintAction(guest.stage, near, 'matching', orderAvailable) ===
         'deliver'
       ) {
-        add({ x: guest.seat.x, y: guest.seat.y }, 'near');
+        add(preferGuestServiceHintCell(player, guest.seat), 'near');
       } else if (guest.stage === 'ordered') {
         const approach = nearestReachableAmong(
           grid,
           player,
           guestServicePositions(guest.seat),
         );
-        if (approach) add(approach, 'far');
+        if (approach) proposeFar(approach);
       }
     }
   } else {
@@ -139,7 +151,7 @@ export function computeFloorInteractHints(
           player,
           adjacentWalkCandidates(placement),
         );
-        if (approach) add(approach, 'far');
+        if (approach) proposeFar(approach);
       }
     }
 
@@ -149,14 +161,14 @@ export function computeFloorInteractHints(
       if (
         guestHintAction(guest.stage, near, 'none', orderAvailable) === 'order'
       ) {
-        add({ x: guest.seat.x, y: guest.seat.y }, 'near');
+        add(preferGuestServiceHintCell(player, guest.seat), 'near');
       } else if (guest.stage === 'seated' && orderAvailable) {
         const approach = nearestReachableAmong(
           grid,
           player,
           guestServicePositions(guest.seat),
         );
-        if (approach) add(approach, 'far');
+        if (approach) proposeFar(approach);
       }
     }
   }
@@ -176,9 +188,16 @@ export function computeFloorInteractHints(
         }
       } else {
         const approach = nearestReachableAmong(grid, player, destinations);
-        if (approach) add(approach, 'far');
+        if (approach) proposeFar(approach);
       }
     }
+  }
+
+  // One distant promise at a time — competing far tiles read as noise.
+  farCandidates.sort((a, b) => a.dist - b.dist);
+  const nearestFar = farCandidates[0];
+  if (nearestFar && Number.isFinite(nearestFar.dist)) {
+    add(nearestFar.cell, 'far');
   }
 
   return hints;
@@ -200,6 +219,8 @@ export function computeStationInteractHints(
     hints.push({ x: cell.x, y: cell.y, strength });
   };
 
+  let bestFar: { cell: GridPoint; dist: number } | null = null;
+
   for (const placement of placements) {
     if (!isCookStationItemKey(placement.itemKey)) continue;
     if (playerNearPlacement(player, placement)) {
@@ -211,9 +232,42 @@ export function computeStationInteractHints(
       player,
       adjacentWalkCandidates(placement),
     );
-    if (approach) add(approach, 'far');
+    if (!approach) continue;
+    const path = findShortestPathToAny(grid, player, [approach]);
+    if (!path) continue;
+    const dist = path.length - 1;
+    if (!bestFar || dist < bestFar.dist) {
+      bestFar = { cell: approach, dist };
+    }
   }
+  if (bestFar) add(bestFar.cell, 'far');
   return hints;
+}
+
+/** Stand-here cell for a guest interact — never the occupied stool. */
+export function preferGuestServiceHintCell(
+  player: GridPoint,
+  seat: SeatSlot,
+): GridPoint {
+  const service = guestServicePositions(seat);
+  const underfoot = service.find(
+    (cell) => cell.x === player.x && cell.y === player.y,
+  );
+  if (underfoot) return { ...underfoot };
+
+  let best = service[0];
+  if (!best) return { x: seat.x, y: seat.y };
+  let bestDist =
+    Math.abs(best.x - player.x) + Math.abs(best.y - player.y);
+  for (let i = 1; i < service.length; i += 1) {
+    const cell = service[i]!;
+    const dist = Math.abs(cell.x - player.x) + Math.abs(cell.y - player.y);
+    if (dist < bestDist) {
+      best = cell;
+      bestDist = dist;
+    }
+  }
+  return { ...best };
 }
 
 function adjacentWalkCandidates(placement: Placement): GridPoint[] {

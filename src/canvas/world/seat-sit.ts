@@ -20,11 +20,11 @@ export const SEAT_NS_TUCK_PX = 0;
 export const SEAT_CAMERA_BIAS_PX = 0;
 /**
  * World Y offset applied to every seated guest relative to the chair feet.
- * Positive moves the sit pose down the screen (onto the cushion). Kept at 0
- * because sit-frame content already plants the lap on a 22px stool; facing
- * hip shifts handle tableward composition only.
+ * Positive moves the sit pose down the screen; negative raises it. A small
+ * raise keeps shorter sit frames (child/elder) from burying faces in the
+ * tabletop while the shared hip shift still centers the cushion.
  */
-export const SEAT_SIT_OFFSET_Y = 0;
+export const SEAT_SIT_OFFSET_Y = -8;
 /**
  * Tableward hip shift for west/east seats. Applied to BOTH the guest anchor
  * and the stool so the two move together (a guest-only shift perched diners

@@ -43,13 +43,13 @@ export function buildComposePlateCta(input: {
   const destination =
     input.tableLabel?.trim() ||
     (input.guestLabel?.trim() ? input.guestLabel.trim() : null);
-  const label = destination
-    ? `Plate & deliver to ${destination}`
-    : 'Plate dish';
+  // Keep the primary CTA short so it fits the mobile footer button; destination
+  // stays available via aria / disabled-reason context when needed.
+  const label = destination ? `Plate · ${destination}` : 'Plate';
 
   if (!input.hasTicket) {
     return {
-      label: 'Plate dish',
+      label: 'Plate',
       disabledReason: 'Select a ticket to plate',
       canPlate: false,
     };

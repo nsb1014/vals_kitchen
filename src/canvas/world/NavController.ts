@@ -75,6 +75,12 @@ export class NavController {
   private bufferedGoal: GridPoint | null = null;
   /** Last eased path distance used to advance walk-cycle phasing. */
   private lastVisualAlong = 0;
+  /** World feet sample from the previous visual tick (facing hysteresis). */
+  private lastFacingSampleX: number | null = null;
+  private lastFacingSampleY: number | null = null;
+  /** Accumulated visual travel while a new facing is pending. */
+  private facingHoldPx = 0;
+  private pendingFacing: 0 | 1 | 2 | 3 | null = null;
   /** Discrete cell used for pathfinding / adjacency. */
   position: GridPoint;
   /** Smooth world feet position (pixels). */
@@ -124,6 +130,10 @@ export class NavController {
     this.segmentOriginY = null;
     this.bufferedGoal = null;
     this.lastVisualAlong = 0;
+    this.lastFacingSampleX = null;
+    this.lastFacingSampleY = null;
+    this.facingHoldPx = 0;
+    this.pendingFacing = null;
     this.position = { ...cell };
     const world = cellCenter(cell);
     this.worldX = world.x;
@@ -157,8 +167,13 @@ export class NavController {
       this.segmentOriginX = null;
       this.segmentOriginY = null;
       this.lastVisualAlong = 0;
+      this.lastFacingSampleX = null;
+      this.lastFacingSampleY = null;
+      this.facingHoldPx = 0;
+      this.pendingFacing = null;
       return;
     }
+    const wasMoving = this.path.length > 0 && this.index < this.path.length - 1;
     const start = path[0]!;
     const sameCell = start.x === this.position.x && start.y === this.position.y;
     const midTile =
@@ -185,7 +200,15 @@ export class NavController {
       this.segmentOriginX = null;
       this.segmentOriginY = null;
     }
-    this.updateFacingFromSegment();
+    this.lastFacingSampleX = this.worldX;
+    this.lastFacingSampleY = this.worldY;
+    this.facingHoldPx = 0;
+    this.pendingFacing = null;
+    // Idle starts seed facing from the first segment. Live repaths keep the
+    // current facing so short zigzags cannot flip-flop the sprite.
+    if (!wasMoving && !midTile) {
+      this.updateFacingFromSegment();
+    }
   }
 
   update(dtMs: number): void {
@@ -205,7 +228,9 @@ export class NavController {
         this.segmentOriginY = null;
         const cell = this.path[this.index];
         if (cell) this.position = { ...cell };
-        this.updateFacingFromSegment();
+        // Facing follows eased visual travel in applyVisualWorld — updating
+        // here from the logical segment desyncs from on-screen motion and
+        // flip-flops on short zigzags.
       }
     }
 
@@ -248,6 +273,10 @@ export class NavController {
       this.segmentOriginX = null;
       this.segmentOriginY = null;
       this.lastVisualAlong = total > 0 ? total : 0;
+      this.lastFacingSampleX = this.worldX;
+      this.lastFacingSampleY = this.worldY;
+      this.facingHoldPx = 0;
+      this.pendingFacing = null;
       return;
     }
 
@@ -259,8 +288,50 @@ export class NavController {
 
     const point = this.worldAtPathDistance(visualAlong);
     if (point) {
+      this.updateFacingFromVisualTravel(point.x, point.y);
       this.worldX = point.x;
       this.worldY = point.y;
+    }
+  }
+
+  /**
+   * Face the direction the sprite is actually traveling on screen. Logical
+   * segment facing flips early under path-global easing and on short
+   * obstacle zigzags; require a short hold before accepting a reverse.
+   */
+  private updateFacingFromVisualTravel(nextX: number, nextY: number): void {
+    const prevX = this.lastFacingSampleX ?? this.worldX;
+    const prevY = this.lastFacingSampleY ?? this.worldY;
+    const dx = nextX - prevX;
+    const dy = nextY - prevY;
+    this.lastFacingSampleX = nextX;
+    this.lastFacingSampleY = nextY;
+    const travel = Math.hypot(dx, dy);
+    if (travel < 0.35) return;
+
+    const nextFacing: 0 | 1 | 2 | 3 =
+      Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 0 : 3) : dy >= 0 ? 1 : 2;
+
+    if (nextFacing === this.facing) {
+      this.pendingFacing = null;
+      this.facingHoldPx = 0;
+      return;
+    }
+
+    if (this.pendingFacing !== nextFacing) {
+      this.pendingFacing = nextFacing;
+      this.facingHoldPx = travel;
+    } else {
+      this.facingHoldPx += travel;
+    }
+
+    // ~1/3 tile of committed travel before flipping — kills stutter on
+    // single-cell jogs without delaying real corner turns. Apply in the
+    // same sample when a large dt already covers the hold distance.
+    if (this.facingHoldPx >= TILE_PX * 0.34) {
+      this.facing = nextFacing;
+      this.pendingFacing = null;
+      this.facingHoldPx = 0;
     }
   }
 

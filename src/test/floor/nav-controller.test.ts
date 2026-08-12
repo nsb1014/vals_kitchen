@@ -194,7 +194,35 @@ describe('NavController', () => {
       { x: 0, y: 1 },
     ]);
     expect(nav.worldX).toBeCloseTo(midX);
+    // Mid-tile repath keeps the prior facing until visual travel commits.
+    expect(nav.facing).toBe(0);
+    nav.update(50);
     expect(nav.facing).toBe(1); // down
+  });
+
+  it('holds facing through a short reverse jog instead of flip-flopping', () => {
+    const nav = new NavController({ x: 2, y: 0 }, 10);
+    nav.setPath([
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+      { x: 4, y: 0 },
+    ]);
+    nav.update(100);
+    expect(nav.facing).toBe(0); // right
+    // One-tile jog left then resume right — classic pathing stutter.
+    nav.setPath([
+      { x: 3, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+      { x: 4, y: 0 },
+    ]);
+    // Immediate segment facing would be left, but visual hysteresis keeps right
+    // until the reverse travels far enough.
+    nav.update(20);
+    expect(nav.facing).toBe(0);
+    // A sustained left walk eventually accepts the new facing.
+    nav.update(80);
+    expect(nav.facing).toBe(3);
   });
 
   it('does not snap back to the from-cell center on the first tick after repath', () => {

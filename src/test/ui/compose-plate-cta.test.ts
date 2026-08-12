@@ -38,7 +38,7 @@ describe('buildComposePlateCta', () => {
       tableLabel: 'Table 2',
     });
     expect(cta.canPlate).toBe(true);
-    expect(cta.label).toBe('Plate & deliver to Table 2');
+    expect(cta.label).toBe('Plate · Table 2');
     expect(cta.disabledReason).toBeNull();
   });
 
@@ -49,7 +49,7 @@ describe('buildComposePlateCta', () => {
       tableLabel: 'Table 1',
     });
     expect(cta.canPlate).toBe(false);
-    expect(cta.label).toBe('Plate & deliver to Table 1');
+    expect(cta.label).toBe('Plate · Table 1');
     expect(cta.disabledReason).toMatch(/Add 2 more/);
     expect(cta.disabledReason).toMatch(/1\/6/);
   });
