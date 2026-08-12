@@ -50,7 +50,7 @@ describe('seat sit anchors', () => {
 
     const cellW = { x: 1 * TILE_PX + TILE_PX / 2, y: 2 * TILE_PX + TILE_PX / 2 };
     const cellE = { x: 3 * TILE_PX + TILE_PX / 2, y: 2 * TILE_PX + TILE_PX / 2 };
-    expect(SEAT_SIT_OFFSET_Y).toBeLessThan(0);
+    expect(SEAT_SIT_OFFSET_Y).toBe(0);
     expect(SEAT_SIDE_HIP_OFFSET_PX).toBeLessThanOrEqual(8);
     // Stool and guest share the tableward-shifted anchor (centered sit).
     expect(chairW).toEqual({ x: cellW.x + SEAT_SIDE_HIP_OFFSET_PX, y: cellW.y });

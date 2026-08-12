@@ -20,11 +20,11 @@ export const SEAT_NS_TUCK_PX = 0;
 export const SEAT_CAMERA_BIAS_PX = 0;
 /**
  * World Y offset applied to every seated guest relative to the chair feet.
- * Positive moves the sit pose down the screen; negative raises it. A small
- * raise keeps shorter sit frames (child/elder) from burying faces in the
- * tabletop while the shared hip shift still centers the cushion.
+ * Positive moves the sit pose down the screen; negative raises it. Kept at 0
+ * so authored sit proportions plant themselves — a uniform raise floated the
+ * taller cast above the tabletop while shorter guests looked correct.
  */
-export const SEAT_SIT_OFFSET_Y = -8;
+export const SEAT_SIT_OFFSET_Y = 0;
 /**
  * Tableward hip shift for west/east seats. Applied to BOTH the guest anchor
  * and the stool so the two move together (a guest-only shift perched diners

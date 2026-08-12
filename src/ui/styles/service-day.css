@@ -2381,53 +2381,24 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   }
 
   .compose-sheet-footer {
-    grid-template-columns: minmax(0, 1fr) minmax(7rem, 34%);
-    grid-template-rows: auto max(var(--vk-touch-min, 44px), var(--vk-cta-h)) auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     height: auto;
-    min-height: 5.4rem;
+    min-height: 0;
     padding: 0.35rem 0.6rem 0.5rem;
   }
 
-  .compose-footer-copy span:first-child {
-    display: none;
-  }
-
-  .compose-footer-copy {
-    justify-content: flex-start;
-  }
-
-  .compose-flavor-toggle {
-    display: block;
-    grid-column: 1;
-    grid-row: 2;
-    min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
-    margin: 0;
-    padding: 0.35rem 0.55rem;
-    border: 1px solid var(--vk-border);
-    border-radius: 9px;
-    background: transparent;
-    color: var(--vk-text-dim);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .compose-flavor-strip {
-    display: none;
-    grid-column: 1 / -1;
-    grid-row: 3;
-    height: 7rem;
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-    padding-top: 0.15rem;
-  }
-
+  .compose-footer-copy,
+  .compose-flavor-toggle,
+  .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    display: grid;
+    display: none !important;
   }
 
   .compose-sheet-footer #plate-btn {
-    grid-column: 2;
-    grid-row: 2;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
   }
 }
 
@@ -2519,6 +2490,17 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
 .service-overlay:has(.compose-sheet-panel) {
   background: transparent;
+}
+
+/* Cooking owns the viewport: hide floor status/chrome so the pantry can grow. */
+.game-surface:has([data-testid='compose-sheet']) .status-mount,
+.game-surface:has([data-testid='compose-sheet']) .game-hud,
+.game-surface:has([data-testid='compose-sheet']) .tutorial-skip-host {
+  display: none !important;
+}
+
+.game-surface:has([data-testid='compose-sheet']) .service-overlay {
+  top: 0;
 }
 
 .service-panel {
@@ -2767,12 +2749,12 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 .compose-pantry .ingredient-chip {
   display: flex;
   width: 100%;
-  height: 92px;
-  min-height: 92px;
+  height: 72px;
+  min-height: 72px;
   flex-direction: column;
   justify-content: center;
-  gap: 0.18rem;
-  padding: 0.3rem 0.15rem;
+  gap: 0.12rem;
+  padding: 0.2rem 0.1rem;
   border: 1px solid #76502c;
   border-radius: 6px;
   background: linear-gradient(145deg, rgba(124, 77, 38, 0.22), transparent 58%), #342116;
@@ -2780,15 +2762,15 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   box-shadow:
     inset 0 0 0 1px #1b100a,
     0 2px 0 #120a06;
-  font-size: 10px;
-  line-height: 1.1;
+  font-size: 9px;
+  line-height: 1.05;
   text-align: center;
 }
 
 .compose-pantry .ingredient-chip .food-icon {
-  width: 32px !important;
-  height: 32px !important;
-  flex: 0 0 32px;
+  width: 26px !important;
+  height: 26px !important;
+  flex: 0 0 26px;
   overflow: hidden;
   image-rendering: pixelated;
 }
@@ -2850,10 +2832,10 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     display: none;
   }
 
-  /* Leave a readable floor strip above the sheet (lifecycle unchanged). */
+  /* Leave almost the full viewport for the pantry once status HUD is hidden. */
   .service-panel.sheet-tier-near-full.compose-sheet-panel {
-    height: 90%;
-    max-height: 90%;
+    height: 100%;
+    max-height: 100%;
   }
 
   /* Single-ticket rail is redundant with the header identity; keep multi-ticket. */
@@ -2873,28 +2855,50 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-filter-summary,
   .compose-progress-track,
-  .compose-progress-coherence {
+  .compose-progress-coherence,
+  .compose-progress-hint,
+  .compose-selected-empty,
+  .compose-section-heading,
+  .compose-selection {
     display: none;
   }
 
-  .compose-progress {
-    margin: 0.05rem 0 0.15rem;
+  /* Plate-only footer: Flavor details / dish preview are secondary. */
+  .compose-footer-copy,
+  .compose-flavor-toggle,
+  .compose-flavor-strip,
+  .compose-flavor-strip.expanded {
+    display: none !important;
   }
 
-  .compose-selection {
-    padding-top: 0.2rem;
-    padding-bottom: 0.1rem;
+  .compose-sheet-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 0;
+    gap: 0.25rem;
+    padding: 0.35rem 0.65rem 0.45rem;
   }
 
-  .compose-filters {
-    padding-top: 0.1rem;
-    padding-bottom: 0.2rem;
+  .compose-sheet-footer #plate-btn {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-height: 48px;
+    height: 48px;
+    max-height: 48px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .compose-selected-strip {
-    min-height: 32px;
-    padding: 0.1rem 0;
+  .compose-plate-reason {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 11px;
   }
+
 
   .compose-ticket-rail {
     padding-block: 0.1rem 0.25rem;
@@ -3109,65 +3113,27 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
     min-height: 0;
   }
 
+  /* Keep Plate-only footer (Flavor details stays hidden on mobile compose). */
   .compose-sheet-footer {
-    grid-template-columns: minmax(0, 1fr) minmax(7.8rem, 36%);
-    grid-template-rows: auto 48px auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     height: auto;
-    min-height: 5.1rem;
-    gap: 0.25rem 0.5rem;
+    min-height: 0;
+    gap: 0.25rem;
     padding: 0.3rem 0.65rem 0.4rem;
   }
 
-  .compose-footer-copy {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .compose-flavor-toggle {
-    display: block;
-    grid-column: 1;
-    grid-row: 2;
-    min-height: 44px;
-    margin: 0;
-    border: 1px solid var(--vk-border);
-    border-radius: 9px;
-    background: transparent;
-    color: var(--vk-text-dim);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .compose-flavor-strip {
-    display: none;
-    grid-column: 1 / -1;
-    grid-row: 3;
-    grid-auto-flow: column;
-    grid-auto-columns: 5.6rem;
-    grid-template-rows: 1fr;
-    height: 48px;
-    gap: 0.45rem;
-    overflow-x: auto;
-  }
-
+  .compose-footer-copy,
+  .compose-flavor-toggle,
+  .compose-flavor-strip,
   .compose-flavor-strip.expanded {
-    display: grid;
-  }
-
-  .compose-flavor-mini {
-    display: grid !important;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 10px;
-    gap: 0.15rem;
-  }
-
-  .compose-flavor-mini-track {
-    grid-column: 1 / -1;
+    display: none !important;
   }
 
   .compose-sheet-footer #plate-btn {
-    grid-column: 2;
-    grid-row: 2;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
   }
 }
 
