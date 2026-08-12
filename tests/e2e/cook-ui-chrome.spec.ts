@@ -167,8 +167,8 @@ test.describe("cook sheet responsive chrome", () => {
       expect(firstCard).not.toBeNull();
       expect(firstIngredient).not.toBeNull();
       expect(firstInspect).not.toBeNull();
-      // Inspection stays a full touch target without adding a labeled row to
-      // every pantry card.
+      // Inspect keeps a 44px layout box; hit target is the badge only so chip
+      // body taps still select (see pointer-events on .compose-ingredient-inspect).
       expect(firstInspect!.width).toBeGreaterThanOrEqual(44);
       expect(firstInspect!.height).toBeGreaterThanOrEqual(44);
       expect(firstCard!.height).toBeLessThanOrEqual(
