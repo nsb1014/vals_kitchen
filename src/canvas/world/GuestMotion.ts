@@ -1,13 +1,18 @@
-import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
-import { findPath, type GridPoint, type WalkGrid } from '../../domain/floor/pathfinding.ts';
+import type { FloorDay, FloorGuest } from "../../domain/floor/types.ts";
+import {
+  findPath,
+  type GridPoint,
+  type WalkGrid,
+} from "../../domain/floor/pathfinding.ts";
 import {
   doorwayLaneGridAnchor,
   waitingAreaGridAnchor,
   waitingGuestWorldPosition,
-} from './waiting-line.ts';
-import { NavController } from './NavController.ts';
-import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
-import { TILE_PX } from '../coordinates.ts';
+} from "./waiting-line.ts";
+import { NavController } from "./NavController.ts";
+import { seatFacingToActorFacing, seatSitWorldPosition } from "./seat-sit.ts";
+import { guestVariant } from "./character-frames.ts";
+import { TILE_PX } from "../coordinates.ts";
 
 export interface GuestPose {
   worldX: number;
@@ -47,7 +52,7 @@ export class GuestMotion {
   private readonly navs = new Map<string, NavController>();
   private readonly enterStarted = new Set<string>();
   private readonly seatedIds = new Set<string>();
-  private readonly lastStages = new Map<string, FloorGuest['stage']>();
+  private readonly lastStages = new Map<string, FloorGuest["stage"]>();
   private readonly enteredReported = new Set<string>();
   private readonly seatingReported = new Set<string>();
   private readonly exitReported = new Set<string>();
@@ -57,7 +62,8 @@ export class GuestMotion {
 
   sync(floor: FloorDay, opts: GuestMotionSyncOpts): GuestMotionSyncResult {
     const seen = new Set<string>();
-    const motionPositionUpdates: GuestMotionSyncResult['motionPositionUpdates'] = [];
+    const motionPositionUpdates: GuestMotionSyncResult["motionPositionUpdates"] =
+      [];
     const enteredGuestIds: string[] = [];
     const seatedGuestIds: string[] = [];
     const exitedGuestIds: string[] = [];
@@ -67,21 +73,21 @@ export class GuestMotion {
     );
 
     for (const guest of floor.pool) {
-      if (guest.stage === 'done' || guest.stage === 'queued') continue;
+      if (guest.stage === "done" || guest.stage === "queued") continue;
       seen.add(guest.id);
       this.rearmCompletionForStage(guest);
       const finished = this.syncGuest(
         guest,
         opts,
         this.doorTrafficGuestId === guest.id ||
-          (guest.stage === 'seating' && doorTrafficOwner?.stage !== 'leaving'),
+          (guest.stage === "seating" && doorTrafficOwner?.stage !== "leaving"),
       );
       const nav = this.navs.get(guest.id);
       if (
         nav &&
         isMotionStage(guest.stage) &&
         !(
-          guest.stage === 'leaving' &&
+          guest.stage === "leaving" &&
           !guest.motionPosition &&
           this.seatedIds.has(guest.id)
         ) &&
@@ -98,7 +104,7 @@ export class GuestMotion {
       // the first positive-time simulation tick remains authoritative.
       if (
         opts.dtMs > 0 &&
-        finished === 'entered' &&
+        finished === "entered" &&
         !this.enteredReported.has(guest.id)
       ) {
         this.enteredReported.add(guest.id);
@@ -106,7 +112,7 @@ export class GuestMotion {
       }
       if (
         opts.dtMs > 0 &&
-        finished === 'seated' &&
+        finished === "seated" &&
         !this.seatingReported.has(guest.id)
       ) {
         this.seatingReported.add(guest.id);
@@ -114,7 +120,7 @@ export class GuestMotion {
       }
       if (
         opts.dtMs > 0 &&
-        finished === 'exited' &&
+        finished === "exited" &&
         !this.exitReported.has(guest.id)
       ) {
         this.exitReported.add(guest.id);
@@ -162,7 +168,7 @@ export class GuestMotion {
   playerBlockedGridCells(floor: FloorDay): GridPoint[] {
     const cells = new Map<string, GridPoint>();
     for (const guest of floor.pool) {
-      if (guest.stage === 'queued' || guest.stage === 'done') continue;
+      if (guest.stage === "queued" || guest.stage === "done") continue;
       if (this.hiddenDoorEntrants.has(guest.id)) continue;
       const nav = this.navs.get(guest.id);
       const cell = nav
@@ -170,7 +176,7 @@ export class GuestMotion {
             x: Math.round((nav.worldX - TILE_PX / 2) / TILE_PX),
             y: Math.round((nav.worldY - TILE_PX / 2) / TILE_PX),
           }
-        : guest.motionPosition ?? guest.seat;
+        : (guest.motionPosition ?? guest.seat);
       if (!cell) continue;
       cells.set(`${cell.x},${cell.y}`, { x: cell.x, y: cell.y });
     }
@@ -180,49 +186,62 @@ export class GuestMotion {
   /** True while any guest is walking through the doorway (enter or leave). */
   isDoorBusy(floor: FloorDay, door: GridPoint): boolean {
     for (const guest of floor.pool) {
-      if (guest.stage === 'entering') return true;
-      if (guest.stage !== 'leaving') continue;
+      if (guest.stage === "entering") return true;
+      if (guest.stage !== "leaving") continue;
       const nav = this.navs.get(guest.id);
       if (!nav) continue;
       const destination = nav.destination;
       if (destination?.x === door.x && destination.y === door.y) {
         const doorWorldX = door.x * TILE_PX + TILE_PX / 2;
         const doorWorldY = door.y * TILE_PX + TILE_PX / 2;
-        if (Math.hypot(nav.worldX - doorWorldX, nav.worldY - doorWorldY) <= TILE_PX + 0.5) {
+        if (
+          Math.hypot(nav.worldX - doorWorldX, nav.worldY - doorWorldY) <=
+          TILE_PX + 0.5
+        ) {
           return true;
         }
       }
-      if (nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) return true;
-      if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) return true;
+      if (
+        nav.isMoving &&
+        nav.position.x === door.x &&
+        nav.position.y === door.y
+      )
+        return true;
+      if (
+        !nav.isMoving &&
+        nav.position.x === door.x &&
+        nav.position.y === door.y
+      )
+        return true;
     }
-    return floor.pool.some((g) => g.stage === 'entering');
+    return floor.pool.some((g) => g.stage === "entering");
   }
 
   private syncGuest(
     guest: FloorGuest,
     opts: GuestMotionSyncOpts,
     ownsDoorTraffic: boolean,
-  ): 'entered' | 'seated' | 'exited' | null {
-    if (guest.stage !== 'entering') this.hiddenDoorEntrants.delete(guest.id);
+  ): "entered" | "seated" | "exited" | null {
+    if (guest.stage !== "entering") this.hiddenDoorEntrants.delete(guest.id);
     let nav = this.navs.get(guest.id);
     if (!nav) {
       const start =
         guest.motionPosition && isMotionStage(guest.stage)
           ? { ...guest.motionPosition }
-          : guest.stage === 'entering'
-          ? { ...opts.door }
-          : this.defaultCell(guest, opts.door);
+          : guest.stage === "entering"
+            ? { ...opts.door }
+            : this.defaultCell(guest, opts.door);
       nav = new NavController(start, 2.4);
       this.navs.set(guest.id, nav);
-      if (guest.stage === 'leaving' && guest.seat && !guest.motionPosition) {
-        const sit = seatSitWorldPosition(guest.seat);
+      if (guest.stage === "leaving" && guest.seat && !guest.motionPosition) {
+        const sit = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
       }
     }
 
-    if (guest.stage === 'entering') {
+    if (guest.stage === "entering") {
       // A loaded or legacy day can contain an entrant while a persisted
       // departure already owns the narrow door. Keep the entrant visibly
       // still outside until the corridor is released.
@@ -242,17 +261,21 @@ export class GuestMotion {
         }
       }
       if (opts.dtMs > 0) nav.update(opts.dtMs);
-      if (!nav.isMoving && nav.position.x === waitCell.x && nav.position.y === waitCell.y) {
+      if (
+        !nav.isMoving &&
+        nav.position.x === waitCell.x &&
+        nav.position.y === waitCell.y
+      ) {
         const world = waitingGuestWorldPosition(opts.door, 0);
         nav.worldX = world.x;
         nav.worldY = world.y;
         nav.facing = 1;
-        return 'entered';
+        return "entered";
       }
       return null;
     }
 
-    if (guest.stage === 'waiting') {
+    if (guest.stage === "waiting") {
       const cell = waitingAreaGridAnchor(opts.door);
       const world = waitingGuestWorldPosition(opts.door, 0);
       if (nav.isMoving) {
@@ -268,11 +291,11 @@ export class GuestMotion {
       return null;
     }
 
-    if (guest.stage === 'seating') {
+    if (guest.stage === "seating") {
       if (!guest.seat) return null;
       if (!ownsDoorTraffic) return null;
       const seatCell = { x: guest.seat.x, y: guest.seat.y };
-      const sit = seatSitWorldPosition(guest.seat);
+      const sit = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
       const atSeat =
         !nav.isMoving &&
         nav.position.x === seatCell.x &&
@@ -296,7 +319,7 @@ export class GuestMotion {
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
         this.seatedIds.add(guest.id);
-        return 'seated';
+        return "seated";
       }
 
       this.seatedIds.delete(guest.id);
@@ -304,13 +327,13 @@ export class GuestMotion {
     }
 
     if (
-      guest.stage === 'seated' ||
-      guest.stage === 'ordered' ||
-      guest.stage === 'eating'
+      guest.stage === "seated" ||
+      guest.stage === "ordered" ||
+      guest.stage === "eating"
     ) {
       if (!guest.seat) return null;
       const seatCell = { x: guest.seat.x, y: guest.seat.y };
-      const sit = seatSitWorldPosition(guest.seat);
+      const sit = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
       const atSeat =
         !nav.isMoving &&
         nav.position.x === seatCell.x &&
@@ -348,7 +371,7 @@ export class GuestMotion {
       return null;
     }
 
-    if (guest.stage === 'leaving') {
+    if (guest.stage === "leaving") {
       const hasPersistedMotion = guest.motionPosition != null;
       const retainedSeat = guest.seat
         ? { x: guest.seat.x, y: guest.seat.y }
@@ -366,7 +389,7 @@ export class GuestMotion {
       if (hasPersistedMotion) {
         this.seatedIds.delete(guest.id);
       } else if (isMotionlessAtRetainedSeat && guest.seat) {
-        const sit = seatSitWorldPosition(guest.seat);
+        const sit = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
         nav.worldX = sit.x;
         nav.worldY = sit.y;
         nav.facing = seatFacingToActorFacing(guest.seat.facing);
@@ -378,7 +401,10 @@ export class GuestMotion {
       // so a queued departure cannot animate walking in place.
       if (!ownsDoorTraffic) return null;
       const door = { ...opts.door };
-      if (!nav.isMoving && (nav.position.x !== door.x || nav.position.y !== door.y)) {
+      if (
+        !nav.isMoving &&
+        (nav.position.x !== door.x || nav.position.y !== door.y)
+      ) {
         const lane = doorwayLaneGridAnchor(door);
         const waiting = waitingAreaGridAnchor(door);
         const departureBlocked = new Set(opts.grid.blocked);
@@ -403,17 +429,21 @@ export class GuestMotion {
       }
       if (nav.isMoving) this.seatedIds.delete(guest.id);
       if (opts.dtMs > 0) nav.update(opts.dtMs);
-      if (!nav.isMoving && nav.position.x === door.x && nav.position.y === door.y) {
-        return 'exited';
+      if (
+        !nav.isMoving &&
+        nav.position.x === door.x &&
+        nav.position.y === door.y
+      ) {
+        return "exited";
       }
     }
     return null;
   }
 
   private defaultCell(guest: FloorGuest, door: GridPoint): GridPoint {
-    if (guest.stage === 'seating') return waitingAreaGridAnchor(door);
+    if (guest.stage === "seating") return waitingAreaGridAnchor(door);
     if (guest.seat) return { x: guest.seat.x, y: guest.seat.y };
-    if (guest.stage === 'entering') return { ...door };
+    if (guest.stage === "entering") return { ...door };
     return waitingAreaGridAnchor(door);
   }
 
@@ -421,9 +451,9 @@ export class GuestMotion {
     const previous = this.lastStages.get(guest.id);
     if (previous === guest.stage) return;
     this.lastStages.set(guest.id, guest.stage);
-    if (guest.stage === 'entering') this.enteredReported.delete(guest.id);
-    if (guest.stage === 'seating') this.seatingReported.delete(guest.id);
-    if (guest.stage === 'leaving') this.exitReported.delete(guest.id);
+    if (guest.stage === "entering") this.enteredReported.delete(guest.id);
+    if (guest.stage === "seating") this.seatingReported.delete(guest.id);
+    if (guest.stage === "leaving") this.exitReported.delete(guest.id);
   }
 
   /**
@@ -433,9 +463,9 @@ export class GuestMotion {
   private refreshDoorTrafficOwner(floor: FloorDay, door: GridPoint): void {
     const candidates = floor.pool.filter(
       (guest) =>
-        guest.stage === 'entering' ||
-        guest.stage === 'seating' ||
-        guest.stage === 'leaving',
+        guest.stage === "entering" ||
+        guest.stage === "seating" ||
+        guest.stage === "leaving",
     );
     if (
       this.doorTrafficGuestId &&
@@ -447,20 +477,20 @@ export class GuestMotion {
     const lane = doorwayLaneGridAnchor(door);
     const persistedDepartureAtDoor = candidates.find(
       (guest) =>
-        guest.stage === 'leaving' &&
+        guest.stage === "leaving" &&
         guest.motionPosition &&
-        ((guest.motionPosition.x === lane.x && guest.motionPosition.y === lane.y) ||
-          (guest.motionPosition.x === door.x && guest.motionPosition.y === door.y)),
+        ((guest.motionPosition.x === lane.x &&
+          guest.motionPosition.y === lane.y) ||
+          (guest.motionPosition.x === door.x &&
+            guest.motionPosition.y === door.y)),
     );
     const persistedDeparture = candidates.find(
-      (guest) =>
-        guest.stage === 'leaving' &&
-        guest.motionPosition,
+      (guest) => guest.stage === "leaving" && guest.motionPosition,
     );
     const arrival = candidates.find(
-      (guest) => guest.stage === 'entering' || guest.stage === 'seating',
+      (guest) => guest.stage === "entering" || guest.stage === "seating",
     );
-    const departure = candidates.find((guest) => guest.stage === 'leaving');
+    const departure = candidates.find((guest) => guest.stage === "leaving");
 
     this.doorTrafficGuestId =
       persistedDepartureAtDoor?.id ??
@@ -471,8 +501,8 @@ export class GuestMotion {
   }
 }
 
-function isMotionStage(stage: FloorGuest['stage']): boolean {
-  return stage === 'entering' || stage === 'seating' || stage === 'leaving';
+function isMotionStage(stage: FloorGuest["stage"]): boolean {
+  return stage === "entering" || stage === "seating" || stage === "leaving";
 }
 
 export { TILE_PX };

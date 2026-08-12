@@ -1,12 +1,12 @@
-import type { Placement } from '../state/game-state.ts';
-import { EQUIPMENT_IDS } from '../types.ts';
-import type { FloorDay, FloorGuest } from './types.ts';
+import type { Placement } from "../state/game-state.ts";
+import { EQUIPMENT_IDS } from "../types.ts";
+import type { FloorDay, FloorGuest } from "./types.ts";
 import {
   doorForGrid,
   guestWaitingAlcove,
   isPerimeterWallCell,
   mainGuestEntranceReservedCells,
-} from './starter-map.ts';
+} from "./starter-map.ts";
 
 export interface GridPoint {
   x: number;
@@ -41,7 +41,7 @@ function adjacentTablePlacementIds(
   floor: FloorDay,
   player: GridPoint,
   placements: Placement[],
-  state: FloorDay['tables'][number]['state'],
+  state: FloorDay["tables"][number]["state"],
 ): string[] {
   const byId = placementByIdMap(placements);
   return floor.tables
@@ -58,7 +58,7 @@ export function adjacentUnsetTablePlacementIds(
   player: GridPoint,
   placements: Placement[],
 ): string[] {
-  return adjacentTablePlacementIds(floor, player, placements, 'unset');
+  return adjacentTablePlacementIds(floor, player, placements, "unset");
 }
 
 export function adjacentDirtyTablePlacementIds(
@@ -66,7 +66,7 @@ export function adjacentDirtyTablePlacementIds(
   player: GridPoint,
   placements: Placement[],
 ): string[] {
-  return adjacentTablePlacementIds(floor, player, placements, 'dirty');
+  return adjacentTablePlacementIds(floor, player, placements, "dirty");
 }
 
 const STATION_ITEM_KEYS = new Set<string>(EQUIPMENT_IDS);
@@ -116,6 +116,9 @@ export function playerNearGuestSeat(
   );
 }
 
+/** One-cell tableside neighbors come first; two-cell verticals are fallbacks. */
+export const GUEST_SERVICE_PRIMARY_COUNT = 4;
+
 /**
  * Service positions around a seated guest, ordered by closeness: the four
  * one-cell neighbors first (direct tableside service), then the two-cell
@@ -125,8 +128,9 @@ export function playerNearGuestSeat(
  * closer to the table than a forced two-cell gap.
  *
  * Domain proximity is locked to these cells. Canvas approach-and-complete
- * routes a far tap to the nearest reachable cell among them, then auto-fires
- * the pending interaction on arrival (see `canvas/world/approach-intent.ts`).
+ * routes a far tap to the nearest reachable *primary* cell when possible,
+ * and only uses the two-cell fallbacks when every tableside cell is blocked
+ * (see `canvas/world/approach-intent.ts` / floor-feel hints).
  */
 export function guestServicePositions(seat: GridPoint): GridPoint[] {
   return [
@@ -137,6 +141,16 @@ export function guestServicePositions(seat: GridPoint): GridPoint[] {
     { x: seat.x, y: seat.y - 2 },
     { x: seat.x, y: seat.y + 2 },
   ];
+}
+
+/** Direct tableside stand cells (never the two-cell vertical fallbacks). */
+export function guestPrimaryServicePositions(seat: GridPoint): GridPoint[] {
+  return guestServicePositions(seat).slice(0, GUEST_SERVICE_PRIMARY_COUNT);
+}
+
+/** Two-cell vertical fallbacks used only when every primary cell is unreachable. */
+export function guestFallbackServicePositions(seat: GridPoint): GridPoint[] {
+  return guestServicePositions(seat).slice(GUEST_SERVICE_PRIMARY_COUNT);
 }
 
 /**
@@ -188,7 +202,7 @@ export function playerNearWaitingGuest(
 
 export function seatedUnorderedCustomerIds(floor: FloorDay): string[] {
   return floor.pool
-    .filter((g) => g.stage === 'seated')
+    .filter((g) => g.stage === "seated")
     .map((g) => g.customer.id);
 }
 
@@ -197,6 +211,6 @@ export function adjacentSeatedCustomerIds(
   player: GridPoint,
 ): string[] {
   return floor.pool
-    .filter((g) => g.stage === 'seated' && playerNearGuestSeat(player, g))
+    .filter((g) => g.stage === "seated" && playerNearGuestSeat(player, g))
     .map((g) => g.customer.id);
 }

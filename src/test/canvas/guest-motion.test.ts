@@ -3,6 +3,7 @@ import { GuestMotion, type GuestMotionSyncResult } from '../../canvas/world/Gues
 import { resolveGuestPose } from '../../canvas/world/ActorLayer.ts';
 import { TILE_PX } from '../../canvas/coordinates.ts';
 import { seatSitWorldPosition } from '../../canvas/world/seat-sit.ts';
+import { guestVariant } from '../../canvas/world/character-frames.ts';
 import { waitingGuestWorldPosition } from '../../canvas/world/waiting-line.ts';
 import type { FloorDay, FloorGuest, SeatSlot } from '../../domain/floor/types.ts';
 import type { GridPoint, WalkGrid } from '../../domain/floor/pathfinding.ts';
@@ -232,7 +233,7 @@ describe('GuestMotion', () => {
       TILE_PX,
     );
 
-    const seatedAt = seatSitWorldPosition(assignedSeat);
+    const seatedAt = seatSitWorldPosition(assignedSeat, guestVariant('g1'));
     expect(Math.hypot(start!.worldX - seatedAt.x, start!.worldY - seatedAt.y)).toBeGreaterThan(
       TILE_PX,
     );
@@ -280,7 +281,7 @@ describe('GuestMotion', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 0, 2);
     const leaving = guest({ id: 'g1', stage: 'leaving', seat: assignedSeat });
-    const seatedAt = seatSitWorldPosition(assignedSeat);
+    const seatedAt = seatSitWorldPosition(assignedSeat, guestVariant('g1'));
 
     const first = sync(motion, [leaving], 0);
     const start = motion.pose('g1')!;
@@ -318,7 +319,7 @@ describe('GuestMotion', () => {
     const motion = new GuestMotion();
     const assignedSeat = seat('table_1', 6, 2);
     const leaving = guest({ id: 'g1', stage: 'leaving', seat: assignedSeat });
-    const seatedAt = seatSitWorldPosition(assignedSeat);
+    const seatedAt = seatSitWorldPosition(assignedSeat, guestVariant('g1'));
     const sealed = sealedGridWithOpen({ x: assignedSeat.x, y: assignedSeat.y });
 
     for (let i = 0; i < 12; i++) {
@@ -483,7 +484,7 @@ describe('GuestMotion', () => {
       stage: 'leaving',
       seat: seat('table_2', 5, 2),
     });
-    const secondStart = seatSitWorldPosition(secondLeaving.seat!);
+    const secondStart = seatSitWorldPosition(secondLeaving.seat!, guestVariant(secondLeaving.id));
 
     const first = sync(motion, [firstLeaving, secondLeaving]);
     expect(
@@ -542,7 +543,7 @@ describe('GuestMotion', () => {
       stage: 'leaving',
       seat: seat('table_1', 1, 2),
     });
-    const leavingStart = seatSitWorldPosition(leaving.seat!);
+    const leavingStart = seatSitWorldPosition(leaving.seat!, guestVariant(leaving.id));
 
     const first = sync(motion, [entering, leaving]);
     expect(

@@ -1,19 +1,16 @@
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite } from "pixi.js";
 import {
   getCharacterContentBounds,
   getCharacterTexture,
-} from '../../assets/loader.ts';
-import { STARTER_DOOR } from '../../domain/floor/starter-map.ts';
-import type { FloorDay, FloorGuest } from '../../domain/floor/types.ts';
-import type { GridPoint } from '../../domain/floor/pathfinding.ts';
-import { TILE_PX, gridToWorld } from '../coordinates.ts';
-import { carryPlateGeometry } from './carry-plate.ts';
-import { nextBoundFrameKey } from './actor-texture-bind.ts';
-import type {
-  GuestHitTargetCandidate,
-  GuestWorldBounds,
-} from './guest-hit.ts';
-import { anchoredSpriteContentWorldBounds } from './guest-hit.ts';
+} from "../../assets/loader.ts";
+import { STARTER_DOOR } from "../../domain/floor/starter-map.ts";
+import type { FloorDay, FloorGuest } from "../../domain/floor/types.ts";
+import type { GridPoint } from "../../domain/floor/pathfinding.ts";
+import { TILE_PX, gridToWorld } from "../coordinates.ts";
+import { carryPlateGeometry } from "./carry-plate.ts";
+import { nextBoundFrameKey } from "./actor-texture-bind.ts";
+import type { GuestHitTargetCandidate, GuestWorldBounds } from "./guest-hit.ts";
+import { anchoredSpriteContentWorldBounds } from "./guest-hit.ts";
 import {
   GUEST_DISPLAY_HEIGHT,
   GUEST_SIT_CONTENT_HEIGHT_PX,
@@ -21,26 +18,29 @@ import {
   PLAYER_CONTENT_HEIGHT_PX,
   PLAYER_DISPLAY_HEIGHT,
   SEATED_GUEST_DISPLAY_HEIGHT,
-} from './actor-metrics.ts';
+} from "./actor-metrics.ts";
 import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
   playerPoseFrame,
   playerTextureKeyCandidates,
-} from './character-frames.ts';
-import { waitingGuestWorldPosition, queueLineAdvancePosition } from './waiting-line.ts';
-import type { GuestMotion, GuestPose } from './GuestMotion.ts';
-import { seatFacingToActorFacing, seatSitWorldPosition } from './seat-sit.ts';
+} from "./character-frames.ts";
+import {
+  waitingGuestWorldPosition,
+  queueLineAdvancePosition,
+} from "./waiting-line.ts";
+import type { GuestMotion, GuestPose } from "./GuestMotion.ts";
+import { seatFacingToActorFacing, seatSitWorldPosition } from "./seat-sit.ts";
 import {
   guestCanvasCueAction,
   guestStageFloorCue,
   type CarriedDishRelation,
-} from './guest-interaction-hint.ts';
-import { canEnqueue } from '../../domain/floor/tickets.ts';
-import { prefersReducedMotion } from '../../ui/presentation/motion-preference.ts';
+} from "./guest-interaction-hint.ts";
+import { canEnqueue } from "../../domain/floor/tickets.ts";
+import { prefersReducedMotion } from "../../ui/presentation/motion-preference.ts";
 
-export { carryPlateGeometry } from './carry-plate.ts';
+export { carryPlateGeometry } from "./carry-plate.ts";
 export {
   GUEST_DISPLAY_HEIGHT,
   GUEST_SIT_CONTENT_HEIGHT_PX,
@@ -48,7 +48,7 @@ export {
   PLAYER_CONTENT_HEIGHT_PX,
   PLAYER_DISPLAY_HEIGHT,
   SEATED_GUEST_DISPLAY_HEIGHT,
-} from './actor-metrics.ts';
+} from "./actor-metrics.ts";
 
 const FALLBACK_PLAYER_COLOR = 0x6a994e;
 const FALLBACK_GUEST_COLOR = 0xffc857;
@@ -59,7 +59,7 @@ const CUE_DELIVER_COLOR = 0xe07a5f;
 const CUE_EATING_COLOR = 0x9ad0c2;
 const CUE_LEAVING_COLOR = 0xcfcfcf;
 const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
-const FACING_NAMES = ['right', 'down', 'up', 'left'] as const;
+const FACING_NAMES = ["right", "down", "up", "left"] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
 
 /** Walk-step squash duration (ms). Kept for tests; motion juice is disabled. */
@@ -154,7 +154,7 @@ interface GuestSpriteEntry {
   isSeated: boolean;
   isMoving: boolean;
   facing: ActorFacingName;
-  stage: FloorGuest['stage'] | null;
+  stage: FloorGuest["stage"] | null;
   walkPulse: WalkPulseState;
   phase: number;
   /** Queued silhouette slide-up after an admit (presentation only). */
@@ -188,11 +188,11 @@ function clampUnit(value: number): number {
  * stops, so a guest at door center stays fully concealed until removal.
  */
 export function doorwayGuestCropFraction(
-  stage: FloorGuest['stage'],
-  pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+  stage: FloorGuest["stage"],
+  pose: Pick<GuestPose, "worldY" | "isMoving">,
   door: GridPoint = STARTER_DOOR,
 ): number {
-  if (stage !== 'entering' && stage !== 'leaving') {
+  if (stage !== "entering" && stage !== "leaving") {
     return 1;
   }
 
@@ -234,11 +234,11 @@ export interface GuestDoorwayCropDebug {
 /** Deterministic render/debug geometry for an active doorway crossing. */
 export function guestDoorwayCropGeometry(
   bounds: GuestWorldBounds,
-  stage: FloorGuest['stage'],
-  pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+  stage: FloorGuest["stage"],
+  pose: Pick<GuestPose, "worldY" | "isMoving">,
   door: GridPoint = STARTER_DOOR,
 ): GuestDoorwayCropDebug | null {
-  if (stage !== 'entering' && stage !== 'leaving') {
+  if (stage !== "entering" && stage !== "leaving") {
     return null;
   }
   const progress = doorwayGuestCropFraction(stage, pose, door);
@@ -250,8 +250,7 @@ export function guestDoorwayCropGeometry(
   // at the lane-center endpoint so full content arrives with zero visual
   // offset while the north doorway threshold remains fixed in world space.
   const apertureWorldY = door.y * TILE_PX - 2;
-  const visualOffsetY =
-    (apertureWorldY - bounds.top) * (1 - progress);
+  const visualOffsetY = (apertureWorldY - bounds.top) * (1 - progress);
   const unclippedWorldBounds = {
     left: bounds.left,
     top: bounds.top + visualOffsetY,
@@ -268,9 +267,7 @@ export function guestDoorwayCropGeometry(
     : 0;
   return {
     progress,
-    visibleFraction: fullHeight > 0
-      ? clampUnit(clippedHeight / fullHeight)
-      : 0,
+    visibleFraction: fullHeight > 0 ? clampUnit(clippedHeight / fullHeight) : 0,
     apertureWorldY,
     visualOffsetY,
     maskApplied: true,
@@ -290,8 +287,8 @@ export class ActorLayer {
   private readonly guestSprites = new Map<string, GuestSpriteEntry>();
   private playerWorld = { x: 0, y: 0 };
   private playerFeetY = 0;
-  private lastPlayerFrameKey = '';
-  private lastPlayerBoundTextureKey = '';
+  private lastPlayerFrameKey = "";
+  private lastPlayerBoundTextureKey = "";
   private playerUsesCarryTexture = false;
   private plateOverlayVisible = false;
   private readonly playerWalkPulse: WalkPulseState = {
@@ -338,7 +335,11 @@ export class ActorLayer {
     if (!floor) {
       this.clearGuests();
       if (opts.showPlayerWithoutFloor) {
-        this.drawDestination(nav.destination, nav.facing, nav.pathTailCrumbs?.() ?? []);
+        this.drawDestination(
+          nav.destination,
+          nav.facing,
+          nav.pathTailCrumbs?.() ?? [],
+        );
         const carrying = opts.playerCarrying === true;
         const usesAuthoredCarryPose = this.syncPlayer(nav, carrying);
         this.syncCarryPlate(carrying && !usesAuthoredCarryPose, nav.facing);
@@ -396,8 +397,12 @@ export class ActorLayer {
       plateOverlayVisible: this.plateOverlayVisible,
       spriteVisible: this.playerSprite.visible,
       spriteAlpha: this.playerSprite.alpha,
-      frameWidth: this.playerSprite.visible ? this.playerSprite.texture.orig.width : 0,
-      frameHeight: this.playerSprite.visible ? this.playerSprite.texture.orig.height : 0,
+      frameWidth: this.playerSprite.visible
+        ? this.playerSprite.texture.orig.width
+        : 0,
+      frameHeight: this.playerSprite.visible
+        ? this.playerSprite.texture.orig.height
+        : 0,
       scale: { x: this.playerSprite.scale.x, y: this.playerSprite.scale.y },
       feet: { x: this.playerWorld.x, y: this.playerFeetY },
     };
@@ -492,9 +497,10 @@ export class ActorLayer {
     return targets;
   }
 
-  private guestEntryWorldBounds(
-    entry: { root: Container; sprite: Sprite },
-  ): GuestWorldBounds {
+  private guestEntryWorldBounds(entry: {
+    root: Container;
+    sprite: Sprite;
+  }): GuestWorldBounds {
     if (entry.sprite.visible) {
       const texture = entry.sprite.texture;
       const content = getCharacterContentBounds(texture) ?? {
@@ -625,10 +631,16 @@ export class ActorLayer {
         frameKey,
         lastFrameKey: this.lastPlayerFrameKey,
         hadTexture: this.playerSprite.visible,
-      }) || this.lastPlayerBoundTextureKey !== frameKey
+      }) ||
+      this.lastPlayerBoundTextureKey !== frameKey
     ) {
-      const candidates = playerTextureKeyCandidates(facing, frame, nav.isMoving, carrying);
-      let boundTextureKey = '';
+      const candidates = playerTextureKeyCandidates(
+        facing,
+        frame,
+        nav.isMoving,
+        carrying,
+      );
+      let boundTextureKey = "";
       let texture = null;
       for (const candidate of candidates) {
         texture = getCharacterTexture(candidate);
@@ -640,13 +652,14 @@ export class ActorLayer {
       if (texture) {
         this.lastPlayerFrameKey = frameKey;
         this.lastPlayerBoundTextureKey = boundTextureKey;
-        this.playerUsesCarryTexture = boundTextureKey.startsWith('player_carry_');
+        this.playerUsesCarryTexture =
+          boundTextureKey.startsWith("player_carry_");
         this.playerSprite.texture = texture;
         this.playerSprite.visible = true;
         this.playerFallback.clear();
       } else {
-        this.lastPlayerFrameKey = '';
-        this.lastPlayerBoundTextureKey = '';
+        this.lastPlayerFrameKey = "";
+        this.lastPlayerBoundTextureKey = "";
         this.playerUsesCarryTexture = false;
         this.playerSprite.visible = false;
       }
@@ -659,15 +672,14 @@ export class ActorLayer {
         baseScale * squash.y * breathe.scaleY,
       );
       // Feet stay planted: no vertical idle bob (rhythmic lift read as floating).
-      this.playerSprite.position.set(
-        Math.round(nav.worldX),
-        Math.round(feetY),
-      );
+      this.playerSprite.position.set(Math.round(nav.worldX), Math.round(feetY));
       this.playerSprite.zIndex = feetY;
     } else {
       this.playerFallback.clear();
       this.playerFallback.y = feetY;
-      this.playerFallback.circle(Math.round(nav.worldX), -16, 12).fill(FALLBACK_PLAYER_COLOR);
+      this.playerFallback
+        .circle(Math.round(nav.worldX), -16, 12)
+        .fill(FALLBACK_PLAYER_COLOR);
       this.playerFallback.zIndex = feetY;
     }
     return carrying && this.playerUsesCarryTexture;
@@ -681,7 +693,10 @@ export class ActorLayer {
       return;
     }
     const facingName = FACING_NAMES[facing];
-    const geo = carryPlateGeometry({ x: this.playerWorld.x, y: this.playerFeetY }, facingName);
+    const geo = carryPlateGeometry(
+      { x: this.playerWorld.x, y: this.playerFeetY },
+      facingName,
+    );
     if (!geo.visible) return;
     // Geometry is world-space; shift local Y so container.y participates in
     // feet sorting (the up-facing fallback paints behind the body).
@@ -690,7 +705,12 @@ export class ActorLayer {
     const plateLocalY = geo.plate.y - geo.sortY;
     const foodLocalY = geo.food.y - geo.sortY;
     this.plateGraphics
-      .ellipse(Math.round(geo.plate.x), Math.round(plateLocalY), geo.plate.rx, geo.plate.ry)
+      .ellipse(
+        Math.round(geo.plate.x),
+        Math.round(plateLocalY),
+        geo.plate.rx,
+        geo.plate.ry,
+      )
       .fill(geo.plate.color);
     this.plateGraphics
       .circle(Math.round(geo.food.x), Math.round(foodLocalY), geo.food.r)
@@ -708,32 +728,35 @@ export class ActorLayer {
     const orderAvailable = canEnqueue(floor.tickets, 1);
     const carriedTicket = floor.tickets.find(
       (ticket) =>
-        ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+        ticket.id === floor.carriedTicketId && ticket.status === "plated",
     );
 
     for (const guest of floor.pool) {
-      if (guest.stage === 'done') continue;
+      if (guest.stage === "done") continue;
 
-      if (guest.stage === 'queued') {
+      if (guest.stage === "queued") {
         const lineIndex =
           floor.pool.filter(
-            (g) => g.stage === 'waiting' || g.stage === 'entering',
+            (g) => g.stage === "waiting" || g.stage === "entering",
           ).length +
           floor.pool
-            .filter((g) => g.stage === 'queued')
+            .filter((g) => g.stage === "queued")
             .findIndex((g) => g.id === guest.id);
-        const world = waitingGuestWorldPosition(guestDoor, Math.max(0, lineIndex));
+        const world = waitingGuestWorldPosition(
+          guestDoor,
+          Math.max(0, lineIndex),
+        );
         seen.add(guest.id);
         const entry = this.ensureGuestEntry(guest.id);
-        const wasQueued = entry.stage === 'queued';
+        const wasQueued = entry.stage === "queued";
         entry.sprite.visible = false;
-        entry.lastFrameKey = '';
-        entry.actualBoundFrameKey = '';
-        entry.requestedFrameKey = '';
+        entry.lastFrameKey = "";
+        entry.actualBoundFrameKey = "";
+        entry.requestedFrameKey = "";
         entry.isSeated = false;
         entry.isMoving = false;
-        entry.facing = 'down';
-        entry.stage = 'queued';
+        entry.facing = "down";
+        entry.stage = "queued";
         resetWalkPulse(entry.walkPulse);
         const feetY = world.y + TILE_PX / 2 - 2;
         const targetX = Math.round(world.x);
@@ -797,7 +820,7 @@ export class ActorLayer {
       }
 
       const waitIdx =
-        guest.stage === 'waiting' || guest.stage === 'entering'
+        guest.stage === "waiting" || guest.stage === "entering"
           ? waitingIndex++
           : undefined;
       const pose = resolveGuestPose(guest, waitIdx, guestMotion);
@@ -810,7 +833,9 @@ export class ActorLayer {
       const facingName = FACING_NAMES[pose.facing];
       const seated =
         pose.isSeated === true ||
-        ((guest.stage === 'seated' || guest.stage === 'ordered' || guest.stage === 'eating') &&
+        ((guest.stage === "seated" ||
+          guest.stage === "ordered" ||
+          guest.stage === "eating") &&
           !pose.isMoving);
       const frame = seated ? 0 : pose.isMoving ? pose.walkFrame : 0;
       const frameKey = seated
@@ -832,16 +857,16 @@ export class ActorLayer {
           ? [
               guestSitFrameKey(variant, facingName),
               guestWalkFrameKey(variant, facingName, 0),
-              guestWalkFrameKey(variant, 'down', 0),
-              'customer',
+              guestWalkFrameKey(variant, "down", 0),
+              "customer",
             ]
           : [
               guestWalkFrameKey(variant, facingName, frame),
               guestWalkFrameKey(variant, facingName, 0),
-              guestWalkFrameKey(variant, 'down', 0),
-              'customer',
+              guestWalkFrameKey(variant, "down", 0),
+              "customer",
             ];
-        let actualBoundFrameKey = '';
+        let actualBoundFrameKey = "";
         let texture = null;
         for (const candidate of candidates) {
           texture = getCharacterTexture(candidate);
@@ -856,15 +881,19 @@ export class ActorLayer {
           entry.sprite.texture = texture;
           entry.sprite.visible = true;
         } else {
-          entry.lastFrameKey = '';
-          entry.actualBoundFrameKey = '';
+          entry.lastFrameKey = "";
+          entry.actualBoundFrameKey = "";
           entry.sprite.visible = false;
         }
       }
 
       if (entry.sprite.visible) {
-        const contentH = seated ? GUEST_SIT_CONTENT_HEIGHT_PX : GUEST_WALK_CONTENT_HEIGHT_PX;
-        const displayH = seated ? SEATED_GUEST_DISPLAY_HEIGHT : GUEST_DISPLAY_HEIGHT;
+        const contentH = seated
+          ? GUEST_SIT_CONTENT_HEIGHT_PX
+          : GUEST_WALK_CONTENT_HEIGHT_PX;
+        const displayH = seated
+          ? SEATED_GUEST_DISPLAY_HEIGHT
+          : GUEST_DISPLAY_HEIGHT;
         entry.sprite.alpha = 1;
         entry.sprite.scale.set(scaleForContent(displayH, contentH));
       }
@@ -878,16 +907,11 @@ export class ActorLayer {
         entry.cue.circle(0, -8, 8).fill(FALLBACK_GUEST_COLOR);
       }
       const carriedRelation: CarriedDishRelation = !carriedTicket
-        ? 'none'
+        ? "none"
         : carriedTicket.customerId === guest.customer.id
-          ? 'matching'
-          : 'other';
-      this.syncGuestDoorwayCrop(
-        entry,
-        guest.stage,
-        pose,
-        guestDoor,
-      );
+          ? "matching"
+          : "other";
+      this.syncGuestDoorwayCrop(entry, guest.stage, pose, guestDoor);
       // Head cues during the doorway crop read as a detached blob left on
       // the threshold once the body has walked clear.
       if (!entry.doorwayCrop) {
@@ -909,8 +933,8 @@ export class ActorLayer {
 
   private applyGuestMotionJuice(
     entry: GuestSpriteEntry,
-    stage: FloorGuest['stage'],
-    pose: Pick<GuestPose, 'isMoving' | 'walkFrame'>,
+    stage: FloorGuest["stage"],
+    pose: Pick<GuestPose, "isMoving" | "walkFrame">,
     nowMs: number,
   ): void {
     const contentH = entry.isSeated
@@ -936,12 +960,16 @@ export class ActorLayer {
         sy = squash.y;
       } else {
         resetWalkPulse(entry.walkPulse);
-        if (stage === 'eating') {
+        if (stage === "eating") {
           // Chew scale only — vertical bob lifts diners off the cushion.
           const pulse = actorEatingPulse(nowMs, entry.phase);
           sx = pulse.scaleX;
           sy = pulse.scaleY;
-        } else if (stage === 'seated' || stage === 'ordered' || stage === 'waiting') {
+        } else if (
+          stage === "seated" ||
+          stage === "ordered" ||
+          stage === "waiting"
+        ) {
           // Breathe in place. No vertical bob anywhere — rhythmic lift read
           // as floating/bouncing.
           const breathe = actorIdleBreathe(nowMs, entry.phase);
@@ -985,12 +1013,12 @@ export class ActorLayer {
       cue,
       cropMask,
       doorwayCrop: null,
-      lastFrameKey: '',
-      requestedFrameKey: '',
-      actualBoundFrameKey: '',
+      lastFrameKey: "",
+      requestedFrameKey: "",
+      actualBoundFrameKey: "",
       isSeated: false,
       isMoving: false,
-      facing: 'down',
+      facing: "down",
       stage: null,
       walkPulse: { lastFrame: 0, startMs: 0, active: false },
       phase: hashPhase(guestId),
@@ -1002,17 +1030,12 @@ export class ActorLayer {
 
   private drawGuestStageCue(
     entry: GuestSpriteEntry,
-    cue:
-      | 'order'
-      | 'deliver'
-      | 'eating'
-      | 'leaving'
-      | null,
+    cue: "order" | "deliver" | "eating" | "leaving" | null,
   ): void {
     if (!cue) return;
     const headY = entry.sprite.visible ? -SEATED_GUEST_DISPLAY_HEIGHT - 4 : -28;
     const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 220);
-    if (cue === 'order') {
+    if (cue === "order") {
       // Speech-bubble “!” — order available.
       entry.cue
         .roundRect(-7, headY - 16, 14, 14, 3)
@@ -1025,7 +1048,7 @@ export class ActorLayer {
         .fill({ color: 0x3d2c1e, alpha: 0.95 });
       return;
     }
-    if (cue === 'deliver') {
+    if (cue === "deliver") {
       // Plate disc — matching dish ready to serve.
       entry.cue
         .circle(0, headY - 8, 7 + pulse)
@@ -1035,7 +1058,7 @@ export class ActorLayer {
         .fill({ color: 0xfff6e0, alpha: 0.95 });
       return;
     }
-    if (cue === 'eating') {
+    if (cue === "eating") {
       entry.cue
         .circle(0, headY - 6, 3)
         .fill({ color: CUE_EATING_COLOR, alpha: 0.55 });
@@ -1062,8 +1085,8 @@ export class ActorLayer {
 
   private syncGuestDoorwayCrop(
     entry: GuestSpriteEntry,
-    stage: FloorGuest['stage'],
-    pose: Pick<GuestPose, 'worldY' | 'isMoving'>,
+    stage: FloorGuest["stage"],
+    pose: Pick<GuestPose, "worldY" | "isMoving">,
     guestDoor: GridPoint,
   ): void {
     const fullBounds = this.guestEntryDoorwayWorldBounds(entry);
@@ -1104,9 +1127,10 @@ export class ActorLayer {
    * hit content. Both authored frames and fallback cues therefore end at the
    * actor root, which is the fixed aperture baseline at lane-center arrival.
    */
-  private guestEntryDoorwayWorldBounds(
-    entry: { root: Container; sprite: Sprite },
-  ): GuestWorldBounds {
+  private guestEntryDoorwayWorldBounds(entry: {
+    root: Container;
+    sprite: Sprite;
+  }): GuestWorldBounds {
     if (entry.sprite.visible) {
       const texture = entry.sprite.texture;
       return anchoredSpriteContentWorldBounds({
@@ -1155,22 +1179,26 @@ export class ActorLayer {
     // Actor roots and their mask child are translation/scale-only by design.
     // Apply those live Pixi transforms instead of repeating intended crop
     // geometry, while intentionally stopping before the camera/world stage.
-    const maskLeft = entry.cropMask.x +
+    const maskLeft =
+      entry.cropMask.x +
       (local.minX - entry.cropMask.pivot.x) * entry.cropMask.scale.x;
-    const maskRight = entry.cropMask.x +
+    const maskRight =
+      entry.cropMask.x +
       (local.maxX - entry.cropMask.pivot.x) * entry.cropMask.scale.x;
-    const maskTop = entry.cropMask.y +
+    const maskTop =
+      entry.cropMask.y +
       (local.minY - entry.cropMask.pivot.y) * entry.cropMask.scale.y;
-    const maskBottom = entry.cropMask.y +
+    const maskBottom =
+      entry.cropMask.y +
       (local.maxY - entry.cropMask.pivot.y) * entry.cropMask.scale.y;
-    const x1 = entry.root.x +
-      (maskLeft - entry.root.pivot.x) * entry.root.scale.x;
-    const x2 = entry.root.x +
-      (maskRight - entry.root.pivot.x) * entry.root.scale.x;
-    const y1 = entry.root.y +
-      (maskTop - entry.root.pivot.y) * entry.root.scale.y;
-    const y2 = entry.root.y +
-      (maskBottom - entry.root.pivot.y) * entry.root.scale.y;
+    const x1 =
+      entry.root.x + (maskLeft - entry.root.pivot.x) * entry.root.scale.x;
+    const x2 =
+      entry.root.x + (maskRight - entry.root.pivot.x) * entry.root.scale.x;
+    const y1 =
+      entry.root.y + (maskTop - entry.root.pivot.y) * entry.root.scale.y;
+    const y2 =
+      entry.root.y + (maskBottom - entry.root.pivot.y) * entry.root.scale.y;
     return {
       left: Math.min(x1, x2),
       top: Math.min(y1, y2),
@@ -1195,9 +1223,13 @@ function fallbackGuestPose(
   guest: FloorGuest,
   waitingIndex?: number,
 ): GuestPose | null {
-  if (guest.stage === 'seated' || guest.stage === 'ordered' || guest.stage === 'eating') {
+  if (
+    guest.stage === "seated" ||
+    guest.stage === "ordered" ||
+    guest.stage === "eating"
+  ) {
     if (!guest.seat) return null;
-    const sit = seatSitWorldPosition(guest.seat);
+    const sit = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
     return {
       worldX: sit.x,
       worldY: sit.y,
@@ -1207,22 +1239,22 @@ function fallbackGuestPose(
       isSeated: true,
     };
   }
-  if (guest.stage === 'waiting' || guest.stage === 'entering') {
+  if (guest.stage === "waiting" || guest.stage === "entering") {
     const index = waitingIndex ?? 0;
     const door = STARTER_DOOR;
     const world =
-      guest.stage === 'entering'
+      guest.stage === "entering"
         ? tileCenter(door.x, door.y)
         : waitingGuestWorldPosition(door, index);
     return {
       worldX: world.x,
       worldY: world.y,
       facing: 1,
-      isMoving: guest.stage === 'entering',
+      isMoving: guest.stage === "entering",
       walkFrame: 0,
     };
   }
-  if (guest.stage === 'seating') {
+  if (guest.stage === "seating") {
     const world = waitingGuestWorldPosition(STARTER_DOOR, waitingIndex ?? 0);
     return {
       worldX: world.x,
@@ -1233,9 +1265,9 @@ function fallbackGuestPose(
       isSeated: false,
     };
   }
-  if (guest.stage === 'leaving') {
+  if (guest.stage === "leaving") {
     if (!guest.seat) return null;
-    const seat = seatSitWorldPosition(guest.seat);
+    const seat = seatSitWorldPosition(guest.seat, guestVariant(guest.id));
     return {
       worldX: seat.x,
       worldY: seat.y,

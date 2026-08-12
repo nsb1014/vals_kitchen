@@ -1,5 +1,6 @@
-import { TILE_PX, gridToWorld } from '../coordinates.ts';
-import type { SeatSlot } from '../../domain/floor/types.ts';
+import { TILE_PX, gridToWorld } from "../coordinates.ts";
+import type { SeatSlot } from "../../domain/floor/types.ts";
+import type { GuestVariant } from "./character-frames.ts";
 
 /**
  * ¾-view seating model (compact tables, separate backless-stool cells):
@@ -12,6 +13,8 @@ import type { SeatSlot } from '../../domain/floor/types.ts';
  *    tabletop.
  * 3. Draw order: table (floor prop) → stool → guest.
  * 4. Guests match the chef’s silhouette height (content-based scale).
+ * 5. Per-variant sit sinks plant adult hips on the cushion — guest_b (child)
+ *    is the authored reference; taller sit frames need more positive Y.
  *
  * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
  */
@@ -19,12 +22,25 @@ export const SEAT_SIDE_TUCK_PX = 0;
 export const SEAT_NS_TUCK_PX = 0;
 export const SEAT_CAMERA_BIAS_PX = 0;
 /**
- * World Y offset applied to every seated guest relative to the chair feet.
- * Positive moves the sit pose down the screen; negative raises it. Kept at 0
- * so authored sit proportions plant themselves — a uniform raise floated the
- * taller cast above the tabletop while shorter guests looked correct.
+ * Shared world Y offset applied to every seated guest relative to the chair
+ * feet. Positive moves the sit pose down the screen onto the cushion.
+ * Kept at 0 so the child reference pose (guest_b) stays planted; adults use
+ * {@link SEAT_SIT_VARIANT_OFFSET_Y} instead of a uniform raise that floated them.
  */
 export const SEAT_SIT_OFFSET_Y = 0;
+/**
+ * Extra sit sink per guest variant (world px, positive = down onto cushion).
+ * Tuned so adult/elder sit frames match guest_b's stool contact; the child
+ * reference stays at 0.
+ */
+export const SEAT_SIT_VARIANT_OFFSET_Y: Readonly<Record<GuestVariant, number>> =
+  {
+    a: 6,
+    b: 0,
+    c: 7,
+    d: 4,
+    e: 9,
+  };
 /**
  * Tableward hip shift for west/east seats. Applied to BOTH the guest anchor
  * and the stool so the two move together (a guest-only shift perched diners
@@ -58,7 +74,10 @@ function seatHipShift(seat: SeatSlot): { dx: number; dy: number } {
  * Chair feet: planted on the seat-cell floor, tucked toward the table by the
  * shared hip shift so the cushion stays under the seated guest.
  */
-export function seatChairWorldPosition(seat: SeatSlot): { x: number; y: number } {
+export function seatChairWorldPosition(seat: SeatSlot): {
+  x: number;
+  y: number;
+} {
   const center = seatCellCenter(seat);
   const { dx, dy } = seatHipShift(seat);
   return { x: center.x + dx, y: center.y + dy };
@@ -66,15 +85,22 @@ export function seatChairWorldPosition(seat: SeatSlot): { x: number; y: number }
 
 /**
  * World nav-center for a seated guest (feet derived by ActorLayer).
- * Matches the stool anchor so the sit pose stays centered on the cushion.
+ * Matches the stool's X/tableward tuck; Y adds the shared offset plus an
+ * optional per-variant sink so adult hips meet the cushion like guest_b.
  */
-export function seatSitWorldPosition(seat: SeatSlot): { x: number; y: number } {
+export function seatSitWorldPosition(
+  seat: SeatSlot,
+  variant?: GuestVariant,
+): { x: number; y: number } {
   const chair = seatChairWorldPosition(seat);
-  return { x: chair.x, y: chair.y + SEAT_SIT_OFFSET_Y };
+  const variantY = variant ? SEAT_SIT_VARIANT_OFFSET_Y[variant] : 0;
+  return { x: chair.x, y: chair.y + SEAT_SIT_OFFSET_Y + variantY };
 }
 
 /** Map seat facing degrees to NavController / ActorLayer facing: 0 right, 1 down, 2 up, 3 left. */
-export function seatFacingToActorFacing(facing: SeatSlot['facing']): 0 | 1 | 2 | 3 {
+export function seatFacingToActorFacing(
+  facing: SeatSlot["facing"],
+): 0 | 1 | 2 | 3 {
   if (facing === 180) return 2;
   if (facing === 0) return 1;
   if (facing === 90) return 0;
@@ -94,7 +120,7 @@ export function seatSitStaysOnChair(seat: SeatSlot): boolean {
   const withinCell =
     Math.abs(chair.x - center.x) <= TILE_PX / 4 &&
     Math.abs(chair.y - center.y) <= TILE_PX / 4;
-  // Guest and stool share the anchor — the sit pose rides the cushion center.
+  // Default (no variant) sit shares the stool anchor; variant sinks are guest-only.
   const aligned = sit.x === chair.x && sit.y === chair.y + SEAT_SIT_OFFSET_Y;
   return withinCell && aligned;
 }
