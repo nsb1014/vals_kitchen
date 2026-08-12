@@ -1,49 +1,50 @@
-import { Application, Container } from 'pixi.js';
-import type { GameStore } from '../store/game-store.ts';
+import { Application, Container } from "pixi.js";
+import type { GameStore } from "../store/game-store.ts";
 import {
   getGameplayInteractionGeneration,
   useGameStore,
-} from '../store/game-store.ts';
+} from "../store/game-store.ts";
 import {
   findPath,
   findShortestPathToAny,
   type GridPoint,
-} from '../domain/floor/pathfinding.ts';
+} from "../domain/floor/pathfinding.ts";
 import {
   findCookStationPlacementAtCell,
-  guestServicePositions,
+  guestFallbackServicePositions,
+  guestPrimaryServicePositions,
   playerNearGuestSeat,
   playerNearPlacement,
   waitingGuestServicePositions,
-} from '../domain/floor/interact.ts';
-import type { FloorDay, FloorGuest } from '../domain/floor/types.ts';
-import type { Placement } from '../domain/state/game-state.ts';
-import { seatsFromPlacements } from '../domain/floor/seats.ts';
+} from "../domain/floor/interact.ts";
+import type { FloorDay, FloorGuest } from "../domain/floor/types.ts";
+import type { Placement } from "../domain/state/game-state.ts";
+import { seatsFromPlacements } from "../domain/floor/seats.ts";
 import {
   canEnqueue,
   formatTicketCapacityFullMessage,
-} from '../domain/floor/tickets.ts';
-import { CustomerLayer } from './layers/CustomerLayer.ts';
-import { FurnitureLayer } from './layers/FurnitureLayer.ts';
-import { GridLayer } from './layers/GridLayer.ts';
-import { InteractHintLayer } from './layers/InteractHintLayer.ts';
-import { PreviewLayer } from './layers/PreviewLayer.ts';
-import { EffectsLayer } from './layers/EffectsLayer.ts';
-import { AtmosphereLayer } from './layers/AtmosphereLayer.ts';
-import { CarryPlateLayer } from './layers/CarryPlateLayer.ts';
-import { Camera, worldTransformFromCamera } from './systems/Camera.ts';
-import { DragPlacement } from './systems/DragPlacement.ts';
-import { ActorLayer } from './world/ActorLayer.ts';
+} from "../domain/floor/tickets.ts";
+import { CustomerLayer } from "./layers/CustomerLayer.ts";
+import { FurnitureLayer } from "./layers/FurnitureLayer.ts";
+import { GridLayer } from "./layers/GridLayer.ts";
+import { InteractHintLayer } from "./layers/InteractHintLayer.ts";
+import { PreviewLayer } from "./layers/PreviewLayer.ts";
+import { EffectsLayer } from "./layers/EffectsLayer.ts";
+import { AtmosphereLayer } from "./layers/AtmosphereLayer.ts";
+import { CarryPlateLayer } from "./layers/CarryPlateLayer.ts";
+import { Camera, worldTransformFromCamera } from "./systems/Camera.ts";
+import { DragPlacement } from "./systems/DragPlacement.ts";
+import { ActorLayer } from "./world/ActorLayer.ts";
 import {
   playerWalkBlockedCells,
   walkBlockedCells,
-} from './world/blocked-cells.ts';
+} from "./world/blocked-cells.ts";
 import {
   cameraLeadOffset,
   computeFloorInteractHints,
   computeStationInteractHints,
   type FloorInteractHint,
-} from './world/floor-feel-hints.ts';
+} from "./world/floor-feel-hints.ts";
 import {
   approachActionsMatch,
   approachInFlightLabel,
@@ -51,44 +52,44 @@ import {
   approachIntentStillArmed,
   type ApproachAction,
   type PendingApproachIntent,
-} from './world/approach-intent.ts';
-import { GuestMotion } from './world/GuestMotion.ts';
+} from "./world/approach-intent.ts";
+import { GuestMotion } from "./world/GuestMotion.ts";
 import {
   actorMouthWorldFromFeet,
   mouthAnchorFromContentBounds,
-} from './world/actor-mouth-anchor.ts';
-import { NavController } from './world/NavController.ts';
-import { PerKeyAsyncGuard } from './world/per-key-async-guard.ts';
+} from "./world/actor-mouth-anchor.ts";
+import { NavController } from "./world/NavController.ts";
+import { PerKeyAsyncGuard } from "./world/per-key-async-guard.ts";
 import {
   sfxForFloorFeelBeat,
   type FloorFeelBeat,
-} from '../store/service-events.ts';
-import { playSfx } from '../assets/audio.ts';
-import { subscribeVisualJuice } from '../assets/visual-juice.ts';
+} from "../store/service-events.ts";
+import { playSfx } from "../assets/audio.ts";
+import { subscribeVisualJuice } from "../assets/visual-juice.ts";
 import {
   connectingDoorInterior,
   doorForGrid,
   type FloorRoomId,
-} from '../domain/floor/starter-map.ts';
-import { isConnectingDoorCell } from '../domain/economy/purchases.ts';
+} from "../domain/floor/starter-map.ts";
+import { isConnectingDoorCell } from "../domain/economy/purchases.ts";
 import {
   selectCanOpenFloorCompose,
   selectCanRequestSeatFloorGuest,
   selectCanSeatFloorGuest,
   selectShowFloorInteractionCues,
-} from '../store/selectors/service-day.ts';
+} from "../store/selectors/service-day.ts";
 import {
   resumeSafeFloorDeltaMs,
   selectFloorRuntimeRunning,
-} from '../store/selectors/floor-runtime.ts';
-import { prefersReducedMotion } from '../ui/presentation/motion-preference.ts';
+} from "../store/selectors/floor-runtime.ts";
+import { prefersReducedMotion } from "../ui/presentation/motion-preference.ts";
 import {
   clearRoomTransitionPhase,
   holdRoomTransitionPhase,
   latchRoomTransitionOutFrom,
   readRoomTransitionOutFrom,
   readRoomTransitionPhase,
-} from './room-transition.ts';
+} from "./room-transition.ts";
 import {
   cameraPunchMultiplier,
   clampCameraPunchScale,
@@ -97,27 +98,27 @@ import {
   screenToWorld,
   TILE_PX,
   worldToScreen,
-} from './coordinates.ts';
+} from "./coordinates.ts";
 import {
   expandGuestHitBounds,
   guestHitBoundsContainPoint,
   isServiceGuestHitEligible,
   resolveNearestGuestHit,
   resolveTopmostGuestHit,
-} from './world/guest-hit.ts';
+} from "./world/guest-hit.ts";
 import {
   eatingTablePlacementIds,
   tableServiceVisualStates,
-} from './table-service-visual.ts';
+} from "./table-service-visual.ts";
 function integerResolution(): number {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
   return Math.max(1, Math.round(dpr));
 }
 
 const ROOM_FADE_OUT_MS = 100;
 const ROOM_FADE_IN_MS = 140;
 const DELIVERY_RETRY_TOAST =
-  'Could not deliver that dish — tap the guest to retry';
+  "Could not deliver that dish — tap the guest to retry";
 /** Brief stop hold before auto-seat fires (visual anticipation only). */
 const STOP_ANTICIPATION_MS = 100;
 /** Longer wind-up when already in range so seat doesn't feel like an instant snap. */
@@ -242,7 +243,7 @@ export class RestaurantApp {
   static async create(mount: HTMLElement): Promise<RestaurantApp> {
     const app = new Application();
     await app.init({
-      background: '#2a211c',
+      background: "#2a211c",
       antialias: false,
       autoDensity: true,
       resolution: integerResolution(),
@@ -251,18 +252,18 @@ export class RestaurantApp {
     });
 
     mount.appendChild(app.canvas);
-    app.canvas.classList.add('restaurant-canvas');
-    app.canvas.dataset.testid = 'restaurant-canvas';
+    app.canvas.classList.add("restaurant-canvas");
+    app.canvas.dataset.testid = "restaurant-canvas";
     // Focusable playfield so keyboard users can move with WASD/arrows (toolbar
     // arrow keys remain on the floor action strip when that strip is focused).
     app.canvas.tabIndex = 0;
     app.canvas.setAttribute(
-      'aria-label',
+      "aria-label",
       "Restaurant floor. Use WASD or arrow keys to move Val.",
     );
-    app.canvas.setAttribute('role', 'application');
-    app.canvas.style.touchAction = 'none';
-    app.canvas.style.outline = 'none';
+    app.canvas.setAttribute("role", "application");
+    app.canvas.style.touchAction = "none";
+    app.canvas.style.outline = "none";
 
     const instance = new RestaurantApp(app, mount);
     instance.mounted = true;
@@ -271,11 +272,11 @@ export class RestaurantApp {
 
   start(): void {
     this.dragPlacement.attach();
-    this.app.canvas.addEventListener('pointerdown', this.onTapMove);
-    this.app.canvas.addEventListener('focus', this.onCanvasFocusChange);
-    this.app.canvas.addEventListener('blur', this.onCanvasFocusChange);
-    window.addEventListener('keydown', this.onKeyboardMove);
-    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    this.app.canvas.addEventListener("pointerdown", this.onTapMove);
+    this.app.canvas.addEventListener("focus", this.onCanvasFocusChange);
+    this.app.canvas.addEventListener("blur", this.onCanvasFocusChange);
+    window.addEventListener("keydown", this.onKeyboardMove);
+    document.addEventListener("visibilitychange", this.onVisibilityChange);
     this.app.ticker.add(this.onTick);
     this.unsubscribeJuice = subscribeVisualJuice((kind) => {
       this.onVisualJuice(kind);
@@ -302,14 +303,17 @@ export class RestaurantApp {
       }
     });
     this.syncFromStore(useGameStore.getState());
-    window.addEventListener('resize', this.handleResize);
+    window.addEventListener("resize", this.handleResize);
     this.resizeObserver = new ResizeObserver(() => {
       if (this.resizeFrame !== null) cancelAnimationFrame(this.resizeFrame);
       this.resizeFrame = requestAnimationFrame(() => {
         this.resizeFrame = null;
         const width = Math.max(1, Math.round(this.mount.clientWidth));
         const height = Math.max(1, Math.round(this.mount.clientHeight));
-        if (this.app.screen.width !== width || this.app.screen.height !== height) {
+        if (
+          this.app.screen.width !== width ||
+          this.app.screen.height !== height
+        ) {
           this.app.renderer.resize(width, height);
         }
         this.handleResize();
@@ -338,21 +342,21 @@ export class RestaurantApp {
     this.world.scale.set(scale);
   }
 
-  private onVisualJuice(kind: 'serve' | 'review' | 'placement'): void {
+  private onVisualJuice(kind: "serve" | "review" | "placement"): void {
     if (!this.mounted) return;
     const feet = this.actorLayer.getPlayerFeetWorldPosition();
-    if (kind === 'serve') {
+    if (kind === "serve") {
       const placeAt = this.serveJuiceWorldPosition() ?? feet;
       this.effectsLayer.burstServePlace(placeAt.x, placeAt.y);
       // Tiny settle punch — avoid the old zoom that read as an impact burst.
       this.cameraPunchElapsedMs = 0;
-      this.flashCanvasMount('serve');
-    } else if (kind === 'review') {
+      this.flashCanvasMount("serve");
+    } else if (kind === "review") {
       this.effectsLayer.burstReview(feet.x, feet.y);
-      this.flashCanvasMount('review');
+      this.flashCanvasMount("review");
     } else {
       this.effectsLayer.burstPlacement(feet.x, feet.y);
-      this.flashCanvasMount('placement');
+      this.flashCanvasMount("placement");
     }
   }
 
@@ -366,7 +370,7 @@ export class RestaurantApp {
     const delivered = floor.pool.find((guest) => {
       if (!guest.seat) return false;
       if (carried && guest.customer.id === carried.customerId) return true;
-      return guest.stage === 'eating';
+      return guest.stage === "eating";
     });
     if (delivered) {
       const guestFeet = this.actorLayer.getGuestFeetWorldPosition(delivered.id);
@@ -381,12 +385,12 @@ export class RestaurantApp {
     return null;
   }
 
-  private flashCanvasMount(kind: 'serve' | 'review' | 'placement'): void {
+  private flashCanvasMount(kind: "serve" | "review" | "placement"): void {
     if (prefersReducedMotion()) return;
     this.mount.classList.remove(
-      'vk-sfx-flash-serve',
-      'vk-sfx-flash-review',
-      'vk-sfx-flash-placement',
+      "vk-sfx-flash-serve",
+      "vk-sfx-flash-review",
+      "vk-sfx-flash-placement",
     );
     // Force restart if the same class is re-applied in the same frame.
     void this.mount.offsetWidth;
@@ -397,7 +401,7 @@ export class RestaurantApp {
   }
 
   private roomPlacements(state: GameStore): Placement[] {
-    return state.activeFloorRoom === 'back_kitchen'
+    return state.activeFloorRoom === "back_kitchen"
       ? state.backKitchenPlacements
       : state.placements;
   }
@@ -423,8 +427,10 @@ export class RestaurantApp {
       this.walkOpts(store),
       this.nav.position,
     );
-    if (store.activeFloorRoom === 'main' && store.activeDay?.floor) {
-      for (const cell of this.guestMotion.playerBlockedGridCells(store.activeDay.floor)) {
+    if (store.activeFloorRoom === "main" && store.activeDay?.floor) {
+      for (const cell of this.guestMotion.playerBlockedGridCells(
+        store.activeDay.floor,
+      )) {
         blocked.add(`${cell.x},${cell.y}`);
       }
       // A resumed player already sharing a formerly legal cell must be able
@@ -441,18 +447,27 @@ export class RestaurantApp {
     opts: { preserveApproachIntent?: boolean } = {},
   ): GridPoint | null {
     const blocked = this.playerBlockedCells(store, placements);
-    const path = findShortestPathToAny(
-      { w: store.gridSize.w, h: store.gridSize.h, blocked },
+    const grid = { w: store.gridSize.w, h: store.gridSize.h, blocked };
+    // Prefer one-cell tableside stands; two-cell verticals are last resort.
+    let path = findShortestPathToAny(
+      grid,
       this.nav.position,
-      guestServicePositions(seat),
+      guestPrimaryServicePositions(seat),
     );
     if (!path) {
-      store.setFloorToast('No clear route');
+      path = findShortestPathToAny(
+        grid,
+        this.nav.position,
+        guestFallbackServicePositions(seat),
+      );
+    }
+    if (!path) {
+      store.setFloorToast("No clear route");
       return null;
     }
     const destination = path[path.length - 1];
     if (!destination) {
-      store.setFloorToast('No clear route');
+      store.setFloorToast("No clear route");
       return null;
     }
     this.armApproachPreview(destination);
@@ -483,7 +498,7 @@ export class RestaurantApp {
     );
     const destination = path?.[path.length - 1];
     if (!path || !destination) {
-      store.setFloorToast('No clear route');
+      store.setFloorToast("No clear route");
       return null;
     }
     this.armApproachPreview(destination);
@@ -511,12 +526,12 @@ export class RestaurantApp {
       destinations,
     );
     if (!path) {
-      store.setFloorToast('No clear route');
+      store.setFloorToast("No clear route");
       return null;
     }
     const destination = path[path.length - 1];
     if (!destination) {
-      store.setFloorToast('No clear route');
+      store.setFloorToast("No clear route");
       return null;
     }
     this.armApproachPreview(destination);
@@ -548,9 +563,9 @@ export class RestaurantApp {
     if (
       path.length > 1 &&
       !wasMoving &&
-      (opts.feelBeat === 'walk' || opts.feelBeat === undefined)
+      (opts.feelBeat === "walk" || opts.feelBeat === undefined)
     ) {
-      playSfx(sfxForFloorFeelBeat('walk'), 0.45);
+      playSfx(sfxForFloorFeelBeat("walk"), 0.45);
     }
   }
 
@@ -559,10 +574,7 @@ export class RestaurantApp {
     if (this.nav.isMoving) return;
     const goal = this.nav.consumeBufferedGoal();
     if (!goal) return;
-    if (
-      goal.x === this.nav.position.x &&
-      goal.y === this.nav.position.y
-    ) {
+    if (goal.x === this.nav.position.x && goal.y === this.nav.position.y) {
       return;
     }
     const roomPlacements = this.roomPlacements(store);
@@ -575,7 +587,7 @@ export class RestaurantApp {
     if (path) {
       this.setNavigationPath(path);
     } else {
-      store.setFloorToast('No clear route');
+      store.setFloorToast("No clear route");
     }
   }
 
@@ -600,7 +612,7 @@ export class RestaurantApp {
     if (this.pendingApproachIntent) {
       label = approachInFlightLabel(this.pendingApproachIntent.action);
     } else if (this.nav.isMoving || this.nav.bufferedDestination) {
-      label = 'walk';
+      label = "walk";
     }
     if (label) {
       this.app.canvas.dataset.inFlight = label;
@@ -670,8 +682,8 @@ export class RestaurantApp {
       const activeDestination = this.nav.destination;
       return Boolean(
         activeDestination &&
-          activeDestination.x === destination.x &&
-          activeDestination.y === destination.y,
+        activeDestination.x === destination.x &&
+        activeDestination.y === destination.y,
       );
     }
     const centerX = destination.x * TILE_PX + TILE_PX / 2;
@@ -735,27 +747,27 @@ export class RestaurantApp {
     this.cancelPendingApproachIntent();
 
     switch (action.kind) {
-      case 'seat':
-        playSfx(sfxForFloorFeelBeat('seat'), 0.9);
-        void store.dispatch({ type: 'FLOOR_SEAT_NEXT' });
+      case "seat":
+        playSfx(sfxForFloorFeelBeat("seat"), 0.9);
+        void store.dispatch({ type: "FLOOR_SEAT_NEXT" });
         break;
-      case 'order':
-        playSfx(sfxForFloorFeelBeat('order'), 0.9);
+      case "order":
+        playSfx(sfxForFloorFeelBeat("order"), 0.9);
         void store.dispatch({
-          type: 'FLOOR_TAKE_ORDERS',
+          type: "FLOOR_TAKE_ORDERS",
           customerIds: [action.customerId],
         });
         break;
-      case 'deliver': {
+      case "deliver": {
         const deliveryGeneration = getGameplayInteractionGeneration();
         this.deliveryAttempts.start(
           action.ticketId,
           async () => {
             await store.dispatch({
-              type: 'FLOOR_DELIVER',
+              type: "FLOOR_DELIVER",
               ticketId: action.ticketId,
             });
-            playSfx(sfxForFloorFeelBeat('deliver'));
+            playSfx(sfxForFloorFeelBeat("deliver"));
             const current = useGameStore.getState();
             if (
               this.mounted &&
@@ -770,7 +782,7 @@ export class RestaurantApp {
             if (
               this.mounted &&
               getGameplayInteractionGeneration() === deliveryGeneration &&
-              current.screen === 'restaurant'
+              current.screen === "restaurant"
             ) {
               current.setFloorToast(DELIVERY_RETRY_TOAST);
             }
@@ -778,19 +790,19 @@ export class RestaurantApp {
         );
         break;
       }
-      case 'set':
+      case "set":
         void store.dispatch({
-          type: 'FLOOR_SET_TABLE',
+          type: "FLOOR_SET_TABLE",
           placementId: action.placementId,
         });
         break;
-      case 'clear':
+      case "clear":
         void store.dispatch({
-          type: 'FLOOR_CLEAR_TABLE',
+          type: "FLOOR_CLEAR_TABLE",
           placementId: action.placementId,
         });
         break;
-      case 'compose':
+      case "compose":
         store.openComposeSheet();
         break;
     }
@@ -813,20 +825,17 @@ export class RestaurantApp {
   requestSeatNextGuest(): boolean {
     const store = useGameStore.getState();
     const floor = store.activeDay?.floor;
-    const waiting = floor?.pool.find((guest) => guest.stage === 'waiting');
+    const waiting = floor?.pool.find((guest) => guest.stage === "waiting");
     if (
       !floor ||
       !waiting ||
       !selectCanRequestSeatFloorGuest(store) ||
-      !selectFloorRuntimeRunning(
-        store,
-        document.visibilityState === 'visible',
-      )
+      !selectFloorRuntimeRunning(store, document.visibilityState === "visible")
     ) {
       return false;
     }
 
-    const action: ApproachAction = { kind: 'seat', guestId: waiting.id };
+    const action: ApproachAction = { kind: "seat", guestId: waiting.id };
     if (this.tryRetainMatchingApproach(action)) {
       // Repeated taps on the same waiting guest/CTA retain the in-flight route.
       return true;
@@ -886,7 +895,7 @@ export class RestaurantApp {
     destination: Readonly<GridPoint>;
   }> | null {
     const intent = this.pendingApproachIntent;
-    if (!intent || intent.action.kind !== 'seat') return null;
+    if (!intent || intent.action.kind !== "seat") return null;
     return {
       revision: intent.revision,
       destination: { ...intent.destination },
@@ -896,7 +905,7 @@ export class RestaurantApp {
   /** Read-only view of any armed approach-and-complete intent. */
   getPendingApproachIntentDebug(): Readonly<{
     revision: number;
-    kind: ApproachAction['kind'];
+    kind: ApproachAction["kind"];
     destination: Readonly<GridPoint>;
   }> | null {
     const intent = this.pendingApproachIntent;
@@ -919,11 +928,11 @@ export class RestaurantApp {
     frameWidth: number;
     frameHeight: number;
     feet: { x: number; y: number } | null;
-    facing: 'right' | 'down' | 'up' | 'left';
+    facing: "right" | "down" | "up" | "left";
     isMoving: boolean;
   }> {
     const visual = this.actorLayer.getPlayerVisualDebug();
-    const facing = (['right', 'down', 'up', 'left'] as const)[this.nav.facing];
+    const facing = (["right", "down", "up", "left"] as const)[this.nav.facing];
     return {
       requestedTextureKey: visual.requestedTextureKey,
       boundTextureKey: visual.boundTextureKey,
@@ -976,7 +985,7 @@ export class RestaurantApp {
       isSeated: boolean;
       isMoving: boolean;
       walkFrame: number;
-      facing: 'right' | 'down' | 'up' | 'left';
+      facing: "right" | "down" | "up" | "left";
       visible: boolean;
       alpha: number;
       feet: { x: number; y: number };
@@ -991,13 +1000,15 @@ export class RestaurantApp {
       const visual = this.actorLayer.getGuestVisualDebug(guest.id);
       if (!visual) return [];
       const motionPose = this.guestMotion.pose(guest.id);
-      return [{
-        ...visual,
-        walkFrame: motionPose?.walkFrame ?? 0,
-        tablePlacementId: guest.seat.tablePlacementId,
-        slotIndex: guest.seat.slotIndex,
-        seatFacing: guest.seat.facing,
-      }];
+      return [
+        {
+          ...visual,
+          walkFrame: motionPose?.walkFrame ?? 0,
+          tablePlacementId: guest.seat.tablePlacementId,
+          slotIndex: guest.seat.slotIndex,
+          seatFacing: guest.seat.facing,
+        },
+      ];
     });
     return {
       depthParent: {
@@ -1031,7 +1042,7 @@ export class RestaurantApp {
     tablePlacementId: string;
     usesTableOverhang: boolean;
     gridCell: { x: number; y: number };
-    occlusionSource: 'texture-alpha';
+    occlusionSource: "texture-alpha";
   }> | null {
     const target = this.actorLayer
       .getGuestWorldHitTargets()
@@ -1075,7 +1086,7 @@ export class RestaurantApp {
   /** Read-only frame snapshot for guest threshold and door-state continuity. */
   getGuestDoorwayTransitionDebug(guestId: string): Readonly<{
     guestId: string;
-    stage: FloorGuest['stage'] | null;
+    stage: FloorGuest["stage"] | null;
     guest: {
       requestedFrameKey: string;
       actualBoundFrameKey: string;
@@ -1087,7 +1098,7 @@ export class RestaurantApp {
         bottom: number;
       } | null;
       isMoving: boolean;
-      facing: 'right' | 'down' | 'up' | 'left';
+      facing: "right" | "down" | "up" | "left";
       visible: boolean;
       alpha: number;
       feet: { x: number; y: number };
@@ -1146,7 +1157,7 @@ export class RestaurantApp {
     floor: FloorDay,
     world: { x: number; y: number },
   ): boolean {
-    const waiting = floor.pool.find((guest) => guest.stage === 'waiting');
+    const waiting = floor.pool.find((guest) => guest.stage === "waiting");
     if (!waiting) return false;
     const target = this.actorLayer
       .getGuestWorldHitTargets()
@@ -1177,13 +1188,13 @@ export class RestaurantApp {
     const renderedTargets = this.actorLayer.getGuestWorldHitTargets();
     const tableOccludesTarget = (
       candidate: (typeof renderedTargets)[number],
-    ): boolean => Boolean(
-      this.furnitureLayer.getOpaqueTableOccluderAtWorld(
-        world.x,
-        world.y,
-        { sortY: candidate.sortY, paintOrder: candidate.paintOrder },
-      ),
-    );
+    ): boolean =>
+      Boolean(
+        this.furnitureLayer.getOpaqueTableOccluderAtWorld(world.x, world.y, {
+          sortY: candidate.sortY,
+          paintOrder: candidate.paintOrder,
+        }),
+      );
     const bodyHit = resolveTopmostGuestHit(
       world,
       renderedTargets.filter(
@@ -1207,9 +1218,7 @@ export class RestaurantApp {
     if (hit) {
       // Actor rendering trails state updates by at most one frame. Re-read the
       // live floor snapshot before turning a painted body into a command.
-      const liveGuest = floor.pool.find(
-        (guest) => guest.id === hit.guestId,
-      );
+      const liveGuest = floor.pool.find((guest) => guest.id === hit.guestId);
       if (
         liveGuest?.seat &&
         isServiceGuestHitEligible(liveGuest.stage, hasCarriedTicket)
@@ -1241,7 +1250,7 @@ export class RestaurantApp {
     const floor = state.activeDay?.floor;
     const runtimeRunning = selectFloorRuntimeRunning(
       state,
-      document.visibilityState === 'visible',
+      document.visibilityState === "visible",
     );
     const resumed = resumeSafeFloorDeltaMs(
       runtimeRunning,
@@ -1250,8 +1259,7 @@ export class RestaurantApp {
       this.floorResumeSettleFramesRemaining,
     );
     const deltaMs = resumed.deltaMs;
-    this.floorResumeSettleFramesRemaining =
-      resumed.resumeSettleFramesRemaining;
+    this.floorResumeSettleFramesRemaining = resumed.resumeSettleFramesRemaining;
     this.floorRuntimeWasRunning = runtimeRunning;
     if (!runtimeRunning || !floor) {
       this.cancelPendingSeatingIntent();
@@ -1264,9 +1272,9 @@ export class RestaurantApp {
       // Also keep actor crop geometry snapped to the current pose so the first
       // post-resume motion frame does not inherit a stale visual jump.
       this.repaintGuestDoor(state, floor);
-      if (state.activeFloorRoom === 'main') {
+      if (state.activeFloorRoom === "main") {
         const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
-          room: 'main',
+          room: "main",
         });
         this.actorLayer.sync(floor, this.nav, this.guestMotion, {
           guestDoor: door,
@@ -1303,10 +1311,10 @@ export class RestaurantApp {
       state.placements,
       state.gridSize.w,
       state.gridSize.h,
-      { kitchenAnnexOwned: state.kitchenAnnexOwned, room: 'main' },
+      { kitchenAnnexOwned: state.kitchenAnnexOwned, room: "main" },
     );
     const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
-      room: 'main',
+      room: "main",
     });
     const motionResult = this.guestMotion.sync(floor, {
       door,
@@ -1318,7 +1326,7 @@ export class RestaurantApp {
     // update harmless if dispatch ordering ever changes.
     for (const update of motionResult.motionPositionUpdates) {
       void useGameStore.getState().dispatch({
-        type: 'FLOOR_UPDATE_GUEST_MOTION_POSITION',
+        type: "FLOOR_UPDATE_GUEST_MOTION_POSITION",
         guestId: update.guestId,
         position: update.position,
       });
@@ -1326,12 +1334,12 @@ export class RestaurantApp {
     if (motionResult.enteredGuestIds.length > 0) {
       void useGameStore
         .getState()
-        .dispatch({ type: 'FLOOR_COMPLETE_ENTERING' });
+        .dispatch({ type: "FLOOR_COMPLETE_ENTERING" });
     }
     for (const guestId of motionResult.seatedGuestIds) {
       void useGameStore
         .getState()
-        .dispatch({ type: 'FLOOR_COMPLETE_SEATING', guestId });
+        .dispatch({ type: "FLOOR_COMPLETE_SEATING", guestId });
     }
     for (const guestId of motionResult.exitedGuestIds) {
       // Keep the opened door painted briefly after the logical threshold is
@@ -1343,7 +1351,7 @@ export class RestaurantApp {
       );
       void useGameStore
         .getState()
-        .dispatch({ type: 'FLOOR_COMPLETE_LEAVING', guestId });
+        .dispatch({ type: "FLOOR_COMPLETE_LEAVING", guestId });
     }
 
     // Completion dispatches update the store synchronously. Render and tick
@@ -1352,7 +1360,7 @@ export class RestaurantApp {
     const liveFloor = useGameStore.getState().activeDay?.floor;
     if (!liveFloor) return;
 
-    if (state.activeFloorRoom === 'main') {
+    if (state.activeFloorRoom === "main") {
       this.actorLayer.sync(liveFloor, this.nav, this.guestMotion, {
         guestDoor: door,
       });
@@ -1364,13 +1372,13 @@ export class RestaurantApp {
       });
     }
 
-    if (liveFloor.pool.some((g) => g.stage === 'eating')) {
+    if (liveFloor.pool.some((g) => g.stage === "eating")) {
       this.eatingTickAccumulatorMs += deltaMs;
       while (
         this.eatingTickAccumulatorMs >= RestaurantApp.EATING_TICK_INTERVAL_MS
       ) {
         this.eatingTickAccumulatorMs -= RestaurantApp.EATING_TICK_INTERVAL_MS;
-        void useGameStore.getState().dispatch({ type: 'FLOOR_TICK_EATING' });
+        void useGameStore.getState().dispatch({ type: "FLOOR_TICK_EATING" });
       }
     } else {
       this.eatingTickAccumulatorMs = 0;
@@ -1406,10 +1414,10 @@ export class RestaurantApp {
     });
     const hasValidCarriedTicket = liveFloor.tickets.some(
       (ticket) =>
-        ticket.id === liveFloor.carriedTicketId && ticket.status === 'plated',
+        ticket.id === liveFloor.carriedTicketId && ticket.status === "plated",
     );
     const stationNeedsAttention =
-      liveFloor.tickets.some((ticket) => ticket.status === 'open') &&
+      liveFloor.tickets.some((ticket) => ticket.status === "open") &&
       !hasValidCarriedTicket;
     const blocked = this.playerBlockedCells(liveState, roomPlacements);
     const hintGrid = {
@@ -1420,7 +1428,7 @@ export class RestaurantApp {
     const interactionHints: FloorInteractHint[] =
       !selectShowFloorInteractionCues(state)
         ? []
-        : state.activeFloorRoom === 'main'
+        : state.activeFloorRoom === "main"
           ? computeFloorInteractHints({
               floor: liveFloor,
               placements: roomPlacements,
@@ -1454,7 +1462,7 @@ export class RestaurantApp {
     if (guestDoorOpen !== this.lastGuestDoorOpen) {
       if (this.lastGuestDoorOpen !== null && guestDoorOpen) {
         const doorCell = doorForGrid(state.gridSize.w, state.gridSize.h, {
-          room: 'main',
+          room: "main",
         });
         this.effectsLayer.burstDoorDust(doorCell.x, doorCell.y);
       }
@@ -1464,14 +1472,12 @@ export class RestaurantApp {
     this.tickEatingSteam(liveFloor, roomPlacements, deltaMs);
   };
 
-  private syncCarryPlateOverlay(
-    floor: FloorDay | null | undefined,
-  ): void {
+  private syncCarryPlateOverlay(floor: FloorDay | null | undefined): void {
     const debug = this.actorLayer.getPlayerVisualDebug();
     const carried =
       floor?.tickets.find(
         (ticket) =>
-          ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+          ticket.id === floor.carriedTicketId && ticket.status === "plated",
       ) ?? null;
     this.carryPlateLayer.sync({
       show: debug.plateOverlayVisible,
@@ -1531,7 +1537,7 @@ export class RestaurantApp {
     this.cancelPendingSeatingIntent();
     const canvas = this.app.canvas;
     this.roomTransitionInFlight = true;
-    canvas.style.pointerEvents = 'none';
+    canvas.style.pointerEvents = "none";
     // Reduced-motion uses an explicit timer hold (not a no-op WAAPI) so the
     // out→swap→in markers stay ordered; `data-room-transition-out-from`
     // latches the source room for observers that miss the brief `out` attr.
@@ -1551,8 +1557,8 @@ export class RestaurantApp {
           resolve();
         }, ms);
       });
-    const hold = async (phase: 'out' | 'in', duration: number) => {
-      if (phase === 'out') {
+    const hold = async (phase: "out" | "in", duration: number) => {
+      if (phase === "out") {
         latchRoomTransitionOutFrom(
           canvas,
           useGameStore.getState().activeFloorRoom,
@@ -1568,13 +1574,13 @@ export class RestaurantApp {
       });
     };
     try {
-      await hold('out', ROOM_FADE_OUT_MS);
+      await hold("out", ROOM_FADE_OUT_MS);
 
       if (!this.mounted) return;
       roomChanged = changeRoom();
       if (!roomChanged) return;
 
-      await hold('in', ROOM_FADE_IN_MS);
+      await hold("in", ROOM_FADE_IN_MS);
     } catch {
       // Cancellation during teardown is expected. If animation support fails
       // while still mounted, preserve the doorway action without the effect.
@@ -1587,14 +1593,14 @@ export class RestaurantApp {
       this.roomTransitionAnimation = null;
       this.roomTransitionInFlight = false;
       clearRoomTransitionPhase(canvas);
-      canvas.style.removeProperty('opacity');
-      canvas.style.removeProperty('pointer-events');
+      canvas.style.removeProperty("opacity");
+      canvas.style.removeProperty("pointer-events");
     }
   }
 
   /** E2E probe: live phase + latched source room for annex travel. */
   getRoomTransitionProbe(): {
-    phase: 'out' | 'in' | null;
+    phase: "out" | "in" | null;
     outFromRoom: string | null;
     inFlight: boolean;
   } {
@@ -1611,7 +1617,7 @@ export class RestaurantApp {
     if (
       !selectFloorRuntimeRunning(
         store,
-        document.visibilityState === 'visible',
+        document.visibilityState === "visible",
       ) ||
       store.composeSheetOpen
     ) {
@@ -1638,7 +1644,7 @@ export class RestaurantApp {
     const roomPlacements = this.roomPlacements(store);
     // Waiting guest owns seat approach (retain/cancel handled inside).
     if (
-      store.activeFloorRoom === 'main' &&
+      store.activeFloorRoom === "main" &&
       this.waitingGuestHitAtWorldPoint(floor, world)
     ) {
       this.requestSeatNextGuest();
@@ -1657,16 +1663,20 @@ export class RestaurantApp {
       if (path) {
         this.setNavigationPath(path);
       } else {
-        store.setFloorToast('No clear route');
+        store.setFloorToast("No clear route");
       }
       return;
     }
 
-    if (store.activeFloorRoom === 'main') {
+    if (store.activeFloorRoom === "main") {
       // Guest hit ownership follows the same shared depth stack and exact table
       // alpha that painted this point; transparent tabletop padding leaves the
       // authored guest target live.
-      const tappedGuest = this.serviceGuestHitAtWorldPoint(floor, world, tapCell);
+      const tappedGuest = this.serviceGuestHitAtWorldPoint(
+        floor,
+        world,
+        tapCell,
+      );
       const player = store.floorPlayerGrid ?? this.nav.position;
 
       if (floor.carriedTicketId && tappedGuest) {
@@ -1676,14 +1686,14 @@ export class RestaurantApp {
         if (
           ticket &&
           tappedGuest.customer.id === ticket.customerId &&
-          tappedGuest.stage === 'ordered' &&
+          tappedGuest.stage === "ordered" &&
           tappedGuest.seat
         ) {
           const seat = tappedGuest.seat;
           this.beginApproachOrAct(
             store,
             {
-              kind: 'deliver',
+              kind: "deliver",
               guestId: tappedGuest.id,
               customerId: tappedGuest.customer.id,
               ticketId: ticket.id,
@@ -1699,10 +1709,10 @@ export class RestaurantApp {
                 ticket.id,
                 async () => {
                   await store.dispatch({
-                    type: 'FLOOR_DELIVER',
+                    type: "FLOOR_DELIVER",
                     ticketId: ticket.id,
                   });
-                  playSfx(sfxForFloorFeelBeat('deliver'));
+                  playSfx(sfxForFloorFeelBeat("deliver"));
                   const current = useGameStore.getState();
                   if (
                     this.mounted &&
@@ -1717,7 +1727,7 @@ export class RestaurantApp {
                   if (
                     this.mounted &&
                     getGameplayInteractionGeneration() === deliveryGeneration &&
-                    current.screen === 'restaurant'
+                    current.screen === "restaurant"
                   ) {
                     current.setFloorToast(DELIVERY_RETRY_TOAST);
                   }
@@ -1729,11 +1739,15 @@ export class RestaurantApp {
         }
 
         this.cancelPendingApproachIntent();
-        store.setFloorToast('Wrong table — deliver to the matching guest');
+        store.setFloorToast("Wrong table — deliver to the matching guest");
         return;
       }
 
-      if (!floor.carriedTicketId && tappedGuest?.stage === 'seated' && tappedGuest.seat) {
+      if (
+        !floor.carriedTicketId &&
+        tappedGuest?.stage === "seated" &&
+        tappedGuest.seat
+      ) {
         if (!canEnqueue(floor.tickets, 1)) {
           this.cancelPendingApproachIntent();
           store.setFloorToast(formatTicketCapacityFullMessage(floor.tickets));
@@ -1743,7 +1757,7 @@ export class RestaurantApp {
         this.beginApproachOrAct(
           store,
           {
-            kind: 'order',
+            kind: "order",
             guestId: tappedGuest.id,
             customerId: tappedGuest.customer.id,
           },
@@ -1754,10 +1768,10 @@ export class RestaurantApp {
           () => playerNearGuestSeat(player, tappedGuest),
           () => {
             void store.dispatch({
-              type: 'FLOOR_TAKE_ORDERS',
+              type: "FLOOR_TAKE_ORDERS",
               customerIds: [tappedGuest.customer.id],
             });
-            playSfx(sfxForFloorFeelBeat('order'), 0.9);
+            playSfx(sfxForFloorFeelBeat("order"), 0.9);
           },
         );
         return;
@@ -1768,22 +1782,22 @@ export class RestaurantApp {
     if (station) {
       const validCarriedTicket = floor.tickets.find(
         (ticket) =>
-          ticket.id === floor.carriedTicketId && ticket.status === 'plated',
+          ticket.id === floor.carriedTicketId && ticket.status === "plated",
       );
       if (validCarriedTicket) {
         this.cancelPendingApproachIntent();
-        store.setFloorToast('Deliver the carried dish first');
+        store.setFloorToast("Deliver the carried dish first");
         return;
       }
-      if (!floor.tickets.some((ticket) => ticket.status === 'open')) {
+      if (!floor.tickets.some((ticket) => ticket.status === "open")) {
         this.cancelPendingApproachIntent();
-        store.setFloorToast('No open ticket to cook');
+        store.setFloorToast("No open ticket to cook");
         return;
       }
       const player = store.floorPlayerGrid ?? floor.playerPosition;
       this.beginApproachOrAct(
         store,
-        { kind: 'compose', placementId: station.id },
+        { kind: "compose", placementId: station.id },
         () =>
           this.pathToAdjacentCell(store, roomPlacements, tapCell, {
             preserveApproachIntent: true,
@@ -1796,13 +1810,13 @@ export class RestaurantApp {
             store.openComposeSheet();
             return;
           }
-          store.setFloorToast('No open ticket to cook');
+          store.setFloorToast("No open ticket to cook");
         },
       );
       return;
     }
 
-    if (store.activeFloorRoom === 'main') {
+    if (store.activeFloorRoom === "main") {
       const tappedPlacement = roomPlacements.find(
         (placement) => placement.x === tapCell.x && placement.y === tapCell.y,
       );
@@ -1813,8 +1827,8 @@ export class RestaurantApp {
         : undefined;
       if (tappedPlacement && table) {
         const player = store.floorPlayerGrid ?? this.nav.position;
-        if (table.state === 'unset' || table.state === 'dirty') {
-          const kind = table.state === 'unset' ? 'set' : 'clear';
+        if (table.state === "unset" || table.state === "dirty") {
+          const kind = table.state === "unset" ? "set" : "clear";
           this.beginApproachOrAct(
             store,
             { kind, placementId: table.placementId },
@@ -1826,9 +1840,9 @@ export class RestaurantApp {
             () => {
               void store.dispatch({
                 type:
-                  table.state === 'unset'
-                    ? 'FLOOR_SET_TABLE'
-                    : 'FLOOR_CLEAR_TABLE',
+                  table.state === "unset"
+                    ? "FLOOR_SET_TABLE"
+                    : "FLOOR_CLEAR_TABLE",
                 placementId: table.placementId,
               });
             },
@@ -1868,11 +1882,11 @@ export class RestaurantApp {
   private onCanvasFocusChange = (): void => {
     const canvas = this.app.canvas;
     if (document.activeElement === canvas) {
-      canvas.style.outline = '3px solid #e0b44f';
-      canvas.style.outlineOffset = '2px';
+      canvas.style.outline = "3px solid #e0b44f";
+      canvas.style.outlineOffset = "2px";
     } else {
-      canvas.style.outline = 'none';
-      canvas.style.outlineOffset = '';
+      canvas.style.outline = "none";
+      canvas.style.outlineOffset = "";
     }
   };
 
@@ -1889,7 +1903,7 @@ export class RestaurantApp {
     }
 
     // Escape cancels an armed approach-and-complete (and aborts its walk).
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       if (!this.pendingApproachIntent) return;
       event.preventDefault();
       const stopAt = { ...this.nav.position };
@@ -1919,7 +1933,7 @@ export class RestaurantApp {
 
     const canvas = this.app.canvas;
     const canvasFocused = document.activeElement === canvas;
-    const isWasd = event.key.length === 1 && 'wasdWASD'.includes(event.key);
+    const isWasd = event.key.length === 1 && "wasdWASD".includes(event.key);
     // Floor action toolbar preventDefaults arrow keys for its own roving tab.
     // WASD still moves Val; arrows move Val when the canvas owns focus.
     if (event.defaultPrevented && !canvasFocused && !isWasd) return;
@@ -1928,7 +1942,7 @@ export class RestaurantApp {
     if (
       !selectFloorRuntimeRunning(
         store,
-        document.visibilityState === 'visible',
+        document.visibilityState === "visible",
       ) ||
       store.composeSheetOpen
     ) {
@@ -1959,7 +1973,7 @@ export class RestaurantApp {
     floor: FloorDay | null | undefined,
   ): boolean {
     if (
-      state.activeFloorRoom !== 'main' ||
+      state.activeFloorRoom !== "main" ||
       !floor ||
       state.activeDay?.serviceStarted !== true ||
       !state.modifierDismissed
@@ -1967,7 +1981,7 @@ export class RestaurantApp {
       return false;
     }
     const door = doorForGrid(state.gridSize.w, state.gridSize.h, {
-      room: 'main',
+      room: "main",
     });
     return (
       this.guestMotion.isDoorBusy(floor, door) ||
@@ -2041,7 +2055,7 @@ export class RestaurantApp {
   };
 
   private onVisibilityChange = (): void => {
-    if (document.visibilityState !== 'visible') {
+    if (document.visibilityState !== "visible") {
       this.floorRuntimeWasRunning = false;
       this.floorResumeSettleFramesRemaining = 0;
       this.cancelPendingSeatingIntent();
@@ -2059,7 +2073,7 @@ export class RestaurantApp {
     const height = this.app.screen.height;
     const floor = state.activeDay?.floor;
     const guestDoor = doorForGrid(state.gridSize.w, state.gridSize.h, {
-      room: 'main',
+      room: "main",
     });
     const mapWpx = state.gridSize.w * TILE_PX;
     const mapHpx = state.gridSize.h * TILE_PX;
@@ -2070,7 +2084,7 @@ export class RestaurantApp {
       if (daySeed !== this.lastFloorSeed) {
         this.snapNavigationTo(floor.playerPosition);
         this.lastFloorSeed = daySeed;
-        this.lastRoom = 'main';
+        this.lastRoom = "main";
         this.eatingTickAccumulatorMs = 0;
       } else if (this.lastRoom !== state.activeFloorRoom) {
         const spawn = connectingDoorInterior(
@@ -2088,7 +2102,7 @@ export class RestaurantApp {
         state.gridSize.h,
         {
           kitchenAnnexOwned: state.kitchenAnnexOwned,
-          room: 'main',
+          room: "main",
         },
       );
       this.guestMotion.sync(floor, {
@@ -2100,7 +2114,7 @@ export class RestaurantApp {
         },
         dtMs: 0,
       });
-      if (state.activeFloorRoom === 'main') {
+      if (state.activeFloorRoom === "main") {
         this.actorLayer.sync(floor, this.nav, this.guestMotion, {
           // OPEN_DAY creates the first arrival in domain state so service can
           // begin immediately, but the modifier sheet is still the closed
@@ -2162,15 +2176,15 @@ export class RestaurantApp {
     this.furnitureLayer.sync(
       roomPlacements,
       state.editLayoutMode,
-      state.activeFloorRoom === 'main'
+      state.activeFloorRoom === "main"
         ? (state.activeDay?.floor?.seats ??
             seatsFromPlacements(state.placements))
         : [],
-      state.activeFloorRoom === 'main' ? tableStates : new Map(),
+      state.activeFloorRoom === "main" ? tableStates : new Map(),
     );
     this.syncCarryPlateOverlay(floor);
 
-    if (floor || state.activeFloorRoom === 'back_kitchen') {
+    if (floor || state.activeFloorRoom === "back_kitchen") {
       this.customerLayer.sync(-1, roomPlacements, false);
     } else {
       const queueIndex = state.activeDay?.queueIndex ?? -1;
@@ -2225,7 +2239,7 @@ export class RestaurantApp {
     const feet = this.actorLayer.getGuestFeetWorldPosition(guestId);
     if (!feet) return null;
     const visual = this.actorLayer.getGuestVisualDebug(guestId);
-    const pose = visual?.isSeated ? 'seated' : 'standing';
+    const pose = visual?.isSeated ? "seated" : "standing";
     return this.worldPointToScreen(actorMouthWorldFromFeet(feet, pose));
   }
 
@@ -2253,11 +2267,7 @@ export class RestaurantApp {
     if (!target) return null;
     const bounds = target.bounds;
     const rect = this.app.canvas.getBoundingClientRect();
-    const topLeft = worldToScreen(
-      bounds.left,
-      bounds.top,
-      this.camera.state,
-    );
+    const topLeft = worldToScreen(bounds.left, bounds.top, this.camera.state);
     const bottomRight = worldToScreen(
       bounds.right,
       bounds.bottom,
@@ -2288,29 +2298,29 @@ export class RestaurantApp {
     this.roomTransitionInFlight = false;
     clearRoomTransitionPhase(this.app.canvas);
     delete this.app.canvas.dataset.roomTransitionOutFrom;
-    this.app.canvas.style.removeProperty('opacity');
-    this.app.canvas.style.removeProperty('pointer-events');
-    window.removeEventListener('resize', this.handleResize);
+    this.app.canvas.style.removeProperty("opacity");
+    this.app.canvas.style.removeProperty("pointer-events");
+    window.removeEventListener("resize", this.handleResize);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     if (this.resizeFrame !== null) {
       cancelAnimationFrame(this.resizeFrame);
       this.resizeFrame = null;
     }
-    window.removeEventListener('keydown', this.onKeyboardMove);
-    document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    this.app.canvas.removeEventListener('pointerdown', this.onTapMove);
-    this.app.canvas.removeEventListener('focus', this.onCanvasFocusChange);
-    this.app.canvas.removeEventListener('blur', this.onCanvasFocusChange);
+    window.removeEventListener("keydown", this.onKeyboardMove);
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    this.app.canvas.removeEventListener("pointerdown", this.onTapMove);
+    this.app.canvas.removeEventListener("focus", this.onCanvasFocusChange);
+    this.app.canvas.removeEventListener("blur", this.onCanvasFocusChange);
     this.app.ticker.remove(this.onTick);
     this.unsubscribe?.();
     this.unsubscribeJuice?.();
     this.unsubscribeJuice = null;
     this.effectsLayer.clear();
     this.mount.classList.remove(
-      'vk-sfx-flash-serve',
-      'vk-sfx-flash-review',
-      'vk-sfx-flash-placement',
+      "vk-sfx-flash-serve",
+      "vk-sfx-flash-review",
+      "vk-sfx-flash-placement",
     );
     this.dragPlacement.detach();
     this.app.destroy(true, { children: true, texture: true });

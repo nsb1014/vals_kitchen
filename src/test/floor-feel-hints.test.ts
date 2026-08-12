@@ -1,19 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   cameraLeadOffset,
   computeFloorInteractHints,
-} from '../canvas/world/floor-feel-hints.ts';
-import { guestServicePositions } from '../domain/floor/interact.ts';
-import type { FloorDay, FloorGuest } from '../domain/floor/types.ts';
-import type { Placement } from '../domain/state/game-state.ts';
-import { TILE_PX } from '../canvas/coordinates.ts';
+} from "../canvas/world/floor-feel-hints.ts";
+import { guestServicePositions } from "../domain/floor/interact.ts";
+import type { FloorDay, FloorGuest } from "../domain/floor/types.ts";
+import type { Placement } from "../domain/state/game-state.ts";
+import { TILE_PX } from "../canvas/coordinates.ts";
 import {
   mapReducerEventsToUi,
   sfxForFloorFeelBeat,
-} from '../store/service-events.ts';
-import { createNewGameState } from '../domain/state/game-state.ts';
-import { waitingGuestWorldPosition } from '../canvas/world/waiting-line.ts';
-import { STARTER_DOOR } from '../domain/floor/starter-map.ts';
+} from "../store/service-events.ts";
+import { createNewGameState } from "../domain/state/game-state.ts";
+import { waitingGuestWorldPosition } from "../canvas/world/waiting-line.ts";
+import { STARTER_DOOR } from "../domain/floor/starter-map.ts";
 
 function emptyFloor(overrides: Partial<FloorDay> = {}): FloorDay {
   return {
@@ -31,15 +31,15 @@ function emptyFloor(overrides: Partial<FloorDay> = {}): FloorDay {
 
 function seatedGuest(seat: { x: number; y: number }): FloorGuest {
   return {
-    id: 'g1',
+    id: "g1",
     customer: {
-      id: 'c1',
-      archetypeId: 'casual',
+      id: "c1",
+      archetypeId: "casual",
       preference: { primary: {}, avoid: {}, phrases: [] },
     },
-    stage: 'seated',
+    stage: "seated",
     seat: {
-      tablePlacementId: 't1',
+      tablePlacementId: "t1",
       slotIndex: 0,
       x: seat.x,
       y: seat.y,
@@ -49,8 +49,8 @@ function seatedGuest(seat: { x: number; y: number }): FloorGuest {
   };
 }
 
-describe('floor-feel distant intent hints', () => {
-  it('paints a far service-cell hint when an order is available but Val is remote', () => {
+describe("floor-feel distant intent hints", () => {
+  it("paints a far service-cell hint when an order is available but Val is remote", () => {
     const seat = { x: 5, y: 5 };
     const guest = seatedGuest(seat);
     const floor = emptyFloor({ pool: [guest] });
@@ -62,13 +62,35 @@ describe('floor-feel distant intent hints', () => {
       grid: { w: 10, h: 10, blocked },
       stationNeedsAttention: false,
     });
-    expect(hints.some((h) => h.strength === 'far')).toBe(true);
-    const far = hints.find((h) => h.strength === 'far')!;
+    expect(hints.some((h) => h.strength === "far")).toBe(true);
+    const far = hints.find((h) => h.strength === "far")!;
     const service = guestServicePositions(seat);
     expect(service.some((c) => c.x === far.x && c.y === far.y)).toBe(true);
   });
 
-  it('uses near strength on a service cell when Val already stands beside the guest', () => {
+  it("prefers a one-cell tableside stand over a closer two-cell vertical fallback", () => {
+    // Starter-like seat: Val stands south in the open dining. The two-cell
+    // fallback (seat.y+2) is closer, but the stand box must mark tableside.
+    const seat = { x: 1, y: 2 };
+    const guest = seatedGuest(seat);
+    const floor = emptyFloor({ pool: [guest] });
+    const blocked = new Set<string>([
+      `${seat.x},${seat.y}`,
+      "2,2", // table
+      "0,2", // wall-ish
+    ]);
+    const hints = computeFloorInteractHints({
+      floor,
+      placements: [],
+      player: { x: 2, y: 5 },
+      grid: { w: 10, h: 10, blocked },
+      stationNeedsAttention: false,
+    });
+    const far = hints.find((h) => h.strength === "far");
+    expect(far).toEqual({ x: 1, y: 3, strength: "far" });
+  });
+
+  it("uses near strength on a service cell when Val already stands beside the guest", () => {
     const seat = { x: 5, y: 5 };
     const guest = seatedGuest(seat);
     const service = guestServicePositions(seat)[0]!;
@@ -85,19 +107,19 @@ describe('floor-feel distant intent hints', () => {
         expect.objectContaining({
           x: service.x,
           y: service.y,
-          strength: 'near',
+          strength: "near",
         }),
       ]),
     );
     expect(hints.some((h) => h.x === seat.x && h.y === seat.y)).toBe(false);
   });
 
-  it('shows at most one far hint when several chores compete', () => {
+  it("shows at most one far hint when several chores compete", () => {
     const seat = { x: 5, y: 5 };
     const guest = seatedGuest(seat);
     const placement: Placement = {
-      id: 'table_1',
-      itemKey: 'table_2',
+      id: "table_1",
+      itemKey: "table_2",
       x: 8,
       y: 8,
       rotation: 0,
@@ -106,8 +128,8 @@ describe('floor-feel distant intent hints', () => {
       pool: [guest],
       tables: [
         {
-          placementId: 'table_1',
-          state: 'unset',
+          placementId: "table_1",
+          state: "unset",
           seatSlotCount: 2,
         },
       ],
@@ -119,17 +141,17 @@ describe('floor-feel distant intent hints', () => {
       grid: {
         w: 12,
         h: 12,
-        blocked: new Set([`${seat.x},${seat.y}`, '8,8']),
+        blocked: new Set([`${seat.x},${seat.y}`, "8,8"]),
       },
       stationNeedsAttention: true,
     });
-    expect(hints.filter((h) => h.strength === 'far')).toHaveLength(1);
+    expect(hints.filter((h) => h.strength === "far")).toHaveLength(1);
   });
 
-  it('marks unset tables with a far approach cell from across the room', () => {
+  it("marks unset tables with a far approach cell from across the room", () => {
     const placement: Placement = {
-      id: 'table_1',
-      itemKey: 'table_2',
+      id: "table_1",
+      itemKey: "table_2",
       x: 6,
       y: 4,
       rotation: 0,
@@ -137,13 +159,13 @@ describe('floor-feel distant intent hints', () => {
     const floor = emptyFloor({
       tables: [
         {
-          placementId: 'table_1',
-          state: 'unset',
+          placementId: "table_1",
+          state: "unset",
           seatSlotCount: 2,
         },
       ],
     });
-    const blocked = new Set<string>(['6,4']);
+    const blocked = new Set<string>(["6,4"]);
     const hints = computeFloorInteractHints({
       floor,
       placements: [placement],
@@ -151,12 +173,12 @@ describe('floor-feel distant intent hints', () => {
       grid: { w: 10, h: 10, blocked },
       stationNeedsAttention: false,
     });
-    expect(hints.some((h) => h.strength === 'far')).toBe(true);
+    expect(hints.some((h) => h.strength === "far")).toBe(true);
   });
 });
 
-describe('floor-feel camera lead', () => {
-  it('offsets follow target forward while moving', () => {
+describe("floor-feel camera lead", () => {
+  it("offsets follow target forward while moving", () => {
     expect(cameraLeadOffset(0, true, 0.75, TILE_PX)).toEqual({
       x: TILE_PX * 0.75,
       y: 0,
@@ -165,8 +187,8 @@ describe('floor-feel camera lead', () => {
   });
 });
 
-describe('floor-feel waiting-line staging geometry', () => {
-  it('keeps queued silhouette slots distinct from the head wait cell', () => {
+describe("floor-feel waiting-line staging geometry", () => {
+  it("keeps queued silhouette slots distinct from the head wait cell", () => {
     const head = waitingGuestWorldPosition(STARTER_DOOR, 0);
     const queued = waitingGuestWorldPosition(STARTER_DOOR, 1);
     expect(queued.x).not.toBe(head.x);
@@ -174,21 +196,21 @@ describe('floor-feel waiting-line staging geometry', () => {
   });
 });
 
-describe('floor-feel service-events SFX wiring', () => {
-  it('maps deliver to the shipped serve sting and flags CUSTOMER_SERVED', () => {
-    expect(sfxForFloorFeelBeat('deliver')).toBe('serve');
-    expect(sfxForFloorFeelBeat('seat')).toBe('placement');
-    expect(sfxForFloorFeelBeat('order')).toBe('purchase');
-    expect(sfxForFloorFeelBeat('walk')).toBe('uiClick');
+describe("floor-feel service-events SFX wiring", () => {
+  it("maps deliver to the shipped serve sting and flags CUSTOMER_SERVED", () => {
+    expect(sfxForFloorFeelBeat("deliver")).toBe("serve");
+    expect(sfxForFloorFeelBeat("seat")).toBe("placement");
+    expect(sfxForFloorFeelBeat("order")).toBe("purchase");
+    expect(sfxForFloorFeelBeat("walk")).toBe("uiClick");
     const patch = mapReducerEventsToUi(
       [
         {
-          type: 'CUSTOMER_SERVED',
-          customerId: 'c1',
+          type: "CUSTOMER_SERVED",
+          customerId: "c1",
           matchStars: 8,
           tip: 10,
           ratingDelta: 0.1,
-          recipeName: 'Soup',
+          recipeName: "Soup",
         },
       ],
       createNewGameState(1),
