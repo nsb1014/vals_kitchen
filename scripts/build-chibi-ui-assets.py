@@ -458,11 +458,45 @@ def top_row_fill_ratio(image: Image.Image) -> float:
     return top / max(1, mid)
 
 
+def side_frame_disagreement(frame: Image.Image, reference: Image.Image) -> float:
+    """Opaque-pixel disagreement ratio between two same-size RGBA frames."""
+    if frame.size != reference.size:
+        raise ValueError("side frame size mismatch")
+    width, height = frame.size
+    disagree = total = 0
+    for y in range(height):
+        for x in range(width):
+            a = frame.getpixel((x, y))
+            b = reference.getpixel((x, y))
+            if a[3] <= 40 and b[3] <= 40:
+                continue
+            total += 1
+            if abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2]) + abs(a[3] - b[3]) > 48:
+                disagree += 1
+    return disagree / max(1, total)
+
+
+def ensure_side_walk_facing(
+    frame: Image.Image,
+    reference: Image.Image,
+    name: str,
+) -> Image.Image:
+    """Mirror a profile walk frame when it faces opposite the facing's frame 0."""
+    flipped = frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    plain = side_frame_disagreement(frame, reference)
+    mirrored = side_frame_disagreement(flipped, reference)
+    # A wrongly authored mirror is much closer to the flipped reference pose.
+    if mirrored + 0.08 < plain:
+        return flipped
+    return frame
+
+
 def validate_animation_frames() -> None:
     """Reject clipped silhouettes and unstable walk-cycle crops before packing."""
     for variant in ("a", "b", "c", "d", "e"):
         for facing in ("down", "left", "right", "up"):
             heights = []
+            reference = None
             for frame in range(3):
                 name = f"guest_{variant}_{facing}_{frame}.png"
                 image = Image.open(GUEST_OUT / name).convert("RGBA")
@@ -478,6 +512,17 @@ def validate_animation_frames() -> None:
                 if min(margins) < 4:
                     raise ValueError(f"Guest animation frame is clipped: {name} margins={margins}")
                 heights.append(bounds[3] - bounds[1])
+                if facing in ("left", "right"):
+                    if frame == 0:
+                        reference = image
+                    elif reference is not None:
+                        corrected = ensure_side_walk_facing(image, reference, name)
+                        if corrected is not image and side_frame_disagreement(
+                            corrected, reference
+                        ) + 0.08 < side_frame_disagreement(image, reference):
+                            raise ValueError(
+                                f"Guest walk frame faces the wrong way: {name}"
+                            )
             if max(heights) - min(heights) > 10:
                 raise ValueError(
                     f"Guest walk cycle changes crop height: {variant} {facing} {heights}"
@@ -783,9 +828,16 @@ def build_guests() -> None:
         )
 
         for facing in row_facings:
+            reference = None
             for frame in range(3):
                 sprite = contain_at_scale(sources[(facing, frame)], ACTOR_FRAME_SIZE, scale)
-                save(sprite, GUEST_OUT / f"guest_{variant}_{facing}_{frame}.png")
+                name = f"guest_{variant}_{facing}_{frame}.png"
+                if facing in ("left", "right"):
+                    if frame == 0:
+                        reference = sprite
+                    elif reference is not None:
+                        sprite = ensure_side_walk_facing(sprite, reference, name)
+                save(sprite, GUEST_OUT / name)
             seated = contain_at_scale(sources[(facing, 3)], ACTOR_FRAME_SIZE, scale)
             save(seated, GUEST_OUT / f"guest_{variant}_sit_{facing}.png")
 

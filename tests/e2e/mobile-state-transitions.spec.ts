@@ -153,7 +153,8 @@ test.describe("mobile state-transition boundaries", () => {
         const inspect = page.getByTestId("ingredient-inspect").first();
         const logicalTriggerId = await inspect.getAttribute("id");
         expect(logicalTriggerId).toBeTruthy();
-        await inspect.click();
+        // Badge-only hit target — parent layout box has pointer-events: none.
+        await inspect.locator("span").click();
 
         const backdrop = page.locator("#flavor-inspector-modal");
         const dialog = backdrop.getByRole("dialog");

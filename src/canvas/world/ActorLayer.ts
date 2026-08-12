@@ -62,15 +62,16 @@ const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
 const FACING_NAMES = ["right", "down", "up", "left"] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
 
-/** Walk-step squash duration (ms). Feet stay planted via bottom anchor. */
+/** Walk-step squash duration (ms). Kept for tests; motion juice is disabled. */
 export const WALK_SQUASH_MS = 70;
-/** Peak ± scale amplitude for walk squash/stretch (~5%). */
-export const WALK_SQUASH_AMPLITUDE = 0.05;
+/** Peak ± scale amplitude for walk squash/stretch. Zero = no bounce. */
+export const WALK_SQUASH_AMPLITUDE = 0;
 
 export function walkStepSquash(
   t: number,
   amplitude = WALK_SQUASH_AMPLITUDE,
 ): { x: number; y: number } {
+  if (amplitude === 0) return { x: 1, y: 1 };
   const u = Math.max(0, Math.min(1, t));
   const wave = Math.sin(u * Math.PI);
   return {
@@ -80,22 +81,19 @@ export function walkStepSquash(
 }
 
 export function actorEatingPulse(
-  nowMs: number,
-  phase = 0,
+  _nowMs: number,
+  _phase = 0,
 ): { scaleX: number; scaleY: number } {
-  const chew = Math.sin(nowMs / 170 + phase);
-  return {
-    scaleX: 1 + chew * 0.035,
-    scaleY: 1 - chew * 0.03,
-  };
+  // Chew pulse disabled — scale breathing read as bounce on seated diners.
+  return { scaleX: 1, scaleY: 1 };
 }
 
 export function actorIdleBreathe(
-  nowMs: number,
-  phase = 0,
+  _nowMs: number,
+  _phase = 0,
 ): { scaleX: number; scaleY: number } {
-  const wave = Math.sin(nowMs / 520 + phase) * 0.018;
-  return { scaleX: 1 + wave, scaleY: 1 - wave };
+  // Idle breathe disabled — any scale pulse read as scene bounce.
+  return { scaleX: 1, scaleY: 1 };
 }
 
 function hashPhase(id: string): number {

@@ -1,15 +1,15 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
-import { guestVariant } from '../../src/canvas/world/character-frames.ts';
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { guestVariant } from "../../src/canvas/world/character-frames.ts";
 import {
   gotoFreshGame,
   readSaveFromIndexedDb,
   waitForGameReady,
   waitForServiceStarted,
-} from './helpers.ts';
+} from "./helpers.ts";
 
 async function rect(locator: Locator) {
   const box = await locator.boundingBox();
-  if (!box) throw new Error('expected a visible element');
+  if (!box) throw new Error("expected a visible element");
   return box;
 }
 
@@ -28,7 +28,8 @@ const CONTINUITY_GRID_CELL = { x: 4, y: 4 } as const;
 
 async function nextAnimationFrame(page: Page): Promise<void> {
   await page.evaluate(
-    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
 }
 
@@ -42,10 +43,10 @@ async function gridProjection(page: Page): Promise<GridProjection> {
 async function captureServiceGeometry(page: Page): Promise<ServiceGeometry> {
   await nextAnimationFrame(page);
   return {
-    canvas: await rect(page.getByTestId('restaurant-canvas')),
-    mount: await rect(page.locator('.canvas-mount')),
-    hud: await rect(page.getByTestId('game-hud')),
-    chrome: await rect(page.getByTestId('chrome-mount')),
+    canvas: await rect(page.getByTestId("restaurant-canvas")),
+    mount: await rect(page.locator(".canvas-mount")),
+    hud: await rect(page.getByTestId("game-hud")),
+    chrome: await rect(page.getByTestId("chrome-mount")),
     projection: await gridProjection(page),
   };
 }
@@ -100,24 +101,24 @@ async function expectServiceGeometryStable(
   expected: ServiceGeometry,
 ): Promise<void> {
   await expectRectStable(
-    page.getByTestId('restaurant-canvas'),
+    page.getByTestId("restaurant-canvas"),
     expected.canvas,
-    'restaurant canvas rect',
+    "restaurant canvas rect",
   );
   await expectRectStable(
-    page.locator('.canvas-mount'),
+    page.locator(".canvas-mount"),
     expected.mount,
-    'canvas mount rect',
+    "canvas mount rect",
   );
   await expectRectStable(
-    page.getByTestId('game-hud'),
+    page.getByTestId("game-hud"),
     expected.hud,
-    'status HUD rect',
+    "status HUD rect",
   );
   await expectRectStable(
-    page.getByTestId('chrome-mount'),
+    page.getByTestId("chrome-mount"),
     expected.chrome,
-    'service chrome rect',
+    "service chrome rect",
   );
   await expectProjectionStable(page, expected.projection);
 }
@@ -145,9 +146,10 @@ function expectPanelBelowHud(
   hud: ElementRect,
   label: string,
 ): void {
-  expect(panel.y, `${label} should begin below the status HUD`).toBeGreaterThanOrEqual(
-    hud.y + hud.height - GEOMETRY_TOLERANCE_PX,
-  );
+  expect(
+    panel.y,
+    `${label} should begin below the status HUD`,
+  ).toBeGreaterThanOrEqual(hud.y + hud.height - GEOMETRY_TOLERANCE_PX);
 }
 
 async function finishFloorWithoutClosing(page: Page): Promise<void> {
@@ -156,38 +158,40 @@ async function finishFloorWithoutClosing(page: Page): Promise<void> {
     for (let guard = 0; guard < 500; guard += 1) {
       const state = bridge.getGameState();
       if (!state.activeDay?.floor) {
-        throw new Error('floor closed before continuity checkpoint');
+        throw new Error("floor closed before continuity checkpoint");
       }
       const step = await bridge.advanceFloorServiceOnce();
-      if (step === 'pending_review') {
+      if (step === "pending_review") {
         await bridge.dismissPendingReview();
-      } else if (step === 'day_complete') {
+      } else if (step === "day_complete") {
         return;
-      } else if (step === 'idle') {
-        throw new Error('floor service stalled before continuity checkpoint');
+      } else if (step === "idle") {
+        throw new Error("floor service stalled before continuity checkpoint");
       }
     }
-    throw new Error('floor service did not finish within guard limit');
+    throw new Error("floor service did not finish within guard limit");
   });
 }
 
-test.describe('service visual continuity', () => {
-  test('keeps the first arrival offstage until service starts', async ({
+test.describe("service visual continuity", () => {
+  test("keeps the first arrival offstage until service starts", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoFreshGame(page);
-    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId("open-day-btn").click();
 
     const enteringGuestId = await page.evaluate(() => {
-      const guest = window.__E2E__!
-        .getGameState()
-        .activeDay!.floor!.pool.find((candidate) => candidate.stage === 'entering');
-      if (!guest) throw new Error('expected the first queued arrival');
+      const guest = window
+        .__E2E__!.getGameState()
+        .activeDay!.floor!.pool.find(
+          (candidate) => candidate.stage === "entering",
+        );
+      if (!guest) throw new Error("expected the first queued arrival");
       return guest.id;
     });
 
-    await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+    await expect(page.getByTestId("modifier-sheet")).toBeVisible();
     expect(
       await page.evaluate(
         (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
@@ -195,8 +199,8 @@ test.describe('service visual continuity', () => {
       ),
     ).toBeNull();
     await page.screenshot({
-      path: 'test-results/modifier-mobile-guest-curtain.png',
-      animations: 'disabled',
+      path: "test-results/modifier-mobile-guest-curtain.png",
+      animations: "disabled",
     });
 
     await expect
@@ -207,9 +211,9 @@ test.describe('service visual continuity', () => {
         return save?.gameState?.activeDay?.serviceStarted;
       })
       .toBe(false);
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: "networkidle" });
     await waitForGameReady(page);
-    await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+    await expect(page.getByTestId("modifier-sheet")).toBeVisible();
     expect(
       await page.evaluate(
         (guestId) => window.__E2E__!.getGuestScreenFeetAnchor(guestId),
@@ -217,7 +221,7 @@ test.describe('service visual continuity', () => {
       ),
     ).toBeNull();
 
-    await page.getByTestId('start-service-btn').click();
+    await page.getByTestId("start-service-btn").click();
     await waitForServiceStarted(page);
     await expect
       .poll(() =>
@@ -235,10 +239,10 @@ test.describe('service visual continuity', () => {
         return save?.gameState?.activeDay?.serviceStarted;
       })
       .toBe(true);
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: "networkidle" });
     await waitForGameReady(page);
-    await expect(page.getByTestId('modifier-sheet')).toBeHidden();
-    await expect(page.getByTestId('floor-service-panel')).toBeVisible();
+    await expect(page.getByTestId("modifier-sheet")).toBeHidden();
+    await expect(page.getByTestId("floor-service-panel")).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate(
@@ -248,12 +252,12 @@ test.describe('service visual continuity', () => {
       )
       .not.toBeNull();
     await page.screenshot({
-      path: 'test-results/service-first-arrival-mobile.png',
-      animations: 'disabled',
+      path: "test-results/service-first-arrival-mobile.png",
+      animations: "disabled",
     });
   });
 
-  test('eases between service sheets without replaying on compose updates', async ({
+  test("eases between service sheets without replaying on compose updates", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -266,8 +270,8 @@ test.describe('service visual continuity', () => {
     const modifierEnter = await page.evaluate(async () => {
       delete document.documentElement.dataset.vkReducedMotion;
       document
-        .querySelector('#game-root')
-        ?.removeAttribute('data-vk-reduced-motion');
+        .querySelector("#game-root")
+        ?.removeAttribute("data-vk-reduced-motion");
       document
         .querySelector<HTMLButtonElement>('[data-testid="open-day-btn"]')
         ?.click();
@@ -291,30 +295,30 @@ test.describe('service visual continuity', () => {
       });
       return {
         present: Boolean(panel),
-        entering: panel?.hasAttribute('data-panel-entering') ?? false,
+        entering: panel?.hasAttribute("data-panel-entering") ?? false,
         animationNames: panel
           ? getComputedStyle(panel)
-              .animationName.split(',')
+              .animationName.split(",")
               .map((name) => name.trim())
           : [],
       };
     });
     expect(modifierEnter.present).toBe(true);
     expect(modifierEnter.entering).toBe(true);
-    expect(modifierEnter.animationNames).toContain('service-panel-enter');
+    expect(modifierEnter.animationNames).toContain("service-panel-enter");
 
-    const modifier = page.getByTestId('modifier-sheet');
+    const modifier = page.getByTestId("modifier-sheet");
     await expect(modifier).toBeVisible();
 
-    await page.getByTestId('start-service-btn').click();
+    await page.getByTestId("start-service-btn").click();
     await waitForServiceStarted(page);
     const composeEnter = await page.evaluate(async () => {
       await window.__E2E__!.prepareCookUiFixture();
       // Clear reduced-motion again in case a remount re-applied the dataset.
       delete document.documentElement.dataset.vkReducedMotion;
       document
-        .querySelector('#game-root')
-        ?.removeAttribute('data-vk-reduced-motion');
+        .querySelector("#game-root")
+        ?.removeAttribute("data-vk-reduced-motion");
       window.__E2E__!.openComposeSheet();
       const panel = await new Promise<HTMLElement | null>((resolve) => {
         const deadline = performance.now() + 2_000;
@@ -336,66 +340,68 @@ test.describe('service visual continuity', () => {
       });
       return {
         present: Boolean(panel),
-        entering: panel?.hasAttribute('data-panel-entering') ?? false,
+        entering: panel?.hasAttribute("data-panel-entering") ?? false,
         animationNames: panel
           ? getComputedStyle(panel)
-              .animationName.split(',')
+              .animationName.split(",")
               .map((name) => name.trim())
           : [],
       };
     });
     expect(composeEnter.present).toBe(true);
     expect(composeEnter.entering).toBe(true);
-    expect(composeEnter.animationNames).toContain('service-panel-enter');
-    const compose = page.getByTestId('compose-sheet');
+    expect(composeEnter.animationNames).toContain("service-panel-enter");
+    const compose = page.getByTestId("compose-sheet");
     await expect(compose).toBeVisible();
     await compose.evaluate(async (element) => {
       const animations = element.getAnimations();
       if (animations.length === 0) return;
       // animationend / dataset clear can abort finished(); ignore AbortError.
       await Promise.all(
-        animations.map((animation) => animation.finished.catch(() => undefined)),
+        animations.map((animation) =>
+          animation.finished.catch(() => undefined),
+        ),
       );
     });
 
-    await compose.getByTestId('ingredient-chip').first().click();
-    const rerenderedCompose = page.getByTestId('compose-sheet');
+    await compose.getByTestId("ingredient-chip").first().click();
+    const rerenderedCompose = page.getByTestId("compose-sheet");
     await expect(rerenderedCompose).toBeVisible();
     await expect(rerenderedCompose).not.toHaveAttribute(
-      'data-panel-entering',
-      '',
+      "data-panel-entering",
+      "",
     );
     expect(
       await rerenderedCompose.evaluate((element) =>
-        getComputedStyle(element).animationName
-          .split(',')
+        getComputedStyle(element)
+          .animationName.split(",")
           .map((name) => name.trim())
-          .includes('service-panel-enter'),
+          .includes("service-panel-enter"),
       ),
     ).toBe(false);
   });
 
-  test('keeps service sheet changes immediate with reduced motion', async ({
+  test("keeps service sheet changes immediate with reduced motion", async ({
     page,
   }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoFreshGame(page);
-    await page.getByTestId('open-day-btn').click();
+    await page.getByTestId("open-day-btn").click();
 
-    const modifier = page.getByTestId('modifier-sheet');
+    const modifier = page.getByTestId("modifier-sheet");
     await expect(modifier).toBeVisible();
     expect(
       await modifier.evaluate((element) =>
-        getComputedStyle(element).animationName
-          .split(',')
+        getComputedStyle(element)
+          .animationName.split(",")
           .map((name) => name.trim())
-          .includes('service-panel-enter'),
+          .includes("service-panel-enter"),
       ),
     ).toBe(false);
   });
 
-  test('keeps the restaurant viewport fixed when service controls replace their reserve', async ({
+  test("keeps the restaurant viewport fixed when service controls replace their reserve", async ({
     page,
   }) => {
     const viewports = [
@@ -410,49 +416,53 @@ test.describe('service visual continuity', () => {
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       await gotoFreshGame(page);
-      await page.getByTestId('open-day-btn').click();
-      await expect(page.getByTestId('modifier-sheet')).toBeVisible();
+      await page.getByTestId("open-day-btn").click();
+      await expect(page.getByTestId("modifier-sheet")).toBeVisible();
 
       const reserve = await captureServiceGeometry(page);
       if (viewport.width >= 900) {
         const panel = await expectInsideViewport(
-          page.getByTestId('modifier-sheet'),
+          page.getByTestId("modifier-sheet"),
           viewport,
-          'modifier panel',
+          "modifier panel",
         );
         const start = await expectInsideViewport(
-          page.getByTestId('start-service-btn'),
+          page.getByTestId("start-service-btn"),
           viewport,
-          'Start Service button',
+          "Start Service button",
         );
-        expectPanelBelowHud(panel, reserve.hud, 'modifier panel');
+        expectPanelBelowHud(panel, reserve.hud, "modifier panel");
         expect(start.x).toBeGreaterThanOrEqual(panel.x);
         expect(start.x + start.width).toBeLessThanOrEqual(
           panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
         );
       }
 
-      await page.getByTestId('start-service-btn').click();
+      await page.getByTestId("start-service-btn").click();
       await waitForServiceStarted(page);
-      await expect(page.getByTestId('modifier-sheet')).toBeHidden();
-      await expect(page.getByTestId('floor-service-panel')).toBeVisible();
+      await expect(page.getByTestId("modifier-sheet")).toBeHidden();
+      await expect(page.getByTestId("floor-service-panel")).toBeVisible();
       await expectServiceGeometryStable(page, reserve);
 
-      const controls = await page.locator('.floor-actions .service-btn:visible').evaluateAll(
-        (buttons) => ({
+      const controls = await page
+        .locator(".floor-actions .service-btn:visible")
+        .evaluateAll((buttons) => ({
           expectedHeight: Number.parseFloat(
-            getComputedStyle(document.documentElement).getPropertyValue('--vk-cta-h'),
+            getComputedStyle(document.documentElement).getPropertyValue(
+              "--vk-cta-h",
+            ),
           ),
           buttons: buttons.map((button) => {
-            const label = button.querySelector<HTMLElement>('.floor-action-label');
+            const label = button.querySelector<HTMLElement>(
+              ".floor-action-label",
+            );
             return {
               height: button.getBoundingClientRect().height,
               labelClientHeight: label?.clientHeight ?? 0,
               labelScrollHeight: label?.scrollHeight ?? 0,
             };
           }),
-        }),
-      );
+        }));
       expect(controls.buttons.length).toBeGreaterThan(0);
       for (const control of controls.buttons) {
         expect(control.height).toBeCloseTo(controls.expectedHeight, 0);
@@ -465,7 +475,7 @@ test.describe('service visual continuity', () => {
     }
   });
 
-  test('carries the served guest identity into review without reframing the restaurant', async ({
+  test("carries the served guest identity into review without reframing the restaurant", async ({
     page,
   }) => {
     const viewports = [
@@ -476,66 +486,67 @@ test.describe('service visual continuity', () => {
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       await gotoFreshGame(page);
-      await page.getByTestId('open-day-btn').click();
-      await page.getByTestId('start-service-btn').click();
+      await page.getByTestId("open-day-btn").click();
+      await page.getByTestId("start-service-btn").click();
       await waitForServiceStarted(page);
       // Start Service is a durable async boundary. The bridge intentionally
       // bypasses pointer blocking, so wait for the save curtain to finish before
       // advancing the floor simulation behind it.
-      await expect(page.getByTestId('modifier-sheet')).toBeHidden();
+      await expect(page.getByTestId("modifier-sheet")).toBeHidden();
 
       let checkpoint:
-        | { guestId: string; geometry: ServiceGeometry }
-        | undefined;
+        { guestId: string; geometry: ServiceGeometry } | undefined;
       for (let guard = 0; guard < 80; guard += 1) {
         const geometry = await captureServiceGeometry(page);
         const step = await page.evaluate(() =>
           window.__E2E__!.advanceFloorServiceOnce(),
         );
-        if (step !== 'pending_review') continue;
+        if (step !== "pending_review") continue;
         const guestId = await page.evaluate(() => {
-          const guest = window.__E2E__!
-            .getGameState()
+          const guest = window
+            .__E2E__!.getGameState()
             .activeDay!.floor!.pool.find(
-              (candidate) => candidate.stage === 'eating',
+              (candidate) => candidate.stage === "eating",
             );
-          if (!guest) throw new Error('review opened without an eating guest');
+          if (!guest) throw new Error("review opened without an eating guest");
           return guest.id;
         });
         checkpoint = { guestId, geometry };
         break;
       }
-      if (!checkpoint) throw new Error('customer review did not open');
+      if (!checkpoint) throw new Error("customer review did not open");
 
-      const review = page.getByTestId('review-sheet');
+      const review = page.getByTestId("review-sheet");
       await expect(review).toBeVisible();
       await expectServiceGeometryStable(page, checkpoint.geometry);
-      const continueButton = page.getByTestId('continue-service-btn');
+      const continueButton = page.getByTestId("continue-service-btn");
       if (viewport.width >= 900) {
         const panel = await expectInsideViewport(
           review,
           viewport,
-          'review panel',
+          "review panel",
         );
         const action = await expectInsideViewport(
           continueButton,
           viewport,
-          'Continue service button',
+          "Continue service button",
         );
-        expectPanelBelowHud(panel, checkpoint.geometry.hud, 'review panel');
+        expectPanelBelowHud(panel, checkpoint.geometry.hud, "review panel");
         expect(action.x).toBeGreaterThanOrEqual(panel.x);
         expect(action.x + action.width).toBeLessThanOrEqual(
           panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
         );
       }
-      await expect(page.getByTestId('review-guest-identity')).toBeVisible();
-      await expect(page.getByTestId('review-guest-name')).not.toHaveText('Customer');
+      await expect(page.getByTestId("review-guest-identity")).toBeVisible();
+      await expect(page.getByTestId("review-guest-name")).not.toHaveText(
+        "Customer",
+      );
       const portrait = page
-        .getByTestId('review-guest-identity')
-        .getByTestId('guest-portrait');
+        .getByTestId("review-guest-identity")
+        .getByTestId("guest-portrait");
       await expect(portrait).toBeVisible();
       await expect(portrait).toHaveAttribute(
-        'src',
+        "src",
         `/assets/portraits/guest_${guestVariant(checkpoint.guestId)}.png`,
       );
 
@@ -545,7 +556,7 @@ test.describe('service visual continuity', () => {
     }
   });
 
-  test('keeps the restaurant framing fixed behind the day-summary transition', async ({
+  test("keeps the restaurant framing fixed behind the day-summary transition", async ({
     page,
   }) => {
     const viewports = [
@@ -556,33 +567,35 @@ test.describe('service visual continuity', () => {
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       await gotoFreshGame(page);
-      await page.getByTestId('open-day-btn').click();
-      await page.getByTestId('start-service-btn').click();
+      await page.getByTestId("open-day-btn").click();
+      await page.getByTestId("start-service-btn").click();
       await waitForServiceStarted(page);
       await finishFloorWithoutClosing(page);
 
       const before = await captureServiceGeometry(page);
-      await page.evaluate(() => window.__E2E__!.dispatch({ type: 'CLOSE_DAY' }));
-      const summary = page.getByTestId('day-summary-sheet');
+      await page.evaluate(() =>
+        window.__E2E__!.dispatch({ type: "CLOSE_DAY" }),
+      );
+      const summary = page.getByTestId("day-summary-sheet");
       await expect(summary).toBeVisible();
       await expectServiceGeometryStable(page, before);
       if (viewport.width >= 900) {
         const panel = await expectInsideViewport(
           summary,
           viewport,
-          'day summary panel',
+          "day summary panel",
         );
         const continueButton = await expectInsideViewport(
-          page.getByTestId('summary-back-floor'),
+          page.getByTestId("summary-back-floor"),
           viewport,
-          'summary Continue button',
+          "summary Continue button",
         );
         const editButton = await expectInsideViewport(
-          page.getByTestId('summary-edit-restaurant'),
+          page.getByTestId("summary-edit-restaurant"),
           viewport,
-          'summary Shop and Edit button',
+          "summary Shop and Edit button",
         );
-        expectPanelBelowHud(panel, before.hud, 'day summary panel');
+        expectPanelBelowHud(panel, before.hud, "day summary panel");
         for (const action of [continueButton, editButton]) {
           expect(action.x).toBeGreaterThanOrEqual(panel.x);
           expect(action.x + action.width).toBeLessThanOrEqual(
@@ -593,7 +606,7 @@ test.describe('service visual continuity', () => {
     }
   });
 
-  test('reserves and restores the expected desktop cooking workspace', async ({
+  test("reserves and restores the expected desktop cooking workspace", async ({
     page,
   }) => {
     const viewport = { width: 1280, height: 800 };
@@ -601,51 +614,71 @@ test.describe('service visual continuity', () => {
     await page.setViewportSize(viewport);
     await gotoFreshGame(page);
     await page.evaluate(() => window.__E2E__!.prepareCookUiFixture());
-    await expect(page.getByTestId('floor-service-panel')).toBeVisible();
+    await expect(page.getByTestId("floor-service-panel")).toBeVisible();
 
     const before = await captureServiceGeometry(page);
     await page.evaluate(() => window.__E2E__!.openComposeSheet());
 
-    const compose = page.getByTestId('compose-sheet');
+    const compose = page.getByTestId("compose-sheet");
     const workspaceLocators = [
-      { label: 'restaurant canvas', locator: page.getByTestId('restaurant-canvas'), before: before.canvas },
-      { label: 'canvas mount', locator: page.locator('.canvas-mount'), before: before.mount },
-      { label: 'status HUD', locator: page.getByTestId('game-hud'), before: before.hud },
-      { label: 'service chrome', locator: page.getByTestId('chrome-mount'), before: before.chrome },
+      {
+        label: "restaurant canvas",
+        locator: page.getByTestId("restaurant-canvas"),
+        before: before.canvas,
+      },
+      {
+        label: "canvas mount",
+        locator: page.locator(".canvas-mount"),
+        before: before.mount,
+      },
+      {
+        label: "service chrome",
+        locator: page.getByTestId("chrome-mount"),
+        before: before.chrome,
+      },
     ];
     await expect(compose).toBeVisible();
+    await expect(page.getByTestId("game-hud")).toBeHidden();
+    await expect(page.getByTestId("status-mount")).toBeHidden();
     for (const workspace of workspaceLocators) {
       await expect
-        .poll(async () => {
-          const narrowed = await rect(workspace.locator);
-          return Math.abs(
-            workspace.before.width - narrowed.width - expectedWorkspaceWidth,
-          );
-        }, {
-          message: `${workspace.label} should reserve the authored desktop side workspace`,
-        })
+        .poll(
+          async () => {
+            const narrowed = await rect(workspace.locator);
+            return Math.abs(
+              workspace.before.width - narrowed.width - expectedWorkspaceWidth,
+            );
+          },
+          {
+            message: `${workspace.label} should reserve the authored desktop side workspace`,
+          },
+        )
         .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
     }
 
-    const panel = await expectInsideViewport(compose, viewport, 'compose panel');
-    const footer = await expectInsideViewport(
-      page.locator('.compose-sheet-footer'),
+    const panel = await expectInsideViewport(
+      compose,
       viewport,
-      'compose footer',
+      "compose panel",
+    );
+    const footer = await expectInsideViewport(
+      page.locator(".compose-sheet-footer"),
+      viewport,
+      "compose footer",
     );
     const close = await expectInsideViewport(
-      page.getByTestId('compose-close'),
+      page.getByTestId("compose-close"),
       viewport,
-      'compose close button',
+      "compose close button",
     );
-    const overlay = await rect(page.locator('.service-overlay'));
+    const overlay = await rect(page.locator(".service-overlay"));
     expect(
       Math.abs(panel.width - expectedWorkspaceWidth),
-      'compose panel should match the authored desktop side workspace',
+      "compose panel should match the authored desktop side workspace",
     ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
     expect(
       Math.abs(panel.x + panel.width - (overlay.x + overlay.width)),
-      'compose panel should be right-aligned in the service overlay',
+      "compose panel should be right-aligned in the service overlay",
     ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
     for (const workspace of workspaceLocators) {
       const narrowed = await rect(workspace.locator);
@@ -661,7 +694,7 @@ test.describe('service visual continuity', () => {
       panel.x + panel.width + GEOMETRY_TOLERANCE_PX,
     );
 
-    await page.getByTestId('compose-close').click();
+    await page.getByTestId("compose-close").click();
     await expect(compose).toBeHidden();
     await expectServiceGeometryStable(page, before);
   });
