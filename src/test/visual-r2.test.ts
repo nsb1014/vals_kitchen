@@ -9,14 +9,11 @@ import {
 } from '../canvas/world/ActorLayer.ts';
 
 describe('walk squash helpers', () => {
-  it('keeps identity at step endpoints and peaks mid-step within ±6%', () => {
+  it('disables walk squash so stride frames never bounce the sprite', () => {
+    expect(WALK_SQUASH_AMPLITUDE).toBe(0);
     expect(walkStepSquash(0)).toEqual({ x: 1, y: 1 });
+    expect(walkStepSquash(0.5)).toEqual({ x: 1, y: 1 });
     expect(walkStepSquash(1)).toEqual({ x: 1, y: 1 });
-    const mid = walkStepSquash(0.5);
-    expect(mid.x).toBeCloseTo(1 + WALK_SQUASH_AMPLITUDE, 5);
-    expect(mid.y).toBeCloseTo(1 - WALK_SQUASH_AMPLITUDE, 5);
-    expect(Math.abs(mid.x - 1)).toBeLessThanOrEqual(0.06);
-    expect(Math.abs(mid.y - 1)).toBeLessThanOrEqual(0.06);
     expect(WALK_SQUASH_MS).toBeGreaterThanOrEqual(60);
     expect(WALK_SQUASH_MS).toBeLessThanOrEqual(90);
   });
@@ -28,20 +25,14 @@ describe('walk squash helpers', () => {
 });
 
 describe('idle / eating canvas loops', () => {
-  it('keeps idle motion vertical-free: breathe scale only, feet planted', () => {
-    // The rhythmic vertical idle bob was removed — actors must not translate
-    // up/down while standing, waiting, or seated (it read as bouncing).
-    const breathe = actorIdleBreathe(0);
-    expect(Math.abs(breathe.scaleX - 1)).toBeLessThanOrEqual(0.02);
-    expect(Math.abs(breathe.scaleY - 1)).toBeLessThanOrEqual(0.02);
-    expect('offsetY' in breathe).toBe(false);
+  it('disables idle breathe entirely (no scale pulse)', () => {
+    expect(actorIdleBreathe(0)).toEqual({ scaleX: 1, scaleY: 1 });
+    expect(actorIdleBreathe(520, 2)).toEqual({ scaleX: 1, scaleY: 1 });
   });
 
-  it('eating pulse uses scale only within subtle bounds', () => {
-    const pulse = actorEatingPulse(90, 1);
-    expect(Math.abs(pulse.scaleX - 1)).toBeLessThanOrEqual(0.04);
-    expect(Math.abs(pulse.scaleY - 1)).toBeLessThanOrEqual(0.04);
-    expect('offsetY' in pulse).toBe(false);
+  it('disables eating chew pulse entirely', () => {
+    expect(actorEatingPulse(90, 1)).toEqual({ scaleX: 1, scaleY: 1 });
+    expect(actorEatingPulse(0, 0)).toEqual({ scaleX: 1, scaleY: 1 });
   });
 });
 

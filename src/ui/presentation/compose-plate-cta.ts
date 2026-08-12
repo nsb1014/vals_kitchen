@@ -43,9 +43,8 @@ export function buildComposePlateCta(input: {
   const destination =
     input.tableLabel?.trim() ||
     (input.guestLabel?.trim() ? input.guestLabel.trim() : null);
-  // Keep the primary CTA short so it fits the mobile footer button; destination
-  // stays available via aria / disabled-reason context when needed.
-  const label = destination ? `Plate · ${destination}` : 'Plate';
+  // Compact primary CTA — destination stays in the disabled-reason line.
+  const label = 'Plate';
 
   if (!input.hasTicket) {
     return {
@@ -57,9 +56,10 @@ export function buildComposePlateCta(input: {
 
   if (count < minIngredients) {
     const need = minIngredients - count;
+    const where = destination ? ` for ${destination}` : '';
     return {
       label,
-      disabledReason: `Add ${need} more ingredient${need === 1 ? '' : 's'} (${count}/${maxIngredients}, need ${minIngredients}–${maxIngredients})`,
+      disabledReason: `Add ${need} more ingredient${need === 1 ? '' : 's'}${where} (${count}/${maxIngredients}, need ${minIngredients}–${maxIngredients})`,
       canPlate: false,
     };
   }
@@ -75,7 +75,11 @@ export function buildComposePlateCta(input: {
   const canPlate = input.canPlate !== false;
   return {
     label,
-    disabledReason: canPlate ? null : 'Cannot plate right now',
+    disabledReason: canPlate
+      ? null
+      : destination
+        ? `Cannot plate for ${destination} right now`
+        : 'Cannot plate right now',
     canPlate,
   };
 }
