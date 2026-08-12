@@ -641,13 +641,15 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
   transition: none;
 }
 
-/* Plate CTA may wrap destination copy ("Plate & deliver to Table 2"). */
+/* Plate CTA stays short ("Plate · Table 2"); keep a single-line compact control. */
 .compose-sheet-footer #plate-btn {
   height: auto;
   max-height: none;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.15;
   padding-block: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .service-btn:disabled {
@@ -834,11 +836,16 @@ html[data-vk-reduced-motion='true'] .chat-bubble.order-bubble.order-bubble-pulse
   /* Overlay covers the full surface (including Cash HUD). Offset below status strip. */
   top: calc(var(--vk-status-hud-height, 2.75rem) + 0.45rem);
   left: 0.45rem;
-  /* Above .service-overlay (60) so a long Orders list paints over the cooking panel. */
-  z-index: 70;
+  /* Below speech bubbles (66) while closed so order callouts stay readable. */
+  z-index: 55;
   width: min(20rem, calc(100% - 0.9rem));
   /* Beat .overlay-mount > * { pointer-events: auto } so empty dock space clicks pass through. */
   pointer-events: none;
+}
+
+.game-surface:has([data-testid='floor-tickets-menu']:not([hidden])) .floor-tickets-dock {
+  /* Open menu covers bubbles and the cooking sheet edge. */
+  z-index: 75;
 }
 
 .overlay-mount > .floor-tickets-dock {
@@ -2325,13 +2332,16 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    /* Pantry owns the sheet: flavor targets stay a compact strip above. */
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
   }
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: none;
-    padding: 0.4rem 0.6rem 0.45rem;
+    max-height: 3.25rem;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0.3rem 0.6rem 0.35rem;
     border-left: none;
     border-bottom: 1px solid var(--vk-border);
   }
@@ -2343,8 +2353,8 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   .compose-request-axis-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
-    gap: 0.45rem;
-    overflow: visible;
+    gap: 0.25rem 0.45rem;
+    overflow: hidden;
   }
 
   .compose-request-axis {
@@ -2366,7 +2376,8 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
   }
 
   .compose-pantry {
-    padding: 0.4rem 0.6rem;
+    min-height: 0;
+    padding: 0.35rem 0.6rem 0.5rem;
   }
 
   .compose-sheet-footer {
@@ -2819,12 +2830,14 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 .compose-sheet-footer #plate-btn {
   font-size: 0.95rem;
   letter-spacing: 0.02em;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.15;
   height: auto;
   min-height: max(var(--vk-touch-min, 44px), var(--vk-cta-h));
   max-height: none;
   padding-block: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .review-stars {
@@ -2856,6 +2869,31 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
    * (min-width 900) keeps the full search row. */
   .compose-search-row {
     display: none;
+  }
+
+  .compose-filter-summary,
+  .compose-progress-track,
+  .compose-progress-coherence {
+    display: none;
+  }
+
+  .compose-progress {
+    margin: 0.05rem 0 0.15rem;
+  }
+
+  .compose-selection {
+    padding-top: 0.2rem;
+    padding-bottom: 0.1rem;
+  }
+
+  .compose-filters {
+    padding-top: 0.1rem;
+    padding-bottom: 0.2rem;
+  }
+
+  .compose-selected-strip {
+    min-height: 32px;
+    padding: 0.1rem 0;
   }
 
   .compose-ticket-rail {
@@ -3004,12 +3042,14 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
   }
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: 5rem;
+    max-height: 3.25rem;
+    min-height: 0;
+    overflow: hidden;
     border-top: 1px solid #694525;
     border-left: 0;
   }
@@ -3066,6 +3106,7 @@ html[data-vk-reduced-motion='true'] .compose-progress-fill,
 
   .compose-pantry {
     grid-row: 2;
+    min-height: 0;
   }
 
   .compose-sheet-footer {

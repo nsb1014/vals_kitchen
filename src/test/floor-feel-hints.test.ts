@@ -68,7 +68,7 @@ describe('floor-feel distant intent hints', () => {
     expect(service.some((c) => c.x === far.x && c.y === far.y)).toBe(true);
   });
 
-  it('uses near strength when Val already stands on a service cell', () => {
+  it('uses near strength on a service cell when Val already stands beside the guest', () => {
     const seat = { x: 5, y: 5 };
     const guest = seatedGuest(seat);
     const service = guestServicePositions(seat)[0]!;
@@ -83,12 +83,47 @@ describe('floor-feel distant intent hints', () => {
     expect(hints).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          x: seat.x,
-          y: seat.y,
+          x: service.x,
+          y: service.y,
           strength: 'near',
         }),
       ]),
     );
+    expect(hints.some((h) => h.x === seat.x && h.y === seat.y)).toBe(false);
+  });
+
+  it('shows at most one far hint when several chores compete', () => {
+    const seat = { x: 5, y: 5 };
+    const guest = seatedGuest(seat);
+    const placement: Placement = {
+      id: 'table_1',
+      itemKey: 'table_2',
+      x: 8,
+      y: 8,
+      rotation: 0,
+    };
+    const floor = emptyFloor({
+      pool: [guest],
+      tables: [
+        {
+          placementId: 'table_1',
+          state: 'unset',
+          seatSlotCount: 2,
+        },
+      ],
+    });
+    const hints = computeFloorInteractHints({
+      floor,
+      placements: [placement],
+      player: { x: 1, y: 1 },
+      grid: {
+        w: 12,
+        h: 12,
+        blocked: new Set([`${seat.x},${seat.y}`, '8,8']),
+      },
+      stationNeedsAttention: true,
+    });
+    expect(hints.filter((h) => h.strength === 'far')).toHaveLength(1);
   });
 
   it('marks unset tables with a far approach cell from across the room', () => {
