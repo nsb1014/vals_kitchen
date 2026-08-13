@@ -3,7 +3,9 @@ import { TILE_PX } from "../../canvas/coordinates.ts";
 import {
   SEAT_NS_HIP_OFFSET_PX,
   SEAT_SIDE_HIP_OFFSET_PX,
+  SEAT_SIT_GUEST_SINK_Y,
   SEAT_SIT_OFFSET_Y,
+  SEAT_SIT_VARIANT_OFFSET_Y,
   seatChairWorldPosition,
   seatSitStaysOnChair,
   seatSitWorldPosition,
@@ -75,7 +77,7 @@ describe("seat sit anchors", () => {
     expect(seatSitStaysOnChair(seatE)).toBe(true);
   });
 
-  it("plants every palette variant at the same stool contact", () => {
+  it("plants every palette variant on the stool, not sunk into it", () => {
     const seat = {
       tablePlacementId: "t",
       slotIndex: 0,
@@ -85,9 +87,14 @@ describe("seat sit anchors", () => {
     };
     const chair = seatChairWorldPosition(seat);
     const planted = seatSitWorldPosition(seat, "e");
-    expect(planted.y).toBeGreaterThan(chair.y);
+    // Authored sit pose already has bent legs. Extra positive Y buries hips
+    // in the cushion so diners look seated *in* the stool instead of on it.
+    expect(SEAT_SIT_GUEST_SINK_Y).toBe(0);
+    expect(SEAT_SIT_OFFSET_Y).toBe(0);
+    expect(planted).toEqual(chair);
     for (const variant of ["a", "b", "c", "d", "e"] as const) {
-      expect(seatSitWorldPosition(seat, variant)).toEqual(planted);
+      expect(SEAT_SIT_VARIANT_OFFSET_Y[variant]).toBe(0);
+      expect(seatSitWorldPosition(seat, variant)).toEqual(chair);
     }
   });
 
