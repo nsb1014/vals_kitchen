@@ -54,15 +54,28 @@ describe('viewport scroll containment CSS', () => {
     expect(service).not.toMatch(
       /\.compose-order-panel\s*\{[^}]*max-height:\s*3\.25rem/s,
     );
-    const mobileCaps = [
+    // A rem ceiling plus minmax(0, auto) lets the pantry crush the
+    // target/dish comparison. Size that row to the bars instead.
+    expect(service).not.toMatch(
+      /\.compose-workspace\s*\{[^}]*grid-template-rows:\s*minmax\(\s*0\s*,\s*auto\s*\)/s,
+    );
+    expect(service).toMatch(
+      /\.compose-workspace\s*\{[^}]*grid-template-rows:\s*max-content\s+minmax\(\s*0\s*,\s*1fr\s*\)/s,
+    );
+    const remCaps = [
       ...service.matchAll(
         /\.compose-order-panel\s*\{[^}]*max-height:\s*([0-9.]+)rem/gs,
       ),
     ].map((match) => Number(match[1]));
-    expect(mobileCaps.length).toBeGreaterThan(0);
-    expect(Math.min(...mobileCaps)).toBeGreaterThanOrEqual(6.5);
+    expect(remCaps).toEqual([]);
     expect(service).toMatch(
-      /\.compose-order-panel\s*\{[^}]*max-height:\s*8\.5rem[^}]*overflow:\s*auto/s,
+      /\.compose-order-panel\s*\{[^}]*min-height:\s*min-content/s,
+    );
+    expect(service).toMatch(
+      /\.compose-request-axis-list\s*\{[^}]*grid-template-columns:\s*1fr/s,
+    );
+    expect(service).not.toMatch(
+      /\.compose-request-axis-list\s*\{[^}]*overflow:\s*hidden/s,
     );
   });
 });

@@ -2340,17 +2340,18 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-workspace {
     grid-template-columns: minmax(0, 1fr);
-    /* Pantry owns the sheet: flavor targets stay a compact strip above. */
-    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+    /* max-content: do not let minmax(0, auto) shrink the target/dish row
+     * under the pantry. overflow:auto on the panel would also zero its
+     * automatic minimum and clip the comparison. */
+    grid-template-rows: max-content minmax(0, 1fr);
   }
 
   .compose-order-panel {
     grid-row: 1;
-    /* Legend + two request axes with status labels; extra axes scroll. */
-    max-height: 8.5rem;
-    min-height: 0;
-    overflow: auto;
-    padding: 0.3rem 0.6rem 0.35rem;
+    max-height: none;
+    min-height: min-content;
+    overflow: visible;
+    padding: 0.35rem 0.6rem 0.45rem;
     border-left: none;
     border-bottom: 1px solid var(--vk-border);
   }
@@ -2361,9 +2362,9 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-request-axis-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
-    gap: 0.25rem 0.45rem;
-    overflow: hidden;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    overflow: visible;
   }
 
   .compose-request-axis {
@@ -2372,7 +2373,9 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-request-axis-head {
     margin-bottom: 0.15rem;
-    font-size: 10px;
+    font-size: 11px;
+    flex-wrap: nowrap;
+    align-items: baseline;
   }
 
   .compose-request-axis-head span {
@@ -2381,7 +2384,11 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-request-axis-head .compose-request-status {
     display: inline;
-    font-size: 9px;
+    font-size: 10px;
+  }
+
+  .compose-request-bar {
+    height: 8px;
   }
 
   .compose-pantry {
@@ -2437,11 +2444,6 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-flavor-strip {
     grid-template-rows: repeat(2, minmax(0, 1fr));
-  }
-
-  .compose-order-panel {
-    max-height: 6.5rem;
-    overflow: auto;
   }
 
   .compose-order-panel-head p,
@@ -3024,10 +3026,6 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
     margin-top: 0.15rem;
   }
 
-  .compose-order-panel {
-    max-height: 8.5rem;
-  }
-
   .compose-sheet-footer {
     min-height: 5.1rem;
     padding-block: 0.3rem 0.4rem;
@@ -3091,14 +3089,14 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+    grid-template-rows: max-content minmax(0, 1fr);
   }
 
   .compose-order-panel {
     grid-row: 1;
-    max-height: 8.5rem;
-    min-height: 0;
-    overflow: auto;
+    max-height: none;
+    min-height: min-content;
+    overflow: visible;
     border-top: 1px solid #694525;
     border-left: 0;
   }
@@ -3131,8 +3129,9 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
   }
 
   .compose-request-axis-list {
-    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.45rem;
+    overflow: visible;
   }
 
   .compose-request-axis {
@@ -3141,7 +3140,9 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-request-axis-head {
     margin-bottom: 0.15rem;
-    font-size: 10px;
+    font-size: 11px;
+    flex-wrap: nowrap;
+    align-items: baseline;
   }
 
   .compose-request-axis-head span {
@@ -3150,7 +3151,11 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
 
   .compose-request-axis-head .compose-request-status {
     display: inline;
-    font-size: 9px;
+    font-size: 10px;
+  }
+
+  .compose-request-bar {
+    height: 8px;
   }
 
   .compose-pantry {
@@ -3376,6 +3381,8 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
     grid-column: 2;
     max-height: none;
     height: 100%;
+    min-height: 0;
+    overflow: auto;
     padding: 0.15rem 0.35rem;
     border-top: 0;
     border-left: 1px solid #694525;
