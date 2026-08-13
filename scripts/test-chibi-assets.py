@@ -355,23 +355,45 @@ class ValSourceIntegrityTests(unittest.TestCase):
                 self.assertEqual(alias.tobytes(), canonical.tobytes())
 
 
-class GuestTemplateIntegrityTests(unittest.TestCase):
+class GuestCastIntegrityTests(unittest.TestCase):
     FACINGS = ("left", "down", "up", "right")
     VARIANTS = ("a", "b", "c", "d", "e")
-    MASTER = "e"
 
-    def test_palette_variants_keep_the_master_silhouette(self) -> None:
+    def test_each_diner_is_a_distinct_person(self) -> None:
+        """Palette clones share alpha; unique adults must not."""
+        for facing in ("down", "left"):
+            alphas = []
+            for variant in self.VARIANTS:
+                frame = load_rgba(GUEST_FRAMES / f"guest_{variant}_{facing}_0.png")
+                self.assertEqual(frame.size, FRAME_SIZE)
+                alphas.append(frame.getchannel("A").tobytes())
+            unique = set(alphas)
+            self.assertEqual(
+                len(unique),
+                len(self.VARIANTS),
+                f"idle {facing} silhouettes collapsed to {len(unique)} people",
+            )
+
+    def test_sit_poses_share_a_feet_baseline_without_matching_hair(self) -> None:
         for facing in self.FACINGS:
-            names = [f"guest_{{variant}}_{facing}_{frame}.png" for frame in range(3)]
-            names.append(f"guest_{{variant}}_sit_{facing}.png")
-            for template in names:
-                master = load_rgba(GUEST_FRAMES / template.format(variant=self.MASTER))
-                master_alpha = master.getchannel("A").tobytes()
-                for variant in self.VARIANTS:
-                    with self.subTest(frame=template.format(variant=variant)):
-                        frame = load_rgba(GUEST_FRAMES / template.format(variant=variant))
-                        self.assertEqual(frame.size, FRAME_SIZE)
-                        self.assertEqual(frame.getchannel("A").tobytes(), master_alpha)
+            bottoms: list[int] = []
+            heights: list[int] = []
+            alphas: list[bytes] = []
+            for variant in self.VARIANTS:
+                with self.subTest(frame=f"guest_{variant}_sit_{facing}"):
+                    frame = load_rgba(GUEST_FRAMES / f"guest_{variant}_sit_{facing}.png")
+                    self.assertEqual(frame.size, FRAME_SIZE)
+                    bounds = frame.getchannel("A").getbbox()
+                    self.assertIsNotNone(bounds)
+                    left, top, right, bottom = bounds
+                    bottoms.append(bottom)
+                    heights.append(bottom - top)
+                    alphas.append(frame.getchannel("A").tobytes())
+                    self.assertGreaterEqual(top, 4)
+                    self.assertLessEqual(bottom, FRAME_SIZE[1] - 4)
+            self.assertLessEqual(max(bottoms) - min(bottoms), 2)
+            self.assertLessEqual(max(heights) - min(heights), 24)
+            self.assertEqual(len(set(alphas)), len(self.VARIANTS))
 
 
 class CharacterAtlasIntegrityTests(unittest.TestCase):

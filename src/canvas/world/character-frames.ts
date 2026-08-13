@@ -4,8 +4,8 @@ export const GUEST_VARIANTS = ['a', 'b', 'c', 'd', 'e'] as const;
 export type GuestVariant = (typeof GUEST_VARIANTS)[number];
 
 /**
- * Stable guest look from id. Variants are palette swaps of one adult
- * template (hair / skin / outfit color) so every diner shares one silhouette.
+ * Stable guest look from id. Variants are distinct adults (hair, outfit,
+ * face) packed at one shared scale so every diner fits the same stool.
  */
 export function guestVariant(guestId: string): GuestVariant {
   let hash = 0;

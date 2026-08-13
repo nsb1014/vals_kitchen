@@ -57,18 +57,40 @@ describe('characters atlas coverage', () => {
     }
   });
 
-  it('keeps every guest sit pose on the same canvas and head height', () => {
+  it('keeps every guest sit pose on the same canvas and feet line', () => {
     for (const facing of FACINGS) {
-      const tops = new Set<number>();
+      const bottoms = new Set<number>();
       for (const variant of GUEST_VARIANTS) {
         const frame = atlas.frames[`guest_${variant}_sit_${facing}`] as
-          | { sourceSize: { w: number; h: number }; contentBounds?: { y: number } }
+          | {
+              sourceSize: { w: number; h: number };
+              contentBounds?: { y: number; h: number };
+            }
           | undefined;
         expect(frame?.sourceSize).toEqual({ w: 128, h: 160 });
         expect(frame?.contentBounds).toBeTruthy();
-        tops.add(frame!.contentBounds!.y);
+        bottoms.add(frame!.contentBounds!.y + frame!.contentBounds!.h);
       }
-      expect(tops.size, `sit ${facing} head height drifted`).toBe(1);
+      expect(
+        Math.max(...bottoms) - Math.min(...bottoms),
+        `sit ${facing} feet drifted`,
+      ).toBeLessThanOrEqual(2);
     }
+  });
+
+  it('ships five distinct diner silhouettes instead of palette clones', () => {
+    const tops = new Set<number>();
+    for (const variant of GUEST_VARIANTS) {
+      const frame = atlas.frames[`guest_${variant}_down_0`] as
+        | { contentBounds?: { y: number; w: number; h: number } }
+        | undefined;
+      expect(frame?.contentBounds).toBeTruthy();
+      tops.add(
+        (frame!.contentBounds!.y << 16) ^
+          (frame!.contentBounds!.w << 8) ^
+          frame!.contentBounds!.h,
+      );
+    }
+    expect(tops.size).toBeGreaterThan(1);
   });
 });

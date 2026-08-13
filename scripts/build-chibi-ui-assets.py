@@ -9,9 +9,8 @@ for retained guest frames.
 
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import deque
 from pathlib import Path
-import colorsys
 import os
 
 from PIL import Image
@@ -29,40 +28,7 @@ PROP_OUT = OUT / "restaurant-props"
 
 ACTOR_FRAME_SIZE = (128, 160)
 PORTRAIT_SIZE = (96, 96)
-GUEST_MASTER_VARIANT = "e"
 GUEST_VARIANTS = ("a", "b", "c", "d", "e")
-# Palette swaps of the master adult template. Geometry/alpha stay identical so
-# every diner fits the table and status dots share one head height.
-GUEST_PALETTES: dict[str, dict[str, tuple[int, int, int]]] = {
-    "a": {
-        "hair": (168, 168, 176),
-        "skin": (255, 214, 186),
-        "shirt": (176, 78, 48),
-        "pants": (86, 52, 38),
-        "shoes": (70, 40, 22),
-    },
-    "b": {
-        "hair": (28, 22, 18),
-        "skin": (168, 110, 72),
-        "shirt": (46, 102, 62),
-        "pants": (196, 168, 112),
-        "shoes": (48, 30, 18),
-    },
-    "c": {
-        "hair": (210, 168, 72),
-        "skin": (214, 168, 118),
-        "shirt": (46, 140, 140),
-        "pants": (40, 48, 72),
-        "shoes": (56, 34, 20),
-    },
-    "d": {
-        "hair": (18, 14, 12),
-        "skin": (92, 58, 38),
-        "shirt": (196, 148, 48),
-        "pants": (96, 64, 40),
-        "shoes": (40, 24, 14),
-    },
-}
 CARRY_LEG_BLEND_TOP = 128
 CARRY_LEG_BLEND_HEIGHT = 3
 CARRY_LEG_CURVE = 0.004
@@ -834,186 +800,84 @@ def build_player() -> None:
     save(Image.open(PLAYER_OUT / "player_down_1.png"), PLAYER_OUT / "player_walk.png")
 
 
-def guest_pixel_role(red: int, green: int, blue: int, rel_y: float) -> str:
-    """Map one opaque master-template pixel to a recolor role."""
-    hue, sat, value = colorsys.rgb_to_hsv(red / 255, green / 255, blue / 255)
-    hue_deg = hue * 360
-    luma = 0.3 * red + 0.59 * green + 0.11 * blue
-    if luma < 42 or max(red, green, blue) < 50:
-        return "outline"
-    if sat < 0.12 and value > 0.82:
-        return "keep"
-    # Gold earrings stay gold on every skin tone.
-    if 25 <= hue_deg <= 55 and sat >= 0.45 and value >= 0.55 and rel_y < 0.45:
-        return "keep"
-    is_blue = (185 <= hue_deg <= 255 and sat >= 0.12) or (
-        blue > red + 12 and blue >= green - 4 and sat >= 0.12
-    )
-    is_peach = 12 <= hue_deg <= 52 and 0.10 <= sat <= 0.62 and value >= 0.55
-    is_brown = 12 <= hue_deg <= 50 and sat >= 0.18 and value < 0.58
-    if rel_y > 0.90:
-        return "shoes"
-    if rel_y > 0.68 and not is_blue:
-        return "pants"
-    if is_blue and rel_y < 0.78:
-        return "shirt"
-    if is_peach and rel_y < 0.72:
-        return "skin"
-    if is_brown and rel_y < 0.50:
-        return "hair"
-    if rel_y < 0.42:
-        return "hair"
-    if rel_y < 0.68:
-        return "shirt"
-    return "pants"
-
-
-def guest_role_luma_medians(image: Image.Image) -> dict[str, float]:
-    bounds = image.getchannel("A").getbbox()
-    if bounds is None:
-        raise ValueError("Cannot classify an empty guest frame")
-    left, top, _right, bottom = bounds
-    height = max(1, bottom - top)
-    lumas: dict[str, list[float]] = defaultdict(list)
-    pixels = image.load()
-    assert pixels is not None
-    for y in range(image.height):
-        for x in range(image.width):
-            red, green, blue, alpha = pixels[x, y]
-            if alpha < 40:
-                continue
-            role = guest_pixel_role(red, green, blue, (y - top) / height)
-            lumas[role].append(0.3 * red + 0.59 * green + 0.11 * blue)
-    medians: dict[str, float] = {}
-    for role, values in lumas.items():
-        values.sort()
-        medians[role] = values[len(values) // 2]
-    return medians
-
-
-def shade_palette_color(
-    base: tuple[int, int, int],
-    source_luma: float,
-    median_luma: float,
-) -> tuple[int, int, int]:
-    """Keep the target hue/sat; only nudge value so highlights do not bleach."""
-    hue, sat, value = colorsys.rgb_to_hsv(base[0] / 255, base[1] / 255, base[2] / 255)
-    relative = source_luma / max(1.0, median_luma)
-    value = max(0.08, min(1.0, value * (0.82 + 0.28 * relative)))
-    red, green, blue = colorsys.hsv_to_rgb(hue, sat, value)
-    return (
-        max(0, min(255, round(red * 255))),
-        max(0, min(255, round(green * 255))),
-        max(0, min(255, round(blue * 255))),
-    )
-
-
-def recolor_guest_frame(
-    master: Image.Image,
-    palette: dict[str, tuple[int, int, int]],
-    medians: dict[str, float],
-) -> Image.Image:
-    """Recolor RGB only; alpha/silhouette stay byte-identical to the master."""
-    rgba = master.convert("RGBA")
-    bounds = rgba.getchannel("A").getbbox()
-    if bounds is None:
-        raise ValueError("Cannot recolor an empty guest frame")
-    left, top, _right, bottom = bounds
-    height = max(1, bottom - top)
-    out = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
-    src = rgba.load()
-    dst = out.load()
-    assert src is not None and dst is not None
-    for y in range(rgba.height):
-        for x in range(rgba.width):
-            red, green, blue, alpha = src[x, y]
-            if alpha == 0:
-                continue
-            role = guest_pixel_role(red, green, blue, (y - top) / height)
-            if role in ("outline", "keep") or role not in palette:
-                dst[x, y] = (red, green, blue, alpha)
-                continue
-            luma = 0.3 * red + 0.59 * green + 0.11 * blue
-            shaded = shade_palette_color(palette[role], luma, medians.get(role, luma))
-            dst[x, y] = (*shaded, alpha)
-    out.putalpha(rgba.getchannel("A"))
-    return out
-
-
-def validate_guest_template_identity() -> None:
-    """Every palette variant must keep the master's exact silhouette."""
-    for variant in GUEST_VARIANTS:
-        if variant == GUEST_MASTER_VARIANT:
-            continue
-        for facing in ("down", "left", "right", "up"):
-            names = [f"guest_{variant}_{facing}_{frame}.png" for frame in range(3)]
-            names.append(f"guest_{variant}_sit_{facing}.png")
-            for name in names:
-                master_name = name.replace(
-                    f"guest_{variant}_", f"guest_{GUEST_MASTER_VARIANT}_", 1
-                )
-                frame = Image.open(GUEST_OUT / name).convert("RGBA")
-                master = Image.open(GUEST_OUT / master_name).convert("RGBA")
-                if frame.size != master.size:
-                    raise ValueError(f"Guest frame size drifted: {name}")
-                if frame.getchannel("A").tobytes() != master.getchannel("A").tobytes():
-                    raise ValueError(f"Guest silhouette drifted: {name}")
-
-
-def build_guests() -> None:
-    """Crop the master adult sheet, then palette-swap the other diner looks."""
+def load_guest_sheet_sources(
+    variant: str,
+) -> dict[tuple[str, int], Image.Image]:
+    """Crop one identity sheet into facing/column cells."""
     row_facings = ("down", "right", "left", "up")
-    sheet_path = SEATING_SOURCE / f"guest-{GUEST_MASTER_VARIANT}-sheet-transparent.png"
+    sheet_path = SEATING_SOURCE / f"guest-{variant}-sheet-transparent.png"
     sheet = clear_alpha_noise(Image.open(sheet_path).convert("RGBA"))
     if sheet.size != (1536, 1024):
         raise SystemExit(f"Unexpected guest sheet size: {sheet_path} {sheet.size}")
     boxes = authored_grid_boxes(sheet, columns=4, rows=4)
-
     sources: dict[tuple[str, int], Image.Image] = {}
     for row, facing in enumerate(row_facings):
         for column in range(4):
-            cell = sheet.crop(boxes[row][column])
-            sources[(facing, column)] = trim(cell, 3)
+            sources[(facing, column)] = trim(sheet.crop(boxes[row][column]), 3)
+    return sources
 
-    standing = [source for (facing, column), source in sources.items() if column < 3]
+
+def shared_guest_scale(
+    sheets: dict[str, dict[tuple[str, int], Image.Image]],
+) -> float:
+    """One adult scale for every diner so table fit stays shared."""
+    standing = [
+        frame
+        for sources in sheets.values()
+        for (facing, column), frame in sources.items()
+        if column < 3
+    ]
     max_w = max(frame.width for frame in standing)
     max_h = max(frame.height for frame in standing)
-    scale = min(
+    return min(
         (ACTOR_FRAME_SIZE[0] - 8) / max_w,
         (ACTOR_FRAME_SIZE[1] - 8) / max_h,
     )
 
-    master_frames: dict[str, Image.Image] = {}
-    for facing in row_facings:
-        reference = None
-        for frame in range(3):
-            sprite = contain_at_scale(sources[(facing, frame)], ACTOR_FRAME_SIZE, scale)
-            name = f"guest_{GUEST_MASTER_VARIANT}_{facing}_{frame}.png"
-            if facing in ("left", "right"):
-                if frame == 0:
-                    reference = sprite
-                elif reference is not None:
-                    sprite = ensure_side_walk_facing(sprite, reference, name)
-            save(sprite, GUEST_OUT / name)
-            master_frames[name] = sprite
-        seated = contain_at_scale(sources[(facing, 3)], ACTOR_FRAME_SIZE, scale)
-        sit_name = f"guest_{GUEST_MASTER_VARIANT}_sit_{facing}.png"
-        save(seated, GUEST_OUT / sit_name)
-        master_frames[sit_name] = seated
 
-    median_source = Image.open(
-        GUEST_OUT / f"guest_{GUEST_MASTER_VARIANT}_down_0.png"
-    ).convert("RGBA")
-    medians = guest_role_luma_medians(median_source)
-
-    for variant, palette in GUEST_PALETTES.items():
-        for master_name, master_image in master_frames.items():
-            variant_name = master_name.replace(
-                f"guest_{GUEST_MASTER_VARIANT}_", f"guest_{variant}_", 1
-            )
-            save(recolor_guest_frame(master_image, palette, medians), GUEST_OUT / variant_name)
-
+def validate_guest_cast_dimensions() -> None:
+    """Distinct adults, shared canvas, shared sit feet."""
+    sit_bottoms: dict[str, list[int]] = {facing: [] for facing in ("down", "left", "right", "up")}
+    idle_alphas: dict[str, list[bytes]] = {facing: [] for facing in ("down", "left")}
     for variant in GUEST_VARIANTS:
+        for facing in ("down", "left", "right", "up"):
+            sit = Image.open(GUEST_OUT / f"guest_{variant}_sit_{facing}.png").convert("RGBA")
+            bounds = sit.getchannel("A").getbbox()
+            if bounds is None:
+                raise ValueError(f"Guest sit frame is empty: guest_{variant}_sit_{facing}")
+            sit_bottoms[facing].append(bounds[3])
+        for facing in ("down", "left"):
+            idle = Image.open(GUEST_OUT / f"guest_{variant}_{facing}_0.png").convert("RGBA")
+            idle_alphas[facing].append(idle.getchannel("A").tobytes())
+    for facing, bottoms in sit_bottoms.items():
+        if max(bottoms) - min(bottoms) > 2:
+            raise ValueError(f"Guest sit feet drifted for {facing}: {bottoms}")
+    for facing, alphas in idle_alphas.items():
+        if len(set(alphas)) != len(GUEST_VARIANTS):
+            raise ValueError(f"Guest idle {facing} silhouettes are not distinct people")
+
+
+def build_guests() -> None:
+    """Crop each adult identity sheet at one shared scale and feet baseline."""
+    row_facings = ("down", "right", "left", "up")
+    sheets = {variant: load_guest_sheet_sources(variant) for variant in GUEST_VARIANTS}
+    scale = shared_guest_scale(sheets)
+
+    for variant, sources in sheets.items():
+        for facing in row_facings:
+            reference = None
+            for frame in range(3):
+                sprite = contain_at_scale(sources[(facing, frame)], ACTOR_FRAME_SIZE, scale)
+                name = f"guest_{variant}_{facing}_{frame}.png"
+                if facing in ("left", "right"):
+                    if frame == 0:
+                        reference = sprite
+                    elif reference is not None:
+                        sprite = ensure_side_walk_facing(sprite, reference, name)
+                save(sprite, GUEST_OUT / name)
+            seated = contain_at_scale(sources[(facing, 3)], ACTOR_FRAME_SIZE, scale)
+            save(seated, GUEST_OUT / f"guest_{variant}_sit_{facing}.png")
+
         down = Image.open(GUEST_OUT / f"guest_{variant}_down_0.png").convert("RGBA")
         bounds = down.getchannel("A").getbbox()
         if bounds is None:
@@ -1300,14 +1164,15 @@ def main() -> None:
         print(f"  fx frames: {len(list(TILE_OUT.glob('fx_*.png')))}")
         print(f"  carry plate: {(PROP_OUT / 'carry_plate.png').is_file()}")
         return
-    master_sheet = SEATING_SOURCE / f"guest-{GUEST_MASTER_VARIANT}-sheet-transparent.png"
-    if not master_sheet.is_file():
-        raise SystemExit(f"Missing master guest sheet: {master_sheet}")
+    for variant in GUEST_VARIANTS:
+        sheet = SEATING_SOURCE / f"guest-{variant}-sheet-transparent.png"
+        if not sheet.is_file():
+            raise SystemExit(f"Missing guest identity sheet: {sheet}")
     if guests_only:
         build_guests()
         validate_animation_frames()
-        validate_guest_template_identity()
-        print("Built guest template variants:")
+        validate_guest_cast_dimensions()
+        print("Built distinct adult diner frames:")
         print(f"  coordinated guest frames: {len(list(GUEST_OUT.glob('guest_*.png')))}")
         print(f"  guest portraits: {len(list(PORTRAIT_OUT.glob('*.png')))}")
         return
@@ -1328,7 +1193,7 @@ def main() -> None:
     build_player()
     build_guests()
     validate_animation_frames()
-    validate_guest_template_identity()
+    validate_guest_cast_dimensions()
     build_surfaces()
     build_props()
     build_fx_sprites()

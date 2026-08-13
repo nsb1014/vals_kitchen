@@ -12,8 +12,9 @@ import type { GuestVariant } from "./character-frames.ts";
  *    provides the tableward lean; the legs occupy the gap beside the
  *    tabletop.
  * 3. Draw order: table (floor prop) → stool → guest.
- * 4. Guests share one adult template (palette swaps only), so every diner
- *    uses the same sit silhouette, head height, and stool contact.
+ * 4. Guests are distinct adults from the seating-rework identity sheets,
+ *    packed at one shared scale and feet baseline so stools and status dots
+ *    line up. Hair and outfits differ; body size does not.
  *
  * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
  */
@@ -33,8 +34,8 @@ export const SEAT_SIT_OFFSET_Y = 0;
  */
 export const SEAT_SIT_GUEST_SINK_Y = 0;
 /**
- * Extra sit sink per guest variant. Identical and zero on purpose: outfits
- * change color, not body geometry, and diners sit on the stool, not in it.
+ * Extra sit sink per guest variant. Kept at 0: every adult identity uses the
+ * same scale and feet baseline, so diners sit on the stool, not in it.
  */
 export const SEAT_SIT_VARIANT_OFFSET_Y: Readonly<Record<GuestVariant, number>> =
   {
