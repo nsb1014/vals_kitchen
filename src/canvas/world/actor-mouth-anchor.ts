@@ -54,3 +54,25 @@ export function mouthAnchorFromContentBounds(bounds: {
     y: bounds.top + height * ACTOR_MOUTH_FROM_TOP_RATIO,
   };
 }
+
+/**
+ * Local offset (from feet-anchored actor root) for the floating status cue.
+ * Uses authored content bounds so sit-side padding does not park the mark
+ * in empty air above the head, and so a hip-registered profile sit keeps
+ * the mark over the diner instead of the canvas midline.
+ */
+export function guestStageCueLocalOffset(opts: {
+  sourceWidth: number;
+  sourceHeight: number;
+  contentBounds: { x: number; y: number; w: number; h: number };
+  scaleX: number;
+  scaleY: number;
+}): { x: number; y: number } {
+  const headX =
+    opts.contentBounds.x + opts.contentBounds.w / 2 - opts.sourceWidth / 2;
+  const headTopFromBottom = opts.sourceHeight - opts.contentBounds.y;
+  return {
+    x: headX * opts.scaleX,
+    y: -headTopFromBottom * opts.scaleY - 4,
+  };
+}

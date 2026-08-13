@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTOR_MOUTH_FROM_TOP_RATIO,
   actorMouthWorldFromFeet,
+  guestStageCueLocalOffset,
   mouthAnchorFromContentBounds,
   playerMouthWorldFromFeet,
 } from '../canvas/world/actor-mouth-anchor.ts';
@@ -45,6 +46,21 @@ describe('floor-feel round 2 — mouth anchors', () => {
     const mouth = mouthAnchorFromContentBounds(bounds);
     expect(mouth.x).toBe(30);
     expect(mouth.y).toBeCloseTo(40 + 60 * ACTOR_MOUTH_FROM_TOP_RATIO);
+  });
+
+  it('parks the seated status cue on the authored head, not the empty canvas top', () => {
+    const scale = SEATED_GUEST_DISPLAY_HEIGHT / 160;
+    const offset = guestStageCueLocalOffset({
+      sourceWidth: 128,
+      sourceHeight: 160,
+      contentBounds: { x: 33, y: 36, w: 61, h: 120 },
+      scaleX: scale,
+      scaleY: scale,
+    });
+    // Canvas-top cue sits at -64; a sit-side head at y=36 must be lower.
+    expect(offset.y).toBeCloseTo(-((160 - 36) * scale) - 4);
+    expect(offset.y).toBeGreaterThan(-SEATED_GUEST_DISPLAY_HEIGHT - 4);
+    expect(offset.x).toBeCloseTo((33 + 61 / 2 - 64) * scale);
   });
 
   it('maps mouth world points through camera follow/zoom to screen space', () => {

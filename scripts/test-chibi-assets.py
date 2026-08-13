@@ -44,6 +44,41 @@ CARRY_BLEND_HEIGHT = 3
 CARRY_BLEND_CURVE = 0.004
 
 
+def sit_bone_x(image: Image.Image, facing: str, *, thresh: int = 80) -> float:
+    """Horizontal sit-bone (stool contact), not the opaque bounding-box center.
+
+    Profile poses send knees and feet toward the table. The stool belongs under
+    the back of the thigh block, a short inset from that trailing edge.
+    """
+    pixels = image.load()
+    assert pixels is not None
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        raise ValueError("empty sit frame")
+    left, top, right, bottom = bounds
+    content_h = bottom - top
+    y0 = top + int(content_h * 0.50)
+    y1 = bottom - max(8, int(content_h * 0.14))
+    rows: list[tuple[int, int, int]] = []
+    for y in range(y0, y1):
+        xs = [x for x in range(left, right) if pixels[x, y][3] >= thresh]
+        if len(xs) >= 8:
+            rows.append((xs[0], xs[-1], xs[-1] - xs[0] + 1))
+    if not rows:
+        return (left + right - 1) / 2
+    max_w = max(span for _, _, span in rows)
+    wide = [row for row in rows if row[2] >= max_w * 0.72]
+    contacts: list[float] = []
+    for span_left, span_right, span in wide:
+        if facing == "right":
+            contacts.append(span_left + span * 0.22)
+        elif facing == "left":
+            contacts.append(span_right - span * 0.22)
+        else:
+            contacts.append((span_left + span_right) / 2)
+    return sum(contacts) / len(contacts)
+
+
 def zero_hidden_rgb(image: Image.Image) -> Image.Image:
     normalized = image.copy()
     normalized.putdata([
@@ -394,6 +429,23 @@ class GuestCastIntegrityTests(unittest.TestCase):
             self.assertLessEqual(max(bottoms) - min(bottoms), 2)
             self.assertLessEqual(max(heights) - min(heights), 24)
             self.assertEqual(len(set(alphas)), len(self.VARIANTS))
+
+    def test_sit_contact_lands_on_the_canvas_center_not_mid_thigh(self) -> None:
+        """Profile sits extend legs tableward. Bbox-centering perches the
+        diner beside the stool; the sit-bone (back of the hip span) must sit
+        on the feet-anchor X so west/east seats stay on the cushion.
+        """
+        canvas_cx = FRAME_SIZE[0] / 2
+        for variant in self.VARIANTS:
+            for facing in self.FACINGS:
+                with self.subTest(frame=f"guest_{variant}_sit_{facing}"):
+                    frame = load_rgba(GUEST_FRAMES / f"guest_{variant}_sit_{facing}.png")
+                    contact = sit_bone_x(frame, facing)
+                    self.assertLessEqual(
+                        abs(contact - canvas_cx),
+                        4,
+                        f"sit bone at {contact:.1f}, canvas center {canvas_cx}",
+                    )
 
 
 class CharacterAtlasIntegrityTests(unittest.TestCase):

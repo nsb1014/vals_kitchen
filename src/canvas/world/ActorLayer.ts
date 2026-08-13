@@ -39,6 +39,7 @@ import {
 } from "./guest-interaction-hint.ts";
 import { canEnqueue } from "../../domain/floor/tickets.ts";
 import { prefersReducedMotion } from "../../ui/presentation/motion-preference.ts";
+import { guestStageCueLocalOffset } from "./actor-mouth-anchor.ts";
 
 export { carryPlateGeometry } from "./carry-plate.ts";
 export {
@@ -1033,46 +1034,64 @@ export class ActorLayer {
     cue: "order" | "deliver" | "eating" | "leaving" | null,
   ): void {
     if (!cue) return;
-    const headY = entry.sprite.visible ? -SEATED_GUEST_DISPLAY_HEIGHT - 4 : -28;
+    let cueX = 0;
+    let headY = -28;
+    if (entry.sprite.visible) {
+      const texture = entry.sprite.texture;
+      const content = getCharacterContentBounds(texture);
+      if (content) {
+        const local = guestStageCueLocalOffset({
+          sourceWidth: texture.orig.width,
+          sourceHeight: texture.orig.height,
+          contentBounds: content,
+          scaleX: entry.sprite.scale.x,
+          scaleY: entry.sprite.scale.y,
+        });
+        cueX = local.x;
+        headY = local.y;
+      } else {
+        headY = -SEATED_GUEST_DISPLAY_HEIGHT - 4;
+      }
+    }
     const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 220);
     if (cue === "order") {
       // Speech-bubble “!” — order available.
       entry.cue
-        .roundRect(-7, headY - 16, 14, 14, 3)
+        .roundRect(cueX - 7, headY - 16, 14, 14, 3)
         .fill({ color: CUE_ORDER_COLOR, alpha: 0.55 + pulse * 0.35 });
       entry.cue
-        .circle(0, headY - 11, 1.6)
+        .circle(cueX, headY - 11, 1.6)
         .fill({ color: 0x3d2c1e, alpha: 0.95 });
       entry.cue
-        .rect(-1, headY - 8, 2, 5)
+        .rect(cueX - 1, headY - 8, 2, 5)
         .fill({ color: 0x3d2c1e, alpha: 0.95 });
       return;
     }
     if (cue === "deliver") {
       // Plate disc — matching dish ready to serve.
       entry.cue
-        .circle(0, headY - 8, 7 + pulse)
+        .circle(cueX, headY - 8, 7 + pulse)
         .fill({ color: CUE_DELIVER_COLOR, alpha: 0.7 + pulse * 0.25 });
       entry.cue
-        .circle(0, headY - 8, 3.5)
+        .circle(cueX, headY - 8, 3.5)
         .fill({ color: 0xfff6e0, alpha: 0.95 });
       return;
     }
     if (cue === "eating") {
       entry.cue
-        .circle(0, headY - 6, 3)
+        .circle(cueX, headY - 6, 3)
         .fill({ color: CUE_EATING_COLOR, alpha: 0.55 });
       entry.cue
-        .circle(-5, headY - 6, 2)
+        .circle(cueX - 5, headY - 6, 2)
         .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
       entry.cue
-        .circle(5, headY - 6, 2)
+        .circle(cueX + 5, headY - 6, 2)
         .fill({ color: CUE_EATING_COLOR, alpha: 0.4 });
       return;
     }
     // leaving — empty-plate hint
     entry.cue
-      .ellipse(0, headY - 6, 7, 3)
+      .ellipse(cueX, headY - 6, 7, 3)
       .stroke({ width: 1.5, color: CUE_LEAVING_COLOR, alpha: 0.7 });
   }
 

@@ -218,6 +218,67 @@ def contain_at_scale(
     return canvas
 
 
+def sit_bone_x(image: Image.Image, facing: str, *, thresh: int = 80) -> float:
+    """Horizontal sit-bone (stool contact), not the opaque bounding-box center.
+
+    Profile poses send knees and feet toward the table. The stool belongs under
+    the back of the thigh block, a short inset from that trailing edge.
+    """
+    pixels = image.load()
+    assert pixels is not None
+    bounds = image.getchannel("A").getbbox()
+    if bounds is None:
+        raise ValueError("empty sit frame")
+    left, top, right, bottom = bounds
+    content_h = bottom - top
+    y0 = top + int(content_h * 0.50)
+    y1 = bottom - max(8, int(content_h * 0.14))
+    rows: list[tuple[int, int, int]] = []
+    for y in range(y0, y1):
+        xs = [x for x in range(left, right) if pixels[x, y][3] >= thresh]
+        if len(xs) >= 8:
+            rows.append((xs[0], xs[-1], xs[-1] - xs[0] + 1))
+    if not rows:
+        return (left + right - 1) / 2
+    max_w = max(span for _, _, span in rows)
+    wide = [row for row in rows if row[2] >= max_w * 0.72]
+    contacts: list[float] = []
+    for span_left, span_right, span in wide:
+        if facing == "right":
+            contacts.append(span_left + span * 0.22)
+        elif facing == "left":
+            contacts.append(span_right - span * 0.22)
+        else:
+            contacts.append((span_left + span_right) / 2)
+    return sum(contacts) / len(contacts)
+
+
+def contain_sit_at_scale(
+    image: Image.Image,
+    size: tuple[int, int],
+    scale: float,
+    facing: str,
+    bottom_pad: int = 4,
+) -> Image.Image:
+    """Feet on the shared baseline; sit-bone on the canvas center (the stool)."""
+    target_w, target_h = size
+    resized = image.resize(
+        (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    if resized.width > target_w or resized.height + bottom_pad > target_h:
+        raise ValueError(
+            f"Shared actor scale does not fit {size}: {resized.size} at {scale:.4f}"
+        )
+    bone = sit_bone_x(resized, facing)
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    x = round(target_w / 2 - bone)
+    x = max(0, min(target_w - resized.width, x))
+    y = target_h - bottom_pad - resized.height
+    canvas.alpha_composite(resized, (x, y))
+    return canvas
+
+
 def resize_exact(image: Image.Image, size: tuple[int, int]) -> Image.Image:
     """Fill an architectural tile edge-to-edge; seams are worse than mild distortion."""
     return image.resize(size, Image.Resampling.LANCZOS)
@@ -836,9 +897,10 @@ def shared_guest_scale(
 
 
 def validate_guest_cast_dimensions() -> None:
-    """Distinct adults, shared canvas, shared sit feet."""
+    """Distinct adults, shared canvas, shared sit feet, sit-bone on center."""
     sit_bottoms: dict[str, list[int]] = {facing: [] for facing in ("down", "left", "right", "up")}
     idle_alphas: dict[str, list[bytes]] = {facing: [] for facing in ("down", "left")}
+    canvas_cx = ACTOR_FRAME_SIZE[0] / 2
     for variant in GUEST_VARIANTS:
         for facing in ("down", "left", "right", "up"):
             sit = Image.open(GUEST_OUT / f"guest_{variant}_sit_{facing}.png").convert("RGBA")
@@ -846,6 +908,12 @@ def validate_guest_cast_dimensions() -> None:
             if bounds is None:
                 raise ValueError(f"Guest sit frame is empty: guest_{variant}_sit_{facing}")
             sit_bottoms[facing].append(bounds[3])
+            bone = sit_bone_x(sit, facing)
+            if abs(bone - canvas_cx) > 4:
+                raise ValueError(
+                    f"Guest sit bone off stool: guest_{variant}_sit_{facing} "
+                    f"bone={bone:.1f} center={canvas_cx}"
+                )
         for facing in ("down", "left"):
             idle = Image.open(GUEST_OUT / f"guest_{variant}_{facing}_0.png").convert("RGBA")
             idle_alphas[facing].append(idle.getchannel("A").tobytes())
@@ -875,7 +943,9 @@ def build_guests() -> None:
                     elif reference is not None:
                         sprite = ensure_side_walk_facing(sprite, reference, name)
                 save(sprite, GUEST_OUT / name)
-            seated = contain_at_scale(sources[(facing, 3)], ACTOR_FRAME_SIZE, scale)
+            seated = contain_sit_at_scale(
+                sources[(facing, 3)], ACTOR_FRAME_SIZE, scale, facing
+            )
             save(seated, GUEST_OUT / f"guest_{variant}_sit_{facing}.png")
 
         down = Image.open(GUEST_OUT / f"guest_{variant}_down_0.png").convert("RGBA")
