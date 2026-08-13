@@ -150,6 +150,24 @@ test.describe("cook sheet responsive chrome", () => {
       expect(orderPanel!.y + orderPanel!.height).toBeLessThanOrEqual(
         pantry!.y + 1,
       );
+      const panelHandle = page.getByTestId("compose-order-panel");
+      for (const bars of await panelHandle.locator(".compose-request-bars").all()) {
+        const barsBox = await bars.boundingBox();
+        expect(barsBox).not.toBeNull();
+        expect(barsBox!.height).toBeGreaterThan(4);
+        expect(barsBox!.y + barsBox!.height).toBeLessThanOrEqual(
+          orderPanel!.y + orderPanel!.height + 1,
+        );
+      }
+      for (const status of await panelHandle.locator(".compose-request-status").all()) {
+        await expect(status).toBeVisible();
+        const statusBox = await status.boundingBox();
+        expect(statusBox).not.toBeNull();
+        expect(statusBox!.height).toBeGreaterThan(6);
+        expect(statusBox!.y + statusBox!.height).toBeLessThanOrEqual(
+          orderPanel!.y + orderPanel!.height + 1,
+        );
+      }
       expect(close!.width).toBeGreaterThanOrEqual(44);
       expect(close!.height).toBeGreaterThanOrEqual(44);
       const firstCard = await page

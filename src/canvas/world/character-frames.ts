@@ -4,8 +4,8 @@ export const GUEST_VARIANTS = ['a', 'b', 'c', 'd', 'e'] as const;
 export type GuestVariant = (typeof GUEST_VARIANTS)[number];
 
 /**
- * Stable guest look from id. Variants map to distinct Kenney Urban walk cycles
- * (hair style / hair color / skin) — not the red-haired girl cook set.
+ * Stable guest look from id. Variants are palette swaps of one adult
+ * template (hair / skin / outfit color) so every diner shares one silhouette.
  */
 export function guestVariant(guestId: string): GuestVariant {
   let hash = 0;

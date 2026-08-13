@@ -14,6 +14,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 CHIBI_ROOT = ROOT / "vendor" / "generated" / "chibi-ui"
 PLAYER_FRAMES = CHIBI_ROOT / "player-frames"
+GUEST_FRAMES = CHIBI_ROOT / "guest-frames"
 CHEF_SOURCE = CHIBI_ROOT / "source" / "chef-sheet.png"
 MANIFEST_PATH = ROOT / "scripts" / ".asset-build" / "characters.manifest.json"
 ATLAS_JSON_PATH = ROOT / "public" / "assets" / "atlases" / "characters.json"
@@ -352,6 +353,25 @@ class ValSourceIntegrityTests(unittest.TestCase):
                 canonical = load_rgba(PLAYER_FRAMES / canonical_name)
                 self.assertEqual(alias.size, canonical.size)
                 self.assertEqual(alias.tobytes(), canonical.tobytes())
+
+
+class GuestTemplateIntegrityTests(unittest.TestCase):
+    FACINGS = ("left", "down", "up", "right")
+    VARIANTS = ("a", "b", "c", "d", "e")
+    MASTER = "e"
+
+    def test_palette_variants_keep_the_master_silhouette(self) -> None:
+        for facing in self.FACINGS:
+            names = [f"guest_{{variant}}_{facing}_{frame}.png" for frame in range(3)]
+            names.append(f"guest_{{variant}}_sit_{facing}.png")
+            for template in names:
+                master = load_rgba(GUEST_FRAMES / template.format(variant=self.MASTER))
+                master_alpha = master.getchannel("A").tobytes()
+                for variant in self.VARIANTS:
+                    with self.subTest(frame=template.format(variant=variant)):
+                        frame = load_rgba(GUEST_FRAMES / template.format(variant=variant))
+                        self.assertEqual(frame.size, FRAME_SIZE)
+                        self.assertEqual(frame.getchannel("A").tobytes(), master_alpha)
 
 
 class CharacterAtlasIntegrityTests(unittest.TestCase):
