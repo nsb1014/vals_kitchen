@@ -12,9 +12,8 @@ import type { GuestVariant } from "./character-frames.ts";
  *    provides the tableward lean; the legs occupy the gap beside the
  *    tabletop.
  * 3. Draw order: table (floor prop) → stool → guest.
- * 4. Guests match the chef’s silhouette height (content-based scale).
- * 5. Per-variant sit sinks plant adult hips on the cushion — guest_b (child)
- *    is the authored reference; taller sit frames need more positive Y.
+ * 4. Guests share one adult template (palette swaps only), so every diner
+ *    uses the same sit silhouette, head height, and stool contact.
  *
  * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
  */
@@ -24,22 +23,25 @@ export const SEAT_CAMERA_BIAS_PX = 0;
 /**
  * Shared world Y offset applied to every seated guest relative to the chair
  * feet. Positive moves the sit pose down the screen onto the cushion.
- * Kept at 0 so the child reference pose (guest_b) stays planted; adults use
- * {@link SEAT_SIT_VARIANT_OFFSET_Y} instead of a uniform raise that floated them.
+ * Kept at 0; the shared guest-only sink is {@link SEAT_SIT_GUEST_SINK_Y}.
  */
 export const SEAT_SIT_OFFSET_Y = 0;
 /**
- * Extra sit sink per guest variant (world px, positive = down onto cushion).
- * Tuned so adult/elder sit frames match guest_b's stool contact; the child
- * reference stays at 0.
+ * Guest-only sit sink (world px, positive = down onto cushion). Every
+ * palette variant uses the same adult template, so one sink plants all hips.
+ */
+export const SEAT_SIT_GUEST_SINK_Y = 9;
+/**
+ * Extra sit sink per guest variant. Identical on purpose: outfits/skin/hair
+ * change color, not body geometry, so status dots stay at one height.
  */
 export const SEAT_SIT_VARIANT_OFFSET_Y: Readonly<Record<GuestVariant, number>> =
   {
-    a: 6,
-    b: 0,
-    c: 7,
-    d: 4,
-    e: 9,
+    a: SEAT_SIT_GUEST_SINK_Y,
+    b: SEAT_SIT_GUEST_SINK_Y,
+    c: SEAT_SIT_GUEST_SINK_Y,
+    d: SEAT_SIT_GUEST_SINK_Y,
+    e: SEAT_SIT_GUEST_SINK_Y,
   };
 /**
  * Tableward hip shift for west/east seats. Applied to BOTH the guest anchor
@@ -85,8 +87,8 @@ export function seatChairWorldPosition(seat: SeatSlot): {
 
 /**
  * World nav-center for a seated guest (feet derived by ActorLayer).
- * Matches the stool's X/tableward tuck; Y adds the shared offset plus an
- * optional per-variant sink so adult hips meet the cushion like guest_b.
+ * Matches the stool's X/tableward tuck; Y adds the shared offset plus the
+ * shared guest-only sink so every palette variant plants hips on the cushion.
  */
 export function seatSitWorldPosition(
   seat: SeatSlot,

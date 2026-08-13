@@ -48,6 +48,23 @@ describe('viewport scroll containment CSS', () => {
       /\.compose-order-panel\s*\{[^}]*overscroll-behavior:\s*contain/s,
     );
   });
+
+  it('keeps the mobile order-target panel tall enough for request bars and status', () => {
+    const service = css('../../ui/styles/service-day.css');
+    expect(service).not.toMatch(
+      /\.compose-order-panel\s*\{[^}]*max-height:\s*3\.25rem/s,
+    );
+    const mobileCaps = [
+      ...service.matchAll(
+        /\.compose-order-panel\s*\{[^}]*max-height:\s*([0-9.]+)rem/gs,
+      ),
+    ].map((match) => Number(match[1]));
+    expect(mobileCaps.length).toBeGreaterThan(0);
+    expect(Math.min(...mobileCaps)).toBeGreaterThanOrEqual(6.5);
+    expect(service).toMatch(
+      /\.compose-order-panel\s*\{[^}]*max-height:\s*8\.5rem[^}]*overflow:\s*auto/s,
+    );
+  });
 });
 
 describe('status HUD above canvas layering', () => {

@@ -56,4 +56,19 @@ describe('characters atlas coverage', () => {
       }
     }
   });
+
+  it('keeps every guest sit pose on the same canvas and head height', () => {
+    for (const facing of FACINGS) {
+      const tops = new Set<number>();
+      for (const variant of GUEST_VARIANTS) {
+        const frame = atlas.frames[`guest_${variant}_sit_${facing}`] as
+          | { sourceSize: { w: number; h: number }; contentBounds?: { y: number } }
+          | undefined;
+        expect(frame?.sourceSize).toEqual({ w: 128, h: 160 });
+        expect(frame?.contentBounds).toBeTruthy();
+        tops.add(frame!.contentBounds!.y);
+      }
+      expect(tops.size, `sit ${facing} head height drifted`).toBe(1);
+    }
+  });
 });

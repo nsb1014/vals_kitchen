@@ -75,7 +75,7 @@ describe("seat sit anchors", () => {
     expect(seatSitStaysOnChair(seatE)).toBe(true);
   });
 
-  it("sinks adult sit variants onto the cushion while keeping guest_b planted", () => {
+  it("plants every palette variant at the same stool contact", () => {
     const seat = {
       tablePlacementId: "t",
       slotIndex: 0,
@@ -84,11 +84,11 @@ describe("seat sit anchors", () => {
       facing: 90 as const,
     };
     const chair = seatChairWorldPosition(seat);
-    expect(seatSitWorldPosition(seat, "b").y).toBe(chair.y);
-    expect(seatSitWorldPosition(seat, "a").y).toBeGreaterThan(chair.y);
-    expect(seatSitWorldPosition(seat, "e").y).toBeGreaterThan(
-      seatSitWorldPosition(seat, "a").y,
-    );
+    const planted = seatSitWorldPosition(seat, "e");
+    expect(planted.y).toBeGreaterThan(chair.y);
+    for (const variant of ["a", "b", "c", "d", "e"] as const) {
+      expect(seatSitWorldPosition(seat, variant)).toEqual(planted);
+    }
   });
 
   it("shifts north+south stools and seated hips toward the table together", () => {
