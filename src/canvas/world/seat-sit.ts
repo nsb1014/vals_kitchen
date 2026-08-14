@@ -14,7 +14,9 @@ import type { GuestVariant } from "./character-frames.ts";
  * 3. Draw order: table (floor prop) → stool → guest.
  * 4. Guests are distinct adults from the seating-rework identity sheets,
  *    packed at one shared scale and feet baseline so stools and status dots
- *    line up. Hair and outfits differ; body size does not.
+ *    line up. Sit frames are hip-registered (sit-bone on canvas center) so
+ *    profile poses do not perch beside the stool. Hair and outfits differ;
+ *    body size does not.
  *
  * Do not reintroduce SEAT_*_TUCK / SEAT_CAMERA_BIAS into the tabletop.
  */
