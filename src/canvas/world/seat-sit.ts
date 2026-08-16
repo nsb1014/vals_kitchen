@@ -25,19 +25,24 @@ export const SEAT_NS_TUCK_PX = 0;
 export const SEAT_CAMERA_BIAS_PX = 0;
 /**
  * Shared world Y offset applied to every seated guest relative to the chair
- * feet. Positive moves the sit pose down the screen onto the cushion.
- * Kept at 0 so the authored sit pose sits *on* the stool; a guest-only sink
- * buried hips in the cushion.
+ * feet. Positive moves the sit pose down the screen; negative lifts it onto
+ * the ¾ stool ellipse. Feet-aligned sit (0) parks the sit-bone inside the
+ * cushion because packed hips sit below the seat surface.
  */
-export const SEAT_SIT_OFFSET_Y = 0;
+export const STOOL_CUSHION_FROM_FEET_PX = 18;
+/** Packed sit-bone height above guest feet at the shared 60/160 scale. */
+export const SIT_BONE_FROM_FEET_PX = 12;
+export const SEAT_SIT_OFFSET_Y = -(
+  STOOL_CUSHION_FROM_FEET_PX - SIT_BONE_FROM_FEET_PX
+);
 /**
- * Guest-only sit sink (world px, positive = down onto cushion). The shared
- * adult sit pose already plants hips on the stool, so this stays 0.
+ * Guest-only sit sink (world px, positive = down onto cushion). Kept at 0:
+ * the shared lift is {@link SEAT_SIT_OFFSET_Y}, not a per-guest bury.
  */
 export const SEAT_SIT_GUEST_SINK_Y = 0;
 /**
  * Extra sit sink per guest variant. Kept at 0: every adult identity uses the
- * same scale and feet baseline, so diners sit on the stool, not in it.
+ * same scale, feet baseline, and cushion lift.
  */
 export const SEAT_SIT_VARIANT_OFFSET_Y: Readonly<Record<GuestVariant, number>> =
   {
@@ -91,8 +96,8 @@ export function seatChairWorldPosition(seat: SeatSlot): {
 
 /**
  * World nav-center for a seated guest (feet derived by ActorLayer).
- * Matches the stool's X/tableward tuck; Y matches the stool so every
- * palette variant sits on the cushion instead of sinking through it.
+ * Matches the stool's X/tableward tuck; Y lifts the sit-bone onto the
+ * ¾ stool ellipse so diners sit on the cushion instead of through it.
  */
 export function seatSitWorldPosition(
   seat: SeatSlot,

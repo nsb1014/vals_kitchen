@@ -59,15 +59,15 @@ describe("furniture seating depth debug", () => {
         },
       ],
       // Stool roots tuck toward their table by the shared hip shift (side 6px,
-      // NS 4px). Sort uses guest feet (shared sit Y, no extra sink) so stools
-      // stay behind diners sitting on the cushion.
+      // NS 4px). Sort uses guest feet (sit Y lifted onto the cushion) so stools
+      // stay behind diners sitting on the seat ellipse.
       chairs: [
-        { tablePlacementId: "table_a", slotIndex: 0, zIndex: 65, x: 64, y: 34 },
-        { tablePlacementId: "table_a", slotIndex: 1, zIndex: 93, x: 70, y: 62 },
+        { tablePlacementId: "table_a", slotIndex: 0, zIndex: 59, x: 64, y: 34 },
+        { tablePlacementId: "table_a", slotIndex: 1, zIndex: 87, x: 70, y: 62 },
         {
           tablePlacementId: "table_b",
           slotIndex: 1,
-          zIndex: 121,
+          zIndex: 115,
           x: 128,
           y: 90,
         },

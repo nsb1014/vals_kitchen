@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { TILE_PX } from "../../canvas/coordinates.ts";
+import { CHAIR_DRAW_HEIGHT_PX } from "../../canvas/furniture-fit.ts";
 import {
   SEAT_NS_HIP_OFFSET_PX,
   SEAT_SIDE_HIP_OFFSET_PX,
   SEAT_SIT_GUEST_SINK_Y,
   SEAT_SIT_OFFSET_Y,
   SEAT_SIT_VARIANT_OFFSET_Y,
+  SIT_BONE_FROM_FEET_PX,
+  STOOL_CUSHION_FROM_FEET_PX,
   seatChairWorldPosition,
   seatSitStaysOnChair,
   seatSitWorldPosition,
@@ -58,7 +61,9 @@ describe("seat sit anchors", () => {
       x: 3 * TILE_PX + TILE_PX / 2,
       y: 2 * TILE_PX + TILE_PX / 2,
     };
-    expect(SEAT_SIT_OFFSET_Y).toBe(0);
+    expect(SEAT_SIT_OFFSET_Y).toBe(
+      -(STOOL_CUSHION_FROM_FEET_PX - SIT_BONE_FROM_FEET_PX),
+    );
     expect(SEAT_SIDE_HIP_OFFSET_PX).toBeLessThanOrEqual(8);
     // Stool and guest share the tableward-shifted anchor (centered sit).
     expect(chairW).toEqual({
@@ -77,7 +82,7 @@ describe("seat sit anchors", () => {
     expect(seatSitStaysOnChair(seatE)).toBe(true);
   });
 
-  it("plants every palette variant on the stool, not sunk into it", () => {
+  it("plants every diner on the stool cushion, not through it", () => {
     const seat = {
       tablePlacementId: "t",
       slotIndex: 0,
@@ -87,14 +92,24 @@ describe("seat sit anchors", () => {
     };
     const chair = seatChairWorldPosition(seat);
     const planted = seatSitWorldPosition(seat, "e");
-    // Authored sit pose already has bent legs. Extra positive Y buries hips
-    // in the cushion so diners look seated *in* the stool instead of on it.
+    // Feet-aligned sit (offset 0) puts the sit-bone ~12px above the floor
+    // while the ¾ stool ellipse sits ~18px up, so hips read as in the
+    // cushion. Negative offset lifts the authored sit onto the seat.
+    expect(STOOL_CUSHION_FROM_FEET_PX).toBeGreaterThan(SIT_BONE_FROM_FEET_PX);
+    expect(SEAT_SIT_OFFSET_Y).toBe(
+      -(STOOL_CUSHION_FROM_FEET_PX - SIT_BONE_FROM_FEET_PX),
+    );
+    expect(SEAT_SIT_OFFSET_Y).toBeLessThan(0);
+    expect(-SEAT_SIT_OFFSET_Y).toBeLessThan(CHAIR_DRAW_HEIGHT_PX / 2);
     expect(SEAT_SIT_GUEST_SINK_Y).toBe(0);
-    expect(SEAT_SIT_OFFSET_Y).toBe(0);
-    expect(planted).toEqual(chair);
+    expect(planted).toEqual({
+      x: chair.x,
+      y: chair.y + SEAT_SIT_OFFSET_Y,
+    });
+    expect(planted.y).toBeLessThan(chair.y);
     for (const variant of ["a", "b", "c", "d", "e"] as const) {
       expect(SEAT_SIT_VARIANT_OFFSET_Y[variant]).toBe(0);
-      expect(seatSitWorldPosition(seat, variant)).toEqual(chair);
+      expect(seatSitWorldPosition(seat, variant)).toEqual(planted);
     }
   });
 
