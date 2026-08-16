@@ -2505,6 +2505,10 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
   background: linear-gradient(180deg, transparent 55%, rgba(5, 3, 2, 0.5));
 }
 
+.service-overlay:has(.review-service-panel) {
+  background: rgba(8, 4, 2, 0.72);
+}
+
 .service-overlay:has(.compose-sheet-panel) {
   background: transparent;
 }
@@ -3227,6 +3231,10 @@ html[data-vk-reduced-motion="true"] .compose-progress-fill,
     align-items: flex-end;
     justify-content: stretch;
     background: linear-gradient(90deg, transparent 52%, rgba(7, 4, 2, 0.56));
+  }
+
+  .service-overlay:has(.review-service-panel) {
+    background: rgba(8, 4, 2, 0.72);
   }
 
   .service-panel {

@@ -108,6 +108,7 @@ import {
 } from "./world/guest-hit.ts";
 import {
   eatingTablePlacementIds,
+  reviewJuiceGuestId,
   tableServiceVisualStates,
 } from "./table-service-visual.ts";
 function integerResolution(): number {
@@ -352,7 +353,23 @@ export class RestaurantApp {
       this.cameraPunchElapsedMs = 0;
       this.flashCanvasMount("serve");
     } else if (kind === "review") {
-      this.effectsLayer.burstReview(feet.x, feet.y);
+      // Drop leftover serve sparkles so they are not still bursting on Val
+      // while the review card is the actual celebration.
+      this.effectsLayer.clear();
+      const state = useGameStore.getState();
+      const guestId = reviewJuiceGuestId(
+        state.activeDay?.floor,
+        state.pendingReview?.customerId,
+      );
+      const guestFeet = guestId
+        ? this.actorLayer.getGuestFeetWorldPosition(guestId)
+        : null;
+      if (guestFeet) {
+        this.effectsLayer.burstReview(
+          guestFeet.x,
+          guestFeet.y - TILE_PX * 0.45,
+        );
+      }
       this.flashCanvasMount("review");
     } else {
       this.effectsLayer.burstPlacement(feet.x, feet.y);
