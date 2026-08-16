@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { TILE_PX } from "../../canvas/coordinates.ts";
-import { CHAIR_DRAW_HEIGHT_PX } from "../../canvas/furniture-fit.ts";
+import {
+  CHAIR_DRAW_HEIGHT_PX,
+  furnitureDepthY,
+} from "../../canvas/furniture-fit.ts";
 import {
   SEAT_NS_HIP_OFFSET_PX,
   SEAT_SIDE_HIP_OFFSET_PX,
@@ -157,6 +160,56 @@ describe("seat sit anchors", () => {
     });
     expect(seatSitStaysOnChair(northSeat)).toBe(true);
     expect(seatSitStaysOnChair(southSeat)).toBe(true);
+  });
+
+  it("keeps the 4-top depth sandwich after the cushion lift", () => {
+    const tableY = 2;
+    const tableZ = furnitureDepthY(tableY, "table_4seat");
+    const feetY = (worldY: number) => worldY + TILE_PX / 2 - 2;
+    const north = seatSitWorldPosition({
+      tablePlacementId: "t",
+      slotIndex: 0,
+      x: 2,
+      y: tableY - 1,
+      facing: 0,
+    });
+    const west = seatSitWorldPosition({
+      tablePlacementId: "t",
+      slotIndex: 1,
+      x: 1,
+      y: tableY,
+      facing: 90,
+    });
+    const east = seatSitWorldPosition({
+      tablePlacementId: "t",
+      slotIndex: 2,
+      x: 3,
+      y: tableY,
+      facing: 270,
+    });
+    const south = seatSitWorldPosition({
+      tablePlacementId: "t",
+      slotIndex: 3,
+      x: 2,
+      y: tableY + 1,
+      facing: 180,
+    });
+    const seatedFeetFromNav = TILE_PX / 2 - 2;
+    const northBehind =
+      TILE_PX * 2 -
+      (TILE_PX / 2 + SEAT_NS_HIP_OFFSET_PX + seatedFeetFromNav) -
+      SEAT_SIT_OFFSET_Y;
+    const westBehind =
+      TILE_PX - (TILE_PX / 2 + seatedFeetFromNav) - SEAT_SIT_OFFSET_Y;
+    const southFront =
+      TILE_PX / 2 - SEAT_NS_HIP_OFFSET_PX + seatedFeetFromNav + SEAT_SIT_OFFSET_Y;
+    expect(tableZ - feetY(north.y)).toBe(northBehind);
+    expect(tableZ - feetY(west.y)).toBe(westBehind);
+    expect(tableZ - feetY(east.y)).toBe(westBehind);
+    expect(feetY(south.y) - tableZ).toBe(southFront);
+    expect(feetY(north.y)).toBeLessThan(feetY(west.y));
+    expect(feetY(west.y)).toBeLessThan(tableZ);
+    expect(tableZ).toBeLessThan(feetY(south.y));
   });
 
   it("keeps all four seat facings on their stools", () => {
