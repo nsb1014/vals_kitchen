@@ -1116,7 +1116,14 @@ export function mountServiceDayUi(
             const label = band
               ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
               : AXIS_LABELS[axis];
-            return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
+            const title = band === 'mid'
+              ? `Sorts the pantry by ${AXIS_LABELS[axis]} so high and low items can be mixed`
+              : band === 'low'
+                ? `Filters ingredients that are low in ${AXIS_LABELS[axis]}`
+                : band
+                  ? 'Filters ingredients that contribute to this request'
+                  : `Filters ingredients with ${AXIS_LABELS[axis]}`;
+            return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${title}">${escapeHtml(label)}</button>`;
           })
           .join('');
       const matchingCount = filterComposePantry(

@@ -43,12 +43,14 @@ export function filterComposePantry(
   requestedBands: ComposeAxisBands = {},
 ): Ingredient[] {
   const axis = filters.selectedAxis;
+  const band = axis ? requestedBands[axis] : undefined;
   let matches = axis
     ? unlocked.filter((ingredient) => {
-        const band = requestedBands[axis];
         const value = ingredient.flavor[axis];
         if (band === 'low') return value <= 3;
-        if (band === 'mid') return value >= 3 && value <= 7;
+        // Moderate dishes are mixed: a high-rich item plus a low-rich item
+        // can land in the mid band, so do not hide either contributor.
+        if (band === 'mid') return true;
         if (band === 'high') return value >= 6;
         return value >= COMPOSE_AXIS_HIGH_MIN;
       })
@@ -61,9 +63,18 @@ export function filterComposePantry(
     );
   }
 
-  return [...matches].sort((left, right) =>
-    left.name.localeCompare(right.name, 'en-US'),
-  );
+  if (!axis) {
+    return [...matches].sort((left, right) =>
+      left.name.localeCompare(right.name, 'en-US'),
+    );
+  }
+
+  const descending = band !== 'low';
+  return [...matches].sort((left, right) => {
+    const delta = left.flavor[axis] - right.flavor[axis];
+    if (delta !== 0) return descending ? -delta : delta;
+    return left.name.localeCompare(right.name, 'en-US');
+  });
 }
 
 export function composePantrySummary(
