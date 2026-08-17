@@ -1013,7 +1013,7 @@ test.describe("consolidated mobile navigation", () => {
       panelBox!.x + panelBox!.width - (lastTab!.x + lastTab!.width);
     expect(Math.abs(leftGutter - rightGutter)).toBeLessThanOrEqual(8);
 
-    const row = page.locator(".inspector-list-item").first();
+    const row = panel.locator(".inspector-list-item").first();
     const icon = row.locator(".food-icon");
     const name = row.locator(".inspector-list-name");
     await expect(name).toBeVisible();
