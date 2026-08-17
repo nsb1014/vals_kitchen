@@ -1,5 +1,6 @@
 import { AXIS_LABELS } from '../../domain/flavor/axis-labels.ts';
-import type { AxisKey, Band, Ingredient } from '../../domain/types.ts';
+import { AXIS_KEYS, type AxisKey, type Band, type Ingredient } from '../../domain/types.ts';
+import { requestBandRange } from './compose-request.ts';
 
 export const COMPOSE_AXIS_HIGH_MIN = 4;
 export const COMPOSE_LOW_MATCH_THRESHOLD = 5;
@@ -37,6 +38,32 @@ export function setComposeSearchQuery(
   return { ...state, searchQuery };
 }
 
+/** Whether an unlocked ingredient would appear under this flavor chip. */
+export function matchesComposeAxisFilter(
+  ingredient: Ingredient,
+  axis: AxisKey,
+  band?: Band,
+): boolean {
+  const value = ingredient.flavor[axis];
+  if (band === 'low') return value <= requestBandRange('low').max;
+  if (band === 'mid') return value >= requestBandRange('mid').min;
+  if (band === 'high') return value >= requestBandRange('high').min;
+  return value >= COMPOSE_AXIS_HIGH_MIN;
+}
+
+/** Flavor chips with at least one matching unlocked ingredient. */
+export function visibleComposeFilterAxes(
+  unlocked: Ingredient[],
+  requestedBands: ComposeAxisBands = {},
+  axes: readonly AxisKey[] = AXIS_KEYS,
+): AxisKey[] {
+  return axes.filter((axis) =>
+    unlocked.some((ingredient) =>
+      matchesComposeAxisFilter(ingredient, axis, requestedBands[axis]),
+    ),
+  );
+}
+
 export function filterComposePantry(
   unlocked: Ingredient[],
   filters: ComposePantryFilterState,
@@ -45,15 +72,9 @@ export function filterComposePantry(
   const axis = filters.selectedAxis;
   const band = axis ? requestedBands[axis] : undefined;
   let matches = axis
-    ? unlocked.filter((ingredient) => {
-        const value = ingredient.flavor[axis];
-        if (band === 'low') return value <= 3;
-        // Moderate dishes are mixed: a high-rich item plus a low-rich item
-        // can land in the mid band, so do not hide either contributor.
-        if (band === 'mid') return true;
-        if (band === 'high') return value >= 6;
-        return value >= COMPOSE_AXIS_HIGH_MIN;
-      })
+    ? unlocked.filter((ingredient) =>
+        matchesComposeAxisFilter(ingredient, axis, band),
+      )
     : unlocked;
 
   const query = filters.searchQuery.trim().toLowerCase();

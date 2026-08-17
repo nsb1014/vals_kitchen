@@ -6,6 +6,7 @@ import {
   emptyComposePantryFilters,
   filterComposePantry,
   toggleComposeAxis,
+  visibleComposeFilterAxes,
 } from '../../ui/presentation/compose-pantry.ts';
 
 function ingredient(
@@ -65,17 +66,17 @@ describe('compose pantry filters', () => {
     const heat = toggleComposeAxis(emptyComposePantryFilters(), 'HT');
     expect(
       filterComposePantry(pantry, heat, { HT: 'mid' }).map((item) => item.id),
-    ).toEqual(['chili', 'stock', 'herb', 'oil']);
-    expect(composePantrySummary(heat, 4, { HT: 'mid' })).toBe(
-      '4 matching · Moderate Heat',
+    ).toEqual(['chili', 'stock']);
+    expect(composePantrySummary(heat, 2, { HT: 'mid' })).toBe(
+      '2 matching · Moderate Heat',
     );
   });
 
-  it('keeps high and low ingredients on a moderate filter so they can mix', () => {
+  it('keeps moderate-and-above on a moderate filter, not low items', () => {
     const rich = toggleComposeAxis(emptyComposePantryFilters(), 'RI');
     expect(
       filterComposePantry(pantry, rich, { RI: 'mid' }).map((item) => item.id),
-    ).toEqual(['oil', 'chili', 'stock', 'herb']);
+    ).toEqual(['oil', 'chili']);
   });
 
   it('sorts a low filter from least of that flavor to most', () => {
@@ -90,5 +91,31 @@ describe('compose pantry filters', () => {
     expect(
       filterComposePantry(pantry, heat, { HT: 'high' }).map((item) => item.id),
     ).toEqual(['chili', 'stock']);
+  });
+
+  it('omits a flavor chip when the unlocked pantry has no match', () => {
+    expect(visibleComposeFilterAxes(pantry, { HT: 'high' })).toContain('HT');
+    expect(
+      visibleComposeFilterAxes(
+        pantry.filter((item) => item.flavor.HT < 6),
+        { HT: 'high' },
+      ),
+    ).not.toContain('HT');
+
+    expect(visibleComposeFilterAxes(pantry, { RI: 'mid' })).toContain('RI');
+    expect(
+      visibleComposeFilterAxes(
+        pantry.filter((item) => item.flavor.RI < 3),
+        { RI: 'mid' },
+      ),
+    ).not.toContain('RI');
+
+    expect(visibleComposeFilterAxes(pantry, { UM: 'low' })).toContain('UM');
+    expect(
+      visibleComposeFilterAxes(
+        pantry.filter((item) => item.flavor.UM > 3),
+        { UM: 'low' },
+      ),
+    ).not.toContain('UM');
   });
 });
