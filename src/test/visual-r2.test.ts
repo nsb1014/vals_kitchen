@@ -64,6 +64,18 @@ describe('disabled floor juice', () => {
   });
 });
 
+describe('review overlay CSS', () => {
+  it('dims the live floor behind a pending review sheet', () => {
+    const css = readFileSync(
+      new URL('../ui/styles/service-day.css', import.meta.url),
+      'utf8',
+    );
+    expect(css).toMatch(
+      /\.service-overlay:has\(\.review-service-panel\)\s*\{[^}]*background:\s*rgba\(\s*8,\s*4,\s*2,\s*0\.(6|7|8)/s,
+    );
+  });
+});
+
 describe('celebration vs notice stacking CSS', () => {
   it('stacks banners in a column instead of a shared grid cell', () => {
     const css = readFileSync(
