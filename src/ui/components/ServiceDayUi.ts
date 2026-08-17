@@ -62,6 +62,7 @@ import {
   filterComposePantry,
   setComposeSearchQuery,
   toggleComposeAxis,
+  visibleComposeFilterAxes,
 } from '../presentation/compose-pantry.ts';
 import {
   buildComposeTicketRail,
@@ -1052,9 +1053,21 @@ export function mountServiceDayUi(
           }
         }
       }
+      const visibleAxes = new Set(
+        visibleComposeFilterAxes(unlocked, requestedBands),
+      );
       const requestedAxes = AXIS_KEYS.filter(
         (axis) => requestedBands[axis] !== undefined,
       );
+      const visibleRequestedAxes = requestedAxes.filter((axis) =>
+        visibleAxes.has(axis),
+      );
+      if (
+        composeFilters.selectedAxis &&
+        !visibleAxes.has(composeFilters.selectedAxis)
+      ) {
+        composeFilters = { ...composeFilters, selectedAxis: null };
+      }
       const composeProgress = buildComposeProgress({
         ingredientCount: preview.ingredientCount,
         requestedBands,
@@ -1100,8 +1113,10 @@ export function mountServiceDayUi(
               .join('');
 
       const orderedFilterAxes = [
-        ...requestedAxes,
-        ...AXIS_KEYS.filter((axis) => !requestedAxes.includes(axis)),
+        ...visibleRequestedAxes,
+        ...AXIS_KEYS.filter(
+          (axis) => !requestedAxes.includes(axis) && visibleAxes.has(axis),
+        ),
       ];
       const allChipSelected = composeFilters.selectedAxis === null;
       // Not a `.filter-axis-chip`: axis chips hide on compact mobile; All stays
@@ -1116,7 +1131,15 @@ export function mountServiceDayUi(
             const label = band
               ? `${bandLabel(band)} ${AXIS_LABELS[axis]}`
               : AXIS_LABELS[axis];
-            return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${band ? 'Filters ingredients that contribute to this request' : `Filters ingredients with ${AXIS_LABELS[axis]}`}">${escapeHtml(label)}</button>`;
+            const title =
+              band === 'mid'
+                ? `Filters ingredients that are moderate or higher in ${AXIS_LABELS[axis]}`
+                : band === 'low'
+                  ? `Filters ingredients that are low in ${AXIS_LABELS[axis]}`
+                  : band === 'high'
+                    ? `Filters ingredients that are high in ${AXIS_LABELS[axis]}`
+                    : `Filters ingredients with ${AXIS_LABELS[axis]}`;
+            return `<button type="button" class="filter-axis-chip${selected ? ' selected' : ''}${band ? ' requested' : ''}" data-compose-axis="${axis}" aria-pressed="${selected}" title="${title}">${escapeHtml(label)}</button>`;
           })
           .join('');
       const matchingCount = filterComposePantry(
