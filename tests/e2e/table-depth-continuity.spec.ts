@@ -4,11 +4,26 @@ import {
   gotoFreshGame,
   type PageDiagnostics,
 } from './helpers.ts';
+import { TILE_PX } from '../../src/canvas/coordinates.ts';
 import {
   guestSitFrameKey,
   guestVariant,
   guestWalkFrameKey,
 } from '../../src/canvas/world/character-frames.ts';
+import {
+  SEAT_NS_HIP_OFFSET_PX,
+  SEAT_SIT_OFFSET_Y,
+} from '../../src/canvas/world/seat-sit.ts';
+
+const SEATED_FEET_FROM_NAV_Y = TILE_PX / 2 - 2;
+const NORTH_BEHIND_TABLE =
+  TILE_PX * 2 -
+  (TILE_PX / 2 + SEAT_NS_HIP_OFFSET_PX + SEATED_FEET_FROM_NAV_Y) -
+  SEAT_SIT_OFFSET_Y;
+const WEST_BEHIND_TABLE =
+  TILE_PX - (TILE_PX / 2 + SEATED_FEET_FROM_NAV_Y) - SEAT_SIT_OFFSET_Y;
+const SOUTH_IN_FRONT_OF_TABLE =
+  TILE_PX / 2 - SEAT_NS_HIP_OFFSET_PX + SEATED_FEET_FROM_NAV_Y + SEAT_SIT_OFFSET_Y;
 
 const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
@@ -213,12 +228,13 @@ for (const viewport of VIEWPORTS) {
     expect(west.paintOrder).toBeLessThan(table!.paintOrder);
     expect(east.paintOrder).toBeLessThan(table!.paintOrder);
     expect(table!.paintOrder).toBeLessThan(south.paintOrder);
-    // Exact deltas mirror the seated feet-align constants (NS hip offset 4px):
-    // north/south diners sit 4px closer to the tabletop than the original 8px
-    // model, so the sandwich margins shifted symmetrically from 26/22 to 30/26.
-    expect(table!.zIndex - north.rootZIndex).toBe(30);
-    expect(table!.zIndex - west.rootZIndex).toBe(2);
-    expect(south.rootZIndex - table!.zIndex).toBe(26);
+    // Exact deltas follow the seating model: NS hip tuck plus the shared
+    // cushion lift (negative SEAT_SIT_OFFSET_Y). Feet-aligned sit was 30/2/26;
+    // lifting diners onto the ellipse widens the north/west gaps and narrows
+    // the south gap by the same lift.
+    expect(table!.zIndex - north.rootZIndex).toBe(NORTH_BEHIND_TABLE);
+    expect(table!.zIndex - west.rootZIndex).toBe(WEST_BEHIND_TABLE);
+    expect(south.rootZIndex - table!.zIndex).toBe(SOUTH_IN_FRONT_OF_TABLE);
 
     await page.screenshot({
       path: `test-results/table-depth-continuity-${viewport.name}.png`,

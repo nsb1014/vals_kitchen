@@ -21,6 +21,9 @@ ICON_PADDING = 2
 OVERFLOW_PX = 48
 WHITE_MIN = 248
 WHITE_CHROMA_MAX = 10
+MAGENTA = (255, 0, 255, 255)
+MAGENTA_RB_MIN = 240
+MAGENTA_GREEN_MAX = 40
 
 
 def is_white_matte(red: int, green: int, blue: int, alpha: int) -> bool:
@@ -31,8 +34,18 @@ def is_white_matte(red: int, green: int, blue: int, alpha: int) -> bool:
     ) <= WHITE_CHROMA_MAX
 
 
+def is_magenta_matte(red: int, green: int, blue: int, alpha: int) -> bool:
+    if alpha < 16:
+        return True
+    return (
+        red >= MAGENTA_RB_MIN
+        and blue >= MAGENTA_RB_MIN
+        and green <= MAGENTA_GREEN_MAX
+    )
+
+
 def is_content_pixel(red: int, green: int, blue: int, alpha: int) -> bool:
-    return not is_white_matte(red, green, blue, alpha)
+    return not is_magenta_matte(red, green, blue, alpha)
 
 
 def flood_remove_white_matte(image: Image.Image) -> Image.Image:
@@ -99,16 +112,79 @@ def flood_remove_white_matte(image: Image.Image) -> Image.Image:
     return out
 
 
-def strip_isolated_fringe(image: Image.Image) -> Image.Image:
-    """Peel a one-pixel pale halo that still touches transparency.
+def flood_alpha_from_border(image: Image.Image, *, alpha_below: int = 16) -> list[list[bool]]:
+    """True for transparent pixels connected to the crop border."""
+    rgba = image.convert('RGBA')
+    width, height = rgba.size
+    pixels = rgba.load()
+    assert pixels is not None
+    marked = [[False] * width for _ in range(height)]
+    queue: deque[tuple[int, int]] = deque()
 
-    Connected matte crumbs survive an isolated-speck filter; a single peel of
-    near-neutral edge pixels keeps garlic/rice interiors and black outlines.
+    def consider(x: int, y: int) -> None:
+        if marked[y][x]:
+            return
+        if pixels[x, y][3] >= alpha_below:
+            return
+        marked[y][x] = True
+        queue.append((x, y))
+
+    for x in range(width):
+        consider(x, 0)
+        consider(x, height - 1)
+    for y in range(height):
+        consider(0, y)
+        consider(width - 1, y)
+
+    while queue:
+        x, y = queue.popleft()
+        for nx in range(max(0, x - 1), min(width, x + 2)):
+            for ny in range(max(0, y - 1), min(height, y + 2)):
+                consider(nx, ny)
+    return marked
+
+
+def fill_interior_holes(image: Image.Image) -> Image.Image:
+    """Close 1px gaps inside pale foods after block-centre downscale.
+
+    A transparent pixel with enough opaque neighbors is a sampling hole, even
+    if a diagonal tunnel still reaches the sheet edge.
+    """
+    rgba = image.convert('RGBA')
+    width, height = rgba.size
+    pixels = rgba.load()
+    assert pixels is not None
+    to_fill: list[tuple[int, int, tuple[int, int, int, int]]] = []
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] >= 16:
+                continue
+            neighbors: list[tuple[int, int, int, int]] = []
+            for nx in range(max(0, x - 1), min(width, x + 2)):
+                for ny in range(max(0, y - 1), min(height, y + 2)):
+                    if nx == x and ny == y:
+                        continue
+                    red, green, blue, alpha = pixels[nx, ny]
+                    if alpha >= 16:
+                        neighbors.append((red, green, blue, 255))
+            if len(neighbors) >= 5:
+                to_fill.append((x, y, neighbors[len(neighbors) // 2]))
+    for x, y, color in to_fill:
+        pixels[x, y] = color
+    return rgba
+
+
+def strip_isolated_fringe(image: Image.Image) -> Image.Image:
+    """Peel a one-pixel pale halo that still touches the exterior matte.
+
+    Interior pale food must not be peeled just because downscale left a hole
+    next to it; only the silhouette edge is a fringe.
     """
     rgba = image.convert('RGBA')
     pixels = rgba.load()
     assert pixels is not None
     width, height = rgba.size
+    exterior = flood_alpha_from_border(rgba)
     to_clear: list[tuple[int, int]] = []
     for y in range(height):
         for x in range(width):
@@ -123,7 +199,7 @@ def strip_isolated_fringe(image: Image.Image) -> Image.Image:
             if not touches_clear:
                 for nx in range(max(0, x - 1), min(width, x + 2)):
                     for ny in range(max(0, y - 1), min(height, y + 2)):
-                        if pixels[nx, ny][3] == 0:
+                        if exterior[ny][nx]:
                             touches_clear = True
                             break
                     if touches_clear:
@@ -213,7 +289,9 @@ def extract_connected_item(
     if not found:
         return Image.new('RGBA', (1, 1), (0, 0, 0, 0))
     cropped = out.crop((min_x, min_y, max_x + 1, max_y + 1))
-    return strip_isolated_fringe(flood_remove_white_matte(cropped))
+    # Magenta was never copied. Do not flood-remove white: pale interiors
+    # (garlic, rice, salt) sit on the crop border after trimming.
+    return strip_isolated_fringe(fill_interior_holes(cropped))
 
 
 def estimate_block_size(img: Image.Image) -> int:
@@ -269,7 +347,7 @@ def downscale_blocky(img: Image.Image, target: int, padding: int = ICON_PADDING)
     ox = (target - new_w) // 2
     oy = (target - new_h) // 2
     canvas.paste(scaled, (ox, oy), scaled)
-    return strip_isolated_fringe(canvas)
+    return strip_isolated_fringe(fill_interior_holes(canvas))
 
 
 def build_shared_palette(icons: list[Image.Image], colors: int) -> list[tuple[int, int, int, int]]:
@@ -314,6 +392,23 @@ def apply_palette(img: Image.Image, palette: list[tuple[int, int, int, int]]) ->
     return rgba
 
 
+def ensure_magenta_matte(sheet_path: Path) -> None:
+    """Recut a white-backed sheet onto magenta, keeping enclosed pale food.
+
+    Flooding from the sheet border removes only background-connected white.
+    Garlic bulbs, rice heaps, and salt fills stay because they are enclosed.
+    """
+    sheet = Image.open(sheet_path).convert('RGBA')
+    corner = sheet.getpixel((0, 0))
+    if is_magenta_matte(*corner) and not is_white_matte(*corner):
+        return
+    keyed = flood_remove_white_matte(sheet)
+    canvas = Image.new('RGBA', sheet.size, MAGENTA)
+    canvas.paste(keyed, (0, 0), keyed)
+    canvas.save(sheet_path, optimize=True)
+    print(f'Rekeyed {sheet_path.name} onto magenta matte')
+
+
 def slice_sheet(
     sheet_path: Path,
     cols: int,
@@ -352,6 +447,7 @@ def main() -> None:
         sheet_path = SHEETS_DIR / spec['file']
         if not sheet_path.is_file():
             raise SystemExit(f'Missing sheet: {sheet_path}')
+        ensure_magenta_matte(sheet_path)
         sliced = slice_sheet(
             sheet_path,
             int(spec['cols']),
@@ -372,7 +468,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest_out: dict[str, str] = {}
     for item_id, icon in ordered:
-        quantized = strip_isolated_fringe(apply_palette(icon, palette))
+        quantized = strip_isolated_fringe(fill_interior_holes(apply_palette(icon, palette)))
         rel = f'{item_id}.png'
         dest = out_dir / rel
         quantized.save(dest, optimize=True)

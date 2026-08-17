@@ -1,6 +1,7 @@
 {
   "targetSize": 32,
-  "whiteThreshold": 240,
+  "matte": "magenta",
+  "chromaKey": [255, 0, 255],
   "paletteColors": 64,
   "sheets": [
     {

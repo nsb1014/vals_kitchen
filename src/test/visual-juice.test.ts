@@ -12,7 +12,10 @@ import {
   carryPlateSpriteLayout,
   facingNameFromIndex,
 } from '../canvas/carry-plate-layout.ts';
-import { eatingTablePlacementIds } from '../canvas/table-service-visual.ts';
+import {
+  eatingTablePlacementIds,
+  reviewJuiceGuestId,
+} from '../canvas/table-service-visual.ts';
 import type { FloorDay } from '../domain/floor/types.ts';
 
 describe('visual juice bus', () => {
@@ -60,6 +63,28 @@ describe('carry plate sprite layout', () => {
     expect(down.visible).toBe(true);
     if (!down.visible) return;
     expect(down.plate.sortY).toBe(201);
+  });
+});
+
+describe('review juice target', () => {
+  it('returns the reviewing guest instead of falling back to Val', () => {
+    const floor = {
+      pool: [
+        {
+          id: 'g-garlic',
+          stage: 'eating',
+          customer: { id: 'c-garlic' },
+        },
+        {
+          id: 'g-other',
+          stage: 'seated',
+          customer: { id: 'c-other' },
+        },
+      ],
+    } as unknown as FloorDay;
+    expect(reviewJuiceGuestId(floor, 'c-garlic')).toBe('g-garlic');
+    expect(reviewJuiceGuestId(floor, 'missing')).toBeNull();
+    expect(reviewJuiceGuestId(null, 'c-garlic')).toBeNull();
   });
 });
 

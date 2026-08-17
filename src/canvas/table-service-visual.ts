@@ -34,6 +34,16 @@ export function tableServiceVisualStates(
   );
 }
 
+/** Guest who just scored the pending review, if they are still on the floor. */
+export function reviewJuiceGuestId(
+  floor: Pick<FloorDay, 'pool'> | null | undefined,
+  customerId: string | undefined,
+): string | null {
+  if (!floor || !customerId) return null;
+  const guest = floor.pool.find((entry) => entry.customer.id === customerId);
+  return guest?.id ?? null;
+}
+
 /** Placement ids of tables where at least one guest is actively eating. */
 export function eatingTablePlacementIds(
   floor: Pick<FloorDay, 'pool'> | null | undefined,
