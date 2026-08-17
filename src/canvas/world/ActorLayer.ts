@@ -60,6 +60,8 @@ const CUE_DELIVER_COLOR = 0xe07a5f;
 const CUE_EATING_COLOR = 0x9ad0c2;
 const CUE_LEAVING_COLOR = 0xcfcfcf;
 const QUEUED_SILHOUETTE_COLOR = 0x4a3f35;
+/** Off-map queue placeholders retired — they read as floor smoke. */
+export const DRAW_QUEUED_GUEST_SILHOUETTE = false;
 const FACING_NAMES = ["right", "down", "up", "left"] as const;
 type ActorFacingName = (typeof FACING_NAMES)[number];
 
@@ -806,13 +808,15 @@ export class ActorLayer {
 
         entry.root.zIndex = entry.root.y - 1;
         entry.cue.clear();
-        // Dim silhouette so the door queue reads before admit.
-        entry.cue
-          .ellipse(0, -6, 10, 4)
-          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.28 });
-        entry.cue
-          .circle(0, -18, 9)
-          .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.38 });
+        if (DRAW_QUEUED_GUEST_SILHOUETTE) {
+          // Dim silhouette so the door queue reads before admit.
+          entry.cue
+            .ellipse(0, -6, 10, 4)
+            .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.28 });
+          entry.cue
+            .circle(0, -18, 9)
+            .fill({ color: QUEUED_SILHOUETTE_COLOR, alpha: 0.38 });
+        }
         entry.content.mask = null;
         entry.content.y = 0;
         entry.content.renderable = true;

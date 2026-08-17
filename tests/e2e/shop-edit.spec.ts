@@ -34,24 +34,40 @@ test.describe('Shop & Edit progression journey', () => {
       const shop = await openShopAndEdit(page);
       const viewport = page.viewportSize()!;
       const shopBounds = await shop.boundingBox();
-      const scrollBounds = await shop
-        .locator('.layout-catalog-scroll:not([hidden])')
-        .boundingBox();
+      const navBounds = await page.locator('#bottom-nav').boundingBox();
+      const scroll = shop.locator('.layout-catalog-scroll:not([hidden])');
+      const scrollBounds = await scroll.boundingBox();
       const firstRowBounds = await shop
         .locator('.layout-catalog-row')
         .first()
         .boundingBox();
       expect(shopBounds).not.toBeNull();
+      expect(navBounds).not.toBeNull();
       expect(shopBounds!.x).toBeCloseTo(0, 1);
       expect(shopBounds!.y).toBeCloseTo(0, 1);
       expect(shopBounds!.width).toBeCloseTo(viewport.width, 1);
-      expect(shopBounds!.height).toBeCloseTo(viewport.height, 1);
+      expect(shopBounds!.y + shopBounds!.height).toBeLessThanOrEqual(
+        navBounds!.y + 1,
+      );
+      expect(shopBounds!.y + shopBounds!.height).toBeGreaterThanOrEqual(
+        navBounds!.y - 2,
+      );
       expect(scrollBounds).not.toBeNull();
+      expect(scrollBounds!.y + scrollBounds!.height).toBeLessThanOrEqual(
+        navBounds!.y + 1,
+      );
       expect(scrollBounds!.height).toBeGreaterThanOrEqual(48);
       expect(firstRowBounds).not.toBeNull();
       expect(firstRowBounds!.y).toBeGreaterThanOrEqual(scrollBounds!.y);
       expect(firstRowBounds!.y + firstRowBounds!.height).toBeLessThanOrEqual(
         scrollBounds!.y + scrollBounds!.height + 1,
+      );
+      const lastRow = shop.locator('.layout-catalog-row').last();
+      await lastRow.scrollIntoViewIfNeeded();
+      const lastRowBounds = await lastRow.boundingBox();
+      expect(lastRowBounds).not.toBeNull();
+      expect(lastRowBounds!.y + lastRowBounds!.height).toBeLessThanOrEqual(
+        navBounds!.y + 1,
       );
       const ingredientTab = shop.getByRole('tab', { name: 'Ingredients' });
       const equipmentTab = shop.getByRole('tab', { name: 'Kitchen Equipment' });

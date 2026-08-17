@@ -42,10 +42,10 @@ describe('camera punch helpers', () => {
     expect(clampCameraPunchScale(0, 1.04)).toBe(1);
   });
 
-  it('eases punch multiplier as a cosine lobe', () => {
+  it('keeps punch multiplier flat so serve never zooms the camera', () => {
     expect(cameraPunchMultiplier(-1, 150)).toBe(1);
     expect(cameraPunchMultiplier(150, 150)).toBe(1);
-    expect(cameraPunchMultiplier(75, 150, 1.04)).toBeGreaterThan(1.03);
+    expect(cameraPunchMultiplier(75, 150, 1.04)).toBe(1);
     expect(cameraPunchMultiplier(0, 150, 1.04)).toBe(1);
   });
 });

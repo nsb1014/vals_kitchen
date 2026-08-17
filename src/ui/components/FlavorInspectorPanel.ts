@@ -55,7 +55,7 @@ export function buildInspectorIngredientList(
   return ingredients
     .map(
       (item) =>
-        `<button type="button" class="inspector-list-item" data-ingredient-id="${item.id}">${renderFoodIconHtml(item.id, 28)}<span>${item.name}</span><span class="inspector-list-meta">${item.category}</span></button>`,
+        `<button type="button" class="inspector-list-item" data-ingredient-id="${item.id}">${renderFoodIconHtml(item.id, 28)}<span class="inspector-list-name">${item.name}</span><span class="inspector-list-meta">${item.category}</span></button>`,
     )
     .join('');
 }

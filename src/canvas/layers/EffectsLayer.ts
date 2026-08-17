@@ -42,22 +42,12 @@ export class EffectsLayer {
   }
 
   spawnAtWorld(
-    kind: EffectBurstKind,
-    worldX: number,
-    worldY: number,
-    opts: { count?: number; spread?: number; profile?: 'default' | 'gentle' } = {},
+    _kind: EffectBurstKind,
+    _worldX: number,
+    _worldY: number,
+    _opts: { count?: number; spread?: number; profile?: 'default' | 'gentle' } = {},
   ): void {
-    const count = opts.count ?? (kind === 'dust' ? 6 : 4);
-    const spread = opts.spread ?? 12;
-    const profile = opts.profile ?? 'default';
-    for (let i = 0; i < count; i += 1) {
-      this.spawnOne(
-        kind,
-        worldX + (Math.random() - 0.5) * spread * 2,
-        worldY + (Math.random() - 0.5) * spread,
-        profile,
-      );
-    }
+    // Floor particles retired. Celebration banners keep their CSS motion.
   }
 
   spawnAtGrid(

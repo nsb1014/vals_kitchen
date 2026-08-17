@@ -12,7 +12,7 @@ import { gridToWorld, TILE_PX, type CameraState } from '../coordinates.ts';
 
 const FLOOR_COLOR = 0x3d3d5c;
 const GRID_LINE_COLOR = 0x2a2a40;
-const DOOR_BOUNCE_MS = 90;
+export const DOOR_BOUNCE_MS = 0;
 
 interface DoorSpriteState {
   cell: { x: number; y: number };
