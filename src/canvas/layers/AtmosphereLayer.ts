@@ -6,6 +6,9 @@ import {
   type FloorRoomId,
 } from '../../domain/floor/starter-map.ts';
 
+/** Floor wash/vignette retired with the rest of the juice pass. */
+export const ATMOSPHERE_ENABLED = false;
+
 /**
  * Warm dining vignette + cooler kitchen wash. Sits above floor tiles, below
  * furniture/actors. Slow sine on alpha for ambient life without lamp sprites.
@@ -30,6 +33,10 @@ export class AtmosphereLayer {
   ): void {
     const room: FloorRoomId = opts.room ?? 'main';
     const key = `${gridW}x${gridH}:${room}:${Boolean(opts.kitchenAnnexOwned)}`;
+    if (!ATMOSPHERE_ENABLED) {
+      this.clear();
+      return;
+    }
     if (key === this.lastKey) return;
     this.lastKey = key;
 
@@ -63,6 +70,7 @@ export class AtmosphereLayer {
   }
 
   update(dtMs: number): void {
+    if (!ATMOSPHERE_ENABLED) return;
     this.phase += dtMs / 1000;
     const breathe = 0.92 + 0.08 * Math.sin(this.phase * 0.7);
     this.vignette.alpha = breathe;

@@ -157,14 +157,11 @@ export function clampCameraPunchScale(
   return Math.min(maxScale, Math.max(minScale, baseScale * punchMultiplier));
 }
 
-/** Ease punch multiplier: 1 → peak → 1 over duration (cosine lobe). */
+/** Serve camera punch retired — always identity so the floor never zooms. */
 export function cameraPunchMultiplier(
-  elapsedMs: number,
-  durationMs: number,
-  peak = 1.04,
+  _elapsedMs: number,
+  _durationMs: number,
+  _peak = 1.04,
 ): number {
-  if (durationMs <= 0 || elapsedMs < 0 || elapsedMs >= durationMs) return 1;
-  const t = elapsedMs / durationMs;
-  const lobe = Math.sin(Math.PI * t);
-  return 1 + (peak - 1) * lobe;
+  return 1;
 }

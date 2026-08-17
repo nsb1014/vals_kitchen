@@ -3,10 +3,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   actorEatingPulse,
   actorIdleBreathe,
+  DRAW_QUEUED_GUEST_SILHOUETTE,
   walkStepSquash,
   WALK_SQUASH_AMPLITUDE,
   WALK_SQUASH_MS,
 } from '../canvas/world/ActorLayer.ts';
+import { DOOR_BOUNCE_MS } from '../canvas/layers/GridLayer.ts';
+import { ATMOSPHERE_ENABLED } from '../canvas/layers/AtmosphereLayer.ts';
 
 describe('walk squash helpers', () => {
   it('disables walk squash so stride frames never bounce the sprite', () => {
@@ -53,6 +56,14 @@ describe('pixelated canvas CSS cascade', () => {
   });
 });
 
+describe('disabled floor juice', () => {
+  it('does not draw queued door-line silhouettes or squash the door', () => {
+    expect(DRAW_QUEUED_GUEST_SILHOUETTE).toBe(false);
+    expect(DOOR_BOUNCE_MS).toBe(0);
+    expect(ATMOSPHERE_ENABLED).toBe(false);
+  });
+});
+
 describe('celebration vs notice stacking CSS', () => {
   it('stacks banners in a column instead of a shared grid cell', () => {
     const css = readFileSync(
@@ -73,7 +84,7 @@ describe('EffectsLayer amplitude (round 2)', () => {
     vi.resetModules();
   });
 
-  it('spawns denser pooled bursts and updates without growing active past clear', async () => {
+  it('spawns no floor particles even when fx textures are present', async () => {
     const textures = new Map<string, object>();
     vi.doMock('../assets/loader.ts', () => ({
       getTileTexture: (name: string) => {
@@ -84,22 +95,12 @@ describe('EffectsLayer amplitude (round 2)', () => {
     const { EffectsLayer } = await import('../canvas/layers/EffectsLayer.ts');
     const layer = new EffectsLayer();
     layer.burstServe(40, 80);
-    // Serve is a gentle place-down (steam + sparkles), not a star/coin shower.
-    expect(layer.getActiveCount()).toBeGreaterThanOrEqual(3);
-    expect(layer.getActiveCount()).toBeLessThanOrEqual(5);
-    const afterServe = layer.getActiveCount();
     layer.burstDoorDust(1, 2);
-    expect(layer.getActiveCount()).toBeGreaterThan(afterServe);
     layer.burstSteam(10, 20);
-    expect(layer.getActiveCount()).toBeGreaterThan(afterServe + 1);
-
-    for (let i = 0; i < 40; i += 1) layer.update(50);
-    expect(layer.getActiveCount()).toBe(0);
-
     layer.burstReview(0, 0);
-    const n = layer.getActiveCount();
-    layer.clear();
+    layer.burstPlacement(8, 12);
     expect(layer.getActiveCount()).toBe(0);
-    expect(n).toBeGreaterThanOrEqual(9);
+    layer.update(50);
+    expect(layer.getActiveCount()).toBe(0);
   });
 });

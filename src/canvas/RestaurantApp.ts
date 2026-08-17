@@ -385,19 +385,8 @@ export class RestaurantApp {
     return null;
   }
 
-  private flashCanvasMount(kind: "serve" | "review" | "placement"): void {
-    if (prefersReducedMotion()) return;
-    this.mount.classList.remove(
-      "vk-sfx-flash-serve",
-      "vk-sfx-flash-review",
-      "vk-sfx-flash-placement",
-    );
-    // Force restart if the same class is re-applied in the same frame.
-    void this.mount.offsetWidth;
-    this.mount.classList.add(`vk-sfx-flash-${kind}`);
-    window.setTimeout(() => {
-      this.mount.classList.remove(`vk-sfx-flash-${kind}`);
-    }, 140);
+  private flashCanvasMount(_kind: "serve" | "review" | "placement"): void {
+    // Canvas color flashes retired with the particle juice.
   }
 
   private roomPlacements(state: GameStore): Placement[] {
