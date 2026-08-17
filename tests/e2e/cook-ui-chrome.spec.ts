@@ -995,6 +995,41 @@ test.describe("consolidated mobile navigation", () => {
       "true",
     );
     await expect(page.getByTestId("recipe-flavor-detail")).toBeVisible();
+
+    const panel = page.getByTestId("recipes-screen");
+    const panelBox = await panel.boundingBox();
+    const tabs = page.locator(".recipe-book-tabs");
+    const tabBox = await tabs.boundingBox();
+    const firstTab = await page.getByRole("tab", { name: "Flavors" }).boundingBox();
+    const lastTab = await page
+      .getByRole("tab", { name: "Achievements" })
+      .boundingBox();
+    expect(panelBox).not.toBeNull();
+    expect(tabBox).not.toBeNull();
+    expect(firstTab).not.toBeNull();
+    expect(lastTab).not.toBeNull();
+    const leftGutter = firstTab!.x - panelBox!.x;
+    const rightGutter =
+      panelBox!.x + panelBox!.width - (lastTab!.x + lastTab!.width);
+    expect(Math.abs(leftGutter - rightGutter)).toBeLessThanOrEqual(8);
+
+    const row = page.locator(".inspector-list-item").first();
+    const icon = row.locator(".food-icon");
+    const name = row.locator(".inspector-list-name");
+    await expect(name).toBeVisible();
+    await expect(name).toHaveCSS("text-align", "left");
+    const nameBox = await name.boundingBox();
+    const rowBox = await row.boundingBox();
+    expect(nameBox).not.toBeNull();
+    expect(rowBox).not.toBeNull();
+    if ((await icon.count()) > 0) {
+      const iconBox = await icon.boundingBox();
+      expect(iconBox).not.toBeNull();
+      expect(nameBox!.x).toBeGreaterThanOrEqual(iconBox!.x + iconBox!.width - 1);
+      expect(nameBox!.x).toBeLessThan(iconBox!.x + iconBox!.width + 16);
+    } else {
+      expect(nameBox!.x).toBeLessThan(rowBox!.x + 24);
+    }
   });
 });
 

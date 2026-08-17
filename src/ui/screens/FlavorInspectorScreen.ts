@@ -17,7 +17,7 @@ export function mountFlavorInspectorScreen(container: HTMLElement): () => void {
         <p class="screen-subtitle">16-axis profiles for unlocked ingredients · Long-press a compose chip to open</p>
       </header>
       <div class="screen-toolbar">
-        <label class="screen-field">
+        <label class="screen-field screen-field-grow">
           <span>Filter</span>
           <select id="inspector-filter" class="screen-select">${inspectorFilterOptions()}</select>
         </label>

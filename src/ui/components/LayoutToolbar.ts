@@ -20,6 +20,7 @@ import {
   shopRowDescription,
   type ShopRow,
 } from '../presentation/shop-items.ts';
+import { mobileCatalogSheetSize } from '../presentation/catalog-sheet-layout.ts';
 import { renderFoodIconHtml } from './food-icon.ts';
 import { OPEN_RESTAURANT_SHOP_EVENT } from '../events/restaurant-shop.ts';
 import { notifyNotificationBlockingSurfaceChanged } from '../notifications/blocking-surface.ts';
@@ -124,10 +125,19 @@ export function mountLayoutToolbar(container: HTMLElement): () => void {
       catalogEl.dataset.zoomCompensated = 'true';
       const viewportWidth = window.innerWidth / rootZoom;
       const viewportHeight = window.innerHeight / rootZoom;
-      catalogEl.style.width = `${viewportWidth}px`;
-      catalogEl.style.maxWidth = `${viewportWidth}px`;
-      catalogEl.style.height = `${viewportHeight}px`;
-      catalogEl.style.maxHeight = `${viewportHeight}px`;
+      const nav = document.getElementById('bottom-nav');
+      const navTop = nav?.getBoundingClientRect().top;
+      const navOffsetFromBottom =
+        navTop === undefined ? 0 : (window.innerHeight - navTop) / rootZoom;
+      const box = mobileCatalogSheetSize({
+        viewportWidth,
+        viewportHeight,
+        navOffsetFromBottom,
+      });
+      catalogEl.style.width = `${box.width}px`;
+      catalogEl.style.maxWidth = `${box.width}px`;
+      catalogEl.style.height = `${box.height}px`;
+      catalogEl.style.maxHeight = `${box.height}px`;
       catalogEl.style.top = '0px';
       catalogEl.style.bottom = 'auto';
       const fixedOffset = catalogEl.getBoundingClientRect().top / rootZoom;
